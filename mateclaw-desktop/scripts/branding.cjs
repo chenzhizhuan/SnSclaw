@@ -75,7 +75,7 @@ function buildReplacements(brand) {
   ])
 
   // 6. Split-span brand name in App.vue template:
-  //    <span class="mate">Mate</span><span class="claw">Claw</span>
+  //    <span class="mate">SnS</span><span class="claw">Claw</span>
   //    Replace the inner text so styling classes are preserved but the text
   //    changes. We split the brand name: first half gets "mate" class, second
   //    half gets "claw" class. If it's a single word, it all goes in "mate".
@@ -83,7 +83,7 @@ function buildReplacements(brand) {
   var firstPart = brand.name.slice(0, half)
   var secondPart = brand.name.slice(half)
   replacements.push([
-    '>Mate</span><span class="claw">Claw<',
+    '>SnS</span><span class="claw">Claw<',
     '>' + firstPart + '</span><span class="claw">' + secondPart + '<',
   ])
 

@@ -14,7 +14,7 @@
         </div>
         <transition name="fade">
           <div v-if="!effectiveCollapsed" class="logo-text">
-            <span class="logo-name">Mate<span class="logo-name-highlight">Claw</span></span>
+            <span class="logo-name">SnS<span class="logo-name-highlight">Claw</span></span>
             <span class="logo-version">v{{ appVersion }}</span>
           </div>
         </transition>
@@ -196,7 +196,7 @@
             <line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
-        <span class="mobile-topbar-title">Mate<span class="logo-name-highlight">Claw</span></span>
+        <span class="mobile-topbar-title">SnS<span class="logo-name-highlight">Claw</span></span>
       </div>
       <!-- RFC-074 PR-1 fix: include route.path in the key so two different
            keepAlive routes (e.g. /channels and /settings/models) don't collide
