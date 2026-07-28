@@ -10,7 +10,7 @@ spring:
     #   connectTimeout=10  — TCP 连接超时（秒），避免 OS 级超时（60-180s）
     #   socketTimeout=30   — socket 读取超时（秒），防止僵死连接永久阻塞
     #   loginTimeout=10    — 数据库登录超时（秒）
-    url: jdbc:kingbase8://${DB_HOST:localhost}:${DB_PORT:54321}/${DB_NAME:snsclaw}?currentSchema=mateclaw&connectTimeout=10&socketTimeout=30&loginTimeout=10
+    url: jdbc:kingbase8://${DB_HOST:localhost}:${DB_PORT:54321}/${DB_NAME:snsclaw}?currentSchema=snsclaw&connectTimeout=10&socketTimeout=30&loginTimeout=10
     driver-class-name: com.kingbase8.Driver
     username: ${DB_USERNAME:system}
     password: ${DB_PASSWORD:Admin2026@123}
@@ -27,7 +27,7 @@ spring:
       initialization-fail-timeout: 30000
       # Kingbase ES：每个新连接初始化时强制设置 search_path，
       # 作为 currentSchema 参数的双重保障，防止连接落入 public schema
-      connection-init-sql: SET search_path TO mateclaw
+      connection-init-sql: SET search_path TO snsclaw
 
   flyway:
     # Flyway uses PostgreSQL JDBC driver because KingbaseES is PostgreSQL-compatible
@@ -35,7 +35,7 @@ spring:
     # Kingbase8 driver for production queries.
     #
     # JDBC 超时参数：避免 Flyway 连接阶段也因 OS 级 TCP 超时而"卡住"
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:54321}/${DB_NAME:snsclaw}?currentSchema=mateclaw&connectTimeout=10&socketTimeout=30&loginTimeout=10
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:54321}/${DB_NAME:snsclaw}?currentSchema=snsclaw&connectTimeout=10&socketTimeout=30&loginTimeout=10
     user: ${DB_USERNAME:system}
     password: ${DB_PASSWORD:Admin2026@123}
     locations:

@@ -9,7 +9,7 @@ spring:
     #   connectTimeout=10  — TCP connect timeout (s), avoids OS-level stalls
     #   socketTimeout=30   — socket read timeout (s), prevents dead connections hanging forever
     #   loginTimeout=10    — database login timeout (s)
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:snsclaw}?currentSchema=mateclaw&connectTimeout=10&socketTimeout=30&loginTimeout=10
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:snsclaw}?currentSchema=snsclaw&connectTimeout=10&socketTimeout=30&loginTimeout=10
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
@@ -26,12 +26,12 @@ spring:
       initialization-fail-timeout: 30000
       # Force search_path on every new connection as a belt-and-suspenders
       # guard alongside currentSchema, so connections never land in public.
-      connection-init-sql: SET search_path TO mateclaw
+      connection-init-sql: SET search_path TO snsclaw
 
   flyway:
     # PostgreSQL and KingbaseES share the same migration tree
     # (db/migration/kingbase) because they use the same SQL dialect.
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:snsclaw}?currentSchema=mateclaw&connectTimeout=10&socketTimeout=30&loginTimeout=10
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:snsclaw}?currentSchema=snsclaw&connectTimeout=10&socketTimeout=30&loginTimeout=10
     user: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     locations:
