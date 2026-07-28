@@ -10,7 +10,7 @@
 #
 #  Treat this as FRESH-INSTALL-ONLY. To carry data across from a MySQL
 #  deployment, dump the OLD stack BEFORE pulling this change, e.g.:
-#      docker compose exec mysql mysqldump -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_NAME" > mateclaw-mysql.sql
+#      docker compose exec mysql mysqldump -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_NAME" > snsclaw-mysql.sql
 #  then load into PostgreSQL with a cross-engine tool such as pgloader —
 #  there is no automatic MySQL → PostgreSQL migration here. Alternatively,
 #  keep running MySQL by pinning your checkout to a pre-switch tag and setting
@@ -25,7 +25,7 @@ services:
   # 未设置会直接在 `docker compose up` 时报错，避免把默认密码带到生产环境。
   postgres:
     image: postgres:16
-    container_name: mateclaw-postgres
+    container_name: snsclaw-postgres
     restart: unless-stopped
     environment:
       # Bootstrap/superuser — owns the cluster, used only for init + admin tasks.
@@ -34,7 +34,7 @@ services:
       POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?DB_ADMIN_PASSWORD is required in .env}
       # Least-privilege application role created by the init script below; this
       # is the account the server connects with (NOT a superuser).
-      APP_DB_USERNAME: ${DB_USERNAME:-mateclaw}
+      APP_DB_USERNAME: ${DB_USERNAME:-snsclaw}
       APP_DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required in .env}
       TZ: Asia/Shanghai
     # No host port on purpose — the DB is only reachable from the compose
@@ -43,7 +43,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Runs once on first init (empty data dir): creates the restricted app
-      # role and the mateclaw schema it owns. See docker/postgres/init/.
+      # role and the snsclaw schema it owns. See docker/postgres/init/.
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USERNAME:-snsclaw_admin} -d ${DB_NAME:-snsclaw}"]
@@ -51,24 +51,24 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - mateclaw-net
+      - snsclaw-net
 
   # SearXNG 搜索引擎（keyless 搜索 provider）
   #
   # The custom image at docker/searxng/ bakes in settings.yml so the sidecar
   # works out of the box (upstream image ships JSON disabled + Limiter enabled,
-  # both of which silently break mateclaw's SearXNGSearchProvider).
+  # both of which silently break snsclaw's SearXNGSearchProvider).
   # No host bind-mount — edit docker/searxng/settings.yml and rebuild.
   # Internal-only: the app reaches it via the compose network. To debug from
   # the host, temporarily add:  ports: ["127.0.0.1:8088:8080"]
   searxng:
     build:
       context: ./docker/searxng
-    container_name: mateclaw-searxng
+    container_name: snsclaw-searxng
     restart: unless-stopped
     environment:
       - SEARXNG_BASE_URL=http://searxng:8080
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-mateclaw-dev-searxng-secret-change-me}
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-snsclaw-dev-searxng-secret-change-me}
       - UWSGI_WORKERS=2
       - UWSGI_THREADS=4
     healthcheck:
@@ -78,16 +78,16 @@ services:
       timeout: 5s
       retries: 3
     networks:
-      - mateclaw-net
+      - snsclaw-net
 
   # SnSclaw 后端服务
-  mateclaw-server:
+  snsclaw-server:
     build:
       context: .
-      dockerfile: mateclaw-server/Dockerfile
+      dockerfile: snsclaw-server/Dockerfile
       args:
         MAVEN_FLAGS: ${MAVEN_FLAGS:-}
-    container_name: mateclaw-server
+    container_name: snsclaw-server
     restart: unless-stopped
     depends_on:
       postgres:
@@ -99,7 +99,7 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-snsclaw}
-      DB_USERNAME: ${DB_USERNAME:-mateclaw}
+      DB_USERNAME: ${DB_USERNAME:-snsclaw}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required in .env}
       # LLM provider keys (DashScope / OpenAI / Anthropic / DeepSeek / Kimi / …) are
       # NOT configured via env vars. After startup, add providers in the admin UI:
@@ -183,12 +183,12 @@ services:
       # volume persists everything. No separate skills volume needed.
       - server_data:/app/data
     networks:
-      - mateclaw-net
+      - snsclaw-net
 
 volumes:
   postgres_data:
   server_data:
 
 networks:
-  mateclaw-net:
+  snsclaw-net:
     driver: bridge
