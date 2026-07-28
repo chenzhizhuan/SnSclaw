@@ -175,7 +175,7 @@ services:
     # recommendation for Playwright / headless chrome.
     shm_size: 2gb
     ports:
-      - "18080:18088"   # host:container — app listens on 18088 inside the container
+      - "13487:18088"   # host:container — app listens on 18088 inside the container
       - "1455:1455"
     volumes:
       # server_data covers /app/data — wiki-uploads AND the skill workspace
