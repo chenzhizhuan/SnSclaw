@@ -48,6 +48,7 @@ COPY mateclaw-plugin-api/pom.xml mateclaw-plugin-api/pom.xml
 COPY mateclaw-server/pom.xml mateclaw-server/pom.xml
 COPY mateclaw-plugin-sample/pom.xml mateclaw-plugin-sample/pom.xml
 COPY mateclaw-plugin-search-sample/pom.xml mateclaw-plugin-search-sample/pom.xml
+COPY mateclaw-plugin-mem0/pom.xml mateclaw-plugin-mem0/pom.xml
 
 # Pre-fetch backend dependencies through the reactor so the parent POM,
 # dependencyManagement, and internal module versions all resolve consistently.
