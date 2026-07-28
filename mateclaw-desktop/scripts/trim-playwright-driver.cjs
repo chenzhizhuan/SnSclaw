@@ -16,7 +16,8 @@ async function afterPack(context) {
   const appJarPath = findAppJar(context)
 
   if (!appJarPath) {
-    throw new Error(`[trim-playwright-driver] app.jar not found in ${context.appOutDir}`)
+    console.log(`[trim-playwright-driver] app.jar not found in ${context.appOutDir}, skipped`)
+    return
   }
 
   const result = await trimDriverBundleInAppJar(appJarPath, keepDriverDirectory)
