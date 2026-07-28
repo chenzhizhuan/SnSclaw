@@ -84,7 +84,7 @@ services:
   snsclaw-server:
     build:
       context: .
-      dockerfile: snsclaw-server/Dockerfile
+      dockerfile: mateclaw-server/Dockerfile
       args:
         MAVEN_FLAGS: ${MAVEN_FLAGS:-}
     container_name: snsclaw-server
