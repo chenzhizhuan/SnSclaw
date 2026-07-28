@@ -5,7 +5,7 @@
 # Runs once, during first container init (empty data dir), as the bootstrap
 # superuser (POSTGRES_USER) against POSTGRES_DB. The app role:
 #   - can log in and CONNECT to the database,
-#   - owns the `mateclaw` schema (so Flyway can create/alter tables in it),
+#   - owns the `snsclaw` schema (so Flyway can create/alter tables in it),
 #   - is NOT a superuser and cannot touch other databases/roles.
 #
 # The server connects as APP_DB_USERNAME / APP_DB_PASSWORD.
@@ -34,10 +34,10 @@ psql -v ON_ERROR_STOP=1 \
     GRANT CONNECT, CREATE ON DATABASE :"db" TO :"app_user";
 
     -- The app owns its schema so Flyway DDL works, without cluster superuser rights.
-    CREATE SCHEMA IF NOT EXISTS mateclaw AUTHORIZATION :"app_user";
+    CREATE SCHEMA IF NOT EXISTS snsclaw AUTHORIZATION :"app_user";
 
     -- Default to the app schema on every connection from this role.
-    ALTER ROLE :"app_user" SET search_path TO mateclaw, public;
+    ALTER ROLE :"app_user" SET search_path TO snsclaw, public;
 EOSQL
 
-echo "[init] application role '${APP_DB_USERNAME}' and schema 'mateclaw' ready"
+echo "[init] application role '${APP_DB_USERNAME}' and schema 'snsclaw' ready"

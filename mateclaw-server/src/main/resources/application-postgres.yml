@@ -39,7 +39,7 @@ spring:
     # Ensure the target schema exists before migrating (PostgreSQL won't
     # auto-create a non-public schema).
     init-sqls:
-      - CREATE SCHEMA IF NOT EXISTS mateclaw
+      - CREATE SCHEMA IF NOT EXISTS snsclaw
     # Skip checksum validation so an in-place migration edit doesn't block startup.
     validate-on-migrate: false
 
