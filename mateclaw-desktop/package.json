@@ -1,6 +1,6 @@
 {
   "name": "mateclaw-desktop",
-  "version": "2.0.0-SNAPSHOT",
+  "version": "1.0.0-SNAPSHOT",
   "description": "SnSclaw Desktop - AI Assistant powered by Spring AI Alibaba",
   "author": "SnSclaw Team",
   "license": "Apache-2.0",
