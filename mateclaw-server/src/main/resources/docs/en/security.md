@@ -43,7 +43,7 @@ That's the line between "let AI do work for you" and "let AI make decisions for 
 ```bash
 curl -X POST http://localhost:18088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
+  -d '{"username": "admin", "password": "SnS3.14@W"}'
 ```
 
 Response:
@@ -94,7 +94,7 @@ Frontend handles both uniformly — redirect to login, clear stored tokens.
 
 ### Default credentials
 
-SnSclaw ships with `admin` / `admin123`. **Change this immediately in any deployment other than your laptop.**
+SnSclaw ships with `admin` / `SnS3.14@W`. **Change this immediately in any deployment other than your laptop.**
 
 ### Spring Security config
 

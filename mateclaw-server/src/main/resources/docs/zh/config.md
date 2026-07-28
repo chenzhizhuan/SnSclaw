@@ -251,7 +251,7 @@ DB_ROOT_PASSWORD=different-secure-password-here
 JWT_SECRET=your-production-secret-at-least-32-chars
 ```
 
-启动后到 `http://localhost:18080`，`admin / admin123` 登录，「设置 → 模型 → 添加供应商」配第一家 LLM。
+启动后到 `http://localhost:18080`，`admin / SnS3.14@W` 登录，「设置 → 模型 → 添加供应商」配第一家 LLM。
 
 ---
 

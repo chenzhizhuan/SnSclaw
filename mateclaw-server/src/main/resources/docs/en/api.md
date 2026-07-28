@@ -156,7 +156,7 @@ Common query params: `page` (default 1), `size` (default 20). Examples: `GET /ap
 ```bash
 curl -X POST http://localhost:18088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
+  -d '{"username":"admin","password":"SnS3.14@W"}'
 ```
 
 ### Chat
@@ -230,7 +230,7 @@ Public endpoint (no auth required). Exchanges credentials for a JWT.
 ```bash
 curl -X POST http://localhost:18088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
+  -d '{"username":"admin","password":"SnS3.14@W"}'
 ```
 
 ### Streaming chat: `POST /api/v1/chat/stream`
@@ -378,7 +378,7 @@ Three things to note (they differ from intuition):
 3. Requires login (not `@RequireGlobalAdmin`).
 
 ```bash
-curl -X PUT "http://localhost:18088/api/v1/auth/users/1/password?oldPassword=admin123&newPassword=newPass456" \
+curl -X PUT "http://localhost:18088/api/v1/auth/users/1/password?oldPassword=SnS3.14@W&newPassword=newPass456" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

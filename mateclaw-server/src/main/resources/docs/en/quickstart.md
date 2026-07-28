@@ -20,7 +20,7 @@ No Java install. No Node install. No Maven. The desktop app bundles JRE 21 and t
 
 Double-click. First launch takes 10 to 30 seconds while the backend boots.
 
-Log in. Username `admin`, password `admin123`. Change the password from `Settings → Security` the moment you're inside. Do it now. Your future self will thank you.
+Log in. Username `admin`, password `SnS3.14@W`. Change the password from `Settings → Security` the moment you're inside. Do it now. Your future self will thank you.
 
 ## 3. Add one model
 

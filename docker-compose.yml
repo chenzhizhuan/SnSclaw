@@ -39,7 +39,9 @@ services:
       TZ: Asia/Shanghai
     # No host port on purpose — the DB is only reachable from the compose
     # network. For ad-hoc inspection use `docker compose exec postgres psql`,
-    # or temporarily add:  ports: ["127.0.0.1:5432:5432"]
+    # or temporarily add:  ports: ["127.0.0.1:13489:5432"]
+    ports:
+      - "13489:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Runs once on first init (empty data dir): creates the restricted app

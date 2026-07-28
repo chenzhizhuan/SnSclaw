@@ -1,6 +1,6 @@
 -- SnSclaw Seed Data - English (H2 MERGE INTO syntax, idempotent inserts)
 
--- Default admin (password: admin123, BCrypt encrypted)
+-- Default admin (password: SnS3.14@W, BCrypt encrypted)
 MERGE INTO mate_user (id, username, password, nickname, role, enabled, create_time, update_time, deleted)
 KEY (id)
 VALUES (1, 'admin', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 'SnSclaw Admin', 'admin', TRUE, NOW(), NOW(), 0);

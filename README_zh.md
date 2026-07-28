@@ -156,7 +156,7 @@ cd mateclaw-ui
 pnpm install && pnpm dev      # http://localhost:5173
 ```
 
-默认登录：`admin` / `admin123`
+默认登录：`admin` / `SnS3.14@W`
 
 ### Docker 部署
 

@@ -64,7 +64,7 @@
 
 **API：** `POST /api/v1/auth/login`
 
-**默认凭证：** `admin` / `admin123`——**立刻改掉**。
+**默认凭证：** `admin` / `SnS3.14@W`——**立刻改掉**。
 
 ---
 

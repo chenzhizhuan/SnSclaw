@@ -10,7 +10,7 @@ This guide does one thing: **get you from "installed" to "it's working for me" a
 
 | Step | What | Time |
 |------|------|------|
-| 1 | Double-click, log in with `admin` / `admin123` | 10s |
+| 1 | Double-click, log in with `admin` / `SnS3.14@W` | 10s |
 | 2 | Settings → Models → Add Provider, **enable one**, paste your key | 30s |
 | 3 | Chat → pick an Agent → say "Hello" | 10s |
 | 4 | Watch the reply stream in → **the system is alive** | — |

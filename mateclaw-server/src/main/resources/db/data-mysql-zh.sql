@@ -1,6 +1,6 @@
 -- SnSclaw 初始数据 - 中文版（MySQL/MariaDB 语法，ON DUPLICATE KEY UPDATE）
 
--- 默认管理员（密码：admin123，BCrypt加密）
+-- 默认管理员（密码：SnS3.14@W，BCrypt加密）
 INSERT INTO mate_user (id, username, password, nickname, role, enabled, create_time, update_time, deleted)
 VALUES (1, 'admin', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 'SnSclaw Admin', 'admin', TRUE, NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE username=VALUES(username), password=VALUES(password), nickname=VALUES(nickname), role=VALUES(role), enabled=VALUES(enabled), update_time=VALUES(update_time), deleted=VALUES(deleted);

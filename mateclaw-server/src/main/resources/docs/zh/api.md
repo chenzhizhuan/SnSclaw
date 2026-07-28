@@ -156,7 +156,7 @@ Authorization: Bearer <token>
 ```bash
 curl -X POST http://localhost:18088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
+  -d '{"username":"admin","password":"SnS3.14@W"}'
 ```
 
 ### 聊天
@@ -230,7 +230,7 @@ curl -N -X POST http://localhost:18088/api/v1/chat/stream \
 ```bash
 curl -X POST http://localhost:18088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
+  -d '{"username":"admin","password":"SnS3.14@W"}'
 ```
 
 ### 流式对话：`POST /api/v1/chat/stream`
@@ -378,7 +378,7 @@ curl "http://localhost:18088/api/v1/audit/events?page=1&size=20&resourceType=AGE
 3. 需登录（非 `@RequireGlobalAdmin`）。
 
 ```bash
-curl -X PUT "http://localhost:18088/api/v1/auth/users/1/password?oldPassword=admin123&newPassword=newPass456" \
+curl -X PUT "http://localhost:18088/api/v1/auth/users/1/password?oldPassword=SnS3.14@W&newPassword=newPass456" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

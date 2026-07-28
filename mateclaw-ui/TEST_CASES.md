@@ -1,7 +1,7 @@
 # UI 精简改动 - 验证测试用例
 
 > 基于 SnSclaw 内置的 3 个 Agent、19 个工具、31 条 Guard 规则和审批工作流设计。
-> 默认登录：admin / admin123
+> 默认登录：admin / SnS3.14@W
 
 ---
 

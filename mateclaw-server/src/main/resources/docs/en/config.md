@@ -251,7 +251,7 @@ DB_ROOT_PASSWORD=different-secure-password-here
 JWT_SECRET=your-production-secret-at-least-32-chars
 ```
 
-After startup, open `http://localhost:18080`, sign in as `admin / admin123`, and add your first LLM provider under `Settings → Models → Add Provider`.
+After startup, open `http://localhost:18080`, sign in as `admin / SnS3.14@W`, and add your first LLM provider under `Settings → Models → Add Provider`.
 
 ---
 

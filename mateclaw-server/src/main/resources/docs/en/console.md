@@ -64,7 +64,7 @@ Username/password form with password visibility toggle.
 
 **API:** `POST /api/v1/auth/login`
 
-**Default credentials:** `admin` / `admin123` — change immediately.
+**Default credentials:** `admin` / `SnS3.14@W` — change immediately.
 
 ---
 

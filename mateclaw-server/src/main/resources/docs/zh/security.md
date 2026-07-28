@@ -43,7 +43,7 @@ Agent 想删文件、发邮件、跑写入型 SQL、调付费 API——任何一
 ```bash
 curl -X POST http://localhost:18088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
+  -d '{"username": "admin", "password": "SnS3.14@W"}'
 ```
 
 响应：
@@ -94,7 +94,7 @@ mateclaw:
 
 ### 默认凭证
 
-SnSclaw 出厂带 `admin` / `admin123`。**除了你自己笔记本之外的任何部署都必须立刻改。**
+SnSclaw 出厂带 `admin` / `SnS3.14@W`。**除了你自己笔记本之外的任何部署都必须立刻改。**
 
 ### Spring Security 配置
 

@@ -40,7 +40,7 @@ Frontend on port 5173, proxies `/api` to the backend.
 
 ### 4. Verify
 
-Open [http://localhost:5173](http://localhost:5173). Log in with `admin` / `admin123`. Add a model in `Settings → Models`. Send a test message. If tokens stream back, you're ready.
+Open [http://localhost:5173](http://localhost:5173). Log in with `admin` / `SnS3.14@W`. Add a model in `Settings → Models`. Send a test message. If tokens stream back, you're ready.
 
 ---
 

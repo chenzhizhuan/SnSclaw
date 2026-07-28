@@ -199,7 +199,7 @@ docker compose logs -f mateclaw-server
 
 First boot runs Flyway migrations (~5 s) and seeds default data (~3 s), then binds `0.0.0.0:18080`.
 
-Open `http://localhost:18080`, sign in as `admin / admin123`, and **change the password immediately** under `Settings → Security`.
+Open `http://localhost:18080`, sign in as `admin / SnS3.14@W`, and **change the password immediately** under `Settings → Security`.
 
 ---
 

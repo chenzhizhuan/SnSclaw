@@ -199,7 +199,7 @@ docker compose logs -f mateclaw-server
 
 首次启动会跑 Flyway 迁移（~5 秒）+ 应用内种子数据（~3 秒），然后绑 `0.0.0.0:18080`。
 
-浏览器打开 `http://localhost:18080`，`admin / admin123` 登录，**立刻在「设置 → 安全」改密码**。
+浏览器打开 `http://localhost:18080`，`admin / SnS3.14@W` 登录，**立刻在「设置 → 安全」改密码**。
 
 ---
 

@@ -40,7 +40,7 @@ pnpm dev
 
 ### 4. 验证
 
-打开 [http://localhost:5173](http://localhost:5173)。用 `admin` / `admin123` 登录。在 `设置 → 模型` 里加一个供应商。发一条测试消息。如果 token 流式回来，你就准备好了。
+打开 [http://localhost:5173](http://localhost:5173)。用 `admin` / `SnS3.14@W` 登录。在 `设置 → 模型` 里加一个供应商。发一条测试消息。如果 token 流式回来，你就准备好了。
 
 ---
 
