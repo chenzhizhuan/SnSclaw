@@ -2,8 +2,9 @@
   <div class="login-page">
     <div class="login-center">
       <div class="login-logo">
-        <img src="/logo/mateclaw_logo_s.png" alt="SnSclaw" class="logo-image" />
-        <h1 class="logo-title">SnS<span class="logo-title-highlight">claw</span></h1>
+        <img src="/logo/snsclaw_logo_s.png" alt="SnSclaw" class="logo-image" />
+        <!-- <h1 class="logo-title">SnS<span class="logo-title-highlight">claw</span></h1> -->
+        <h1 class="logo-title">智算方舟</h1>
       </div>
 
       <form class="login-form" @submit.prevent="handleLogin">

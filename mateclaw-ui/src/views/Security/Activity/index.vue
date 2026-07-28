@@ -492,7 +492,7 @@ onMounted(() => {
   -webkit-backdrop-filter: blur(14px) saturate(1.1);
 }
 :root.dark .filter-chips {
-  background: rgba(34, 26, 22, 0.55);
+  background: color-mix(in srgb, var(--mc-bg-elevated) 55%, transparent);
 }
 .filter-chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -504,7 +504,7 @@ onMounted(() => {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   font-family: inherit;
 }
-:root.dark .filter-chip { background: rgba(42, 32, 26, 0.6); }
+:root.dark .filter-chip { background: color-mix(in srgb, var(--mc-bg-elevated) 60%, transparent); }
 .filter-chip:hover { border-color: var(--mc-border); color: var(--mc-text-primary); }
 /* Active chip — brand-coloured, glass-tinted */
 .filter-chip.active {
@@ -581,14 +581,14 @@ onMounted(() => {
   font-size: inherit;
   color: inherit;
 }
-:root.dark .event-row { background: rgba(42, 32, 26, 0.55); }
+:root.dark .event-row { background: color-mix(in srgb, var(--mc-bg-elevated) 55%, transparent); }
 .event-row:last-child { margin-bottom: 0; }
 .event-row:hover {
   border-color: var(--mc-border);
   background: rgba(255, 255, 255, 0.85);
   box-shadow: var(--mc-shadow-soft);
 }
-:root.dark .event-row:hover { background: rgba(56, 42, 34, 0.7); }
+:root.dark .event-row:hover { background: color-mix(in srgb, var(--mc-primary) 12%, var(--mc-bg-elevated)); }        
 /* Don't translateY on hover — the parent mc-page-frame has rounded
    corners + a glow ::before overlay; lifted cards visibly poked
    through the rounded border. */
@@ -668,7 +668,7 @@ onMounted(() => {
   backdrop-filter: blur(14px) saturate(1.1);
   -webkit-backdrop-filter: blur(14px) saturate(1.1);
 }
-:root.dark .pagination { background: rgba(34, 26, 22, 0.55); }
+:root.dark .pagination { background: color-mix(in srgb, var(--mc-bg-elevated) 55%, transparent); }
 .page-info { font-size: 12px; color: var(--mc-text-tertiary); }
 
 /* Element Plus pagination — keep EP defaults for buttons/numbers so
@@ -699,7 +699,7 @@ onMounted(() => {
   backdrop-filter: blur(16px) saturate(1.15);
   -webkit-backdrop-filter: blur(16px) saturate(1.15);
 }
-:root.dark .detail-hero { background: rgba(42, 32, 26, 0.55); }
+:root.dark .detail-hero { background: color-mix(in srgb, var(--mc-bg-elevated) 55%, transparent); }
 .detail-dot {
   position: absolute; left: 18px; top: 24px;
   width: 10px; height: 10px; border-radius: 50%;

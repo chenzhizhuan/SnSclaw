@@ -10,11 +10,12 @@
       <!-- Logo -->
       <div class="sidebar-logo">
         <div class="logo-icon">
-          <img src="/logo/mateclaw_logo_s.png" alt="SnSclaw" class="logo-img" />
+          <img src="/logo/snsclaw_logo_s.png" alt="SnSclaw" class="logo-img" />
         </div>
         <transition name="fade">
           <div v-if="!effectiveCollapsed" class="logo-text">
-            <span class="logo-name">SnS<span class="logo-name-highlight">claw</span></span>
+            <!-- <span class="logo-name">SnS<span class="logo-name-highlight">claw</span></span> -->
+            <span class="logo-name">智算方舟</span>
             <span class="logo-version">v{{ appVersion }}</span>
           </div>
         </transition>
@@ -196,7 +197,8 @@
             <line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
-        <span class="mobile-topbar-title">SnS<span class="logo-name-highlight">claw</span></span>
+        <!-- <span class="mobile-topbar-title">SnS<span class="logo-name-highlight">claw</span></span> -->
+        <span class="mobile-topbar-title">智算方舟</span>
       </div>
       <!-- RFC-074 PR-1 fix: include route.path in the key so two different
            keepAlive routes (e.g. /channels and /settings/models) don't collide
@@ -639,15 +641,15 @@ watch(() => workspaceStore.currentWorkspaceId, () => {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at top left, rgba(217, 109, 70, 0.12), transparent 22%),
-    radial-gradient(circle at bottom right, rgba(24, 74, 69, 0.08), transparent 18%);
+    radial-gradient(circle at top left, rgba(0, 136, 120, 0.16), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(0, 110, 97, 0.1), transparent 28%);
   pointer-events: none;
 }
 
 :global(html.dark) .app-layout::before {
   background:
-    radial-gradient(circle at top left, rgba(235, 143, 101, 0.14), transparent 24%),
-    radial-gradient(circle at bottom right, rgba(92, 166, 157, 0.08), transparent 20%);
+    radial-gradient(circle at top left, rgba(51, 193, 146, 0.16), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(51, 193, 146, 0.1), transparent 24%);
 }
 
 /* ===== 侧边栏 ===== */
@@ -707,8 +709,8 @@ watch(() => workspaceStore.currentWorkspaceId, () => {
   justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(217, 109, 70, 0.18), rgba(24, 74, 69, 0.08));
-  border: 1px solid rgba(217, 109, 70, 0.14);
+  background: linear-gradient(135deg, rgba(36, 155, 144, 0.18), rgba(24, 74, 69, 0.08));
+  border: 1px solid rgba(27, 111, 99, 0.14);
 }
 
 .logo-img {

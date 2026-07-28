@@ -11,9 +11,10 @@
           <div class="welcome-screen">
             <div class="welcome-logo">
               <div class="welcome-logo__glow"></div>
-              <img src="/logo/mateclaw_logo_s.png" alt="SnSclaw" class="welcome-logo__icon" />
+              <img src="/logo/snsclaw_logo_s.png" alt="SnSclaw" class="welcome-logo__icon" />
             </div>
-            <h2 class="welcome-title">SnS<span class="welcome-title-highlight">claw</span></h2>
+            <!-- <h2 class="welcome-title">SnS<span class="welcome-title-highlight">claw</span></h2> -->
+            <h2 class="welcome-title">智算方舟</h2>
             <p class="welcome-subtitle">{{ subtitle }}</p>
             <div v-if="suggestions.length" class="welcome-suggestions">
               <button

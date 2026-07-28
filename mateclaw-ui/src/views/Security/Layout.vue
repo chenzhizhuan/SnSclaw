@@ -175,7 +175,7 @@ function isActive(path: string) {
 }
 
 .nav-item:hover { background: var(--mc-bg-muted); color: var(--mc-text-primary); }
-.nav-item.active { background: var(--mc-primary-bg); color: var(--mc-primary); font-weight: 600; box-shadow: inset 0 0 0 1px rgba(217, 109, 70, 0.08); }
+.nav-item.active { background: var(--mc-primary-bg); color: var(--mc-primary); font-weight: 600; box-shadow: inset 0 0 0 1px rgba(0, 136, 120, 0.08); }  
 .nav-icon { display: flex; align-items: center; flex-shrink: 0; }
 
 .nav-collapsed .nav-item {

@@ -21,7 +21,7 @@
           :conversation-id="message.conversationId"
           :show-followup-mark="isFollowupTurn"
         >
-          <img src="/logo/mateclaw_logo_s.png" alt="" class="avatar-logo" />
+          <img src="/logo/snsclaw_logo_s.png" alt="" class="avatar-logo" />
         </GoalAvatarRing>
         <span v-else>{{ avatarIcon }}</span>
       </slot>

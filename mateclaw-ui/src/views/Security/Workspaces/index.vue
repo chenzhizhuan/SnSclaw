@@ -258,7 +258,7 @@ function formatDate(dateStr?: string) {
 
 <style scoped>
 .current-ws {
-  background: rgba(217, 119, 87, 0.06);
+  background: rgba(87, 217, 187, 0.06);
 }
 
 .ws-name-cell {
