@@ -560,12 +560,52 @@ onUnmounted(() => {
 
 /* btn-secondary reuse */
 .btn-secondary {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
-  background: var(--mc-surface-hover, #f5f5f5); color: var(--mc-text-primary);
-  border: 1px solid var(--mc-border, #e5e7eb); cursor: pointer; transition: 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--mc-bg-elevated);
+  color: var(--mc-text-primary);
+  border: 1px solid var(--mc-border-light);
+  box-shadow: var(--mc-shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
-.btn-secondary:hover { background: var(--mc-surface-active, #ebebeb); }
+.btn-secondary:hover {
+  background: var(--mc-bg-muted);
+  border-color: var(--mc-border);
+}
+.btn-secondary:active { transform: translateY(1px); }
+.btn-secondary:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--mc-primary) 22%, transparent),
+    var(--mc-shadow-soft),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.btn-configure {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+:root.dark .btn-secondary {
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+:root.dark .btn-secondary:focus-visible {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--mc-primary) 26%, transparent),
+    0 14px 32px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
 
 /* Dark mode overrides */
 :root.dark .type-tool { background: #1e3a5f; color: #93c5fd; }

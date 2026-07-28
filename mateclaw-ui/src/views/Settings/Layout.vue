@@ -288,7 +288,7 @@ function isActive(path: string) {
 .nav-desc { color: var(--mc-text-secondary); font-size: 12px; line-height: 1.5; margin: 0; }
 .nav-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: none; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--mc-text-secondary); cursor: pointer; transition: all 0.15s; text-align: left; text-decoration: none; }
 .nav-item:hover { background: var(--mc-bg-muted); color: var(--mc-text-primary); }
-.nav-item.active { background: var(--mc-primary-bg); color: var(--mc-primary); font-weight: 600; box-shadow: inset 0 0 0 1px rgba(217, 109, 70, 0.08); }
+.nav-item.active { background: var(--mc-primary-bg); color: var(--mc-primary); font-weight: 600; box-shadow: inset 0 0 0 1px rgba(0, 136, 120, 0.08); }
 .nav-item + .nav-item { margin-top: 2px; }
 
 .nav-collapsed .nav-item {
@@ -310,15 +310,15 @@ function isActive(path: string) {
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid rgba(217, 109, 70, 0.22);
+  border: 1px solid rgba(0, 136, 120, 0.22);
   border-radius: 50%;
   background: var(--mc-primary-bg);
   color: var(--mc-primary);
   cursor: pointer;
   flex-shrink: 0;
   box-shadow:
-    0 6px 16px rgba(217, 109, 70, 0.18),
-    0 2px 4px rgba(217, 109, 70, 0.10),
+    0 6px 16px rgba(0, 136, 120, 0.18),
+    0 2px 4px rgba(0, 136, 120, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
   transition:
     background 0.18s ease,
@@ -335,8 +335,8 @@ function isActive(path: string) {
   color: #fff;
   border-color: var(--mc-primary);
   box-shadow:
-    0 10px 22px rgba(217, 109, 70, 0.34),
-    0 3px 6px rgba(217, 109, 70, 0.20);
+    0 10px 22px rgba(0, 136, 120, 0.34),
+    0 3px 6px rgba(0, 136, 120, 0.20);
   transform: scale(1.06);
 }
 

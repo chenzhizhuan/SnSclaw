@@ -327,7 +327,7 @@ function renderChart() {
   const style = getComputedStyle(document.documentElement)
   const textColor = style.getPropertyValue('--mc-text-secondary').trim() || '#999'
   const borderColor = style.getPropertyValue('--mc-border-light').trim() || '#eee'
-  const primaryColor = style.getPropertyValue('--mc-primary').trim() || '#D97757'
+  const primaryColor = style.getPropertyValue('--mc-primary').trim() || '#008878'
 
   chartInstance.setOption({
     tooltip: { trigger: 'axis' },
@@ -543,7 +543,7 @@ function calcDuration(run: any): string {
   align-items: center;
   justify-content: center;
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(217, 109, 70, 0.12), rgba(24, 74, 69, 0.08));
+  background: linear-gradient(135deg, rgba(0, 136, 120, 0.12), rgba(0, 110, 97, 0.08));
   font-size: 24px;
   color: var(--mc-primary);
 }
@@ -584,7 +584,7 @@ function calcDuration(run: any): string {
   background: none; border: none; cursor: pointer;
   padding: 4px 6px; border-radius: 6px; transition: background 0.15s ease;
 }
-.models-manage:hover { background: rgba(217, 109, 70, 0.08); }
+.models-manage:hover { background: var(--mc-primary-bg); }
 
 .provider-chips {
   display: flex; flex-wrap: wrap; gap: 8px;
@@ -653,7 +653,7 @@ function calcDuration(run: any): string {
 }
 .runs-table td { padding: 9px 14px; border-bottom: 1px solid var(--mc-border-light); color: var(--mc-text-primary); }
 .runs-table tr:last-child td { border-bottom: none; }
-.runs-table tbody tr:hover { background: rgba(217, 109, 70, 0.04); }
+.runs-table tbody tr:hover { background: rgba(87, 217, 187, 0.04); }
 
 .cell-time { font-size: 12px; color: var(--mc-text-tertiary); white-space: nowrap; }
 .cell-job { font-family: 'SF Mono', monospace; font-size: 12px; color: var(--mc-text-secondary); }
@@ -667,6 +667,54 @@ function calcDuration(run: any): string {
 .status-failed { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
 
 .empty-state { padding: 48px; text-align: center; color: var(--mc-text-tertiary); font-size: 14px; }
+
+:global(html.dark) .hero-note,
+:global(html.dark) .stat-card,
+:global(html.dark) .models-card,
+:global(html.dark) .trend-chart,
+:global(html.dark) .comparison-card,
+:global(html.dark) .runs-table-wrapper {
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+:global(html.dark) .hero-note {
+  background:
+    linear-gradient(180deg, rgba(17, 26, 25, 0.94), rgba(15, 23, 22, 0.98)),
+    radial-gradient(circle at top right, rgba(51, 193, 146, 0.08), transparent 46%);
+}
+
+:global(html.dark) .stat-card--primary .stat-icon {
+  background: linear-gradient(135deg, rgba(51, 193, 146, 0.18), rgba(17, 26, 25, 0.12));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+:global(html.dark) .stat-card--secondary .stat-icon {
+  background: linear-gradient(135deg, rgba(166, 190, 185, 0.12), rgba(17, 26, 25, 0.08));
+}
+
+:global(html.dark) .models-manage:hover {
+  background: rgba(51, 193, 146, 0.12);
+}
+
+:global(html.dark) .provider-chip {
+  border-color: rgba(166, 190, 185, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+:global(html.dark) .provider-chip:hover {
+  border-color: rgba(51, 193, 146, 0.32);
+  background: rgba(51, 193, 146, 0.08);
+}
+
+:global(html.dark) .runs-table th {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+:global(html.dark) .runs-table tbody tr:hover {
+  background: rgba(51, 193, 146, 0.08);
+}
 
 @media (max-width: 768px) {
   .dashboard-frame {
