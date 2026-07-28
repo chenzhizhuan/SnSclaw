@@ -327,7 +327,7 @@ function createParticles() {
           <img class="logo-img" src="/logo/mateclaw_logo_s.png" alt="SnSclaw" />
         </div>
         <div class="brand-name">
-          <span class="mate">SnS</span><span class="claw">Claw</span>
+          <span class="mate">SnS</span><span class="claw">claw</span>
         </div>
         <div class="brand-tagline">AI Personal Assistant</div>
       </div>
