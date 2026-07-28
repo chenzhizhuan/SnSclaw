@@ -52,7 +52,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * </ul>
  * <p>
  * 用户在企业微信后台创建「智能机器人」→ 选择「API 模式 → 配置长连接」
- * → 获得 bot_id 和 secret → 填入 MateClaw → 启动即可对话。
+ * → 获得 bot_id 和 secret → 填入 SnSclaw → 启动即可对话。
  * 无需公网 IP，无需回调 URL。
  * <p>
  * 配置项（configJson）：
@@ -69,7 +69,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <li>filter_tool_messages: false 时每次工具调用发独立留痕消息（默认 true）</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class WeComChannelAdapter extends AbstractChannelAdapter implements StreamingChannelAdapter {

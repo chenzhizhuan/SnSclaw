@@ -35,7 +35,7 @@ import java.util.function.Supplier;
  * bodies accept both string and numeric forms, keeping Snowflake ids intact
  * across the JS frontend.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "Agent 团队管理")
 @RestController

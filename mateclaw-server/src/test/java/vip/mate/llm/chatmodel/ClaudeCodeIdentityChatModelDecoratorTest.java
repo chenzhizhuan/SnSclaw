@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies the OAuth-mode prompt rewriting that prevents Anthropic's edge
- * from rate-limiting MateClaw traffic. Each test corresponds to one of the
+ * from rate-limiting SnSclaw traffic. Each test corresponds to one of the
  * transforms applied on OAuth-authenticated requests.
  */
 class ClaudeCodeIdentityChatModelDecoratorTest {
@@ -87,13 +87,13 @@ class ClaudeCodeIdentityChatModelDecoratorTest {
     }
 
     @Test
-    @DisplayName("sanitizeBranding replaces MateClaw references")
+    @DisplayName("sanitizeBranding replaces SnSclaw references")
     void sanitizeBranding_replacesProductNames() {
         // Anthropic's content filter flags self-contradicting identity claims —
         // a "You are Claude Code" prefix followed by a body that says "You are
-        // MateClaw" trips the filter. Strip the conflicting brand.
+        // SnSclaw" trips the filter. Strip the conflicting brand.
         String sanitized = ClaudeCodeIdentityChatModelDecorator.sanitizeBranding(
-                "You are MateClaw, built on mateclaw");
+                "You are SnSclaw, built on mateclaw");
         assertEquals("You are Claude Code, built on claude-code", sanitized);
     }
 
@@ -191,7 +191,7 @@ class ClaudeCodeIdentityChatModelDecoratorTest {
     @Test
     @DisplayName("PrefixedToolCallback forwards call() to the underlying tool unchanged")
     void prefixedToolCallback_forwardsCall() {
-        // Critical contract: prefixing happens on the wire, but MateClaw's tool
+        // Critical contract: prefixing happens on the wire, but SnSclaw's tool
         // implementation must still receive the original argument string and
         // return the original output verbatim. If this fails, every tool
         // execution under OAuth would silently mis-route.
@@ -230,7 +230,7 @@ class ClaudeCodeIdentityChatModelDecoratorTest {
     @DisplayName("stripToolPrefixes removes mcp_ from response tool_use names")
     void stripToolPrefixes_responseSide() {
         // Claude returns tool_use with name="mcp_search" (because we prefixed
-        // the definition); MateClaw's tool registry only knows "search" so
+        // the definition); SnSclaw's tool registry only knows "search" so
         // the prefix must come off before the response leaves the decorator.
         AssistantMessage am = AssistantMessage.builder()
                 .content("calling search")

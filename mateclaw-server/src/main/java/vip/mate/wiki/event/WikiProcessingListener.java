@@ -18,7 +18,7 @@ import java.util.concurrent.Semaphore;
  *       避免大批量上传瞬间触发 LLM 限流。</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

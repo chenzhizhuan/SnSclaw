@@ -19,7 +19,7 @@ import java.util.List;
 /**
  * 数据源业务服务
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service
@@ -29,7 +29,7 @@ public class DatasourceService {
     private final DatasourceMapper datasourceMapper;
     private final DatasourceConnectionManager connectionManager;
 
-    @Value("${mateclaw.datasource.encrypt-key:MateClaw@2024Key!}")
+    @Value("${mateclaw.datasource.encrypt-key:SnSclaw@2024Key!}")
     private String encryptKey;
 
     // ==================== CRUD ====================

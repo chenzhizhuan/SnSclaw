@@ -38,7 +38,7 @@ public class OAuthController {
 
     /**
      * MANUAL_PASTE 模式：用户复制浏览器地址栏中的回调 URL（含 ?code=...&state=...）
-     * 粘贴给 MateClaw 完成 token 交换。Server 部署在 Linux / 远程 host 时唯一可用路径，
+     * 粘贴给 SnSclaw 完成 token 交换。Server 部署在 Linux / 远程 host 时唯一可用路径，
      * 因为 OpenAI Codex CLI 的 client_id 强制 redirect_uri = http://localhost:1455/...
      * 远程浏览器无法到达 server 的 localhost，本路由替代 callback server。
      */

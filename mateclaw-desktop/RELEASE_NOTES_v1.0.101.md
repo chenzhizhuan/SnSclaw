@@ -1,4 +1,4 @@
-# MateClaw v1.0.101
+# SnSclaw v1.0.101
 
 ## What's New
 
@@ -50,18 +50,18 @@
 
 | Platform | File | Note |
 |----------|------|------|
-| macOS Apple Silicon | `MateClaw_1.0.101_arm64.dmg` | M1 / M2 / M3 / M4 / M5 |
-| macOS Intel | `MateClaw_1.0.101_x64.dmg` | Intel Mac |
-| Windows | `MateClaw_1.0.101_Setup.exe` | Windows 10/11 (x64+arm64) |
-| Windows x64 | `MateClaw_1.0.101_x64_Setup.exe` | Windows 10/11 x64 |
-| Windows ARM64 | `MateClaw_1.0.101_arm64_Setup.exe` | Windows ARM64 |
+| macOS Apple Silicon | `SnSclaw_1.0.101_arm64.dmg` | M1 / M2 / M3 / M4 / M5 |
+| macOS Intel | `SnSclaw_1.0.101_x64.dmg` | Intel Mac |
+| Windows | `SnSclaw_1.0.101_Setup.exe` | Windows 10/11 (x64+arm64) |
+| Windows x64 | `SnSclaw_1.0.101_x64_Setup.exe` | Windows 10/11 x64 |
+| Windows ARM64 | `SnSclaw_1.0.101_arm64_Setup.exe` | Windows ARM64 |
 
 > zip / blockmap / yml files are for auto-update support.
 
 ## Links
 
-- GitHub: https://github.com/matevip/mateclaw
+- GitHub: https://github.com/chenzhizhuan/SnSclaw
 - Gitee: https://gitee.com/matevip_admin/mateclaw
 - Documentation: https://mateclaw.com
 
-**Full Changelog**: https://github.com/matevip/mateclaw/compare/v1.0.0...v1.0.101
+**Full Changelog**: https://github.com/chenzhizhuan/SnSclaw/compare/v1.0.0...v1.0.101

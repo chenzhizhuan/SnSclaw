@@ -2,7 +2,7 @@
 
 **双击。等 30 秒。登录。开始用。**
 
-四句话的桌面版。**不需要装 Java**，不需要打开浏览器，不需要 docker compose 文件，不需要记住端口号。MateClaw 桌面版把 Electron、JRE 21 运行时、打包的 Spring Boot 服务 JAR **全部装进一个安装包**。**你的用户永远不会知道下面跑的是 Java。**
+四句话的桌面版。**不需要装 Java**，不需要打开浏览器，不需要 docker compose 文件，不需要记住端口号。SnSclaw 桌面版把 Electron、JRE 21 运行时、打包的 Spring Boot 服务 JAR **全部装进一个安装包**。**你的用户永远不会知道下面跑的是 Java。**
 
 这一页给想**运行、构建、调试**桌面版的人看。
 
@@ -231,9 +231,9 @@ Electron 主进程通过 Node.js `child_process` 管理 Spring Boot 后端：
 
 | OS | 路径 |
 |----|------|
-| macOS | `~/Library/Application Support/MateClaw/data/` |
-| Windows | `%APPDATA%/MateClaw/data/` |
-| Linux | `~/.config/MateClaw/data/` |
+| macOS | `~/Library/Application Support/SnSclaw/data/` |
+| Windows | `%APPDATA%/SnSclaw/data/` |
+| Linux | `~/.config/SnSclaw/data/` |
 
 日志、工作空间文件、技能脚本、Wiki 内容都在同一个用户目录下。做重大变更前**备份**。
 
@@ -243,7 +243,7 @@ Electron 主进程通过 Node.js `child_process` 管理 Spring Boot 后端：
 
 | 设置 | 用途 |
 |------|------|
-| `appId` | `vip.mate.mateclaw`——系统注册和代码签名 |
+| `appId` | `app.sns.claw`——系统注册和代码签名 |
 | `productName` | 标题栏和安装器里显示的应用名 |
 | `publish` | 自动更新源（GitHub Releases） |
 | `extraResources` | JRE 和 `app.jar` |
@@ -279,15 +279,15 @@ Electron 主进程通过 Node.js `child_process` 管理 Spring Boot 后端：
 
 1. 安装版自带 JRE——不需要装 Java。开发版：确认 `java -version` 显示 21+。
 2. 看日志：
-   - macOS：`~/Library/Application Support/MateClaw/logs/`
-   - Windows：`%APPDATA%/MateClaw/logs/`
-   - Linux：`~/.config/MateClaw/logs/`
+   - macOS：`~/Library/Application Support/SnSclaw/logs/`
+   - Windows：`%APPDATA%/SnSclaw/logs/`
+   - Linux：`~/.config/SnSclaw/logs/`
 3. 从终端启动看控制台输出
 4. 确认后端选的端口没被防火墙挡
 
 ### 企业微信授权弹窗
 
-企业微信二维码授权**必须在应用内弹窗打开**（不是系统浏览器），这样 `postMessage` 回调才能工作。MateClaw 在 `setWindowOpenHandler` 里对 `work.weixin.qq.com` 域名做了特殊处理——**自动作为应用内弹窗打开**。
+企业微信二维码授权**必须在应用内弹窗打开**（不是系统浏览器），这样 `postMessage` 回调才能工作。SnSclaw 在 `setWindowOpenHandler` 里对 `work.weixin.qq.com` 域名做了特殊处理——**自动作为应用内弹窗打开**。
 
 ---
 

@@ -148,7 +148,7 @@ public class SkillFrontmatterParser {
         @Builder.Default
         private List<String> env = List.of();
 
-        /** MateClaw 内部工具依赖，如 skillScriptTool */
+        /** SnSclaw 内部工具依赖，如 skillScriptTool */
         @Builder.Default
         private List<String> tools = List.of();
 

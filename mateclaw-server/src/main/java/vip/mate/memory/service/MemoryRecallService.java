@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  * 记录 workspace 文件的召回频率、查询多样性等信号，
  * 计算加权评分用于 Dreaming 记忆整合。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

@@ -26,7 +26,7 @@ import vip.mate.workspace.core.annotation.RequireWorkspaceRole;
  * <p>
  * 提供 Guard 配置、规则管理、审计日志查询、审批记录管理视角。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "安全管理")
 @Slf4j

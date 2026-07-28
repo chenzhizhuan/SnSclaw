@@ -7,7 +7,7 @@ import vip.mate.workspace.core.model.WorkspaceEntity;
 /**
  * 工作区 Mapper
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface WorkspaceMapper extends BaseMapper<WorkspaceEntity> {

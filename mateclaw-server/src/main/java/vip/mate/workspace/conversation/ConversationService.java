@@ -55,7 +55,7 @@ import java.util.stream.Stream;
  * cascade of side-tables that hang off a conversation (approvals,
  * async tasks, channel sessions, attachment files, tool-result spill).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service
@@ -67,7 +67,7 @@ public class ConversationService {
     /**
      * Owner prefix for webchat conversations, written as {@code webchat:<visitorId>}
      * (see {@code WebChatController#webchatUsername}). These rows are owned by an
-     * external visitor principal rather than a MateClaw account, so the admin
+     * external visitor principal rather than a SnSclaw account, so the admin
      * console treats them like {@link #SYSTEM_USER} rows — visible to / manageable
      * by any authenticated user in the workspace. The visitor-facing self-service
      * endpoints keep isolating by the exact owner plus a signed visitor token, so

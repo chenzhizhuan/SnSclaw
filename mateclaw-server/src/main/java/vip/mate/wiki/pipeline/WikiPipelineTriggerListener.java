@@ -13,7 +13,7 @@ import vip.mate.wiki.event.WikiPageCreatedEvent;
  * event fires, so the count is accurate, and the run dedup key keeps repeated
  * evaluation idempotent.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

@@ -9,7 +9,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 /**
- * Memory provider that bridges MateClaw's per-turn lifecycle to a self-hosted
+ * Memory provider that bridges SnSclaw's per-turn lifecycle to a self-hosted
  * Mem0 service.
  * <p>
  * Behavior matrix:
@@ -37,7 +37,7 @@ import java.util.concurrent.Executors;
  * <p>Asynchronous sync: a single-thread daemon executor is used
  * so that bursts of turns don't pile up on the platform's request thread.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 class Mem0Provider implements PluginMemoryProvider {
 

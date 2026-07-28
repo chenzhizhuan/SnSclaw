@@ -38,7 +38,7 @@ import java.util.concurrent.Executors;
  * 前端初始化时发送 JSON text frame 指定 agentId 和 conversationId：
  * {"type":"init","agentId":1,"conversationId":"talk-xxx"}
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

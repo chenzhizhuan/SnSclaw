@@ -14,7 +14,7 @@ import java.util.List;
  * keeps both wire shapes deserializing into the same fields so the UI never
  * shows blank rows when the upstream renames a key.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)

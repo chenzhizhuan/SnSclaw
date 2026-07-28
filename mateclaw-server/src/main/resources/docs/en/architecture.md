@@ -1,8 +1,8 @@
 # Architecture
 
-**How MateClaw is put together, in one page.**
+**How SnSclaw is put together, in one page.**
 
-If you're using MateClaw, read [Introduction](./intro). If you're building on MateClaw — adding tools, new channels, custom memory providers, new agent graph nodes — read this page.
+If you're using SnSclaw, read [Introduction](./intro). If you're building on SnSclaw — adding tools, new channels, custom memory providers, new agent graph nodes — read this page.
 
 ---
 
@@ -10,7 +10,7 @@ If you're using MateClaw, read [Introduction](./intro). If you're building on Ma
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         MateClaw                                 │
+│                         SnSclaw                                 │
 │                                                                  │
 │  ┌──────────────┐  ┌──────────────┐  ┌─────────────────────┐   │
 │  │  Web Console  │  │  Desktop App  │  │   IM Channels       │   │
@@ -128,7 +128,7 @@ The backend is a **single modular monolith**. Other projects are independent pac
 
 This is the most important thing to know if you're contributing to the backend.
 
-**MateClaw's agent runtime is not a class hierarchy.** There's no `BaseAgent` → `ReActAgent` → `MyCustomAgent` inheritance chain. The runtime is a **StateGraph** (from `spring-ai-alibaba-graph`) composed of nodes and conditional edges, assembled at runtime by `AgentGraphBuilder`.
+**SnSclaw's agent runtime is not a class hierarchy.** There's no `BaseAgent` → `ReActAgent` → `MyCustomAgent` inheritance chain. The runtime is a **StateGraph** (from `spring-ai-alibaba-graph`) composed of nodes and conditional edges, assembled at runtime by `AgentGraphBuilder`.
 
 ### Key pieces
 
@@ -260,7 +260,7 @@ For deeper customization, add a new node in `agent/graph/node/` or a new dispatc
 
 ## Persistence — one schema, two databases
 
-MateClaw uses **MyBatis Plus** (not JPA) for database access. Conventions:
+SnSclaw uses **MyBatis Plus** (not JPA) for database access. Conventions:
 
 - All tables prefixed `mate_`
 - `snake_case` columns, `camelCase` Java fields, auto-mapped
@@ -291,7 +291,7 @@ MateClaw uses **MyBatis Plus** (not JPA) for database access. Conventions:
 
 ## Streaming — why SSE, not WebFlux
 
-MateClaw uses **Spring MVC**, not Spring WebFlux. WebFlux is explicitly excluded from the dependency graph.
+SnSclaw uses **Spring MVC**, not Spring WebFlux. WebFlux is explicitly excluded from the dependency graph.
 
 Why: Spring MVC + SSE is sufficient for streaming LLM responses to the frontend. It's simpler to reason about, easier to debug, and doesn't force the whole stack to become reactive.
 

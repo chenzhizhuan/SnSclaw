@@ -10,7 +10,7 @@ import vip.mate.wiki.model.WikiEntityEntity;
  * <p>Write paths upsert keyed by ({@code kb_id}, {@code normalized_key},
  * {@code type}); read paths list by {@code kb_id} ordered by {@code salience}.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface WikiEntityMapper extends BaseMapper<WikiEntityEntity> {

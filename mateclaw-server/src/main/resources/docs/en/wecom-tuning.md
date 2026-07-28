@@ -2,7 +2,7 @@
 
 **A bot that actually works for a group of 50 internal employees needs much more than "just connecting".**
 
-The [Channels → WeCom](./channels#wecom) section covers wiring up the channel; this document covers what MateClaw does **after** the channel is up — every non-obvious optimization, every platform corner the adapter handles, and why.
+The [Channels → WeCom](./channels#wecom) section covers wiring up the channel; this document covers what SnSclaw does **after** the channel is up — every non-obvious optimization, every platform corner the adapter handles, and why.
 
 Audience:
 
@@ -38,7 +38,7 @@ If you naively partition conversations by chatId (the obvious approach), you get
 - The debounce window (500ms / 2.5s adaptive) merges A's and B's rapid messages into one
 - A asks "I want X", B follows with "I want Y", and the model thinks "user asked two unrelated things"
 
-### MateClaw's fix
+### SnSclaw's fix
 
 **Two layers**:
 
@@ -52,8 +52,8 @@ The decision lives in [`ChannelMessageRouter.isSameSender`](https://github.com/a
 **2. `[@sender]` prefix on persisted content + prompt.** Every group message (`chatId != null`) gets wrapped before save and before the LLM call:
 
 ```
-[@XuZhanFu] @MateClawBot I want to query X
-[@xuzf] @MateClawBot I want to query Y
+[@XuZhanFu] @SnSclawBot I want to query X
+[@xuzf] @SnSclawBot I want to query Y
 ```
 
 So:
@@ -88,7 +88,7 @@ WeCom enforces **hard size limits** at the chunk-finish step (after all bytes ar
 | Voice | **2 MB** | **must be AMR** (other formats rejected by platform) |
 | Global | **20 MB** | absolute ceiling |
 
-### MateClaw's handling
+### SnSclaw's handling
 
 **Client-side pre-check** to avoid pointless uploads. `applyWeComUploadLimits(fileSize, mediaType, contentType)` returns:
 
@@ -155,7 +155,7 @@ Unknown subtypes fall back to `[appmsg: title]` so the model at least knows "use
 
 mp.weixin.qq.com articles are served as **captcha-gated SSR** — no LLM tool can fetch the body. If the bot pretends it can read it, the model **invents content from the title** (production-observed: "the article makes three points..." — pure hallucination).
 
-When MateClaw detects `mp.weixin.qq.com` in the link branch, it appends a directive to the model:
+When SnSclaw detects `mp.weixin.qq.com` in the link branch, it appends a directive to the model:
 
 > (Hint: this link is a public-account article. The body needs to be opened in WeChat and pasted by the user. Please ask the user to paste the article text rather than guessing from the title.)
 
@@ -174,7 +174,7 @@ Group:        aibot_send_msg ✗     aibot_respond_msg ✓ (must bind to a prior
 
 In groups, any proactive message from the bot (cron summaries, async-task completions, image-generation results) must **piggyback** on a prior user inbound's frameReqId. Otherwise the platform rejects it.
 
-### MateClaw's handling
+### SnSclaw's handling
 
 **LRU cache of recent inbound reqIds**. `lastChatReqIds: ConcurrentHashMap<chatId, latest-reqId>` is updated on every group inbound, capped at 1000 chats.
 
@@ -262,7 +262,7 @@ Another sporadic failure: the model gets stuck in a "thinking-output" loop, repe
 
 Users stare at "generating..." for tens of seconds to minutes, finally receive a wall of duplicates.
 
-### MateClaw's handling
+### SnSclaw's handling
 
 **Two-layer guard**:
 
@@ -312,7 +312,7 @@ These are **WeCom platform** constraints, can't be worked around in code, only i
 
 API-mode bot ticking **any data permission** in the WeCom admin (e.g. "read messages", "get group info") **auto-restricts the bot to creator only**. Other members' messages get ignored.
 
-**Fix**: in the admin panel, **uncheck** all 7 data permissions. The bot becomes available to all authorized members. MateClaw uses webhooks for messages, doesn't need data permissions.
+**Fix**: in the admin panel, **uncheck** all 7 data permissions. The bot becomes available to all authorized members. SnSclaw uses webhooks for messages, doesn't need data permissions.
 
 ### Visibility × data-permission matrix
 
@@ -325,7 +325,7 @@ API-mode bot ticking **any data permission** in the WeCom admin (e.g. "read mess
 
 ### Group requires @bot
 
-The bot in a WeCom group must be `@`-mentioned to receive a message. Direct messages (1:1) don't need `@`. Platform behavior, no workaround. MateClaw doesn't broadcast-listen to all group messages (and couldn't if it tried).
+The bot in a WeCom group must be `@`-mentioned to receive a message. Direct messages (1:1) don't need `@`. Platform behavior, no workaround. SnSclaw doesn't broadcast-listen to all group messages (and couldn't if it tried).
 
 ---
 

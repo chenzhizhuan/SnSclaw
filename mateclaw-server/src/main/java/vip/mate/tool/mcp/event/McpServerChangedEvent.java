@@ -18,7 +18,7 @@ package vip.mate.tool.mcp.event;
  * dependency on AgentService.
  *
  * @param reason short human-readable cause, for logs only
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record McpServerChangedEvent(String reason) {
 }

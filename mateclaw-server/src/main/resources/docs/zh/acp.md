@@ -1,6 +1,6 @@
 ---
-title: ACP 接入 —— 把外部编码 Agent 接进 MateClaw
-description: MateClaw 作为 ACP 宿主，通过 stdio 把 prompt 转交给 Claude Code、Codex、OpenCode、Qwen Code 等任意 Agent Client Protocol 端点。内置端点、可视化环境变量编辑、自动桥接技能卡、信任模型、错误翻译。
+title: ACP 接入 —— 把外部编码 Agent 接进 SnSclaw
+description: SnSclaw 作为 ACP 宿主，通过 stdio 把 prompt 转交给 Claude Code、Codex、OpenCode、Qwen Code 等任意 Agent Client Protocol 端点。内置端点、可视化环境变量编辑、自动桥接技能卡、信任模型、错误翻译。
 head:
   - - meta
     - name: keywords
@@ -9,11 +9,11 @@ head:
 
 # ACP —— Agent Client Protocol
 
-**ACP 是 MateClaw 把 prompt 交给别人写的 Agent 的方式。**
+**ACP 是 SnSclaw 把 prompt 交给别人写的 Agent 的方式。**
 
-Agent Client Protocol 是一个开放规范，定义 Agent 客户端通过 JSON-RPC 调用 Agent 服务端的协议。MateClaw 扮演 **宿主**：拉起一个外部 CLI（Claude Code、Codex、OpenCode、Qwen Code …），通过 stdio 完成 `initialize` → `session/new` → `session/prompt` 三步握手，把流式响应回填到对话里，然后关闭进程。
+Agent Client Protocol 是一个开放规范，定义 Agent 客户端通过 JSON-RPC 调用 Agent 服务端的协议。SnSclaw 扮演 **宿主**：拉起一个外部 CLI（Claude Code、Codex、OpenCode、Qwen Code …），通过 stdio 完成 `initialize` → `session/new` → `session/prompt` 三步握手，把流式响应回填到对话里，然后关闭进程。
 
-如果说 MCP 是 "插一个工具"，ACP 就是 **"插一整个 Agent"**。在 MateClaw 的一次轮次里，调用 Claude Code 和调用任何内置工具没有任何区别——你的 Agent 直接请求 `acp_claude-code_prompt` 然后读取结果即可。
+如果说 MCP 是 "插一个工具"，ACP 就是 **"插一整个 Agent"**。在 SnSclaw 的一次轮次里，调用 Claude Code 和调用任何内置工具没有任何区别——你的 Agent 直接请求 `acp_claude-code_prompt` 然后读取结果即可。
 
 ---
 
@@ -23,10 +23,10 @@ Agent Client Protocol 是一个开放规范，定义 Agent 客户端通过 JSON-
 |---|---|---|
 | 接什么 | 工具服务器 | Agent |
 | 粒度 | 按工具（`tools/list`） | 按 prompt（一次性） |
-| MateClaw 的传输 | stdio / streamable_http / sse | stdio |
+| SnSclaw 的传输 | stdio / streamable_http / sse | stdio |
 | 会话模型 | 长连接、多次调用 | 无状态：拉起 → prompt → 关闭 |
 | 典型用法 | 文件系统、搜索、自定义数据 API | 把编码任务转给 Claude Code / Codex |
-| 在 MateClaw 的呈现 | 工具目录 | 技能目录（自动桥接）+ 工具包装 |
+| 在 SnSclaw 的呈现 | 工具目录 | 技能目录（自动桥接）+ 工具包装 |
 
 同一个数字员工可以同时用两套。
 
@@ -34,7 +34,7 @@ Agent Client Protocol 是一个开放规范，定义 Agent 客户端通过 JSON-
 
 ## 内置端点
 
-随 MateClaw 出厂的 Flyway 迁移会预置四个端点，**默认全部禁用**——你装好对应 CLI 之后再打开。
+随 SnSclaw 出厂的 Flyway 迁移会预置四个端点，**默认全部禁用**——你装好对应 CLI 之后再打开。
 
 | 标识 | 显示名 | Command | 备注 |
 |---|---|---|---|
@@ -60,7 +60,7 @@ Agent Client Protocol 是一个开放规范，定义 Agent 客户端通过 JSON-
 - **Args（JSON 数组）** —— CLI 参数，例如 `["-y","@zed-industries/claude-agent-acp"]`。
 - **Env（JSON 对象）** —— 注入子进程的额外环境变量。可视化编辑器会把 key 命中 `*API_KEY*` / `*TOKEN*` / `*SECRET*` / `*PASS*` 的值自动打码。
 - **Tool parse mode** —— `call_title` / `call_detail` / `update_detail`，决定上游工具调用事件渲染到流式抄本的方式。
-- **Trusted** —— 打开时，MateClaw 会自动同意上游 Agent 发来的 `session/request_permission`；关闭时，所有权限请求一律拒绝（适合非交互场景）。
+- **Trusted** —— 打开时，SnSclaw 会自动同意上游 Agent 发来的 `session/request_permission`；关闭时，所有权限请求一律拒绝（适合非交互场景）。
 - **Enabled** —— 启停开关。禁用的端点不会进入技能目录。
 
 ### 测试连接
@@ -168,7 +168,7 @@ type: acp
 acp:
   endpoint: claude-code
   systemPrefix: |
-    你正在 MateClaw 仓库里工作。报完成前一定要先跑 `mvn test`。
+    你正在 SnSclaw 仓库里工作。报完成前一定要先跑 `mvn test`。
   cwd: /workspaces/mateclaw
 ```
 
@@ -180,7 +180,7 @@ acp:
 
 ### 信任开关
 
-ACP 服务端可以在做敏感动作前（写文件、跑 shell 命令等）发 `session/request_permission` 请宿主放行。MateClaw **不会** 在流式响应中途打断用户去问，而是按端点的 `trusted` 标志决定：
+ACP 服务端可以在做敏感动作前（写文件、跑 shell 命令等）发 `session/request_permission` 请宿主放行。SnSclaw **不会** 在流式响应中途打断用户去问，而是按端点的 `trusted` 标志决定：
 
 - `trusted: true` —— 自动选择 Agent 给的第一个选项放行。适合你自己装好的可信 CLI。
 - `trusted: false` —— 所有权限请求一律拒绝。适合沙盒或不可信端点；上游 Agent 会优雅退避。
@@ -234,7 +234,7 @@ DDL 在 `db/migration/{h2,mysql}/V68__add_acp_endpoints.sql`。
 
 ### "Command not found"
 
-`command` 必须在跑 MateClaw 的用户的 `PATH` 里。`which npx`（或 `which opencode` / `which qwen`）确认一下。Docker 里要把 CLI 装进镜像。实在不行就把 `command` 写成绝对路径。
+`command` 必须在跑 SnSclaw 的用户的 `PATH` 里。`which npx`（或 `which opencode` / `which qwen`）确认一下。Docker 里要把 CLI 装进镜像。实在不行就把 `command` 写成绝对路径。
 
 ### Claude Code 报 "Request not allowed" / 403
 
@@ -242,7 +242,7 @@ DDL 在 `db/migration/{h2,mysql}/V68__add_acp_endpoints.sql`。
 
 ### `session/new` 卡住
 
-通常是上游 CLI 在首次启动时下载依赖（`npx -y` 会这样）。要么先在 MateClaw 之外手动跑一次 CLI 把依赖预热好，要么直接重试——后续调用都很快。
+通常是上游 CLI 在首次启动时下载依赖（`npx -y` 会这样）。要么先在 SnSclaw 之外手动跑一次 CLI 把依赖预热好，要么直接重试——后续调用都很快。
 
 ### "Subprocess output exceeded buffer"
 

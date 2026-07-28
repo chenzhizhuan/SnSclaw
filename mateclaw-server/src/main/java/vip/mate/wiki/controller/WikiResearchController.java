@@ -22,7 +22,7 @@ import java.util.concurrent.Executors;
 /**
  * RFC-011 Phase 3: Wiki Deep Research REST + SSE 接口
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Tag(name = "Wiki Deep Research")

@@ -4,7 +4,7 @@ package vip.mate.tool.local;
  * Raised when a {@code local_*} tool cannot reach the user's desktop tunnel.
  * The {@link Code} drives the friendly message surfaced back to the agent.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class DesktopBridgeException extends RuntimeException {
 

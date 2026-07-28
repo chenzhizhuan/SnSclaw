@@ -7,7 +7,7 @@ import java.io.Serializable;
 /**
  * 统一响应结果封装
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 public class R<T> implements Serializable {

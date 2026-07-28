@@ -8,11 +8,11 @@ If you want Docker or local development instead, those live in [Configuration](.
 
 ## 1. Download
 
-Grab the latest installer from [GitHub Releases](https://github.com/mateaix/mateclaw/releases).
+Grab the latest installer from [GitHub Releases](https://github.com/chenzhizhuan/SnSclaw/releases).
 
-- **Windows** — `MateClaw-Setup-x.y.z.exe`
-- **macOS** — `MateClaw-x.y.z.dmg`
-- **Linux** — `MateClaw-x.y.z.AppImage`
+- **Windows** — `SnSclaw-Setup-x.y.z.exe`
+- **macOS** — `SnSclaw-x.y.z.dmg`
+- **Linux** — `SnSclaw-x.y.z.AppImage`
 
 No Java install. No Node install. No Maven. The desktop app bundles JRE 21 and the server JAR.
 
@@ -30,7 +30,7 @@ Pick one. Just one:
 
 - **DashScope** — the simplest cloud start; paste your key from Alibaba Cloud
 - **OpenAI** or **Anthropic** — if you already have a key, drop it in
-- **Ollama** — local GPU users; MateClaw auto-detects `localhost:11434`
+- **Ollama** — local GPU users; SnSclaw auto-detects `localhost:11434`
 - **ChatGPT OAuth** — if you have a Plus or Pro account, log in through the browser flow and use GPT-4o, o3, or o4-mini directly
 
 Save. The model appears in the chat screen's model picker.
@@ -68,14 +68,14 @@ Each of those has its own page in the sidebar when you're ready to go deeper.
 First run should Just Work. If it didn't:
 
 - **Installer won't launch** — On Windows, right-click → Properties → Unblock. On macOS, allow the unsigned app in System Settings → Privacy & Security.
-- **Backend never boots** — Check the log file (macOS: `~/Library/Application Support/MateClaw/logs/mateclaw.log`; Windows: `%APPDATA%\MateClaw\logs\mateclaw.log`). The desktop app picks a dynamic port — any port conflict is reported clearly in the log.
+- **Backend never boots** — Check the log file (macOS: `~/Library/Application Support/SnSclaw/logs/mateclaw.log`; Windows: `%APPDATA%\SnSclaw\logs\mateclaw.log`). The desktop app picks a dynamic port — any port conflict is reported clearly in the log.
 - **Model call fails** — Wrong API key or network can't reach the provider. Go back to Settings, re-verify the key, or try a different provider.
 - **UI is blank** — Hard-refresh with Ctrl/Cmd+Shift+R. Electron caches aggressively.
-- **Still broken** — Open an issue on [GitHub](https://github.com/mateaix/mateclaw/issues) with the tail of `app.log`. We read them.
+- **Still broken** — Open an issue on [GitHub](https://github.com/chenzhizhuan/SnSclaw/issues) with the tail of `app.log`. We read them.
 
 ---
 
-## Other ways to run MateClaw
+## Other ways to run SnSclaw
 
 - **Docker** — `cp .env.example .env`, set the passwords, then `docker compose up -d --build`. Full prerequisites, Maven mirror selection (China vs US), browser-tool self-check, and upgrade flow live in [Docker Deployment](./docker-deploy).
 - **From source** — `mvn spring-boot:run` in `mateclaw-server/` and `pnpm dev` in `mateclaw-ui/`. See [Contributing](./contributing).

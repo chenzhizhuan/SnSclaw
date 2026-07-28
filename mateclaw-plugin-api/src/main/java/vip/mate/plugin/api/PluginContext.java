@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 /**
  * Platform API provided to plugins for registering capabilities.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public interface PluginContext {
 

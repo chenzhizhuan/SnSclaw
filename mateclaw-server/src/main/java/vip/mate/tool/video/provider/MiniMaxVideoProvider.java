@@ -29,7 +29,7 @@ import java.util.Set;
  *       lower-latency endpoint; required for accounts registered in CN).</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

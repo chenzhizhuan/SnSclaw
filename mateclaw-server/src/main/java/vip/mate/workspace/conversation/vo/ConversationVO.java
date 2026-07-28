@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 在 ConversationEntity 基础上补充前端展示所需的关联字段
  * 对应前端 Sessions.vue 所需的 agentName / agentIcon / status / updateTime
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

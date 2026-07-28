@@ -11,7 +11,7 @@ package vip.mate.memory.lifecycle;
  * @param ownerKey       resolved memory owner key for this turn (e.g.
  *                       "user:42"); drives per-owner memory recall. May be
  *                       null when memory-isolation context is unavailable.
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record TurnContext(
         Long agentId,

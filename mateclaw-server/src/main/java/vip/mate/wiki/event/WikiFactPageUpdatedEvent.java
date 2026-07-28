@@ -5,7 +5,7 @@ package vip.mate.wiki.event;
  * committed). Consumed asynchronously to mark the experience pages that depend
  * on it as stale, without blocking ingest.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record WikiFactPageUpdatedEvent(Long kbId, Long factPageId, String reason) {
 }

@@ -29,7 +29,7 @@ import java.util.Optional;
  * </ol>
  *
  * <p>This service does NOT handle the OAuth login flow itself — that is
- * RFC-062 PR-4. Until then, MateClaw piggybacks on whatever credentials the
+ * RFC-062 PR-4. Until then, SnSclaw piggybacks on whatever credentials the
  * user already has on disk from their installed Claude Code client.
  */
 @Slf4j

@@ -6,7 +6,7 @@ import vip.mate.memory.spi.MemoryProvider;
 /**
  * Decorator that retries failed prefetch/syncTurn calls with exponential backoff.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class RetryableMemoryProvider extends MemoryProviderDecorator {

@@ -13,7 +13,7 @@ package vip.mate.plugin.mem0;
  * @param syncEnabled   whether syncTurn should POST to Mem0 /memories/
  * @param maxResults    cap on memories returned per recall
  * @param timeoutMs     HTTP timeout for both recall and sync
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 record Mem0Config(
         String baseUrl,

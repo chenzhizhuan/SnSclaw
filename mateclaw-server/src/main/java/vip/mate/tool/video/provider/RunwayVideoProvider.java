@@ -22,7 +22,7 @@ import java.util.Set;
  * API 文档: https://docs.runwayml.com/
  * 鉴权: Bearer Token
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

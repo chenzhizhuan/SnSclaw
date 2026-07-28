@@ -13,7 +13,7 @@ import java.util.Map;
  * 节点内部收集 List&lt;GraphEvent&gt;，最终写入 PENDING_EVENTS。
  * StateGraph*Agent 从 NodeOutput 中读取这些事件。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public final class GraphEventPublisher {
 

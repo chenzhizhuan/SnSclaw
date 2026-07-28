@@ -11,7 +11,7 @@ import java.util.Map;
 /**
  * TTS 语音合成 REST 端点
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @RestController
 @RequestMapping("/api/v1/tts")

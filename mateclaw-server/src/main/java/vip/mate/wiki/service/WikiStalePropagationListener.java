@@ -13,7 +13,7 @@ import vip.mate.wiki.event.WikiFactPageUpdatedEvent;
  * already committed when the event fires. Marking is idempotent, so repeated
  * events for the same page are harmless.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

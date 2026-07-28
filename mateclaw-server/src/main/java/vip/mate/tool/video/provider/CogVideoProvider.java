@@ -21,7 +21,7 @@ import java.util.Set;
  * <p>
  * API 文档: https://bigmodel.cn/dev/api/video-generation/cogvideox
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

@@ -11,7 +11,7 @@ package vip.mate.wiki.dto;
  * @param alt       alt text (may be empty if the markdown wrote {@code ![](url)})
  * @param url       resource URL — local path, absolute http(s) URL, or data URI
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record ImageRef(
         String fullMatch,

@@ -2,7 +2,7 @@
 
 **Pick a model. Just one. Add more later.**
 
-MateClaw doesn't care which LLM you use. It talks to every mainstream provider through five protocol adapters, supports 15+ cloud providers and 4 local runtimes, and lets you swap models at runtime without touching agent configuration. The only opinion MateClaw has is that you should **start with one and add more when you need them** — not configure everything on day one.
+SnSclaw doesn't care which LLM you use. It talks to every mainstream provider through five protocol adapters, supports 15+ cloud providers and 4 local runtimes, and lets you swap models at runtime without touching agent configuration. The only opinion SnSclaw has is that you should **start with one and add more when you need them** — not configure everything on day one.
 
 ---
 
@@ -79,10 +79,10 @@ Same `sk-` API key, **two endpoints** that ship different model families:
 ## Native Gemini
 
 ::: tip New in 1.4.0
-Gemini no longer rides on an OpenAI-compatibility shim — MateClaw talks to Google's **native `generateContent` API** directly.
+Gemini no longer rides on an OpenAI-compatibility shim — SnSclaw talks to Google's **native `generateContent` API** directly.
 :::
 
-Plenty of products bolt Gemini on as "just another OpenAI-compatible endpoint" and then hit walls around system instructions, function calling, and inline images. MateClaw speaks Gemini's own protocol instead:
+Plenty of products bolt Gemini on as "just another OpenAI-compatible endpoint" and then hit walls around system instructions, function calling, and inline images. SnSclaw speaks Gemini's own protocol instead:
 
 - **Native chat builder** — maps `systemInstruction`, `functionCall` / `functionResponse` (tool-call turns), and inline image parts (multimodal input) correctly
 - **Streaming SSE parsing** — parses Gemini's streaming response format chunk by chunk
@@ -95,7 +95,7 @@ Configure it under `Settings → Models → Add Provider`, pick the **Gemini** p
 
 ## Adding a provider
 
-**A fresh MateClaw install has an empty provider list. That's deliberate.**
+**A fresh SnSclaw install has an empty provider list. That's deliberate.**
 
 You don't need to see 16 providers. You need **one that works.**
 
@@ -133,13 +133,13 @@ This separates "I have a key for this provider but I'm not using it today" from 
 
 ### ChatGPT OAuth — no API key needed
 
-Have a ChatGPT Plus or Pro account? MateClaw can talk to OpenAI's chat endpoint through **browser-based OAuth** — log in the way you normally would, your subscription is used directly. GPT-4o, o3, and o4-mini become available immediately.
+Have a ChatGPT Plus or Pro account? SnSclaw can talk to OpenAI's chat endpoint through **browser-based OAuth** — log in the way you normally would, your subscription is used directly. GPT-4o, o3, and o4-mini become available immediately.
 
 `Settings → Models → Add Provider → OpenAI OAuth`. A browser window opens. Token exchange happens on the backend; **credentials never leave your machine**.
 
 ### Device authorization grant — for remote / headless deployments
 
-Browser-callback OAuth needs the IDP's redirect to land back on a `localhost` port that *your* browser can reach. That's fine when MateClaw runs on your laptop and breaks the moment you put it on a server, in a container, or on a host that doesn't expose a loopback socket to your client.
+Browser-callback OAuth needs the IDP's redirect to land back on a `localhost` port that *your* browser can reach. That's fine when SnSclaw runs on your laptop and breaks the moment you put it on a server, in a container, or on a host that doesn't expose a loopback socket to your client.
 
 For those cases, OpenAI OAuth automatically switches to **Device Authorization Grant (RFC 8628)** — the same flow ChatGPT desktop and `gh auth login` use. No callback, no port mapping.
 
@@ -151,7 +151,7 @@ For those cases, OpenAI OAuth automatically switches to **Device Authorization G
 
 Enter the user code in your browser, authorize, and the dialog closes itself the moment the backend's poll loop sees `COMPLETED`.
 
-**How MateClaw decides which flow to use:**
+**How SnSclaw decides which flow to use:**
 
 | `mateclaw.oauth.openai.deployment-mode` | Behaviour |
 |---|---|
@@ -180,7 +180,7 @@ Same pattern, same outcome: have a Claude Pro / Max / Team subscription? Sign in
 
 `Settings → Models → Add Provider → Anthropic Claude Code OAuth`. Two flows are supported:
 
-- **Browser callback** — local install, browser pops up, you click through, token lands in MateClaw
+- **Browser callback** — local install, browser pops up, you click through, token lands in SnSclaw
 - **MANUAL_PASTE** — for remote-server deployments where the browser can't reach the backend, you complete the auth in your local browser and paste the token in
 
 Anti-abuse-gate compliant: Claude Code identity is injected into the system prompt, the request shape (UA / accept headers / `system` array form / `mcp_` tool-name prefixes) matches Claude Code's wire format exactly so the requests aren't rejected.
@@ -189,7 +189,7 @@ Anti-abuse-gate compliant: Claude Code identity is injected into the system prom
 
 ## Model discovery
 
-Providers that expose a model list (OpenAI, Ollama, LM Studio, OpenRouter, etc.) support **Model Discovery** — one click and MateClaw fetches every model the provider offers.
+Providers that expose a model list (OpenAI, Ollama, LM Studio, OpenRouter, etc.) support **Model Discovery** — one click and SnSclaw fetches every model the provider offers.
 
 - `Settings → Models → [provider card] → Discover Models`
 - System queries the provider's `/v1/models` endpoint
@@ -247,7 +247,7 @@ ollama pull gemma3
 ollama pull qwen3
 ```
 
-Restart MateClaw. Auto-discovered, added, enabled.
+Restart SnSclaw. Auto-discovered, added, enabled.
 
 ---
 
@@ -285,7 +285,7 @@ Restart MateClaw. Auto-discovered, added, enabled.
 
 No `EMBEDDING_API_KEY` env vars. Embedding models are regular rows in `mate_model_config` with `model_type='embedding'`. They show up alongside chat models in `Settings → Models`. Knowledge bases pick their embedding model from a dropdown.
 
-::: tip New in 1.4.0 ([issue #79](https://github.com/mateaix/mateclaw/issues/79))
+::: tip New in 1.4.0 ([issue #79](https://github.com/chenzhizhuan/SnSclaw/issues/79))
 **Embedding models from any provider.** In the embedding section of `Settings → Models`, configure an embedding model from any provider — it **reuses that provider's API key**, so there's no separate `EMBEDDING_API_KEY`. Each knowledge base picks its embedding model from a dropdown. Keyless local proxies use a no-op placeholder key; the protocol is resolved from the provider's chat-model / protocol setting, so you never hand-enter it.
 :::
 
@@ -312,7 +312,7 @@ System prompts, agent personas, tool definitions — automatically marked with `
 
 **Multi-round tool calls + thinking**: thinking-capable models (DeepSeek-Reasoner / GPT-5 / Kimi K2.5 / Xiaomi MiMo) correctly round-trip historical `reasoning_content` during ReAct multi-round tool calls. Cross-user-turn history is cleared at the boundary, in-turn history is preserved — matching DeepSeek's "pass back within a turn, reset across turns" contract.
 
-**Xiaomi MiMo thinking-mode multi-turn fix** ([issue #189](https://github.com/mateaix/mateclaw/issues/189)): MiMo's `reasoning_content` is now kept correctly across turns in thinking mode, instead of being lost on subsequent turns.
+**Xiaomi MiMo thinking-mode multi-turn fix** ([issue #189](https://github.com/chenzhizhuan/SnSclaw/issues/189)): MiMo's `reasoning_content` is now kept correctly across turns in thinking mode, instead of being lost on subsequent turns.
 
 ---
 
@@ -326,7 +326,7 @@ Became a real thing when agents could be bound to different models per task — 
 
 ## Active model switching at runtime
 
-MateClaw uses a single **active model** as the global default. Agents that don't specify their own use it.
+SnSclaw uses a single **active model** as the global default. Agents that don't specify their own use it.
 
 - **UI:** `Settings → Models → [model card] → Set as Active`
 - **API:** `PUT /api/v1/models/active`
@@ -336,7 +336,7 @@ Takes effect **immediately** — no restart. Next message uses the new model. In
 Per-agent override supported: bind a specific agent to a specific model config.
 
 ::: tip New in 1.4.0
-- **Per-conversation model selection** ([issue #150](https://github.com/mateaix/mateclaw/issues/150)): in the chat UI you can switch the model for **just the current conversation**, without touching the global active model or any other conversation. See [Chat & Messaging](./chat).
+- **Per-conversation model selection** ([issue #150](https://github.com/chenzhizhuan/SnSclaw/issues/150)): in the chat UI you can switch the model for **just the current conversation**, without touching the global active model or any other conversation. See [Chat & Messaging](./chat).
 - **A single bad model id no longer evicts the whole provider**: when discovery / probing hits one invalid model identifier, only that model is skipped — the rest of the provider's models stay available.
 :::
 
@@ -358,7 +358,7 @@ Use it whenever you add a new provider or suspect a stale key.
 ## Multimodal sidecar (system-wide)
 
 ::: tip Added in 1.3.0
-Lets a text-only primary model still answer questions about uploaded images. See [issue #87](https://github.com/mateaix/mateclaw/issues/87).
+Lets a text-only primary model still answer questions about uploaded images. See [issue #87](https://github.com/chenzhizhuan/SnSclaw/issues/87).
 :::
 
 Entry point: **Settings → Models → Multimodal sidecar**. Two independent cards:
@@ -375,7 +375,7 @@ The setting stores `mate_model_config.id` rather than `model_name` — the same 
 
 The dropdown only lists models that **actually support the relevant modality** — filtered by `ModelCapabilityService.supports(...)` on the backend; disabled providers or models without a declared vision capability never appear. Each card has its own Save button, independent of the other.
 
-When does it fire? `MultimodalRouter` ([source](https://github.com/mateaix/mateclaw/blob/main/mateclaw-server/src/main/java/vip/mate/llm/routing/MultimodalRouter.java)) decides per turn:
+When does it fire? `MultimodalRouter` ([source](https://github.com/chenzhizhuan/SnSclaw/blob/main/mateclaw-server/src/main/java/vip/mate/llm/routing/MultimodalRouter.java)) decides per turn:
 
 - Primary already supports vision → no routing (native multimodal path)
 - Primary lacks vision + vision sidecar configured → SIDECAR strategy, captions to text

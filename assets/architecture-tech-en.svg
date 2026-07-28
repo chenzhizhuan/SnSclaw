@@ -26,7 +26,7 @@
 
   <rect width="960" height="640" rx="20" fill="url(#bg)"/>
 
-  <text x="480" y="42" text-anchor="middle" font-size="22" font-weight="800" fill="#1d1612" letter-spacing="-0.5">MateClaw Technical Architecture</text>
+  <text x="480" y="42" text-anchor="middle" font-size="22" font-weight="800" fill="#1d1612" letter-spacing="-0.5">SnSclaw Technical Architecture</text>
   <text x="480" y="62" text-anchor="middle" font-size="11" fill="#9b7d6c" letter-spacing="2">THE WHOLE WIDGET</text>
 
   <!-- ===== Layer 1: Presentation ===== -->
@@ -196,5 +196,5 @@
 
   <text x="480" y="575" text-anchor="middle" font-size="10" fill="#9b7d6c">Java 21+ · Spring Boot 3.5 · Spring AI Alibaba · Vue 3 · TypeScript · Vite · Electron</text>
   <rect x="380" y="590" width="200" height="24" rx="12" fill="url(#primary)"/>
-  <text x="480" y="607" text-anchor="middle" font-size="11" font-weight="600" fill="#fff" letter-spacing="0.5">claw.mate.vip</text>
+  <text x="480" y="607" text-anchor="middle" font-size="11" font-weight="600" fill="#fff" letter-spacing="0.5">claw.sns.app</text>
 </svg>

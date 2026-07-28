@@ -202,7 +202,7 @@ All endpoints under `/api/v1/triggers/`. **What v1.3.0 actually exposes** — th
 ## Relationship with the existing cron module
 
 ::: tip Reuse, not replace
-Before v1.3.0 MateClaw already had a standalone cron subsystem (`mate_cron_job` table + `CronJobService`). The trigger system **does not replace it** —
+Before v1.3.0 SnSclaw already had a standalone cron subsystem (`mate_cron_job` table + `CronJobService`). The trigger system **does not replace it** —
 - Legacy cron jobs (`task_type = text / agent / reminder`) remain on the `Cron Jobs` page
 - New trigger crons live on the `Triggers` page
 - Both **share** the underlying ShedLock lock table + Spring TaskScheduler thread pool

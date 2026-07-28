@@ -6,7 +6,7 @@ import lombok.Data;
 /**
  * Skill 更新检查结果
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @Builder

@@ -27,7 +27,7 @@ import java.util.Map;
 /**
  * Fact management API — forget, feedback, contradiction resolution.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "Facts")
 @Slf4j

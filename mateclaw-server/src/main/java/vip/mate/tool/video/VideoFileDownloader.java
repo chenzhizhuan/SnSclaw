@@ -13,7 +13,7 @@ import java.nio.file.Path;
 /**
  * 视频文件下载器 — 从 provider CDN 下载视频到本地存储
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

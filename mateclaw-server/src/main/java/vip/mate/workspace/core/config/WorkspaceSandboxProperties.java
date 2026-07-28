@@ -13,7 +13,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * This is the fail-closed default for the common out-of-the-box state where a
  * workspace's {@code base_path} column is unset.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @ConfigurationProperties(prefix = "mateclaw.workspace.sandbox")

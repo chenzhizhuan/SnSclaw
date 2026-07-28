@@ -39,7 +39,7 @@ import java.util.List;
  * {@code @Schema} / 公开端点的 {@code @SecurityRequirements({})} opt-out。
  * 这些属于「关键端点注解」增强档，留作后续。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Configuration
 public class OpenApiConfig {
@@ -49,7 +49,7 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI mateclawOpenAPI(
-            @Value("${mateclaw.openapi.title:MateClaw REST API}") String title,
+            @Value("${mateclaw.openapi.title:SnSclaw REST API}") String title,
             @Value("${mateclaw.openapi.description:#{null}}") String description,
             @Value("${mateclaw.openapi.version:1.0}") String version,
             @Value("${mateclaw.openapi.server-url:}") String serverUrl) {
@@ -58,7 +58,7 @@ public class OpenApiConfig {
                 .title(title)
                 .version(version)
                 .description(defaultIfBlank(description, ""
-                        + "MateClaw 多用户 AI Agent 平台的 REST API。"
+                        + "SnSclaw 多用户 AI Agent 平台的 REST API。"
                         + "所有业务端点使用 /api/v1 前缀，绝大多数 JSON 响应走 {code,msg,data} 统一信封。"
                         + "点击右上角 Authorize 并粘贴 JWT 或 Personal Access Token (mc_) 即可调试受保护端点。"
                         + "完整人读文档见部署地址的 /docs 页面。"));

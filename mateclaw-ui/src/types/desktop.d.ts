@@ -14,7 +14,7 @@ export interface LocalToolsState extends LocalToolsConfig {
   connected: boolean
 }
 
-export interface MateClawDesktopAPI {
+export interface SnSclawDesktopAPI {
   getPlatform: () => Promise<string>
   getVersion: () => Promise<string>
   openExternal: (url: string) => Promise<void>
@@ -28,7 +28,7 @@ export interface MateClawDesktopAPI {
 
 declare global {
   interface Window {
-    mateClawAPI?: MateClawDesktopAPI
+    mateClawAPI?: SnSclawDesktopAPI
   }
 }
 

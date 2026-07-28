@@ -10,11 +10,11 @@ import vip.mate.channel.model.ChannelEntity;
 /**
  * Web 渠道适配器
  * <p>
- * Web 渠道是 MateClaw 的默认渠道，通过 HTTP API 和 SSE 与前端交互。
+ * Web 渠道是 SnSclaw 的默认渠道，通过 HTTP API 和 SSE 与前端交互。
  * 不同于 IM 渠道，Web 渠道不需要长连接，消息通过 ChatController 直接处理。
  * 此适配器主要提供统一的生命周期管理和消息格式兼容。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class WebChannelAdapter extends AbstractChannelAdapter {

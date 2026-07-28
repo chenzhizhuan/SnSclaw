@@ -14,7 +14,7 @@ package vip.mate.memory.event;
  * @param ownerKey         memory owner this turn is attributed to (e.g.
  *                         "user:42"); null / "system" means not owner-scoped,
  *                         in which case extracted memory is written as shared.
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record ConversationCompletedEvent(
         Long agentId,

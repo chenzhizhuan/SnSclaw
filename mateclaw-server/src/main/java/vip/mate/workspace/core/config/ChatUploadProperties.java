@@ -19,7 +19,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * The default keeps the legacy {@code data/chat-uploads} location so existing
  * single-workspace deployments see no behavioural change.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @ConfigurationProperties(prefix = "mateclaw.chat.upload")

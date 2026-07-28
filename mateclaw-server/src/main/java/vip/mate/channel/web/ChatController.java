@@ -47,7 +47,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Web 渠道聊天接口
  * 提供 SSE 流式对话和同步对话能力
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "Web聊天")
 @Slf4j
@@ -1267,7 +1267,7 @@ public class ChatController {
      * memory isolation for a web request. When {@code endUserId} is supplied
      * (third-party single-account integration) the origin is attributed to that
      * external end-user ({@code api:<endUserId>}); otherwise to the logged-in
-     * MateClaw user ({@code user:<username>}).
+     * SnSclaw user ({@code user:<username>}).
      */
     private vip.mate.agent.context.ChatOrigin memoryOrigin(String conversationId, String username,
                                                            Long requesterUserId, Long workspaceId,
@@ -1278,13 +1278,13 @@ public class ChatController {
         String baseUrl = resolveRequestBaseUrl();
         if (endUserId != null && !endUserId.isBlank()) {
             // Third-party single-account integration: the requester is an external
-            // end-user id, not a MateClaw account — no requesterUserId to assert.
+            // end-user id, not a SnSclaw account — no requesterUserId to assert.
             return vip.mate.agent.context.ChatOrigin
                     .web(conversationId, endUserId.trim(), workspaceId, null, baseUrl)
                     .withSender(null, "api", null);
         }
         // Authenticated web user: carry the immutable id so on-behalf-of identity
-        // forwarding can assert "MateClaw authenticated this user" (not an anon id).
+        // forwarding can assert "SnSclaw authenticated this user" (not an anon id).
         return vip.mate.agent.context.ChatOrigin.web(conversationId, username, workspaceId, null, baseUrl, requesterUserId);
     }
 
@@ -1319,7 +1319,7 @@ public class ChatController {
         private String conversationId = "default";
         private List<MessageContentPart> contentParts;
         /**
-         * Optional third-party end-user identifier. When a single MateClaw
+         * Optional third-party end-user identifier. When a single SnSclaw
          * account (e.g. one PAT) fronts many of an external system's users,
          * pass that system's user id here so memory and recall are isolated
          * per end-user. Kept as a string (never coerced to a number) to
@@ -1368,7 +1368,7 @@ public class ChatController {
         /**
          * Optional third-party end-user identifier — see
          * {@link ChatRequest#getEndUserId()}. Isolates memory per external
-         * end-user when one MateClaw account fronts many of them.
+         * end-user when one SnSclaw account fronts many of them.
          */
         private String endUserId;
         /**

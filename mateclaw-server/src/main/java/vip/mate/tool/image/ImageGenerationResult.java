@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * 图片生成服务提交结果（面向 Tool 层）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @Builder

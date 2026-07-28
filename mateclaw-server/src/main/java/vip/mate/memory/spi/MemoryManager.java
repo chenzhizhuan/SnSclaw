@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  * <p>
  * Failures in one provider never block others (fault isolation).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

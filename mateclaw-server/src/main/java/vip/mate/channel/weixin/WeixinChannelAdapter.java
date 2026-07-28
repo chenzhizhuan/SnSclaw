@@ -53,7 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   <li>media_dir: 媒体文件保存目录（默认 data/media）</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class WeixinChannelAdapter extends AbstractChannelAdapter {

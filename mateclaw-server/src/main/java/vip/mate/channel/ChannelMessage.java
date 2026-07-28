@@ -15,7 +15,7 @@ import java.util.List;
  * <p>
  * 实际消息内容以 contentParts 为准；content 字段保留纯文本摘要用于向后兼容。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @Builder

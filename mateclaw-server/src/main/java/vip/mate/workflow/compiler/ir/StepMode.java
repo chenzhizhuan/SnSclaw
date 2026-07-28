@@ -6,7 +6,7 @@ import java.util.Map;
 /**
  * Tagged record describing the control-flow mode of a single workflow step.
  * v0 supports four base modes (sequential / fan_out / collect / conditional)
- * and three MateClaw-specific modes (await_approval / dispatch_channel /
+ * and three SnSclaw-specific modes (await_approval / dispatch_channel /
  * write_memory). loop and invoke_skill are deferred to v1.
  */
 public sealed interface StepMode {

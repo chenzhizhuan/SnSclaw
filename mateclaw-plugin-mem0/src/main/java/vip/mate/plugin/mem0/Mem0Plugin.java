@@ -7,7 +7,7 @@ import vip.mate.plugin.api.PluginContext;
 import java.net.URI;
 
 /**
- * MateClaw plugin entrypoint that registers {@link Mem0Provider} with the
+ * SnSclaw plugin entrypoint that registers {@link Mem0Provider} with the
  * platform's memory subsystem.
  * <p>
  * Lifecycle:
@@ -29,7 +29,7 @@ import java.net.URI;
  *       plugin admin UI</li>
  * </ol>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class Mem0Plugin implements MateClawPlugin {
 

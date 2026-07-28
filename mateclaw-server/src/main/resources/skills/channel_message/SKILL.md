@@ -106,7 +106,7 @@ execute_shell_command(command="which mateclaw || where mateclaw")
 ```
 
 2. 如果未安装，告知用户：
-> mateclaw CLI 未找到，无法主动推送消息。请确认 MateClaw 已正确安装并将 CLI 加入 PATH。安装后重试。
+> mateclaw CLI 未找到，无法主动推送消息。请确认 SnSclaw 已正确安装并将 CLI 加入 PATH。安装后重试。
 
 ## 常见错误
 

@@ -23,7 +23,7 @@ import java.util.Map;
  * 负责渠道的 CRUD 管理。
  * 渠道的运行时生命周期由 ChannelManager 管理。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

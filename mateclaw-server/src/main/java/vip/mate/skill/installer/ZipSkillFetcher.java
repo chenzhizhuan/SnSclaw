@@ -43,7 +43,7 @@ import java.util.zip.ZipInputStream;
  * regardless of the order zip tools write entries — earlier single-pass logic
  * silently dropped {@code scripts/*} entries that streamed before SKILL.md.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class ZipSkillFetcher {

@@ -18,10 +18,10 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 
 /**
- * MateClaw - Personal AI Assistant
+ * SnSclaw - Personal AI Assistant
  * Powered by Spring AI Alibaba
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @SpringBootApplication(exclude = {
@@ -149,7 +149,7 @@ public class MateClawApplication {
     public void onReady() {
         log.info("");
         log.info("╔══════════════════════════════════════════════════════════════════════╗");
-        log.info("║  MateClaw is READY  ✓                                              ║");
+        log.info("║  SnSclaw is READY  ✓                                              ║");
         log.info("║  Web UI →  http://localhost:18088                                  ║");
         log.info("║  Swagger → http://localhost:18088/swagger-ui.html                  ║");
         log.info("╚══════════════════════════════════════════════════════════════════════╝");

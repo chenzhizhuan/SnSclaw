@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * 卡片状态持久化在内存中，服务重启后丢失可接受。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class DingTalkAICardManager {

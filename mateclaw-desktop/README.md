@@ -1,6 +1,6 @@
-# MateClaw Desktop
+# SnSclaw Desktop
 
-MateClaw 的桌面客户端，基于 Electron 构建，自动集成 JRE 21 和后端服务，实现双击即用。
+SnSclaw 的桌面客户端，基于 Electron 构建，自动集成 JRE 21 和后端服务，实现双击即用。
 
 ## 架构
 
@@ -83,7 +83,7 @@ mateclaw-desktop/
 
 ## 自动升级
 
-应用内置 `electron-updater` 自动升级，更新产物托管在 [GitHub Releases](https://github.com/matevip/mateclaw/releases)。
+应用内置 `electron-updater` 自动升级，更新产物托管在 [GitHub Releases](https://github.com/chenzhizhuan/SnSclaw/releases)。
 
 **升级流程**：启动时检查 → Splash Screen 底部通知 → 用户点击下载 → 下载完成点击重启 → 自动停止 Java 后端 → 安装新版本
 
@@ -140,7 +140,7 @@ bash scripts/build-all-platforms.sh --all --publish=always
 5. 生成 `latest.yml` 和 `latest-mac.yml`
 6. 创建 GitHub Draft Release 并上传所有产物
 
-完成后前往 https://github.com/matevip/mateclaw/releases ，找到 Draft Release：
+完成后前往 https://github.com/chenzhizhuan/SnSclaw/releases ，找到 Draft Release：
 - 填写 Release Notes（更新说明）
 - 点击 **Publish release** 正式发布
 
@@ -162,13 +162,13 @@ bash scripts/build-all-platforms.sh --all
 # 2. 查看生成的产物
 ls -la release/
 # 产物包括：
-#   MateClaw_1.1.0_arm64.dmg           macOS ARM64 安装包
-#   MateClaw_1.1.0_x64.dmg             macOS x64 安装包
-#   MateClaw_1.1.0_arm64.zip           macOS ARM64 更新包（升级用）
-#   MateClaw_1.1.0_x64.zip             macOS x64 更新包（升级用）
-#   MateClaw_1.1.0_x64_Setup.exe       Windows x64 安装包
-#   MateClaw_1.1.0_arm64_Setup.exe     Windows ARM64 安装包
-#   MateClaw_1.1.0_*.blockmap          差分下载支持文件
+#   SnSclaw_1.1.0_arm64.dmg           macOS ARM64 安装包
+#   SnSclaw_1.1.0_x64.dmg             macOS x64 安装包
+#   SnSclaw_1.1.0_arm64.zip           macOS ARM64 更新包（升级用）
+#   SnSclaw_1.1.0_x64.zip             macOS x64 更新包（升级用）
+#   SnSclaw_1.1.0_x64_Setup.exe       Windows x64 安装包
+#   SnSclaw_1.1.0_arm64_Setup.exe     Windows ARM64 安装包
+#   SnSclaw_1.1.0_*.blockmap          差分下载支持文件
 #   latest.yml                         Windows 更新元数据
 #   latest-mac.yml                     macOS 更新元数据
 
@@ -228,14 +228,14 @@ unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
 bash scripts/build-all-platforms.sh --mac-only
 
 # 2. 手动公证（支持断点续传）
-xcrun notarytool submit release/MateClaw_*.zip \
+xcrun notarytool submit release/SnSclaw_*.zip \
   --apple-id your@apple.id \
   --password "app专用密码" \
   --team-id XXXXXXXXXX \
   --wait
 
 # 3. 装订公证票据
-xcrun stapler staple release/MateClaw_*.dmg
+xcrun stapler staple release/SnSclaw_*.dmg
 ```
 
 ### 跳过签名（开发/测试用）

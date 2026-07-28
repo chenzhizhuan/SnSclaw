@@ -6,7 +6,7 @@ package vip.mate.agent.graph.plan.state;
  * 共享键（如 PENDING_EVENTS、CURRENT_PHASE）直接引用 {@link vip.mate.agent.graph.state.MateClawStateKeys}，
  * 不在此处重复定义。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public final class PlanStateKeys {
 

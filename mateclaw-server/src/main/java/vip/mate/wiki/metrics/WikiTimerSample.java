@@ -11,7 +11,7 @@ import io.micrometer.core.instrument.Tags;
  * given key-value tags. Closing twice is a no-op — safe inside try/finally
  * blocks that may also have an explicit {@code close()} call.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class WikiTimerSample implements AutoCloseable {
 

@@ -9,7 +9,7 @@
 **工作流不是什么**：
 - 不是 ReAct / Plan-and-Execute 的替代品——单 agent 的多轮推理仍然在那两条引擎里
 - 不是可视化拖拉框框生成 if/else 的低代码工具——v0 是 **JSON 优先**（v1 才上画布）
-- 不是 30+ 节点的 Dify-style 编排——MateClaw 工作流刻意保持极简：**线性 step 数组 + 一个 mode 字段表达控制流**
+- 不是 30+ 节点的 Dify-style 编排——SnSclaw 工作流刻意保持极简：**线性 step 数组 + 一个 mode 字段表达控制流**
 
 ::: warning v1.3.0 范围
 v0 = internal alpha。**7 种 step mode + 6 种 trigger pattern**。`loop` / `invoke_skill` 留给后续版本。生产场景请先在标杆账号 / 内部 workspace 跑通再推广。
@@ -279,7 +279,7 @@ v0 **没有** `POST /api/v1/workflows/{id}/runs` 这种"立即手动跑一次"�
 
 每个 step 在 ExecutionContext 携带：
 - `workspaceId`：必须等于 workflow 的 workspace
-- `actingAgentId`：sequential / 3 个 MateClaw mode → 该 step 的 agent；其它 mode → 发布者作为 fallback
+- `actingAgentId`：sequential / 3 个 SnSclaw mode → 该 step 的 agent；其它 mode → 发布者作为 fallback
 - `triggeredBy` / `workflowId` / `revisionId` / `runId`：审计追溯
 
 ### 跨 workspace 隔离

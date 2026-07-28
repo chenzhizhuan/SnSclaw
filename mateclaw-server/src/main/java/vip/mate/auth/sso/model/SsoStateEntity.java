@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
  * <p>一次性消费: state 用 {@code UPDATE ... SET consumed=1 WHERE token=? AND consumed=0},
  * affected rows 必须 = 1; bind_token 的 jti 用 {@code INSERT} 撞 PK 实现首个消费成功。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("sso_state")

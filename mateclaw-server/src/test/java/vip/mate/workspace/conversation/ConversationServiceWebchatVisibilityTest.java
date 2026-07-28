@@ -29,7 +29,7 @@ import static org.mockito.Mockito.when;
  * Pin the admin-console visibility of webchat conversations.
  *
  * <p>WebChat threads are owned by an external visitor principal
- * ({@code webchat:<visitorId>}), not a MateClaw account. The admin-console
+ * ({@code webchat:<visitorId>}), not a SnSclaw account. The admin-console
  * list / page surface them alongside {@code system}-owned IM rows — but only
  * for a global admin, because per the cross-workspace guard (issue #344) only a
  * global admin can actually open a webchat-owned conversation. Listing them to

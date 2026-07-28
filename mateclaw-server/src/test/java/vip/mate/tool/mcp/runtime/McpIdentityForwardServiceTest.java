@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * plaintext vs signed-token resolution, and fail-closed behaviour.
  *
  * <p>The core of this suite is the {@code trust}/{@code channel_type} typing —
- * making sure an authenticated MateClaw user, a webchat visitor, an IM sender,
+ * making sure an authenticated SnSclaw user, a webchat visitor, an IM sender,
  * and a cron run are forwarded with distinguishable, non-fabricated identities
  * (see RFC: on-behalf-of identity typing, issue #459 review).
  */

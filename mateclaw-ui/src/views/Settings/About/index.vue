@@ -2,7 +2,7 @@
   <div class="about-page">
     <!-- Hero: Logo + Identity -->
     <section class="hero">
-      <img src="/logo/mateclaw_logo_s.png" alt="MateClaw" class="hero-logo" />
+      <img src="/logo/mateclaw_logo_s.png" alt="SnSclaw" class="hero-logo" />
       <div class="hero-copy">
         <h1 class="hero-title">Mate<span class="hero-accent">Claw</span></h1>
         <div class="hero-version">v{{ appVersion }}</div>

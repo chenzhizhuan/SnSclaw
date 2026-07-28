@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * is for late polls. A background worker polls the portal every 2s until
  * a terminal state, capped at 6 min wall-clock to avoid thread leaks.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

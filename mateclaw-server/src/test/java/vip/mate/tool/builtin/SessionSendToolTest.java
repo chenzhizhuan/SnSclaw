@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
  * Unit tests for {@link SessionSendTool} — the multi-turn "send" leg of the
  * spawn / send / list delegation triad.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @ExtendWith(MockitoExtension.class)
 class SessionSendToolTest {

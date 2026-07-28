@@ -1,36 +1,36 @@
 <div align="center">
 
 <p align="center">
-  <img src="mateclaw-ui/public/logo/mateclaw_logo_s.png" alt="MateClaw Logo" width="120">
+  <img src="mateclaw-ui/public/logo/mateclaw_logo_s.png" alt="SnSclaw Logo" width="120">
 </p>
 
-# MateClaw
+# SnSclaw
 
 <p align="center"><b>Your second brain</b></p>
 
 <p align="center"><sub><b>Agent Harness · Spring Boot inside · One JAR to ship</b></sub></p>
 
-[![GitHub Repo](https://img.shields.io/badge/GitHub-Repo-black.svg?logo=github)](https://github.com/mateaix/mateclaw)
-[![Documentation](https://img.shields.io/badge/Docs-Website-green.svg?logo=readthedocs&label=Docs)](https://claw.mate.vip/docs)
-[![Live Demo](https://img.shields.io/badge/Demo-Online-orange.svg?logo=vercel&label=Demo)](https://claw-demo.mate.vip)
-[![Website](https://img.shields.io/badge/Website-claw.mate.vip-blue.svg?logo=googlechrome&label=Site)](https://claw.mate.vip)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repo-black.svg?logo=github)](https://github.com/chenzhizhuan/SnSclaw)
+[![Documentation](https://img.shields.io/badge/Docs-Website-green.svg?logo=readthedocs&label=Docs)](https://claw.sns.app/docs)
+[![Live Demo](https://img.shields.io/badge/Demo-Online-orange.svg?logo=vercel&label=Demo)](https://claw-demo.sns.app)
+[![Website](https://img.shields.io/badge/Website-claw.sns.app-blue.svg?logo=googlechrome&label=Site)](https://claw.sns.app)
 [![Java Version](https://img.shields.io/badge/Java-21+-blue.svg?logo=openjdk&label=Java)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen.svg?logo=springboot)](https://spring.io/projects/spring-boot)
 [![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg?logo=vuedotjs)](https://vuejs.org/)
-[![Last Commit](https://img.shields.io/github/last-commit/mateaix/mateclaw)](https://github.com/mateaix/mateclaw)
+[![Last Commit](https://img.shields.io/github/last-commit/mateaix/mateclaw)](https://github.com/chenzhizhuan/SnSclaw)
 [![License](https://img.shields.io/badge/license-Apache--2.0-red.svg?logo=opensourceinitiative&label=License)](LICENSE)
 
-[[Website](https://claw.mate.vip)] [[Live Demo](https://claw-demo.mate.vip)] [[Documentation](https://claw.mate.vip/docs)] [[中文](README_zh.md)]
+[[Website](https://claw.sns.app)] [[Live Demo](https://claw-demo.sns.app)] [[Documentation](https://claw.sns.app/docs)] [[中文](README_zh.md)]
 
 </div>
 
 <p align="center">
-  <img src="assets/images/preview.png" alt="MateClaw Preview" width="800">
+  <img src="assets/images/preview.png" alt="SnSclaw Preview" width="800">
 </p>
 
 ---
 
-> **Other personal AI agents are built for one person. MateClaw is the one your IT department can actually sign off on.**
+> **Other personal AI agents are built for one person. SnSclaw is the one your IT department can actually sign off on.**
 >
 > Multi-user workspaces. Approval-gated sensitive actions. Full audit trail. Spring Boot Actuator health monitoring. Per-channel error isolation so one chat platform's outage doesn't take down the rest. One JAR on your own machine, zero data egress.
 >
@@ -38,7 +38,7 @@
 
 Most AI tools die when their vendor has a bad day. Most forget you the moment the tab closes. Most give you a chatbox and call it a product.
 
-**MateClaw is the whole widget.** One deployment. Reasoning, knowledge, memory, tools, channels — built together, not bolted on. And when your primary model goes down, the next one picks up mid-sentence.
+**SnSclaw is the whole widget.** One deployment. Reasoning, knowledge, memory, tools, channels — built together, not bolted on. And when your primary model goes down, the next one picks up mid-sentence.
 
 ---
 
@@ -48,7 +48,7 @@ Most AI tools die when their vendor has a bad day. Most forget you the moment th
 
 Primary key expired. Vendor returns 401. Network blip. Quota drained.
 
-Other tools hand you a red error card. MateClaw routes to the next healthy provider — DashScope, OpenAI, Anthropic, Gemini, DeepSeek, Kimi, Ollama, LM Studio, MLX, 14+ in total — and the user sees the reply finish. A provider health tracker parks bad vendors in a cooldown window so they don't waste seconds on every turn.
+Other tools hand you a red error card. SnSclaw routes to the next healthy provider — DashScope, OpenAI, Anthropic, Gemini, DeepSeek, Kimi, Ollama, LM Studio, MLX, 14+ in total — and the user sees the reply finish. A provider health tracker parks bad vendors in a cooldown window so they don't waste seconds on every turn.
 
 You don't write a retry script. You drag providers into priority order in **Settings → Models** and watch the health dashboard fill with green dots as requests route around failures in real time.
 
@@ -56,7 +56,7 @@ You don't write a retry script. You drag providers into priority order in **Sett
 
 Upload a PDF, a batch of markdown, a scraped page — raw material in.
 
-MateClaw's **LLM Wiki** digests it into structured pages, builds `[[links]]` between them, and remembers where every sentence came from. Click a citation, see the exact source chunk. Ask a question, the page you get is stitched from the right chunks — with references you can verify.
+SnSclaw's **LLM Wiki** digests it into structured pages, builds `[[links]]` between them, and remembers where every sentence came from. Click a citation, see the exact source chunk. Ask a question, the page you get is stitched from the right chunks — with references you can verify.
 
 This is the difference between a warehouse and a library.
 
@@ -120,13 +120,13 @@ On March 2, 2026, Claude went dark for 4 hours across API, web, and mobile. Thre
 
 This is the same shift databases went through around 2010 and cloud went through around 2018: the winning layer stops being tied to one supplier. **57% of companies now run AI agents in production.** None of them want one vendor's bad day to become their bad day.
 
-**MateClaw is that layer — built the Spring Boot way.**
+**SnSclaw is that layer — built the Spring Boot way.**
 
 ---
 
-## Why MateClaw
+## Why SnSclaw
 
-| | MateClaw | [OpenClaw](https://github.com/openclaw/openclaw) | [Hermes Agent](https://github.com/NousResearch/hermes-agent) | [Claude Code](https://github.com/anthropics/claude-code) | [Cursor](https://cursor.com) |
+| | SnSclaw | [OpenClaw](https://github.com/openclaw/openclaw) | [Hermes Agent](https://github.com/NousResearch/hermes-agent) | [Claude Code](https://github.com/anthropics/claude-code) | [Cursor](https://cursor.com) |
 |:---|:---:|:---:|:---:|:---:|:---:|
 | **Multi-vendor failover** | **Chain + health tracker + cooldown** | Swap providers via config | Orchestration w/ retry | Anthropic only | One model |
 | **Knowledge digestion** | **LLM Wiki + page-level citations** | Canvas + memory | Skills Hub + memory | — | Code index |
@@ -136,9 +136,9 @@ This is the same shift databases went through around 2010 and cloud went through
 | **Stack** | **Java (Spring Boot)** | TypeScript | Python | TypeScript | Electron/TS |
 | **License / Price** | **Apache 2.0 · Free** | MIT · Free | MIT · Free | Proprietary · $20–200/mo | Proprietary · $0–200/mo |
 
-**OpenClaw and Hermes Agent are excellent personal AI platforms** — pick either if you're running one user on one laptop, building your own agent from CLI, and treating everything as config files to hand-tune. Both have bigger communities than MateClaw today.
+**OpenClaw and Hermes Agent are excellent personal AI platforms** — pick either if you're running one user on one laptop, building your own agent from CLI, and treating everything as config files to hand-tune. Both have bigger communities than SnSclaw today.
 
-**MateClaw is the version built for teams.** RBAC per digital employee, per model, per tool. An approval flow that pauses risky actions for review. Full audit trail. The Admin Runtime Console gives one operator real-time visibility into 50 employees running across 14 vendors — stuck? force-recycle in one click. Spring Boot inside — drop-in for any Java shop already running production services.
+**SnSclaw is the version built for teams.** RBAC per digital employee, per model, per tool. An approval flow that pauses risky actions for review. Full audit trail. The Admin Runtime Console gives one operator real-time visibility into 50 employees running across 14 vendors — stuck? force-recycle in one click. Spring Boot inside — drop-in for any Java shop already running production services.
 
 Same "whole widget" philosophy. Different center of gravity.
 
@@ -167,7 +167,7 @@ docker compose up -d          # http://localhost:18080
 
 ### Desktop
 
-Download from [GitHub Releases](https://github.com/mateaix/mateclaw/releases). Bundles JRE 21. No Java install needed.
+Download from [GitHub Releases](https://github.com/chenzhizhuan/SnSclaw/releases). Bundles JRE 21. No Java install needed.
 
 ---
 
@@ -199,7 +199,7 @@ mateclaw/
 └── .env.example
 ```
 
-Desktop binaries ship via [GitHub Releases](https://github.com/mateaix/mateclaw/releases) with a bundled JRE 21 — no Java install needed.
+Desktop binaries ship via [GitHub Releases](https://github.com/chenzhizhuan/SnSclaw/releases) with a bundled JRE 21 — no Java install needed.
 
 ## Tech stack
 
@@ -219,7 +219,7 @@ Desktop binaries ship via [GitHub Releases](https://github.com/mateaix/mateclaw/
 
 ## Documentation
 
-Full docs at **[claw.mate.vip/docs](https://claw.mate.vip/docs)** — setup, architecture, each subsystem, API reference.
+Full docs at **[claw.sns.app/docs](https://claw.sns.app/docs)** — setup, architecture, each subsystem, API reference.
 
 ## Roadmap
 
@@ -234,9 +234,9 @@ Full docs at **[claw.mate.vip/docs](https://claw.mate.vip/docs)** — setup, arc
 
 Plus: in-chat attachment preview (pdf / docx / xlsx / html / text), single-source SKILL.md + console bundle-file management, the optional Mem0 plugin memory provider, and the knowledge-graph relation schema whitelist.
 
-Full story in the [v2.0.0 release notes](https://claw.mate.vip/docs/en/releases/2.0.0).
+Full story in the [v2.0.0 release notes](https://claw.sns.app/docs/en/releases/2.0.0).
 
-**v1.8.0 (shipped 2026-07-12)** — the employee turns *outward and does a whole job*: **Content Studio**, the first flagship scene built end-to-end on MateClaw's own primitives:
+**v1.8.0 (shipped 2026-07-12)** — the employee turns *outward and does a whole job*: **Content Studio**, the first flagship scene built end-to-end on SnSclaw's own primitives:
 
 - **Content Studio — one sentence to a publishable post** — a seeded "Content Studio" employee runs pick-topic → research → draft → illustrate → de-AI → layout → deliver. **WeChat Official Account (公众号)** image-text articles (inline-style HTML → draft box) and **Xiaohongshu (小红书)** image-first notes (≥3 vertical 3:4 cards + online preview) ship first-class
 - **De-AI-ification you can measure** — a heuristic AI-trace score (no LLM, deterministic) drives a detect → rewrite → re-check loop, capped at 3 rounds
@@ -247,7 +247,7 @@ Full story in the [v2.0.0 release notes](https://claw.mate.vip/docs/en/releases/
 
 Plus: a fast-load pass (initial load down ~78%), a chat context-occupancy panel, cross-KB wikilinks, MCP progress notifications, a Volcano Engine provider, and the public Docker stack on PostgreSQL 16.
 
-Full story in the [v1.8.0 release notes](https://claw.mate.vip/docs/en/releases/1.8.0).
+Full story in the [v1.8.0 release notes](https://claw.sns.app/docs/en/releases/1.8.0).
 
 **v1.7.0 (shipped 2026-07-04)** — a *productionization pass*: once it's in real collaboration, close every loop you can't see, gather, reach, fit, or connect:
 
@@ -258,20 +258,20 @@ Full story in the [v1.8.0 release notes](https://claw.mate.vip/docs/en/releases/
 - **Reaches further** — desktop local-embedded / remote-centralized dual mode (with `mateclaw-desktop` source opened) + a LAN deployment mode for controlled intranet access
 - **One-click operational data export** — Dashboard 9-sheet Excel + a CLI for offline export
 
-Full story in the [v1.7.0 release notes](https://claw.mate.vip/docs/en/releases/1.7.0).
+Full story in the [v1.7.0 release notes](https://claw.sns.app/docs/en/releases/1.7.0).
 
-**v1.6.0 (shipped 2026-06-22)** — make the autonomous employee *fast, sharp-eyed, and embeddable*: two-stage skill loading + prefix compression (faster first token) · `execute_code` native sandboxed code execution · vision that persists across turns + `image_analyze` · embeddable/headless webchat with per-`endUserId` memory · a Wiki you actually read (reading split from management · unified Sources tab · clickable `[[wikilinks]]`) · steadier under load (self-healing MCP · tool-call recovery · evidence-gated plans). Full story in the [v1.6.0 release notes](https://claw.mate.vip/docs/en/releases/1.6.0).
+**v1.6.0 (shipped 2026-06-22)** — make the autonomous employee *fast, sharp-eyed, and embeddable*: two-stage skill loading + prefix compression (faster first token) · `execute_code` native sandboxed code execution · vision that persists across turns + `image_analyze` · embeddable/headless webchat with per-`endUserId` memory · a Wiki you actually read (reading split from management · unified Sources tab · clickable `[[wikilinks]]`) · steadier under load (self-healing MCP · tool-call recovery · evidence-gated plans). Full story in the [v1.6.0 release notes](https://claw.sns.app/docs/en/releases/1.6.0).
 
-**v1.5.0 (shipped 2026-06-04)** — Goal checklists (fuzzy score → ticked boxes) · self-maintaining Wiki (`[[wikilinks]]` · fact/experience layers · pageType profiles & permissions · KB pipelines · local-directory ingest) · per-owner memory isolation (`owner_key` + visibility scope + `endUserId` passthrough) · per-agent primary knowledge base · provider-preference model routing. Full story in the [v1.5.0 release notes](https://claw.mate.vip/docs/en/releases/1.5.0).
+**v1.5.0 (shipped 2026-06-04)** — Goal checklists (fuzzy score → ticked boxes) · self-maintaining Wiki (`[[wikilinks]]` · fact/experience layers · pageType profiles & permissions · KB pipelines · local-directory ingest) · per-owner memory isolation (`owner_key` + visibility scope + `endUserId` passthrough) · per-agent primary knowledge base · provider-preference model routing. Full story in the [v1.5.0 release notes](https://claw.sns.app/docs/en/releases/1.5.0).
 
-**v1.4.0 (shipped 2026-05-23)** — Persistent Goals (lock a goal, self-evaluate every turn) · subagent delegation tree (3 levels deep · sync / parallel / async · one-sentence team builder) · progressive tool/skill disclosure · Workspace RBAC (Owner / Admin / Member / Viewer) · Feishu first-class (interactive / approval / streaming cards · channel-native tools). See the [v1.4.0 release notes](https://claw.mate.vip/docs/en/releases/1.4.0).
+**v1.4.0 (shipped 2026-05-23)** — Persistent Goals (lock a goal, self-evaluate every turn) · subagent delegation tree (3 levels deep · sync / parallel / async · one-sentence team builder) · progressive tool/skill disclosure · Workspace RBAC (Owner / Admin / Member / Viewer) · Feishu first-class (interactive / approval / streaming cards · channel-native tools). See the [v1.4.0 release notes](https://claw.sns.app/docs/en/releases/1.4.0).
 
-**v1.3.0 (shipped 2026-05-13)** — Workflow engine · 6-pattern trigger system · Wiki transformations · per-agent MCP binding · multimodal sidecar routing · four JVM-native document-generation tools · image edit. See the [v1.3.0 release notes](https://claw.mate.vip/docs/en/releases/1.3.0).
+**v1.3.0 (shipped 2026-05-13)** — Workflow engine · 6-pattern trigger system · Wiki transformations · per-agent MCP binding · multimodal sidecar routing · four JVM-native document-generation tools · image edit. See the [v1.3.0 release notes](https://claw.sns.app/docs/en/releases/1.3.0).
 
 ## Contributing
 
 ```bash
-git clone https://github.com/mateaix/mateclaw.git
+git clone https://github.com/chenzhizhuan/SnSclaw.git
 cd mateclaw
 cd mateclaw-server && mvn clean compile
 cd ../mateclaw-ui && pnpm install && pnpm dev

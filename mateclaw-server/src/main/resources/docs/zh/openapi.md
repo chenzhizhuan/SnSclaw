@@ -1,6 +1,6 @@
 # OpenAPI / Swagger 指南
 
-MateClaw 后端集成了 [SpringDoc OpenAPI](https://springdoc.org/)（`springdoc-openapi-starter-webmvc-ui`），自动把所有 `@RestController` 的端点生成为 OpenAPI 3 文档，并提供在线调试 UI。本页说明如何访问和使用。
+SnSclaw 后端集成了 [SpringDoc OpenAPI](https://springdoc.org/)（`springdoc-openapi-starter-webmvc-ui`），自动把所有 `@RestController` 的端点生成为 OpenAPI 3 文档，并提供在线调试 UI。本页说明如何访问和使用。
 
 > 本文是**机读文档**入口。人读的端点详解、通用约定与完整路由索引见 [API 参考](./api.md)。两者关系：Swagger = 由源码注解自动生成的机读契约；`api.md` = 旗舰端点人读详解 + 通用约定。
 
@@ -51,7 +51,7 @@ SpringDoc 自动扫描所有 `@RestController`，约 85% 的 Controller 已标�
 ```yaml
 mateclaw:
   openapi:
-    title: ${MATECLAW_OPENAPI_TITLE:MateClaw REST API}
+    title: ${MATECLAW_OPENAPI_TITLE:SnSclaw REST API}
     version: ${MATECLAW_OPENAPI_VERSION:1.0}
     server-url: ${MATECLAW_OPENAPI_SERVER_URL:}   # 留空则从请求 host 推导
     description: ${MATECLAW_OPENAPI_DESCRIPTION:}  # 留空则用内置默认描述

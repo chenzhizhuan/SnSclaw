@@ -22,7 +22,7 @@ import java.util.List;
  * <p>
  * 对应 OpenClaw 的 video-generation/runtime.ts
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

@@ -202,7 +202,7 @@ cron 表达式不必手写。点表达式输入框旁的编辑按钮打开**分�
 ## 跟现有 cron 模块的关系
 
 ::: tip 不取代，只复用
-v1.3.0 之前 MateClaw 已经有一个独立的 cron 子系统（`mate_cron_job` 表 + `CronJobService`）。Trigger 系统**不取代它**——
+v1.3.0 之前 SnSclaw 已经有一个独立的 cron 子系统（`mate_cron_job` 表 + `CronJobService`）。Trigger 系统**不取代它**——
 - 老的 cron 任务（task_type = `text` / `agent` / `reminder`）仍然在 `Cron Jobs` 页面管理
 - 新的 trigger cron 在 `Triggers` 页面管理
 - 两者**共享**底层 ShedLock 锁表 + Spring TaskScheduler 线程池

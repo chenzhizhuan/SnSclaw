@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * - 内存层（ConcurrentHashMap）提供快速查询
  * - DB 层（mate_channel_session 表）保证重启后恢复
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

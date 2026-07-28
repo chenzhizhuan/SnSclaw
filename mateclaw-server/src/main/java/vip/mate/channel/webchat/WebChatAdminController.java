@@ -20,13 +20,13 @@ import java.util.Map;
 /**
  * Admin-facing webchat operations. Mounted under {@code /api/v1/admin/webchat/**}
  * (outside the {@code /api/v1/channels/webchat/**} permitAll block) so it
- * requires a regular MateClaw JWT — visitors cannot reach these endpoints.
+ * requires a regular SnSclaw JWT — visitors cannot reach these endpoints.
  *
  * <p>Currently only manages visitor-token revocation. Audit-recorded via
  * {@link AuditEventService}; actor is the JWT-authenticated admin username,
  * not the visitor.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "WebChat 管理(管理员)")
 @Slf4j

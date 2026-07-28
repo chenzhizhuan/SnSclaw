@@ -35,7 +35,7 @@ import java.util.Map;
  *   <li>未绑定 + 默认 → 自动创建 mate_user + external_identity</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

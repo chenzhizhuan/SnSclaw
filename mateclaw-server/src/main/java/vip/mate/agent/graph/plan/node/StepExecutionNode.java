@@ -53,7 +53,7 @@ import java.util.Set;
  * 支持 NEEDS_APPROVAL 审批流程：对需要审批的工具调用创建 pending，
  * 发出 SSE 事件后立即返回审批提示（非阻塞）。审批通过后通过 replay 重新执行。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class StepExecutionNode implements NodeAction {

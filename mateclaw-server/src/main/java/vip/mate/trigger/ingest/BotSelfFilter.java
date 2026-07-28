@@ -2,7 +2,7 @@ package vip.mate.trigger.ingest;
 
 /**
  * Drops events whose sender id matches a registered bot identity for the
- * workspace. The intent: MateClaw's own outbound channel messages would
+ * workspace. The intent: SnSclaw's own outbound channel messages would
  * otherwise loop back through the channel webhook, fire a trigger, and
  * dispatch a fresh workflow run — a recipe for a runaway echo loop on any
  * channel where the bot account can read its own posts.

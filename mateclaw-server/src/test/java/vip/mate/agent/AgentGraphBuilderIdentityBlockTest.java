@@ -14,12 +14,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AgentGraphBuilderIdentityBlockTest {
 
     @Test
-    @DisplayName("identity block names MateClaw and the core tech stack")
+    @DisplayName("identity block names SnSclaw and the core tech stack")
     void identityBlockMentionsPlatformAndStack() {
         String block = AgentGraphBuilder.ABOUT_YOU_BLOCK;
 
         assertTrue(block.contains("## About You"), "missing heading: " + block);
-        assertTrue(block.contains("MateClaw"), "must name the platform: " + block);
+        assertTrue(block.contains("SnSclaw"), "must name the platform: " + block);
         assertTrue(block.contains("Spring AI Alibaba Graph"), "must name the graph runtime: " + block);
     }
 }

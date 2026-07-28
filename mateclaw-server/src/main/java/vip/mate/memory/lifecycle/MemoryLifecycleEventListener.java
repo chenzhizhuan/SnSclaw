@@ -19,7 +19,7 @@ import vip.mate.memory.event.ConversationCompletedEvent;
  * for summarize/nudge business logic, but none of them are appropriate gates for
  * provider-level session-end signals (rfc-037 §3.7, decision D10).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

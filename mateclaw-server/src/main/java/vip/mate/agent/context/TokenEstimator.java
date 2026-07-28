@@ -17,7 +17,7 @@ import java.util.List;
  * </ul>
  * 这是保守估算（偏高），确保压缩阈值不会触发过晚。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public final class TokenEstimator {
 

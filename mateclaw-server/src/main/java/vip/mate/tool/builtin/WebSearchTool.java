@@ -12,7 +12,7 @@ import vip.mate.tool.search.SearchQuery;
  * <p>通过 WebSearchService 动态路由至最佳搜索 provider（含 keyless fallback），
  * 支持 freshness / language / count 等高级搜索参数。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

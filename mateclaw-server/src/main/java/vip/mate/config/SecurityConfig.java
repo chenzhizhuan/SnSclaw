@@ -21,7 +21,7 @@ import vip.mate.kbopen.auth.KbOpenApiAuthFilter;
  * <p>
  * 注意：BCryptPasswordEncoder 单独定义为静态内部配置，避免与 JwtAuthFilter 产生循环依赖
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Configuration
 @EnableWebSecurity

@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
  * 当 Agent 没有任何绑定记录时，默认使用全局 enabled 的 tool/skill（向后兼容）。
  * 一旦有绑定记录，则严格按绑定列表过滤。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

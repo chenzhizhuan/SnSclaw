@@ -33,10 +33,10 @@ import java.util.function.Predicate;
  *   <li>平台适配：Windows 使用 cmd.exe /D /S /C，Linux/macOS 使用 /bin/sh -c。
  *       风险已通过 ToolGuard 审批机制控制——每次调用都需要用户明确批准。</li>
  *   <li>输出重定向到临时文件而非管道，确保 timeout 不被管道阻塞失效。
- *       参考 MateClaw _execute_subprocess_sync 和 claude-code-haha file-mode 思路。</li>
+ *       参考 SnSclaw _execute_subprocess_sync 和 claude-code-haha file-mode 思路。</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

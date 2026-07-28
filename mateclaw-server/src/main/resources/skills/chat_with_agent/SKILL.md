@@ -83,5 +83,5 @@ delegateParallel(
 
 - `delegateToAgent` 是同步阻塞调用，等待目标 Agent 完成后返回结果
 - `delegateParallel` 并发执行，等所有任务完成后一次性返回所有结果
-- MateClaw 当前不支持跨调用的会话 session 续接，每次 `delegateToAgent` 是独立对话
+- SnSclaw 当前不支持跨调用的会话 session 续接，每次 `delegateToAgent` 是独立对话
 - 如需上下文连贯，在 `task` 参数中附带上一次的关键结论

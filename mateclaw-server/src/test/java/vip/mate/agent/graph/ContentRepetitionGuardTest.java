@@ -33,7 +33,7 @@ class ContentRepetitionGuardTest {
     void naturalProseDoesNotTrip() {
         // Real writing: each sentence is unique, no consecutive paragraph
         // repeats anywhere in the buffer.
-        String prose = "MateClaw 是一个企业级 AI 助手。它支持多种渠道接入，包括企业微信、"
+        String prose = "SnSclaw 是一个企业级 AI 助手。它支持多种渠道接入，包括企业微信、"
                 + "飞书、钉钉。Agent 通过 StateGraph 编排，可以调用工具、生成图片、查询知识库。"
                 + "用户可以在 Web 控制台、桌面 App 或群聊里发起对话。系统记忆采用三档分层："
                 + "PROFILE.md 记录用户画像、MEMORY.md 沉淀稳定事实、memory/YYYY-MM-DD.md "

@@ -51,7 +51,7 @@ import java.util.Set;
  * 提供技能的 CRUD、启用/禁用、按类型查询、技能摘要等能力。
  * 对应前端 SkillMarket 页面。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "技能管理")
 @RestController

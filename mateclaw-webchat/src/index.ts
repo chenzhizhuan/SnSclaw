@@ -1,21 +1,21 @@
 /**
- * MateClaw WebChat — Embeddable Chat Widget
+ * SnSclaw WebChat — Embeddable Chat Widget
  *
  * Usage:
  *   <script src="https://your-server/mateclaw-webchat.umd.js"></script>
  *   <script>
- *     MateClawWebChat.init({ apiKey: 'your-key', server: 'https://your-server' })
+ *     SnSclawWebChat.init({ apiKey: 'your-key', server: 'https://your-server' })
  *   </script>
  */
 
 export interface WebChatConfig {
-  /** API Key (from MateClaw channel config) */
+  /** API Key (from SnSclaw channel config) */
   apiKey: string
-  /** MateClaw server URL (e.g., https://your-server.com) */
+  /** SnSclaw server URL (e.g., https://your-server.com) */
   server: string
   /** Widget position */
   position?: 'bottom-right' | 'bottom-left'
-  /** Primary color (CSS color). Defaults to MateClaw UI token. */
+  /** Primary color (CSS color). Defaults to SnSclaw UI token. */
   primaryColor?: string
   /** Widget title */
   title?: string
@@ -31,7 +31,7 @@ interface Message {
 const DEFAULT_CONFIG: Partial<WebChatConfig> = {
   position: 'bottom-right',
   primaryColor: 'var(--mc-primary, #D97757)',
-  title: 'MateClaw',
+  title: 'SnSclaw',
   placeholder: 'Type a message...',
 }
 
@@ -365,5 +365,5 @@ async function sendMessage(text: string) {
 
 // Auto-export for UMD
 if (typeof window !== 'undefined') {
-  ;(window as any).MateClawWebChat = { init }
+  ;(window as any).SnSclawWebChat = { init }
 }

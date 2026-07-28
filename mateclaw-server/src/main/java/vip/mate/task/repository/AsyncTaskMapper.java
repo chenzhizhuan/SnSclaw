@@ -7,7 +7,7 @@ import vip.mate.task.model.AsyncTaskEntity;
 /**
  * 异步任务 Mapper
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface AsyncTaskMapper extends BaseMapper<AsyncTaskEntity> {

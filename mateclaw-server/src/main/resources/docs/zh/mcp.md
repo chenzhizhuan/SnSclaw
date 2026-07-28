@@ -1,6 +1,6 @@
 ---
 title: MCP 协议集成 — Model Context Protocol 工具扩展
-description: MateClaw 作为 MCP 客户端，通过 Model Context Protocol 接入任意外部工具服务器。JSON-RPC 动态发现、SSE/stdio 双传输、与内置工具无缝统一。
+description: SnSclaw 作为 MCP 客户端，通过 Model Context Protocol 接入任意外部工具服务器。JSON-RPC 动态发现、SSE/stdio 双传输、与内置工具无缝统一。
 head:
   - - meta
     - name: keywords
@@ -9,11 +9,11 @@ head:
 
 # MCP 协议
 
-**MCP 是 MateClaw 跟"别人写的工具"对话的方式。**
+**MCP 是 SnSclaw 跟"别人写的工具"对话的方式。**
 
-Model Context Protocol 是 Anthropic 提出的一个开放标准，用来把 AI 模型和外部工具/数据连起来。一个 MCP 服务是一个进程——本地或远程——通过 JSON-RPC 向外宣告一组工具。MateClaw 扮演 MCP **客户端**：连接上去、通过 `tools/list` 发现工具、把它们当原生工具暴露给你的 Agent。**从 Agent 的视角，一个内置的 `@Tool` Spring bean 和一个从 MCP 服务来的工具，没有任何区别。**
+Model Context Protocol 是 Anthropic 提出的一个开放标准，用来把 AI 模型和外部工具/数据连起来。一个 MCP 服务是一个进程——本地或远程——通过 JSON-RPC 向外宣告一组工具。SnSclaw 扮演 MCP **客户端**：连接上去、通过 `tools/list` 发现工具、把它们当原生工具暴露给你的 Agent。**从 Agent 的视角，一个内置的 `@Tool` Spring bean 和一个从 MCP 服务来的工具，没有任何区别。**
 
-这是 MateClaw 的**逃生口**。你需要一个 MateClaw 没自带的能力——沙盒目录的文件访问、Tavily 搜索、某个自定义的企业数据服务、一整套浏览器自动化——大概率已经有现成的 MCP 服务，你可以把它接进来，不用写一行 Java。
+这是 SnSclaw 的**逃生口**。你需要一个 SnSclaw 没自带的能力——沙盒目录的文件访问、Tavily 搜索、某个自定义的企业数据服务、一整套浏览器自动化——大概率已经有现成的 MCP 服务，你可以把它接进来，不用写一行 Java。
 
 ---
 
@@ -21,7 +21,7 @@ Model Context Protocol 是 Anthropic 提出的一个开放标准，用来把 AI 
 
 ```
 ┌───────────────────────┐              ┌───────────────────────┐
-│     MateClaw           │              │     MCP Server        │
+│     SnSclaw           │              │     MCP Server        │
 │     (MCP Client)       │              │     (工具提供方)       │
 │                       │   JSON-RPC   │                       │
 │  Agent Engine  ───────┼──────────────┼──► Tool A             │
@@ -33,7 +33,7 @@ Model Context Protocol 是 Anthropic 提出的一个开放标准，用来把 AI 
 
 核心概念：
 
-- **MCP 客户端**——MateClaw，负责连接 MCP 服务、发现工具、转发工具调用
+- **MCP 客户端**——SnSclaw，负责连接 MCP 服务、发现工具、转发工具调用
 - **MCP 服务**——第三方工具服务器
 - **工具发现**——客户端发送 `tools/list` 请求拿到服务器上所有工具
 - **工具调用**——Agent 决定调一个工具时，客户端转发给对应的 MCP 服务执行
@@ -46,10 +46,10 @@ Model Context Protocol 是 Anthropic 提出的一个开放标准，用来把 AI 
 
 ### stdio（标准 I/O）
 
-MateClaw 启动一个本地子进程，通过 stdin/stdout 交换 JSON-RPC 消息。
+SnSclaw 启动一个本地子进程，通过 stdin/stdout 交换 JSON-RPC 消息。
 
 ```
-MateClaw  ── stdin ──►  MCP Server 子进程
+SnSclaw  ── stdin ──►  MCP Server 子进程
           ◄─ stdout ──
 ```
 
@@ -62,7 +62,7 @@ MateClaw  ── stdin ──►  MCP Server 子进程
 标准 HTTP POST 发 JSON-RPC，响应通过 HTTP 流返回。**生产环境推荐。**
 
 ```
-MateClaw  ── HTTP POST ──►  远程 MCP 服务
+SnSclaw  ── HTTP POST ──►  远程 MCP 服务
           ◄─ HTTP Stream ──
 ```
 
@@ -80,7 +80,7 @@ MateClaw  ── HTTP POST ──►  远程 MCP 服务
 | 部署 | 仅本地 | 本地或远程 | 本地或远程 |
 | 网络要求 | 无 | HTTP 可达 | HTTP 可达 |
 | 认证 | 环境变量 | HTTP Headers | HTTP Headers |
-| 进程管理 | MateClaw 管理子进程 | 外部 | 外部 |
+| 进程管理 | SnSclaw 管理子进程 | 外部 | 外部 |
 | 推荐 | 本地工具 | 远程服务 | 遗留兼容 |
 
 ---
@@ -101,7 +101,7 @@ MateClaw  ── HTTP POST ──►  远程 MCP 服务
 - **连接超时**——默认 30 秒
 - **读取超时**——默认 **60 秒**（1.5.0 起从 30s 提到 60s，#247；单次 callTool 往返合法地跑久一点的工具不再被掐断。每台服务可单独调 5–300s）
 
-保存。启用状态时 MateClaw 自动尝试连接并发现工具。
+保存。启用状态时 SnSclaw 自动尝试连接并发现工具。
 
 ### 测试、启用、状态
 
@@ -383,7 +383,7 @@ API 响应里 `headers_json` 和 `env_json` 的值自动**脱敏**。`args_json`
 
 STDIO MCP server 是**每个配置一个共享子进程**，所有用户共用；env 在子进程启动时一次性注入、之后不可变，STDIO 也没有 HTTP 那种 per-request header 通道。所以**不能用 env 传 per-user 身份**——身份必须随每次工具调用在带内传递。
 
-MateClaw 支持把**认证用户名**注入到每次工具调用的参数里，让 MCP server 代表该用户调用底层 REST 后端。
+SnSclaw 支持把**认证用户名**注入到每次工具调用的参数里，让 MCP server 代表该用户调用底层 REST 后端。
 
 ### 开启（opt-in，按 server）
 
@@ -400,7 +400,7 @@ mateclaw:
 
 ### 数据契约
 
-开启后，MateClaw 在调用该 server 的每个工具时，往参数 JSON 里注入保留字段 **`__mateclaw_user__`**（值=认证用户名）。该值由受信服务端注入、**不经 LLM**；若 LLM 伪造了同名字段会被覆盖，因此模型无法冒充身份。无认证用户时不注入（不伪造身份）。
+开启后，SnSclaw 在调用该 server 的每个工具时，往参数 JSON 里注入保留字段 **`__mateclaw_user__`**（值=认证用户名）。该值由受信服务端注入、**不经 LLM**；若 LLM 伪造了同名字段会被覆盖，因此模型无法冒充身份。无认证用户时不注入（不伪造身份）。
 
 MCP server 侧读出该字段、剥掉，再连同自己持有的后端 API Key 一起调 REST（如 `X-On-Behalf-Of` header）：
 
@@ -435,7 +435,7 @@ if __name__ == "__main__":
 
 **① 明文（默认）**：注入明文用户名。适合 REST 在内网、且后端用 API Key 认证 MCP 服务、把转发用户当 on-behalf-of 的场景。后端裸信这个字符串。
 
-**② 签名 token（推荐用于跨信任边界）**：注入一个 MateClaw 用私钥现签的**短时 RS256 JWT**（保留字段换成 **`__mateclaw_token__`**），REST 后端用**公钥验签**——它信任的是签名，而非 MCP 服务/Python/传输。
+**② 签名 token（推荐用于跨信任边界）**：注入一个 SnSclaw 用私钥现签的**短时 RS256 JWT**（保留字段换成 **`__mateclaw_token__`**），REST 后端用**公钥验签**——它信任的是签名，而非 MCP 服务/Python/传输。
 
 ```yaml
 mateclaw:
@@ -453,7 +453,7 @@ mateclaw:
           my-internal-api: https://api.internal
 ```
 
-生成密钥对（私钥配给 MateClaw，公钥配给 REST 后端）：
+生成密钥对（私钥配给 SnSclaw，公钥配给 REST 后端）：
 
 ```bash
 openssl genpkey -algorithm RSA -pkcs8 -out mcp-idfwd-private.pem
@@ -463,7 +463,7 @@ openssl pkey -in mcp-idfwd-private.pem -pubout -out mcp-idfwd-public.pem
 
 token 的 claims：`iss`、`sub`=用户、`aud`=该 server、`iat`、`exp`（短）、`jti`。`aud`+短 `exp` 把重放限制在几十秒内、且只对这一个后端。**token 模式开启但没配私钥时 fail-closed**（不签、不注入，后端自然拒绝），不会偷偷退回明文。
 
-> `sub` 携带的是 MateClaw 用户标识（`ChatOrigin.requesterId`）。若后端按不可变数字 id 鉴权，可在签发前把用户名解析成 id（本层刻意不耦合用户存储）。
+> `sub` 携带的是 SnSclaw 用户标识（`ChatOrigin.requesterId`）。若后端按不可变数字 id 鉴权，可在签发前把用户名解析成 id（本层刻意不耦合用户存储）。
 
 MCP server（Python）只透传、不验签：
 
@@ -496,7 +496,7 @@ user = claims["sub"]            # 验签通过才相信
 
 ### "命令找不到"（stdio）
 
-1. 确认命令在运行 MateClaw 的用户的 PATH 里
+1. 确认命令在运行 SnSclaw 的用户的 PATH 里
 2. 验证：`which npx` 或 `npx --version`
 3. Docker：确认命令在容器里装了
 4. 用完整路径：`/usr/local/bin/npx`
@@ -531,7 +531,7 @@ user = claims["sub"]            # 验签通过才相信
 
 ### 孤儿子进程（stdio）
 
-`@PreDestroy` 钩子正常会清理。MateClaw 被强杀（`kill -9`）的话子进程可能残留。`ps aux | grep mcp` 找到并杀掉。
+`@PreDestroy` 钩子正常会清理。SnSclaw 被强杀（`kill -9`）的话子进程可能残留。`ps aux | grep mcp` 找到并杀掉。
 
 ---
 

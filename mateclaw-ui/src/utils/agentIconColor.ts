@@ -7,7 +7,7 @@
  * (cards, picker, chat header) so skills / tools keep their default
  * neutral color.
  *
- * The palette is tuned to MateClaw's warm/earthy brand — every entry sits
+ * The palette is tuned to SnSclaw's warm/earthy brand — every entry sits
  * around 45-55% lightness with mid saturation, so colors stay distinct
  * but live in the same room as the rust-orange primary, instead of
  * competing with it.

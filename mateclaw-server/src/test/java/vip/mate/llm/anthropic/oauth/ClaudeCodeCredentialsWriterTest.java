@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <ol>
  *   <li>Concurrent-write defence: when Claude Code itself rewrites the file
- *       while MateClaw is mid-refresh, the writer must NOT clobber.</li>
+ *       while SnSclaw is mid-refresh, the writer must NOT clobber.</li>
  *   <li>Scope preservation: the writer must keep the {@code scopes} array
  *       (Claude Code &gt;= 2.1.81 needs {@code user:inference} or it shows
  *       the user as logged-out).</li>
@@ -57,7 +57,7 @@ class ClaudeCodeCredentialsWriterTest {
         assertEquals("new-refresh", oauth.path("refreshToken").asText());
         assertEquals(9_999_999_999L, oauth.path("expiresAt").asLong());
         // Default scope must be present so Claude Code 2.1.81+ keeps recognising
-        // the credential after MateClaw writes to it.
+        // the credential after SnSclaw writes to it.
         assertTrue(oauth.path("scopes").isArray());
         assertEquals("user:inference", oauth.path("scopes").get(0).asText());
     }
@@ -116,8 +116,8 @@ class ClaudeCodeCredentialsWriterTest {
     @Test
     @DisplayName("writeJsonFile bails out when on-disk token already changed")
     void writeJsonFile_concurrentWriteDetected(@TempDir Path tmp) throws IOException {
-        // Simulate: MateClaw started a refresh from token "T1", Claude Code
-        // beat us to it and wrote "T2". MateClaw must NOT overwrite.
+        // Simulate: SnSclaw started a refresh from token "T1", Claude Code
+        // beat us to it and wrote "T2". SnSclaw must NOT overwrite.
         Path target = tmp.resolve(".credentials.json");
         Files.writeString(target, """
                 { "claudeAiOauth": {

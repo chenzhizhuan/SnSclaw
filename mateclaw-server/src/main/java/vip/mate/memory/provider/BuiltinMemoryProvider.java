@@ -17,7 +17,7 @@ import java.util.List;
  * Post-conversation summarization continues to work via the existing
  * PostConversationMemoryListener event path (not duplicated here).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

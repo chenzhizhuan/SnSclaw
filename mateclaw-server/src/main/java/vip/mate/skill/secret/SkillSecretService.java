@@ -48,7 +48,7 @@ public class SkillSecretService {
      * {@code MATECLAW_ENCRYPT_KEY} env var rotates everything that
      * stores secrets at rest.
      */
-    @Value("${mateclaw.datasource.encrypt-key:MateClaw@2024Key!}")
+    @Value("${mateclaw.datasource.encrypt-key:SnSclaw@2024Key!}")
     private String encryptKey;
 
     // ==================== read ====================

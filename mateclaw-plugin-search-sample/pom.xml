@@ -14,11 +14,11 @@
     <artifactId>mateclaw-plugin-search-sample</artifactId>
     <packaging>jar</packaging>
 
-    <name>MateClaw Search Provider Sample Plugin</name>
-    <description>Sample plugin registering a custom web-search provider via the MateClaw Plugin SDK</description>
+    <name>SnSclaw Search Provider Sample Plugin</name>
+    <description>Sample plugin registering a custom web-search provider via the SnSclaw Plugin SDK</description>
 
     <dependencies>
-        <!-- MateClaw Plugin API -->
+        <!-- SnSclaw Plugin API -->
         <dependency>
             <groupId>vip.mate</groupId>
             <artifactId>mateclaw-plugin-api</artifactId>

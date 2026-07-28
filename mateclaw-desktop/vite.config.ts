@@ -17,7 +17,7 @@ export default defineConfig(({ command }) => {
   return {
     plugins: [
       vue(),
-      // White-label branding: replaces "MateClaw" with the configured brand
+      // White-label branding: replaces "SnSclaw" with the configured brand
       // name at build time. Source code stays untouched. Configure via
       // branding.config.json or BRAND_* env vars.
       brand,

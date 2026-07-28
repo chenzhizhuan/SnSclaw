@@ -31,7 +31,7 @@ import java.util.List;
  * the same vision model the automatic sidecar uses, so behaviour stays consistent
  * across the automatic and on-demand paths.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

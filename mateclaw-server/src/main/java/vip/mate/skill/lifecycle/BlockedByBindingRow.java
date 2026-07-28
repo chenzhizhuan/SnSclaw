@@ -7,7 +7,7 @@ import java.util.List;
  * the candidate set because it is explicitly bound to one or more enabled
  * agents. Surfaced in the run report so an admin can see what was held back.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record BlockedByBindingRow(
         Long skillId,

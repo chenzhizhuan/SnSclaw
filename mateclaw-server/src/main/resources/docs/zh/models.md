@@ -2,7 +2,7 @@
 
 **先配一个。后面随时加。**
 
-MateClaw 不关心你用哪个 LLM。它通过五个协议适配器跟所有主流供应商对话，支持 15+ 个云端供应商和 4 个本地运行时，你可以在运行时**不动 Agent 配置**直接切模型。MateClaw 唯一的意见是——**从一个开始，需要再加**，不是第一天就把所有东西配好。
+SnSclaw 不关心你用哪个 LLM。它通过五个协议适配器跟所有主流供应商对话，支持 15+ 个云端供应商和 4 个本地运行时，你可以在运行时**不动 Agent 配置**直接切模型。SnSclaw 唯一的意见是——**从一个开始，需要再加**，不是第一天就把所有东西配好。
 
 ---
 
@@ -80,10 +80,10 @@ MateClaw 不关心你用哪个 LLM。它通过五个协议适配器跟所有主�
 ## 原生 Gemini
 
 ::: tip 1.4.0 新增
-Gemini 不再走 OpenAI 兼容层——MateClaw 直接对接 Google 的**原生 `generateContent` API**。
+Gemini 不再走 OpenAI 兼容层——SnSclaw 直接对接 Google 的**原生 `generateContent` API**。
 :::
 
-很多产品把 Gemini 当成"又一个 OpenAI 兼容端点"来接，结果在系统指令、函数调用、内联图片这些地方处处碰壁。MateClaw 走的是 Gemini 自己的协议：
+很多产品把 Gemini 当成"又一个 OpenAI 兼容端点"来接，结果在系统指令、函数调用、内联图片这些地方处处碰壁。SnSclaw 走的是 Gemini 自己的协议：
 
 - **原生 chat builder** —— 正确映射 `systemInstruction`（系统指令）、`functionCall` / `functionResponse`（工具调用回合）、以及内联图片 part（多模态输入）
 - **流式 SSE 解析** —— 按 Gemini 的流式响应格式逐块解析
@@ -96,7 +96,7 @@ Gemini 不再走 OpenAI 兼容层——MateClaw 直接对接 Google 的**原生 
 
 ## 添加一个供应商
 
-**新装的 MateClaw 主列表是空的。这是故意的。**
+**新装的 SnSclaw 主列表是空的。这是故意的。**
 
 你不需要看见 16 个供应商，你需要**一个能跑的**。
 
@@ -134,13 +134,13 @@ Gemini 不再走 OpenAI 兼容层——MateClaw 直接对接 Google 的**原生 
 
 ### ChatGPT OAuth —— 不需要 API Key
 
-有 ChatGPT Plus 或 Pro 账号？MateClaw 可以通过**浏览器 OAuth** 对接 OpenAI 的 chat 端点——你按平常方式登录，你的订阅被直接使用。GPT-4o、o3、o4-mini 立刻可用。
+有 ChatGPT Plus 或 Pro 账号？SnSclaw 可以通过**浏览器 OAuth** 对接 OpenAI 的 chat 端点——你按平常方式登录，你的订阅被直接使用。GPT-4o、o3、o4-mini 立刻可用。
 
 `设置 → 模型 → 添加供应商 → OpenAI OAuth`。浏览器窗口弹出。Token 交换在后端完成，**凭证不离开你的机器**。
 
 ### 设备授权（Device Authorization Grant）—— 远程 / 无头部署专用
 
-浏览器回调式 OAuth 要求 IDP 的重定向能落回 *你的浏览器* 能访问的某个 `localhost` 端口。这事儿在 MateClaw 跑你笔记本上时没问题，一旦你把它放到服务器、容器、或任何不向客户端暴露 loopback socket 的宿主上，就立刻坏掉。
+浏览器回调式 OAuth 要求 IDP 的重定向能落回 *你的浏览器* 能访问的某个 `localhost` 端口。这事儿在 SnSclaw 跑你笔记本上时没问题，一旦你把它放到服务器、容器、或任何不向客户端暴露 loopback socket 的宿主上，就立刻坏掉。
 
 针对这种情况，OpenAI OAuth 会自动切到 **设备授权（RFC 8628）**——和 ChatGPT 桌面端、`gh auth login` 用的是同一个流程。不需要回调，不需要端口映射。
 
@@ -152,7 +152,7 @@ Gemini 不再走 OpenAI 兼容层——MateClaw 直接对接 Google 的**原生 
 
 把用户码填进浏览器、授权完成，对话框会在后端轮询拿到 `COMPLETED` 的瞬间自动关闭。
 
-**MateClaw 怎么决定走哪个流：**
+**SnSclaw 怎么决定走哪个流：**
 
 | `mateclaw.oauth.openai.deployment-mode` | 行为 |
 |---|---|
@@ -181,7 +181,7 @@ token 持久化和刷新走的是和浏览器回调流**完全相同**的代码�
 
 `设置 → 模型 → 添加供应商 → Anthropic Claude Code OAuth`。支持两种流程：
 
-- **浏览器回调** —— 本地安装，浏览器弹窗，点完授权 token 落到 MateClaw
+- **浏览器回调** —— 本地安装，浏览器弹窗，点完授权 token 落到 SnSclaw
 - **MANUAL_PASTE** —— 远程服务器部署、浏览器到不了后端时，本地浏览器完成授权后把 token 粘回来
 
 通过 anti-abuse 反滥用门：注入 Claude Code 身份到系统 prompt，请求形态（UA / accept 头 / `system` 数组形式 / `mcp_` 工具名前缀）与 Claude Code 在线协议完全对齐，请求不会被拒绝。
@@ -190,7 +190,7 @@ token 持久化和刷新走的是和浏览器回调流**完全相同**的代码�
 
 ## 模型发现
 
-提供模型列表的供应商（OpenAI、Ollama、LM Studio、OpenRouter 等）支持**模型发现**——一键让 MateClaw 拉取这个供应商下的所有模型。
+提供模型列表的供应商（OpenAI、Ollama、LM Studio、OpenRouter 等）支持**模型发现**——一键让 SnSclaw 拉取这个供应商下的所有模型。
 
 - `设置 → 模型 → [供应商卡片] → 发现模型`
 - 系统查询供应商的 `/v1/models` 端点
@@ -248,7 +248,7 @@ ollama pull gemma3
 ollama pull qwen3
 ```
 
-重启 MateClaw。自动发现、添加、启用。
+重启 SnSclaw。自动发现、添加、启用。
 
 ---
 
@@ -286,7 +286,7 @@ ollama pull qwen3
 
 不用配 `EMBEDDING_API_KEY` 环境变量。嵌入模型就是 `mate_model_config` 里 `model_type='embedding'` 的普通行。`设置 → 模型` 里和聊天模型列在一起。知识库从下拉里选它的嵌入模型。
 
-::: tip 1.4.0 新增（[issue #79](https://github.com/mateaix/mateclaw/issues/79)）
+::: tip 1.4.0 新增（[issue #79](https://github.com/chenzhizhuan/SnSclaw/issues/79)）
 **任意供应商都能提供嵌入模型。** 在 `设置 → 模型` 的嵌入区域里，配一个来自任何供应商的嵌入模型——直接**复用那家供应商的 API Key**，不再单独要 `EMBEDDING_API_KEY`。每个知识库从下拉里挑自己的嵌入模型。无密钥的本地代理用一个空操作占位 key；协议从该供应商的聊天模型 / protocol 设置里自动解析，不用再手填。
 :::
 
@@ -313,7 +313,7 @@ ollama pull qwen3
 
 **多轮 tool call + thinking**：带 thinking 的模型（DeepSeek-Reasoner / GPT-5 / Kimi K2.5 / 小米 MiMo）在 ReAct 多轮 tool call 场景下，历史消息的 `reasoning_content` 会正确回传给 provider；跨用户问题边界时自动清除，同一问题内的子轮次全部保留——符合 DeepSeek 的"同问题子轮必须回传、跨问题时清"契约。
 
-**小米 MiMo 思考模式多轮修复**（[issue #189](https://github.com/mateaix/mateclaw/issues/189)）：MiMo 思考模式的 `reasoning_content` 现在能在多轮对话里正确保留，不再在后续轮次丢失。
+**小米 MiMo 思考模式多轮修复**（[issue #189](https://github.com/chenzhizhuan/SnSclaw/issues/189)）：MiMo 思考模式的 `reasoning_content` 现在能在多轮对话里正确保留，不再在后续轮次丢失。
 
 ---
 
@@ -327,7 +327,7 @@ ollama pull qwen3
 
 ## 运行时切换活跃模型
 
-MateClaw 用一个**活跃模型**作为全局默认。没有指定自己模型的 Agent 都用它。
+SnSclaw 用一个**活跃模型**作为全局默认。没有指定自己模型的 Agent 都用它。
 
 - **UI：** `设置 → 模型 → [模型卡片] → 设为活跃`
 - **API：** `PUT /api/v1/models/active`
@@ -337,7 +337,7 @@ MateClaw 用一个**活跃模型**作为全局默认。没有指定自己模型�
 也支持按 Agent 覆盖：把某个 Agent 绑定到特定模型配置。
 
 ::: tip 1.4.0 新增
-- **按会话选模型**（[issue #150](https://github.com/mateaix/mateclaw/issues/150)）：在聊天界面里可以为**当前这一条会话**临时切换模型，不影响全局活跃模型和别的会话。详见 [聊天与消息](./chat)。
+- **按会话选模型**（[issue #150](https://github.com/chenzhizhuan/SnSclaw/issues/150)）：在聊天界面里可以为**当前这一条会话**临时切换模型，不影响全局活跃模型和别的会话。详见 [聊天与消息](./chat)。
 - **单个坏模型 id 不再连累整个供应商**：发现 / 探活时遇到一个无效的模型标识符，只跳过那一个模型，供应商下其余模型照常可用。
 :::
 
@@ -359,7 +359,7 @@ MateClaw 用一个**活跃模型**作为全局默认。没有指定自己模型�
 ## 多模态旁路（系统级）
 
 ::: tip 1.3.0 新增
-让纯文本主模型也能"看图回答"，参见 [issue #87](https://github.com/mateaix/mateclaw/issues/87)。
+让纯文本主模型也能"看图回答"，参见 [issue #87](https://github.com/chenzhizhuan/SnSclaw/issues/87)。
 :::
 
 入口：**设置 → 模型 → 多模态旁路**。两个独立的卡片：
@@ -376,7 +376,7 @@ MateClaw 用一个**活跃模型**作为全局默认。没有指定自己模型�
 
 下拉只列**支持对应 modality 的模型**——筛选逻辑走后端 `ModelCapabilityService.supports(...)`，未启用 / 没声明 vision 能力的模型都不会出现在选项里。每张卡片有独立的"保存"按钮，互不干扰。
 
-什么时候触发？运行时由 `MultimodalRouter` 决策（[源码](https://github.com/mateaix/mateclaw/blob/main/mateclaw-server/src/main/java/vip/mate/llm/routing/MultimodalRouter.java)）：
+什么时候触发？运行时由 `MultimodalRouter` 决策（[源码](https://github.com/chenzhizhuan/SnSclaw/blob/main/mateclaw-server/src/main/java/vip/mate/llm/routing/MultimodalRouter.java)）：
 
 - 主模型已支持图片 → 不路由（走原 native multimodal 路径）
 - 主模型不支持图片 + 配了视觉旁路 → SIDECAR 策略，视觉模型转描述

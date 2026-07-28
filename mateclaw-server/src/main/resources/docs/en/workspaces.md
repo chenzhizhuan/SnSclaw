@@ -2,9 +2,9 @@
 
 **A workspace is a box around one team's stuff.**
 
-MateClaw supports multiple teams in a single deployment by organizing every resource — agents, skills, wiki knowledge bases, conversations, memory files, tool guard rules, channels — into **workspaces**. When you're logged in, you see the workspaces you belong to and nothing else. When you switch workspace, the whole UI re-scopes: different agents, different skills, different knowledge, different channels.
+SnSclaw supports multiple teams in a single deployment by organizing every resource — agents, skills, wiki knowledge bases, conversations, memory files, tool guard rules, channels — into **workspaces**. When you're logged in, you see the workspaces you belong to and nothing else. When you switch workspace, the whole UI re-scopes: different agents, different skills, different knowledge, different channels.
 
-The point is that one MateClaw deployment can serve a product team, an engineering team, and a research team without their data, agents, or conversations bleeding into each other.
+The point is that one SnSclaw deployment can serve a product team, an engineering team, and a research team without their data, agents, or conversations bleeding into each other.
 
 ---
 
@@ -219,7 +219,7 @@ Not supported directly. You have two options:
 1. **Export and import** — some resources have JSON export (agents via API, wiki KBs via API). Re-create them in the target workspace.
 2. **Change ownership** — an admin or owner can directly update the `workspace_id` column in the database for simple resources. This is not officially supported; do it at your own risk and only with a backup.
 
-We'd like to support first-class moving in a future release. If you need this, leave a note on the [GitHub issue](https://github.com/mateaix/mateclaw/issues).
+We'd like to support first-class moving in a future release. If you need this, leave a note on the [GitHub issue](https://github.com/chenzhizhuan/SnSclaw/issues).
 
 ---
 

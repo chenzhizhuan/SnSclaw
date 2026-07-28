@@ -46,7 +46,7 @@ import java.util.concurrent.ConcurrentMap;
  *
  * <p>All operations are non-blocking and thread-safe.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

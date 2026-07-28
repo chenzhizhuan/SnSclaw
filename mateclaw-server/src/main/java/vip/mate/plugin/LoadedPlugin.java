@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * Internal state holder for a loaded plugin.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 public class LoadedPlugin {

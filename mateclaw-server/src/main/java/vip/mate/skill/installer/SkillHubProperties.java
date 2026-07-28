@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * ClawHub 市场连接配置
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @ConfigurationProperties(prefix = "mateclaw.skill.hub")

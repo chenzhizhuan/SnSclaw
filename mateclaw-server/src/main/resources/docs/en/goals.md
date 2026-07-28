@@ -1,10 +1,10 @@
 ---
 title: Persistent Goals — lock in across turns, let the worker follow up
-description: MateClaw's Goal system lets a digital worker lock a multi-turn task as a goal, self-evaluate progress, and optionally drive itself forward until done or out of budget.
+description: SnSclaw's Goal system lets a digital worker lock a multi-turn task as a goal, self-evaluate progress, and optionally drive itself forward until done or out of budget.
 head:
   - - meta
     - name: keywords
-      content: Goal,Agent,multi-turn,auto-evaluation,auto-followup,persistent,MateClaw
+      content: Goal,Agent,multi-turn,auto-evaluation,auto-followup,persistent,SnSclaw
 ---
 
 # Persistent Goals

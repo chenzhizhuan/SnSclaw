@@ -3,7 +3,7 @@ package vip.mate.plugin.api;
 /**
  * Plugin types covering the main extension scenarios.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public enum PluginType {
 

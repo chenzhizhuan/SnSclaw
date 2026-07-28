@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Rate limiter for login + SSO bind endpoints — prevents brute force attacks.
  * Allows max 5 attempts per IP per minute across all password-checking paths.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

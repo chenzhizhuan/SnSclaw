@@ -1,6 +1,6 @@
 #!/bin/sh
 # ============================================================================
-# Create a least-privilege application role for the MateClaw server.
+# Create a least-privilege application role for the SnSclaw server.
 #
 # Runs once, during first container init (empty data dir), as the bootstrap
 # superuser (POSTGRES_USER) against POSTGRES_DB. The app role:

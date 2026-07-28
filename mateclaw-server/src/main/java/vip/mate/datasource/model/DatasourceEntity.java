@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 外部数据源实体（查数功能）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_datasource")

@@ -1,6 +1,6 @@
 # Changelog
 
-Release notes for every MateClaw version. The latest documentation always lives in `docs/en/` as the single source of truth — these notes are about what *changed* in each version.
+Release notes for every SnSclaw version. The latest documentation always lives in `docs/en/` as the single source of truth — these notes are about what *changed* in each version.
 
 For historical diffs, check the corresponding git tag. For the "why" behind a feature, follow the link into the full release note.
 
@@ -31,5 +31,5 @@ For historical diffs, check the corresponding git tag. For the "why" behind a fe
 ## What to read next
 
 - [Roadmap](./roadmap) — what's planned, what's in progress, what's done
-- [Introduction](./intro) — why MateClaw exists
+- [Introduction](./intro) — why SnSclaw exists
 - [Contributing](./contributing) — how to help ship the next release

@@ -660,7 +660,7 @@ export const oauthApi = {
   revoke: () => http.delete('/oauth/openai/revoke'),
   callbackPaste: (callbackUrl: string) =>
     http.post('/oauth/openai/callback-paste', { callbackUrl }),
-  // Device Authorization Grant — used when MateClaw runs on a remote host so the
+  // Device Authorization Grant — used when SnSclaw runs on a remote host so the
   // browser cannot reach localhost:1455 for the PKCE callback.
   deviceStart: () => http.post('/oauth/openai/device/start'),
   devicePoll: (deviceAuthId: string) =>

@@ -24,7 +24,7 @@ import java.util.List;
  *   <li>搜索结果安全包装（防止 prompt injection）</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

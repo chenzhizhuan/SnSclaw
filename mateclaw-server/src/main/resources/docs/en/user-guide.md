@@ -1,6 +1,6 @@
 # User Guide
 
-You opened MateClaw because you want AI to do work for you. Not because you want to learn new software.
+You opened SnSclaw because you want AI to do work for you. Not because you want to learn new software.
 
 This guide does one thing: **get you from "installed" to "it's working for me" as fast as possible.**
 
@@ -21,7 +21,7 @@ The moment you see a response, you're in the product. Everything after this is a
 
 ## Models: connect one
 
-**A fresh MateClaw install has an empty provider list. That's deliberate — you don't need to see 16 providers, you need one that works.**
+**A fresh SnSclaw install has an empty provider list. That's deliberate — you don't need to see 16 providers, you need one that works.**
 
 `Settings → Models → Add Provider` opens a drawer with the full catalog.
 
@@ -96,7 +96,7 @@ When you find yourself repeating the same setup instructions every conversation 
 
 ## Memory: it remembers you
 
-MateClaw's memory doesn't require manual management. After each conversation, the system automatically extracts key information and writes it to memory. Next time, the agent works with that context.
+SnSclaw's memory doesn't require manual management. After each conversation, the system automatically extracts key information and writes it to memory. Next time, the agent works with that context.
 
 What you can shape:
 
@@ -182,11 +182,11 @@ Create a role-specific agent → install skills → connect MCP servers → conf
 
 | Symptom | Most likely cause |
 |---------|-------------------|
-| Backend won't start | Port 18088 is taken. Check `<userData>/logs/mateclaw.log` (macOS: `~/Library/Application Support/MateClaw/logs/mateclaw.log`) |
+| Backend won't start | Port 18088 is taken. Check `<userData>/logs/mateclaw.log` (macOS: `~/Library/Application Support/SnSclaw/logs/mateclaw.log`) |
 | Model call fails | Wrong API key or network issue. Go back to Settings |
 | UI is blank | Ctrl+Shift+R to hard-refresh |
 | Ollama says "does not support tools" | Switch to a function-calling model (qwen3, llama3.1:8b+) |
-| Still broken | [GitHub Issues](https://github.com/mateaix/mateclaw/issues) with the tail of `app.log` |
+| Still broken | [GitHub Issues](https://github.com/chenzhizhuan/SnSclaw/issues) with the tail of `app.log` |
 
 ---
 

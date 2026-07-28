@@ -30,7 +30,7 @@ import java.util.Set;
  * {@link DesktopBridgeHandshakeInterceptor}; an unauthenticated socket never
  * reaches this handler.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

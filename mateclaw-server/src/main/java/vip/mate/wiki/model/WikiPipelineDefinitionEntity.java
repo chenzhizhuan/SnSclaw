@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * A KB-scoped pipeline definition: a processing chain triggered by a pageType
  * event, executed under a concrete owner agent's permissions.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_wiki_pipeline_definition")

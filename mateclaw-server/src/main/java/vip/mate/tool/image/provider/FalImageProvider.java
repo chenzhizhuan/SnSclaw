@@ -21,7 +21,7 @@ import java.util.Set;
  * 异步队列模式：提交到 queue，轮询获取结果。
  * API 文档: https://fal.ai/models/fal-ai/flux/dev/api
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

@@ -12,7 +12,7 @@ package vip.mate.plugin.api.search;
  * @param source  source domain, e.g. "reuters.com" (nullable)
  * @param date    published date as raw string (nullable)
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record PluginSearchResult(
         String title,

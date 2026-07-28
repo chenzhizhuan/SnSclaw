@@ -14,16 +14,16 @@
     <artifactId>mateclaw-plugin-mem0</artifactId>
     <packaging>jar</packaging>
 
-    <name>MateClaw Mem0 Memory Provider Plugin</name>
+    <name>SnSclaw Mem0 Memory Provider Plugin</name>
     <description>
-        Optional community plugin that bridges MateClaw's memory system to a self-hosted
+        Optional community plugin that bridges SnSclaw's memory system to a self-hosted
         Mem0 service (FastAPI + pgvector + Neo4j). Provides semantic recall via Mem0's
         REST API alongside the built-in local memory providers. Not in the default stack;
         users must deploy Mem0 separately and install this JAR into the plugins/ directory.
     </description>
 
     <dependencies>
-        <!-- MateClaw Plugin API -->
+        <!-- SnSclaw Plugin API -->
         <dependency>
             <groupId>vip.mate</groupId>
             <artifactId>mateclaw-plugin-api</artifactId>

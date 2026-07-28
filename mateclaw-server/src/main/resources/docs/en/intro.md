@@ -1,17 +1,17 @@
 ---
-title: MateClaw Introduction — Self-hosted Multi-Agent AI Operating System
-description: MateClaw is an open-source multi-agent AI OS built on Spring AI Alibaba. ReAct + Plan-and-Execute engines, LLM Wiki knowledge base, 4-layer memory lifecycle, MCP tool protocol, 8-channel integration. One JAR, zero data egress.
+title: SnSclaw Introduction — Self-hosted Multi-Agent AI Operating System
+description: SnSclaw is an open-source multi-agent AI OS built on Spring AI Alibaba. ReAct + Plan-and-Execute engines, LLM Wiki knowledge base, 4-layer memory lifecycle, MCP tool protocol, 8-channel integration. One JAR, zero data egress.
 head:
   - - meta
     - name: keywords
-      content: MateClaw,multi-agent AI,self-hosted AI,AI operating system,Spring AI Alibaba,ReAct,Plan-and-Execute,MCP,LLM Wiki,memory lifecycle,Tool Guard,open source
+      content: SnSclaw,multi-agent AI,self-hosted AI,AI operating system,Spring AI Alibaba,ReAct,Plan-and-Execute,MCP,LLM Wiki,memory lifecycle,Tool Guard,open source
 ---
 
-# MateClaw — Self-hosted Multi-Agent AI Operating System
+# SnSclaw — Self-hosted Multi-Agent AI Operating System
 
 **Your multi-agent AI. On your hardware. Under your rules.**
 
-MateClaw is a full AI operating system you deploy yourself. One JAR. One login. Your data never leaves the room.
+SnSclaw is a full AI operating system you deploy yourself. One JAR. One login. Your data never leaves the room.
 
 **Three things it does that other AI products can't:**
 
@@ -27,13 +27,13 @@ Bring any model. DashScope. OpenAI. Anthropic. Gemini. DeepSeek. Kimi. MiniMax. 
 
 ---
 
-## The problem MateClaw fights
+## The problem SnSclaw fights
 
 Most AI products stop at one layer.
 
 You get a chat box, but the memory resets every morning. You get a tool runtime, but no way to pause it when it's about to do something stupid. You get a knowledge base that retrieves fragments but can't tell you what it actually knows. You get a desktop app, but not the channels your team lives in. Or you get all of it — rented on someone else's cloud, with your data paying rent too.
 
-MateClaw fights a different fight. It's **all of it, under one roof, on hardware you control.**
+SnSclaw fights a different fight. It's **all of it, under one roof, on hardware you control.**
 
 ---
 
@@ -53,11 +53,11 @@ MateClaw fights a different fight. It's **all of it, under one roof, on hardware
 
 ## Why self-hosted changes the product
 
-Running MateClaw on your own hardware is not a compliance checkbox. It changes what the product **is**.
+Running SnSclaw on your own hardware is not a compliance checkbox. It changes what the product **is**.
 
 **Your data stops paying rent.** Logs, conversations, documents, memory — none of it trains anyone else's model. None of it waits in a vendor's queue. None of it leaves your machines unless you point a channel at one.
 
-**You own the roadmap.** Don't like how the memory consolidator works? Change it. Need a tool your vendor won't build? Add it. MateClaw is Apache 2.0 — not source-available, not "open core", not waiting on a quarterly product review.
+**You own the roadmap.** Don't like how the memory consolidator works? Change it. Need a tool your vendor won't build? Add it. SnSclaw is Apache 2.0 — not source-available, not "open core", not waiting on a quarterly product review.
 
 **You pick the economics.** Start on DashScope. Swap to Ollama when your local GPU arrives. Put one agent on OpenAI and keep the rest cheap. Agent config and tool graphs don't care what's under the model interface.
 

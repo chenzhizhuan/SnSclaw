@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *       cross-turn assistant messages to fill in cached reasoning.</li>
  * </ol>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public final class ReasoningContentCache {
 

@@ -12,7 +12,7 @@ import java.util.Set;
  * 参考 OpenClaw 的 VideoGenerationProviderCapabilities 设计，
  * 每个 Provider 显式声明支持的参数范围，Runtime 据此做就近归一化。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @Builder

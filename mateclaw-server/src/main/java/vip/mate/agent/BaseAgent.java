@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Agent 抽象基类
  * 定义所有 Agent 的基础行为与状态管理
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public abstract class BaseAgent {
@@ -869,7 +869,7 @@ public abstract class BaseAgent {
         }
         // RFC-052: scrub direct-tool content from any subsequent LLM prompt.
         // The DB content stays unchanged; only the in-memory Message handed to
-        // the model gets replaced. This is MateClaw's persistence-aware analog
+        // the model gets replaced. This is SnSclaw's persistence-aware analog
         // of joyagent-jdgenie's Memory.clearToolContext (purely in-memory) and
         // OpenClaw's stripToolResultDetails (structural strip per replay).
         //

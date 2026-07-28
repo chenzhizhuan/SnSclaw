@@ -2,7 +2,7 @@
 
 **Strong hands, firm limits.**
 
-MateClaw gives agents real capability — shell access, file writes, browser automation, delegation to other agents, remote tools over MCP. That's the "strong hands" half. This page is about the other half: the limits that keep strong hands from doing stupid things.
+SnSclaw gives agents real capability — shell access, file writes, browser automation, delegation to other agents, remote tools over MCP. That's the "strong hands" half. This page is about the other half: the limits that keep strong hands from doing stupid things.
 
 - **JWT auth** — who you are
 - **Tool Guard (rule-based)** — what each agent is allowed to do
@@ -11,20 +11,20 @@ MateClaw gives agents real capability — shell access, file writes, browser aut
 - **Workspace isolation** — what each team can see
 - **Audit log** — what everybody did, in order, forever
 
-If you're running MateClaw in production, read this page top to bottom.
+If you're running SnSclaw in production, read this page top to bottom.
 
 ::: tip Agentic, but not autonomous
 Every IT department and CISO in 2025–2026 has the same question before buying AI:
 
 > **"What if the agent goes off the rails and deletes the wrong thing?"**
 
-Anyone who tells you "AI won't go off the rails" is lying. MateClaw's answer is different — **the agent asks you first when it matters.**
+Anyone who tells you "AI won't go off the rails" is lying. SnSclaw's answer is different — **the agent asks you first when it matters.**
 
 When the agent wants to delete a file, send an email, run a write-side SQL, or hit a paid API — any tool call matched by a Tool Guard rule **pauses mid-turn**. An approval notification is pushed to your IM (Feishu / DingTalk / Slack / email). You tap approve, the agent resumes from where it stopped. Every action lands in `mate_tool_guard_audit_log` — append-only, retained as long as you want, CSV-exportable.
 
 **Agentic — it acts. Not autonomous — it doesn't act on its own initiative for the things that matter.**
 
-That's the line between "let AI do work for you" and "let AI make decisions for you." MateClaw stays on the left side of that line — which is also the side your CISO doesn't immediately say no to.
+That's the line between "let AI do work for you" and "let AI make decisions for you." SnSclaw stays on the left side of that line — which is also the side your CISO doesn't immediately say no to.
 :::
 
 ---
@@ -67,7 +67,7 @@ Users can change their own password from the profile settings dialog. Admins can
 
 ### Sliding window renewal
 
-MateClaw does sliding-window token renewal. When a token's remaining lifetime falls below the configurable `renewal-threshold` (default 2 hours / 7200000ms), the server issues a new token in the `X-New-Token` response header. The frontend picks it up and replaces the stored token transparently. Active users never get kicked out; idle sessions still expire on time.
+SnSclaw does sliding-window token renewal. When a token's remaining lifetime falls below the configurable `renewal-threshold` (default 2 hours / 7200000ms), the server issues a new token in the `X-New-Token` response header. The frontend picks it up and replaces the stored token transparently. Active users never get kicked out; idle sessions still expire on time.
 
 ### Configuration
 
@@ -94,7 +94,7 @@ Frontend handles both uniformly — redirect to login, clear stored tokens.
 
 ### Default credentials
 
-MateClaw ships with `admin` / `admin123`. **Change this immediately in any deployment other than your laptop.**
+SnSclaw ships with `admin` / `admin123`. **Change this immediately in any deployment other than your laptop.**
 
 ### Spring Security config
 
@@ -107,7 +107,7 @@ MateClaw ships with `admin` / `admin123`. **Change this immediately in any deplo
 
 ## Tool Guard — rule-based permission engine
 
-Tool Guard is how MateClaw decides what a tool call is allowed to do. **It's not a flat dangerous-tools list.** It's a rule engine. Each rule specifies: *for this tool, optionally matching these arguments, in this workspace, do X* — where X is `allow`, `deny`, or `require_approval`.
+Tool Guard is how SnSclaw decides what a tool call is allowed to do. **It's not a flat dangerous-tools list.** It's a rule engine. Each rule specifies: *for this tool, optionally matching these arguments, in this workspace, do X* — where X is `allow`, `deny`, or `require_approval`.
 
 ### The three tables
 
@@ -207,13 +207,13 @@ Credential rules now support **per-rule control** — each rule can be enabled/d
 
 ### Dangerous pattern detection
 
-In addition to user-defined rules, MateClaw's shell tool has built-in detection for patterns that are dangerous no matter what. `find -delete`, `rm -rf /`, piped downloads through `bash`, and similar patterns trigger elevated approval even if a rule would otherwise allow them.
+In addition to user-defined rules, SnSclaw's shell tool has built-in detection for patterns that are dangerous no matter what. `find -delete`, `rm -rf /`, piped downloads through `bash`, and similar patterns trigger elevated approval even if a rule would otherwise allow them.
 
 ---
 
 ## Approval workflow — human in the loop
 
-When a rule evaluates to `require_approval`, MateClaw doesn't fail the call. It **suspends the agent mid-turn**, creates a pending approval, surfaces it to the user, and resumes exactly where it left off once the user decides.
+When a rule evaluates to `require_approval`, SnSclaw doesn't fail the call. It **suspends the agent mid-turn**, creates a pending approval, surfaces it to the user, and resumes exactly where it left off once the user decides.
 
 ::: tip From 1.3.0: workflows ride the same approval rail
 The v1.3.0 [workflow](./workflow) `await_approval` step suspends the entire workflow run on the same `mate_tool_approval` table — persisted across restarts. Approval requests fan out to the approver's channel (Feishu / DingTalk / Slack / WeCom); once resolved, the workflow runtime auto-resumes the next step. One audit log, one notification pipeline, one "pause / resume" semantic — covering both agent tool calls and workflow steps.
@@ -282,7 +282,7 @@ Pending approvals expire after a configurable timeout (default: 30 minutes). Exp
 
 ### Notifications
 
-MateClaw can notify through `channel/notification/` adapters — email, in-app alert, DingTalk/Feishu push. Configure in `Settings → Security & Approval → Notifications`.
+SnSclaw can notify through `channel/notification/` adapters — email, in-app alert, DingTalk/Feishu push. Configure in `Settings → Security & Approval → Notifications`.
 
 ### Current API surface
 
@@ -374,7 +374,7 @@ Visual editor on `Settings → Security & Approval → File Guard`.
 
 ## Workspace isolation
 
-Workspaces are how MateClaw keeps multiple teams' data separate. Every agent, skill, wiki, conversation, and memory file belongs to exactly one workspace.
+Workspaces are how SnSclaw keeps multiple teams' data separate. Every agent, skill, wiki, conversation, and memory file belongs to exactly one workspace.
 
 ### Security primitives that follow workspace boundaries
 

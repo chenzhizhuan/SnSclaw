@@ -5,7 +5,7 @@ nameZh: X 情报采集
 nameEn: X Intel
 version: 1.0.0
 icon: 🐦
-author: MateClaw
+author: SnSclaw
 optional: true
 tags:
   - x

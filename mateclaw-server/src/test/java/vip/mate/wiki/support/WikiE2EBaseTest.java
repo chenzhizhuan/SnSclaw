@@ -26,7 +26,7 @@ import org.springframework.test.annotation.DirtiesContext;
  * test runner picks it up via classpath scanning. Per JUnit 5 rules,
  * abstract test classes are skipped at discovery.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @SpringBootTest(properties = {
         "spring.flyway.enabled=true",

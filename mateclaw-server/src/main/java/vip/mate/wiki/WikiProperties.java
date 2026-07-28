@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * Wiki 知识库配置
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @ConfigurationProperties(prefix = "mate.wiki")

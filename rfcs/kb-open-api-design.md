@@ -1,14 +1,14 @@
 # 知识库开放 API 设计文档
 
 > 状态：草案 v2.1 · 评审修订已合入
-> 作者：MateClaw Team
+> 作者：SnSclaw Team
 > 关联 ISSUE：待创建（R12：动工前在上游开 issue）
 
 ## 1. 背景与目标
 
 ### 1.1 现状
 
-MateClaw 的知识库目前有 3 条触达路径，但**没有直接对外的入口**：
+SnSclaw 的知识库目前有 3 条触达路径，但**没有直接对外的入口**：
 
 | 路径 | 消费方 | 认证 | 局限 |
 |---|---|---|---|
@@ -148,7 +148,7 @@ CREATE INDEX idx_kb_api_key_binding_kb ON mate_kb_api_key_binding(kb_id);
 ```
 mck_<43 url-safe base64 chars>
  ^^
- ├─ mck = MateClaw Knowledge，区别于 PAT 的 mc_ 前缀
+ ├─ mck = SnSclaw Knowledge，区别于 PAT 的 mc_ 前缀
  └─ JwtAuthFilter 可据此区分 JWT(eyJ) / PAT(mc_) / KB-API-Key(mck_) 三种 token
 ```
 

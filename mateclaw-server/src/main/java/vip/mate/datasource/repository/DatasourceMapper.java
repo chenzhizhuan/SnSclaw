@@ -7,7 +7,7 @@ import vip.mate.datasource.model.DatasourceEntity;
 /**
  * 数据源 Mapper
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface DatasourceMapper extends BaseMapper<DatasourceEntity> {

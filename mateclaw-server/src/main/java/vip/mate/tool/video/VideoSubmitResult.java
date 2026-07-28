@@ -6,7 +6,7 @@ import lombok.Data;
 /**
  * Provider 提交视频生成任务的结果
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @Builder

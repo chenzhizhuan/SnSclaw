@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * session. Pending RPC futures live in a flat map keyed by request id; the
  * handler completes them when the matching {@code result} frame arrives.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component
@@ -144,7 +144,7 @@ public class DesktopBridgeRegistry {
         if (capability != null && !desktop.supports(capability)) {
             throw new DesktopBridgeException(DesktopBridgeException.Code.UNSUPPORTED,
                     "The connected desktop does not support '" + capability
-                            + "' (upgrade the MateClaw desktop app)");
+                            + "' (upgrade the SnSclaw desktop app)");
         }
 
         String requestId = UUID.randomUUID().toString();

@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * Plugin entity — persists plugin state in mate_plugin table.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_plugin")

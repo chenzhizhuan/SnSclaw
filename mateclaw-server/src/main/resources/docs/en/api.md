@@ -252,7 +252,7 @@ Returns `text/event-stream`; **not** the JSON envelope. The SSE event protocol (
 | `thinkingLevel` | string | null | Reasoning depth: `off` / `low` / `medium` / `high` / `max`; null follows the Agent default |
 | `modelProvider` | string | null | Per-conversation provider override (paired with `modelName`) |
 | `modelName` | string | null | Per-conversation model-name override |
-| `endUserId` | string | null | Third-party end-user ID, isolates memory when one MateClaw account fronts many end-users |
+| `endUserId` | string | null | Third-party end-user ID, isolates memory when one SnSclaw account fronts many end-users |
 
 The native browser `EventSource` cannot send a POST body — use `fetch()` with a streaming reader.
 

@@ -4,7 +4,7 @@ package vip.mate.llm.model;
  * 模型族分类 — 收敛所有 provider/model 差异到统一的参数适配策略。
  * <p>
  * 按 provider+model 维度管理生成参数，
- * 将 MateClaw 中散落在 isThinkingModel / requiresFixedTemperatureOne 等多处的判断
+ * 将 SnSclaw 中散落在 isThinkingModel / requiresFixedTemperatureOne 等多处的判断
  * 收敛到一个 enum，每个族声明自己的参数约束。
  * <p>
  * 约束维度：
@@ -17,7 +17,7 @@ package vip.mate.llm.model;
  *   <li>thinking — 是否为 thinking/reasoning 模型（影响 reasoningContent patch）</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public enum ModelFamily {
 

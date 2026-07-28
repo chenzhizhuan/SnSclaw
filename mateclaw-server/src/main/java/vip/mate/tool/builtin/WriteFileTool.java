@@ -24,7 +24,7 @@ import java.nio.file.Paths;
  *   <li>路径边界由 {@code WorkspacePathGuard} 处理</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

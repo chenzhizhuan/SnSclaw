@@ -9,7 +9,7 @@ import vip.mate.skill.model.SkillFileEntity;
 /**
  * Mapper for {@link SkillFileEntity}.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface SkillFileMapper extends BaseMapper<SkillFileEntity> {

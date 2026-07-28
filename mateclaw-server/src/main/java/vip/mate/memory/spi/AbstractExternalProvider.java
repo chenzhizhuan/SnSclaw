@@ -21,7 +21,7 @@ import java.util.List;
  * 3. Override the methods you need
  * 4. The provider will be auto-discovered by MemoryManager via Spring injection
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public abstract class AbstractExternalProvider implements MemoryProvider {
 

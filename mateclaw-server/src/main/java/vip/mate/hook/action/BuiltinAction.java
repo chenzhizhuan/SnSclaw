@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import vip.mate.hook.event.MateHookEvent;
 
 /**
- * 内置动作：直接调 MateClaw 内部 service，无外部 IO。
+ * 内置动作：直接调 SnSclaw 内部 service，无外部 IO。
  *
  * <p>当前支持的 op（持续扩展）：
  * <ul>

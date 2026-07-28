@@ -1,6 +1,6 @@
 # Chat & Messaging
 
-Chat is where you actually work. Everything else in MateClaw — agents, tools, memory, wiki, channels — exists so that what happens inside this box can be good.
+Chat is where you actually work. Everything else in SnSclaw — agents, tools, memory, wiki, channels — exists so that what happens inside this box can be good.
 
 This page is about what that box actually does. Not the REST endpoint. Not the SSE event schema. What you see, what it does for you, and why the interaction design is what it is. (The API part is at the bottom for integrators who need it.)
 
@@ -53,7 +53,7 @@ The rail **collapses to a badged strip**; below 1280px it degrades to a **floati
 
 ## Thinking, tool calls, and what to trust
 
-One of the questions MateClaw tries to answer with its chat UI is: **should you trust what the AI just told you?** The default answer elsewhere is "look at the answer and guess". MateClaw tries to do better.
+One of the questions SnSclaw tries to answer with its chat UI is: **should you trust what the AI just told you?** The default answer elsewhere is "look at the answer and guess". SnSclaw tries to do better.
 
 **Thinking is visible.** If the agent's thinking was sloppy, you can expand the thinking panel and see it. If it skipped a step, it's in there. If it hallucinated a fact before catching itself, you can watch it catch itself.
 
@@ -61,7 +61,7 @@ One of the questions MateClaw tries to answer with its chat UI is: **should you 
 
 **Phase hints are visible.** At the top of a streaming response, a small indicator shows the current phase — *thinking*, *searching*, *reading*, *generating*, *summarizing*. You're never staring at a spinner wondering whether the agent is alive.
 
-Trust is earned by showing the work. MateClaw shows the work.
+Trust is earned by showing the work. SnSclaw shows the work.
 
 **Execution-plan & tool-call detail viewer (1.5.0).** Every plan step and every tool-call row gets a "view details" icon on the right. Click it for a frosted-glass dialog showing the **full request arguments and response output** — the parts the inline preview truncates — with copy buttons for request and response, and a status badge (in progress / completed / failed / pending). The data lives in message metadata, so plan steps and tool calls stay readable after a page reload.
 
@@ -89,7 +89,7 @@ Three ways to give the agent a file:
 | **Paste** from clipboard (Ctrl/Cmd+V) | Paste images or files copied from other apps |
 | **Drag & drop** into the chat area | A translucent overlay appears; drop anywhere inside |
 
-Drop a **folder** on the desktop app and the agent gets a reference to the folder's absolute path — it can then walk it with the file-reader or shell tool. Drop a folder on the web and MateClaw recursively expands it and uploads each file individually.
+Drop a **folder** on the desktop app and the agent gets a reference to the folder's absolute path — it can then walk it with the file-reader or shell tool. Drop a folder on the web and SnSclaw recursively expands it and uploads each file individually.
 
 Upload limits, default:
 
@@ -117,7 +117,7 @@ Images, audio/video and 3D models always previewed inline — but a Word report 
 ### Primary model can't see images? "Multimodal sidecar" routing
 
 ::: tip Added in 1.3.0
-When the agent's primary model is text-only (e.g. `deepseek-chat`, `kimi-k2`), uploading an image no longer breaks. The runtime auto-routes through a sidecar. See [issue #87](https://github.com/mateaix/mateclaw/issues/87).
+When the agent's primary model is text-only (e.g. `deepseek-chat`, `kimi-k2`), uploading an image no longer breaks. The runtime auto-routes through a sidecar. See [issue #87](https://github.com/chenzhizhuan/SnSclaw/issues/87).
 :::
 
 How it works:
@@ -172,7 +172,7 @@ The thing to notice: **persistence is synchronous with streaming**. Segments lan
 
 ## Conversations
 
-A conversation is a sequence of messages scoped to a single agent and a single user. MateClaw stores them in two tables:
+A conversation is a sequence of messages scoped to a single agent and a single user. SnSclaw stores them in two tables:
 
 **mate_conversation**
 
@@ -211,7 +211,7 @@ The same semantics cover the admin console, the WebChat widget, and the API — 
 ### Per-conversation model selection
 
 ::: tip Added in 1.4.0
-The model selector in the chat header now binds a model **to the conversation**, not as a global switch. See [issue #150](https://github.com/mateaix/mateclaw/issues/150).
+The model selector in the chat header now binds a model **to the conversation**, not as a global switch. See [issue #150](https://github.com/chenzhizhuan/SnSclaw/issues/150).
 :::
 
 Switching the model in the header affects **only this conversation**: the choice is stored on the conversation and takes effect starting with the **next message**. A conversation you never set explicitly falls back to the workspace default model. The runtime model indicator stays in sync with whatever is pinned on the conversation — what you see is what the next turn actually uses.
@@ -221,7 +221,7 @@ This isolation also makes model config more robust: **a single bad model id no l
 ### Conversation list management
 
 ::: tip Added in 1.4.0
-The conversation sidebar grew from a plain history list into an actionable operations panel. See [issue #144](https://github.com/mateaix/mateclaw/issues/144).
+The conversation sidebar grew from a plain history list into an actionable operations panel. See [issue #144](https://github.com/chenzhizhuan/SnSclaw/issues/144).
 :::
 
 - **Pin / unpin** — from each row's `⋮` overflow menu. Important threads stay at the top in a "Pinned" group.
@@ -268,7 +268,7 @@ All three entry points open the **same dialog** with identical behavior. Agent i
 
 ## Context window management
 
-Every turn, MateClaw builds the prompt that actually goes to the LLM. Roughly:
+Every turn, SnSclaw builds the prompt that actually goes to the LLM. Roughly:
 
 1. **System prompt** — the agent's instructions
 2. **Workspace file injection** — `AGENTS.md`, `SOUL.md`, `PROFILE.md`, `MEMORY.md` (only `enabled=true` files)

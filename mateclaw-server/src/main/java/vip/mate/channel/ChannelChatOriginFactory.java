@@ -45,7 +45,7 @@ public class ChannelChatOriginFactory {
                                             : channel.getChannelType(),
                 /* chatId            */ message.getChatId(),
                 /* baseUrl           */ null,   // IM origins have no request host; rely on public-base-url config
-                /* requesterUserId   */ null);  // IM senders are external platform ids, not MateClaw accounts
+                /* requesterUserId   */ null);  // IM senders are external platform ids, not SnSclaw accounts
     }
 
     /**

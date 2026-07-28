@@ -21,7 +21,7 @@ import java.time.Instant;
  * @param message   human-readable, LLM-facing description of the change and
  *                  what the agent should do about it
  * @param timestamp when the event was observed by Java
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record EnvironmentNotification(String type, String message, Instant timestamp) {
 }

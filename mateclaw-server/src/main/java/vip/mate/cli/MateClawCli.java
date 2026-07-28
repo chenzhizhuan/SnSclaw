@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * MateClaw CLI framework — single-file core containing:
+ * SnSclaw CLI framework — single-file core containing:
  * <ul>
  *   <li>{@link CliCommand} — interface for pluggable commands</li>
  *   <li>{@link CliContext} — argument parsing, output formatting, lifecycle</li>
@@ -156,7 +156,7 @@ public final class MateClawCli { private MateClawCli() { /* namespace */ }
         }
 
         private void printHelp() {
-            System.out.println("\n  MateClaw CLI\n  ═══════════════════════════════════════");
+            System.out.println("\n  SnSclaw CLI\n  ═══════════════════════════════════════");
             System.out.println("  java -jar app.jar --cli.command=<name> [options]");
             System.out.println("  Docker: docker exec <container> java -jar /app/app.jar --cli.command=<name> [options]");
             System.out.println("\n  Global options:");

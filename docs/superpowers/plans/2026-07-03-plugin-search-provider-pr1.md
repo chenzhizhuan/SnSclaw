@@ -8,7 +8,7 @@
 
 **Tech Stack:** Java 21 / Spring Boot 3.5 / Maven 多模块 reactor（`mateclaw-plugin-api` → `mateclaw-server` → samples）/ JUnit 5 + Mockito。
 
-**上游 issue:** https://github.com/mateaix/mateclaw/issues/477（已获认可后动工）
+**上游 issue:** https://github.com/chenzhizhuan/SnSclaw/issues/477（已获认可后动工）
 **设计文档:** `docs/superpowers/specs/2026-07-03-plugin-search-provider-design.md`
 
 **背景速览（给零上下文的执行者）：**
@@ -84,7 +84,7 @@ package vip.mate.plugin.api.search;
  * @param language  language preference, e.g. zh-CN / en (nullable)
  * @param count     max results 1-10, already clamped by the platform (never null)
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record PluginSearchQuery(
         String query,
@@ -112,7 +112,7 @@ package vip.mate.plugin.api.search;
  * @param source  source domain, e.g. "reuters.com" (nullable)
  * @param date    published date as raw string (nullable)
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record PluginSearchResult(
         String title,
@@ -142,7 +142,7 @@ import java.util.List;
  * own config declared in {@code mateclaw-plugin.json} via
  * {@code PluginContext#getConfig(String, Class)}.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public interface PluginSearchProvider {
 
@@ -612,7 +612,7 @@ import java.util.List;
  * providers read their own config via {@code PluginContext#getConfig}, keeping
  * the SDK free of server types.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class PluginSearchBridge implements SearchProvider {
 
@@ -996,11 +996,11 @@ git commit -m "feat(plugin): registerSearchProvider lifecycle — register, disa
     <artifactId>mateclaw-plugin-search-sample</artifactId>
     <packaging>jar</packaging>
 
-    <name>MateClaw Search Provider Sample Plugin</name>
-    <description>Sample plugin registering a custom web-search provider via the MateClaw Plugin SDK</description>
+    <name>SnSclaw Search Provider Sample Plugin</name>
+    <description>Sample plugin registering a custom web-search provider via the SnSclaw Plugin SDK</description>
 
     <dependencies>
-        <!-- MateClaw Plugin API -->
+        <!-- SnSclaw Plugin API -->
         <dependency>
             <groupId>vip.mate</groupId>
             <artifactId>mateclaw-plugin-api</artifactId>
@@ -1045,7 +1045,7 @@ git commit -m "feat(plugin): registerSearchProvider lifecycle — register, disa
   "description": "Registers a custom web-search provider backed by a configurable JSON search endpoint.",
   "entrypoint": "vip.mate.plugin.sample.search.SimpleSearchPlugin",
   "minPlatformVersion": "1.1.0",
-  "author": "MateClaw Team",
+  "author": "SnSclaw Team",
   "config": {
     "baseUrl": {
       "type": "string",
@@ -1092,7 +1092,7 @@ import java.util.List;
  * provider that queries a configurable JSON endpoint. Expected response shape:
  * {@code {"results":[{"title":"...","url":"...","snippet":"..."}]}}
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class SimpleSearchPlugin implements MateClawPlugin {
 

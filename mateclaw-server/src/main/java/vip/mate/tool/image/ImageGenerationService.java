@@ -26,7 +26,7 @@ import java.util.Map;
  * <p>
  * 与 VideoGenerationService 结构一致，额外处理同步模式（部分 Provider 直接返回图片 URL）。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

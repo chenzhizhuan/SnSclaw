@@ -28,7 +28,7 @@ import java.util.Map;
  * exception provides a message key. The JSON body keeps the project-wide
  * R envelope while the HTTP status mirrors the failure class.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @RestControllerAdvice

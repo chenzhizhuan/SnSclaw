@@ -1,10 +1,10 @@
 ---
 title: 持久化目标 — 跨多轮锁定，让员工自己跟进
-description: MateClaw 的 Goal 系统让数字员工把跨多轮的任务锁成一个目标，自己评估进度、自己续命，直到完成或耗尽预算。
+description: SnSclaw 的 Goal 系统让数字员工把跨多轮的任务锁成一个目标，自己评估进度、自己续命，直到完成或耗尽预算。
 head:
   - - meta
     - name: keywords
-      content: Goal,目标管理,Agent,多轮对话,自动评估,auto-followup,持久化,MateClaw
+      content: Goal,目标管理,Agent,多轮对话,自动评估,auto-followup,持久化,SnSclaw
 ---
 
 # 持久化目标

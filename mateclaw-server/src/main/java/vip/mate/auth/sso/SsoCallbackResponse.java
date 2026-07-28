@@ -13,7 +13,7 @@ import vip.mate.auth.model.LoginResponse;
  *
  * <p>替代了原先用 {@code R.fail(200, Map.toString())} 传递绑定信号的 hack。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @AllArgsConstructor

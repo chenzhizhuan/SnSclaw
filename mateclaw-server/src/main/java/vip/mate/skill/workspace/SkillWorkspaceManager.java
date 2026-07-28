@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * 遵循 Maven Local Repository 模式：{root}/{skillName}/ 约定子目录。
  * 负责工作区的路径解析、初始化、归档、导出和状态查询。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

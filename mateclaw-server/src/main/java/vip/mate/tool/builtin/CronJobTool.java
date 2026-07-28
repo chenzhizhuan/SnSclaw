@@ -24,7 +24,7 @@ import java.util.Map;
  * The agent_id is automatically bound to the current agent. LLM generates cron expressions
  * from natural language (e.g. "every day at 9am" → "0 9 * * *").
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  * @see vip.mate.cron.service.CronJobService
  */
 @Slf4j

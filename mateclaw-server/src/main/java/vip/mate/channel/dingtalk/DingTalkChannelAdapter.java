@@ -47,7 +47,7 @@ import java.util.Map;
  * - card_template_id: AI Card 模板 ID（message_type=card 时必填）
  * - robot_code: 机器人编码（card 模式群聊建议配置）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class DingTalkChannelAdapter extends AbstractChannelAdapter implements StreamingChannelAdapter {
@@ -321,7 +321,7 @@ public class DingTalkChannelAdapter extends AbstractChannelAdapter implements St
     /**
      * AI Card 流式渲染路径
      * <p>
-     * 参考 MateClaw 的 _process_dingtalk_core() 模式：
+     * 参考 SnSclaw 的 _process_dingtalk_core() 模式：
      * 1. 创建"思考中..."卡片
      * 2. 消费事件流，流式更新卡片（500ms 节流）
      * 3. 完成时标记 FINISHED，异常时标记 FAILED
@@ -590,7 +590,7 @@ public class DingTalkChannelAdapter extends AbstractChannelAdapter implements St
             if ("markdown".equals(messageType) || "card".equals(messageType)) {
                 jsonBody = objectMapper.writeValueAsString(Map.of(
                         "msgtype", "markdown",
-                        "markdown", Map.of("title", "MateClaw", "text", content)
+                        "markdown", Map.of("title", "SnSclaw", "text", content)
                 ));
             } else {
                 jsonBody = objectMapper.writeValueAsString(Map.of(
@@ -1054,7 +1054,7 @@ public class DingTalkChannelAdapter extends AbstractChannelAdapter implements St
             String msgKey;
             if ("markdown".equals(messageType) || "card".equals(messageType)) {
                 msgKey = "sampleMarkdown";
-                msgParam = Map.of("title", "MateClaw", "text", content);
+                msgParam = Map.of("title", "SnSclaw", "text", content);
             } else {
                 msgKey = "sampleText";
                 msgParam = Map.of("content", content);

@@ -10,7 +10,7 @@ import vip.mate.system.featureflag.FeatureFlagEntity;
  * <p>Mapper interface lives under a {@code repository} sub-package as required
  * by the application-wide {@code @MapperScan("vip.mate.**.repository")}.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface FeatureFlagMapper extends BaseMapper<FeatureFlagEntity> {

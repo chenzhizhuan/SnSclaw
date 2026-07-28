@@ -23,7 +23,7 @@ import vip.mate.memory.spi.MemoryManager;
  * <p>Thread-safety: all public methods are reentrant; per-turn state lives
  * in {@link TurnContext}.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

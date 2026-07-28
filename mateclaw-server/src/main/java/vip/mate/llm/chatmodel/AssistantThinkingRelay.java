@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@code discard} is a no-op in that case; it becomes the only cleanup when the
  * consumer never runs (e.g., a Reactor error before the request is dispatched).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public final class AssistantThinkingRelay {
 

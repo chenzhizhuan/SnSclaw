@@ -16,7 +16,7 @@ import java.util.Map;
  * surface a hint when {@code app_token} is missing so the user knows Socket
  * Mode won't work yet.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 /**
  * 图片生成提供商注册表 — 收集所有 {@link ImageGenerationProvider} 实现，提供优先级排序与自动探测
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

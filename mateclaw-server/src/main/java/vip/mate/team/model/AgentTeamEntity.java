@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
  * shared task board. The lead orchestrates work by creating tasks assigned
  * to members; members execute in isolated conversations and report results.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_agent_team")

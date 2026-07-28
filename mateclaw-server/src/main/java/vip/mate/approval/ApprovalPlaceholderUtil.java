@@ -10,7 +10,7 @@ package vip.mate.approval;
  *   <li>ConversationService.removeApprovalPlaceholders() — DB 物理清理</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public final class ApprovalPlaceholderUtil {
 

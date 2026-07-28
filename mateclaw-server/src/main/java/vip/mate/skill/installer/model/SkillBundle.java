@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * 解析后的 skill bundle（从外部源获取的完整 skill 包）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record SkillBundle(
         /** skill 名称（从 SKILL.md frontmatter 解析） */

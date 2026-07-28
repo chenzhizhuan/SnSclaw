@@ -30,7 +30,7 @@ import org.springframework.ai.tool.metadata.ToolMetadata;
  * forwarded verbatim. It sits <em>inside</em> {@link PrefixedNameToolCallback}
  * so name prefixing and return-direct detection still see the raw delegate.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public final class IdentityForwardingToolCallback implements ToolCallback {

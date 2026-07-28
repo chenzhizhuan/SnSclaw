@@ -10,14 +10,14 @@ import org.springframework.stereotype.Component;
 /**
  * Startup security validator — warns about insecure default configurations.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component
 @Order(1)
 public class SecurityStartupValidator implements ApplicationRunner {
 
-    private static final String DEFAULT_JWT_SECRET = "MateClaw-JWT-Secret-Key-2024-Please-Change-In-Production";
+    private static final String DEFAULT_JWT_SECRET = "SnSclaw-JWT-Secret-Key-2024-Please-Change-In-Production";
 
     @Value("${mateclaw.jwt.secret}")
     private String jwtSecret;

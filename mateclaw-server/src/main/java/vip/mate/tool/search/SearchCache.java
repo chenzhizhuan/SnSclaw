@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>Key: providerId + query + freshness + language + count（归一化为小写）</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

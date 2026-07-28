@@ -43,7 +43,7 @@ export function loadLocalToolsConfig(): LocalToolsConfig {
       allowedDirs: Array.isArray(raw.allowedDirs) ? raw.allowedDirs : [],
     }
   } catch (err) {
-    console.error('[MateClaw] Failed to read local-tools config:', err)
+    console.error('[SnSclaw] Failed to read local-tools config:', err)
     return { ...DEFAULT_CONFIG }
   }
 }
@@ -53,7 +53,7 @@ export function saveLocalToolsConfig(patch: Partial<LocalToolsConfig>): LocalToo
   try {
     writeFileSync(getConfigPath(), JSON.stringify(merged, null, 2), 'utf-8')
   } catch (err) {
-    console.error('[MateClaw] Failed to write local-tools config:', err)
+    console.error('[SnSclaw] Failed to write local-tools config:', err)
   }
   return merged
 }

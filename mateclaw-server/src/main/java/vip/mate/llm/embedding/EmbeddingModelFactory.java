@@ -46,7 +46,7 @@ import java.util.regex.Pattern;
  *       embedding 的请求格式稳定，不需要这些补丁</li>
  * </ol>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

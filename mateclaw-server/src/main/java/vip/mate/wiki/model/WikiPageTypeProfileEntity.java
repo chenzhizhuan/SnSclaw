@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
  * stored in this table, so {@link #kbId} is always non-null. A virtual
  * generated column on the table enforces at most one enabled profile per KB.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_wiki_page_type_profile")

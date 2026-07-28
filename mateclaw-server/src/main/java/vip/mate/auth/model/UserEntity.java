@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 /**
  * 用户实体
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_user")

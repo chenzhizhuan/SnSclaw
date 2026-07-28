@@ -98,7 +98,7 @@
           </template>
         </div>
 
-        <!-- MateClaw frosted-pill pagination — replaces el-pagination
+        <!-- SnSclaw frosted-pill pagination — replaces el-pagination
              so the activity feed reads in the same visual language as
              the rest of the app. -->
         <div v-if="total > pageSize" class="pagination">

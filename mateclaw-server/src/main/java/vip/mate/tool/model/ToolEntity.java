@@ -10,7 +10,7 @@ import java.util.List;
  * 工具实体
  * 工具实体：Agent 可调用的原子能力
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_tool")

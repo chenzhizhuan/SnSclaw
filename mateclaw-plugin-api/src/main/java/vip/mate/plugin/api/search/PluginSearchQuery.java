@@ -11,7 +11,7 @@ package vip.mate.plugin.api.search;
  * @param language  language preference, e.g. zh-CN / en (nullable)
  * @param count     max results 1-10, already clamped by the platform (never null)
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record PluginSearchQuery(
         String query,

@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
  * a manually-imported credentials file).
  *
  * <p>Result is cached for the JVM lifetime (Anthropic's UA validation tolerates
- * a stable version per process). Restart MateClaw to pick up a Claude Code
+ * a stable version per process). Restart SnSclaw to pick up a Claude Code
  * upgrade.
  */
 @Slf4j

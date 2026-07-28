@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  * Reads daily notes + scored recall candidates, invokes LLM to consolidate
  * recurring patterns into MEMORY.md, and produces a structured DreamReport.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

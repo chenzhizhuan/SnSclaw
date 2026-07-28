@@ -43,7 +43,7 @@ export function loadConfig(): ConnectionConfig {
       servers: Array.isArray(raw.servers) ? raw.servers : [],
     }
   } catch (err) {
-    console.error('[MateClaw] Failed to read connection config:', err)
+    console.error('[SnSclaw] Failed to read connection config:', err)
     return { ...DEFAULT_CONFIG }
   }
 }
@@ -53,7 +53,7 @@ export function saveConfig(patch: Partial<ConnectionConfig>): ConnectionConfig {
   try {
     writeFileSync(getConfigPath(), JSON.stringify(merged, null, 2), 'utf-8')
   } catch (err) {
-    console.error('[MateClaw] Failed to write connection config:', err)
+    console.error('[SnSclaw] Failed to write connection config:', err)
   }
   return merged
 }

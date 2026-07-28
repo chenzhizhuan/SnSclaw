@@ -14,8 +14,8 @@
     <artifactId>mateclaw-plugin-api</artifactId>
     <packaging>jar</packaging>
 
-    <name>MateClaw Plugin API</name>
-    <description>Plugin SDK contract for MateClaw - external plugins depend only on this module</description>
+    <name>SnSclaw Plugin API</name>
+    <description>Plugin SDK contract for SnSclaw - external plugins depend only on this module</description>
 
     <dependencies>
         <!-- Spring AI core for ToolCallback and ChatModel. -->

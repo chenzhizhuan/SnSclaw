@@ -39,7 +39,7 @@ import java.util.List;
  * become searchable by their image content (e.g. searching "营收" finds
  * pages with revenue charts even if the figure caption is below the chart).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

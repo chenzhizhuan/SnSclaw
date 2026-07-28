@@ -15,7 +15,7 @@ import java.util.Map;
  *   <li>{@code eventId} — stable upstream identifier used as the dedup key
  *       when present; the ingest falls back to a content hash when blank.</li>
  *   <li>{@code senderId} — the upstream actor; used by the bot-self filter
- *       to drop events that originate from MateClaw's own outbound traffic.</li>
+ *       to drop events that originate from SnSclaw's own outbound traffic.</li>
  *   <li>{@code data} — free-form payload exposed to the trigger's payload
  *       template under {@code event.*}.</li>
  * </ul>

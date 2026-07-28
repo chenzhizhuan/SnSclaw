@@ -14,7 +14,7 @@ import vip.mate.tool.mcp.service.McpServerService;
  * 在 Spring Boot 启动完成后，自动连接所有已启用的 MCP server。
  * 单个 server 连接失败不影响其他 server 或应用启动。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

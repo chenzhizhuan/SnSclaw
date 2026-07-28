@@ -189,7 +189,7 @@
             <p v-if="section.key === 'enabled'">{{ t('skills.sections.emptyEnabledDesc') }}</p>
           </div>
 
-          <!-- Per-section pagination — MateClaw frosted-pill component. -->
+          <!-- Per-section pagination — SnSclaw frosted-pill component. -->
           <div v-if="section.state.total > section.state.size" class="skill-pagination">
             <McPagination
               v-model:page="section.state.page"

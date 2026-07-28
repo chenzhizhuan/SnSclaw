@@ -10,7 +10,7 @@ import java.util.List;
  * Bridge that wraps a plugin's {@link PluginMemoryProvider} into the platform's
  * internal {@link MemoryProvider} interface.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class PluginMemoryBridge implements MemoryProvider {
 

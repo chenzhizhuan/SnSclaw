@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * Wiki 原始材料实体
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_wiki_raw_material")

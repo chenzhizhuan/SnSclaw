@@ -10,7 +10,7 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * 把 MateClaw 的 {@link CacheProperties} 翻译成 spring-ai 1.1.4 一等支持的 {@link AnthropicCacheOptions}。
+ * 把 SnSclaw 的 {@link CacheProperties} 翻译成 spring-ai 1.1.4 一等支持的 {@link AnthropicCacheOptions}。
  *
  * <p>设计说明：spring-ai 已内置完整的 Anthropic prompt cache 框架（{@code CacheEligibilityResolver} +
  * {@code CacheBreakpointTracker}），它会按 {@link AnthropicCacheStrategy} 自动决策在 system / tools /

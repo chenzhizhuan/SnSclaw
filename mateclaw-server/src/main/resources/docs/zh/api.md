@@ -252,7 +252,7 @@ curl -X POST http://localhost:18088/api/v1/auth/login \
 | `thinkingLevel` | string | null | 思考深度：`off` / `low` / `medium` / `high` / `max`；null 跟随 Agent 默认 |
 | `modelProvider` | string | null | 本会话模型 provider 覆盖（与 `modelName` 配对） |
 | `modelName` | string | null | 本会话模型名覆盖 |
-| `endUserId` | string | null | 第三方终端用户 ID，用于一个 MateClaw 账号下的记忆隔离 |
+| `endUserId` | string | null | 第三方终端用户 ID，用于一个 SnSclaw 账号下的记忆隔离 |
 
 浏览器原生 `EventSource` 不支持 POST body，必须用 `fetch()` + 流式 reader。
 

@@ -1,8 +1,8 @@
 {
   "name": "mateclaw-desktop",
   "version": "2.0.0-SNAPSHOT",
-  "description": "MateClaw Desktop - AI Assistant powered by Spring AI Alibaba",
-  "author": "MateClaw Team",
+  "description": "SnSclaw Desktop - AI Assistant powered by Spring AI Alibaba",
+  "author": "SnSclaw Team",
   "license": "Apache-2.0",
   "main": "dist-electron/main/index.js",
   "scripts": {

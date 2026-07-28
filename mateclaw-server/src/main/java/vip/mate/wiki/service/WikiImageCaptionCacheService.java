@@ -27,7 +27,7 @@ import java.util.Optional;
  * value (the earlier writer's caption is equally valid for a content-
  * addressed cache).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

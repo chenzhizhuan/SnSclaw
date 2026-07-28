@@ -50,7 +50,7 @@ Skipping this step results in:
 
 Some variants (notably `HY-3D-3.1`) may require a separate quota application or paid plan — check the console's quota dashboard.
 
-## 3. Configure credentials in MateClaw
+## 3. Configure credentials in SnSclaw
 
 1. Open the **Models & Credentials** page and locate the **Tencent Hunyuan 3D** card (auto-registered by the V71 migration).
 2. Click **Update** / **Configure**.

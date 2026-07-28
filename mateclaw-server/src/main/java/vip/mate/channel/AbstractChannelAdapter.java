@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * - 配置解析（从 ChannelEntity.configJson 读取渠道特有配置）
  * - 消息路由（通过 ChannelMessageRouter 转发到 Agent）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public abstract class AbstractChannelAdapter implements ChannelAdapter {

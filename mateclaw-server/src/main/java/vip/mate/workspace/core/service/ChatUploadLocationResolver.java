@@ -54,7 +54,7 @@ import java.util.Set;
  * minutes (the mapping is immutable once a conversation exists), matching the
  * TTL of the existing {@code WorkspaceLookupCache} on the tool-call hot path.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

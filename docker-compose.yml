@@ -29,8 +29,8 @@ services:
     restart: unless-stopped
     environment:
       # Bootstrap/superuser — owns the cluster, used only for init + admin tasks.
-      POSTGRES_DB: ${DB_NAME:-mateclaw}
-      POSTGRES_USER: ${DB_ADMIN_USERNAME:-mateclaw_admin}
+      POSTGRES_DB: ${DB_NAME:-snsclaw}
+      POSTGRES_USER: ${DB_ADMIN_USERNAME:-snsclaw_admin}
       POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?DB_ADMIN_PASSWORD is required in .env}
       # Least-privilege application role created by the init script below; this
       # is the account the server connects with (NOT a superuser).
@@ -46,7 +46,7 @@ services:
       # role and the mateclaw schema it owns. See docker/postgres/init/.
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USERNAME:-mateclaw_admin} -d ${DB_NAME:-mateclaw}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USERNAME:-snsclaw_admin} -d ${DB_NAME:-snsclaw}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -80,7 +80,7 @@ services:
     networks:
       - mateclaw-net
 
-  # MateClaw 后端服务
+  # SnSclaw 后端服务
   mateclaw-server:
     build:
       context: .
@@ -98,7 +98,7 @@ services:
       SPRING_PROFILES_ACTIVE: postgres
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-mateclaw}
+      DB_NAME: ${DB_NAME:-snsclaw}
       DB_USERNAME: ${DB_USERNAME:-mateclaw}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required in .env}
       # LLM provider keys (DashScope / OpenAI / Anthropic / DeepSeek / Kimi / …) are

@@ -12,7 +12,7 @@ import vip.mate.wiki.model.WikiEntityRelationEntity;
  * ({@code kb_id}, {@code subject_entity_id}, {@code predicate},
  * {@code object_entity_id}).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface WikiEntityRelationMapper extends BaseMapper<WikiEntityRelationEntity> {

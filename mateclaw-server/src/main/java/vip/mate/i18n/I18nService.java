@@ -14,7 +14,7 @@ import java.util.Locale;
  * 根据 {@link SystemSettingService#getLanguage()} 全局语言设置解析消息。
  * 缓存 Locale 对象（语言切换频率极低），避免每次调用都解析字符串。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

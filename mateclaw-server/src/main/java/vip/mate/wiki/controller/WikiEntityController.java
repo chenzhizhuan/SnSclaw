@@ -25,7 +25,7 @@ import java.util.Map;
 /**
  * Read and manual-trigger endpoints for the entity-level knowledge graph.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @RestController

@@ -19,7 +19,7 @@ import java.util.List;
  * 按配置的 cron 表达式定期执行记忆整合，
  * 遍历所有启用的 Agent，对每个 Agent 执行评分驱动的 emergence。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

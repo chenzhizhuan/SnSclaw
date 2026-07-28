@@ -23,7 +23,7 @@ import java.util.Map;
  * 提供从外部源（GitHub / ClawHub 市场）安装、更新、卸载 skill 的能力。
  * 支持异步安装（task_id 轮询模式）和 ClawHub 搜索。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "技能安装")
 @RestController

@@ -21,7 +21,7 @@ import java.util.List;
  * each bucket fire at most once, so re-evaluating on every page create is safe
  * and idempotent across instances.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

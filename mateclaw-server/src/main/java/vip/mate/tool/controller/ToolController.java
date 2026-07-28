@@ -19,7 +19,7 @@ import java.util.Map;
 /**
  * 工具管理接口
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "工具管理")
 @RestController

@@ -14,7 +14,7 @@ import vip.mate.auth.sso.provider.FeishuSsoProvider;
  * 仅当 {@code mateclaw.sso.enabled=true} 时此配置生效。飞书 Provider 进一步要求
  * {@code mateclaw.sso.feishu.enabled=true}。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Configuration
 @EnableScheduling

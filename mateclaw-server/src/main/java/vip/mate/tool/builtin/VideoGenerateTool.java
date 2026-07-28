@@ -22,7 +22,7 @@ import java.util.StringJoiner;
  * 借鉴 OpenClaw 的 video-generate-tool.ts 设计，支持 action=generate/list/status，
  * 以及 session 级重复提交防护。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

@@ -2,7 +2,7 @@
   <div class="login-page">
     <div class="login-center">
       <div class="login-logo">
-        <img src="/logo/mateclaw_logo_s.png" alt="MateClaw" class="logo-image" />
+        <img src="/logo/mateclaw_logo_s.png" alt="SnSclaw" class="logo-image" />
         <h1 class="logo-title">Mate<span class="logo-title-highlight">Claw</span></h1>
       </div>
 
@@ -72,9 +72,9 @@
       <div v-if="bindDialog.visible" class="bind-dialog">
         <div class="bind-dialog-content">
           <h3 class="bind-title">首次使用 {{ bindDialog.provider }} 登录</h3>
-          <p class="bind-desc">请绑定你的 MateClaw 账号</p>
-          <input v-model="bindDialog.username" type="text" class="form-input" placeholder="MateClaw 用户名" autocomplete="username" />
-          <input v-model="bindDialog.password" type="password" class="form-input" placeholder="MateClaw 密码" autocomplete="current-password" />
+          <p class="bind-desc">请绑定你的 SnSclaw 账号</p>
+          <input v-model="bindDialog.username" type="text" class="form-input" placeholder="SnSclaw 用户名" autocomplete="username" />
+          <input v-model="bindDialog.password" type="password" class="form-input" placeholder="SnSclaw 密码" autocomplete="current-password" />
           <div v-if="bindDialog.error" class="error-msg">{{ bindDialog.error }}</div>
           <button class="login-btn" :disabled="loading" @click="handleBind">绑定</button>
           <button class="bind-cancel" @click="cancelBind">取消</button>

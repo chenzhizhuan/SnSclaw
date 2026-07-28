@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 关联用户与工作区，定义成员角色。
  * 角色：owner（全部权限）/ admin（管理资源）/ member（使用资源）/ viewer（只读）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_workspace_member")

@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * (definition_id, trigger_type, trigger_subject, trigger_bucket) unique key
  * makes duplicate triggers idempotent across instances.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_wiki_pipeline_run")

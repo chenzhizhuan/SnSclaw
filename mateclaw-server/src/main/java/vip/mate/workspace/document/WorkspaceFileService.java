@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  * 管理 Agent 级别的 Markdown 文档，支持启用/禁用、排序，
  * 并将启用的文件内容拼接为系统提示词。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

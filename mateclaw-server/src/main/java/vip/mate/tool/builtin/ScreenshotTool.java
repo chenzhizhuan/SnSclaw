@@ -24,7 +24,7 @@ import vip.mate.tool.document.GeneratedFileCache;
 import vip.mate.tool.document.GeneratedFileLink;
 
 /**
- * Built-in tool: capture a screenshot of a MateClaw admin-console page and
+ * Built-in tool: capture a screenshot of a SnSclaw admin-console page and
  * return an embeddable image URL.
  *
  * <p>Purpose: let content skills illustrate a how-to article with <b>real</b>
@@ -60,7 +60,7 @@ public class ScreenshotTool {
     private int serverPort;
 
     @Tool(name = "capture_screenshot", description = """
-        Capture a screenshot of a MateClaw admin-console page and return an
+        Capture a screenshot of a SnSclaw admin-console page and return an
         embeddable image URL. Use this to put REAL product screenshots into a
         how-to / tutorial article (e.g. steps of using 内容工作室).
 

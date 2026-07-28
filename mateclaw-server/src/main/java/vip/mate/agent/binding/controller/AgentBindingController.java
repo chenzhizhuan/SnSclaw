@@ -23,7 +23,7 @@ import java.util.Map;
 /**
  * Agent 能力绑定接口
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "Agent能力绑定")
 @RestController

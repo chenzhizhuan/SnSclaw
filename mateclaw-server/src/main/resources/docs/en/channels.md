@@ -2,7 +2,7 @@
 
 **Same brain, same memory, everywhere your team works.**
 
-A channel in MateClaw is a different door into the same agent. Your team chats in Feishu? Put an agent in Feishu. Someone prefers Telegram? Same agent, same memory, in Telegram. Web console for the operators, DingTalk for the field, Slack for engineering — one deployment, nine doors.
+A channel in SnSclaw is a different door into the same agent. Your team chats in Feishu? Put an agent in Feishu. Someone prefers Telegram? Same agent, same memory, in Telegram. Web console for the operators, DingTalk for the field, Slack for engineering — one deployment, nine doors.
 
 Every channel is an adapter. Underneath the adapter, the agent doesn't know (or care) which door the message came through.
 
@@ -83,7 +83,7 @@ Every channel implements a unified adapter shape — translating platform-specif
 
 Every active IM channel adapter is watched by a health monitor. When an adapter fails to connect or loses its long connection, the monitor kicks off **exponential backoff reconnect** (2s → 4s → 8s → … capped at 30s). Transient blips self-heal; persistent failures surface in the health view on the admin console.
 
-This is why MateClaw channels don't sit silent after a hiccup: they come back on their own.
+This is why SnSclaw channels don't sit silent after a hiccup: they come back on their own.
 
 ---
 
@@ -135,7 +135,7 @@ Two connection modes (Stream / Webhook) and two message formats (markdown / card
 Sessions are valid for 7 minutes; expired sessions auto-invalidate and regenerate. Fill in the rest (connection mode, agent, message format) as you'd like.
 
 ::: tip What's happening under the hood
-DingTalk's OAuth Device Flow. MateClaw requests a device code from `oapi.dingtalk.com`, encodes it as a QR; once you confirm, credentials land in the form via the polling endpoint. **No webhook, no public IP required.**
+DingTalk's OAuth Device Flow. SnSclaw requests a device code from `oapi.dingtalk.com`, encodes it as a QR; once you confirm, credentials land in the form via the polling endpoint. **No webhook, no public IP required.**
 :::
 
 ### Manual app creation (fallback)
@@ -157,7 +157,7 @@ If the QR flow can't reach DingTalk on your network, or you need finer control o
 5. **Basic Info > Credentials** → get **Client ID** (AppKey) and **Client Secret** (AppSecret)
    ![Credentials](/images/channels/dingtalk/06-credentials.png)
 
-### Configure in MateClaw
+### Configure in SnSclaw
 
 ```bash
 curl -X POST http://localhost:18088/api/v1/channels \
@@ -499,7 +499,7 @@ Like DingTalk / Feishu, QQ now supports scan-to-bind — no manual copying of Ap
 4. Back in the form, **AppID and AppSecret are auto-filled**
 
 ::: tip What's happening under the hood
-This goes through the QQ Open Platform Lite portal: MateClaw mints a temporary session and the credentials land in the form via an AES-256-GCM encrypted exchange. The session is valid for 12 minutes and auto-invalidates on expiry. **No hand-copied credentials anywhere in the flow.**
+This goes through the QQ Open Platform Lite portal: SnSclaw mints a temporary session and the credentials land in the form via an AES-256-GCM encrypted exchange. The session is valid for 12 minutes and auto-invalidates on expiry. **No hand-copied credentials anywhere in the flow.**
 :::
 
 ### Manual app creation (fallback)
@@ -683,7 +683,7 @@ The worst part of long tasks in IM is the "message dropped into a void" feeling.
 
 ## Things worth knowing
 
-- **Webhook mode needs HTTPS.** Production deployments should front MateClaw with Nginx + SSL.
+- **Webhook mode needs HTTPS.** Production deployments should front SnSclaw with Nginx + SSL.
 - **Long-connection modes need no public IP.** Telegram Long-Polling, DingTalk Stream, Feishu WebSocket, Discord Gateway, Slack Socket mode, WeCom Long connection — all run behind NAT.
 - **One channel, one agent.** Different channels can point at different agents.
 - **Conversation ids are channel-scoped (2.0.0).** Conversation id generation now encodes the channel identity — two same-type channels created in different workspaces keep separate conversations even for the same external user, so two workspaces' chats can never bleed into one conversation row.

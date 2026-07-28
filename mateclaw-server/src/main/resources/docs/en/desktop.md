@@ -2,7 +2,7 @@
 
 **Double-click. Wait thirty seconds. Log in. Use it.**
 
-That's the desktop app in four sentences. No Java to install. No browser to open. No docker compose file. No port to remember. MateClaw's desktop edition bundles Electron, a JRE 21 runtime, and the packaged Spring Boot server JAR into a single installer. **Your users never know Java is underneath.**
+That's the desktop app in four sentences. No Java to install. No browser to open. No docker compose file. No port to remember. SnSclaw's desktop edition bundles Electron, a JRE 21 runtime, and the packaged Spring Boot server JAR into a single installer. **Your users never know Java is underneath.**
 
 This page is for people who want to run it, build it, or debug it.
 
@@ -231,9 +231,9 @@ Frontend assets can be **hot-updated independently** — a frontend-only fix doe
 
 | OS | Path |
 |-----|------|
-| macOS | `~/Library/Application Support/MateClaw/data/` |
-| Windows | `%APPDATA%/MateClaw/data/` |
-| Linux | `~/.config/MateClaw/data/` |
+| macOS | `~/Library/Application Support/SnSclaw/data/` |
+| Windows | `%APPDATA%/SnSclaw/data/` |
+| Linux | `~/.config/SnSclaw/data/` |
 
 Logs, workspace files, skill scripts, wiki content all live alongside the database in the same user directory. Back it up before major changes.
 
@@ -243,7 +243,7 @@ Logs, workspace files, skill scripts, wiki content all live alongside the databa
 
 | Setting | Purpose |
 |---------|---------|
-| `appId` | `vip.mate.mateclaw` — system registration and code signing |
+| `appId` | `app.sns.claw` — system registration and code signing |
 | `productName` | App name in title bar and installer |
 | `publish` | Auto-update source (GitHub Releases) |
 | `extraResources` | JRE and `app.jar` |
@@ -279,15 +279,15 @@ The desktop app reads env vars the same way the standalone backend does. But the
 
 1. Installed app bundles JRE — you don't need Java. Dev build from source: verify `java -version` shows 21+.
 2. Check logs:
-   - macOS: `~/Library/Application Support/MateClaw/logs/`
-   - Windows: `%APPDATA%/MateClaw/logs/`
-   - Linux: `~/.config/MateClaw/logs/`
+   - macOS: `~/Library/Application Support/SnSclaw/logs/`
+   - Windows: `%APPDATA%/SnSclaw/logs/`
+   - Linux: `~/.config/SnSclaw/logs/`
 3. Launch from terminal to see console output
 4. Confirm backend port isn't blocked
 
 ### WeCom auth popup
 
-The WeCom QR-code authorization flow **must open in an in-app popup** (not the system browser) so the `postMessage` callback works. MateClaw handles this in `setWindowOpenHandler` — `work.weixin.qq.com` domain opens as an in-app popup window.
+The WeCom QR-code authorization flow **must open in an in-app popup** (not the system browser) so the `postMessage` callback works. SnSclaw handles this in `setWindowOpenHandler` — `work.weixin.qq.com` domain opens as an in-app popup window.
 
 ---
 

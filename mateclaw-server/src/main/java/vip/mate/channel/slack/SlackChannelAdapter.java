@@ -44,7 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * - app_token: Slack App-Level Token (xapp-...) — Socket Mode 必需
  * - signing_secret: Slack Signing Secret（Webhook 模式使用）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class SlackChannelAdapter extends AbstractChannelAdapter {

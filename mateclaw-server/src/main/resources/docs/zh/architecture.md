@@ -1,8 +1,8 @@
 # 架构说明
 
-**MateClaw 是怎么拼起来的，一页讲完。**
+**SnSclaw 是怎么拼起来的，一页讲完。**
 
-**用** MateClaw 的人看 [项目介绍](./intro)。**在 MateClaw 上面建东西**的人——加工具、新渠道、自定义记忆 provider、新的 Agent 图节点——看这一页。
+**用** SnSclaw 的人看 [项目介绍](./intro)。**在 SnSclaw 上面建东西**的人——加工具、新渠道、自定义记忆 provider、新的 Agent 图节点——看这一页。
 
 ---
 
@@ -10,7 +10,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         MateClaw                                 │
+│                         SnSclaw                                 │
 │                                                                  │
 │  ┌──────────────┐  ┌──────────────┐  ┌─────────────────────┐   │
 │  │  Web 控制台  │  │   桌面端     │  │     IM 渠道          │   │
@@ -128,7 +128,7 @@ mateclaw/
 
 **这是你给后端贡献代码时最重要的事。**
 
-**MateClaw 的 Agent 运行时不是一个类层次。** 没有 `BaseAgent` → `ReActAgent` → `MyCustomAgent` 的继承链。运行时是一张**由节点和条件边组成的 StateGraph**（来自 `spring-ai-alibaba-graph`），在运行时由 `AgentGraphBuilder` 装配。
+**SnSclaw 的 Agent 运行时不是一个类层次。** 没有 `BaseAgent` → `ReActAgent` → `MyCustomAgent` 的继承链。运行时是一张**由节点和条件边组成的 StateGraph**（来自 `spring-ai-alibaba-graph`），在运行时由 `AgentGraphBuilder` 装配。
 
 ### 关键文件
 
@@ -260,7 +260,7 @@ public interface ChannelAdapter {
 
 ## 持久化 —— 一份 schema，两种数据库
 
-MateClaw 用 **MyBatis Plus**（不是 JPA）做数据库访问。约定：
+SnSclaw 用 **MyBatis Plus**（不是 JPA）做数据库访问。约定：
 
 - 所有表前缀 `mate_`
 - `snake_case` 列、`camelCase` Java 字段、自动映射
@@ -291,7 +291,7 @@ MateClaw 用 **MyBatis Plus**（不是 JPA）做数据库访问。约定：
 
 ## 流式 —— 为什么用 SSE 不用 WebFlux
 
-MateClaw 用 **Spring MVC**，不是 Spring WebFlux。**WebFlux 在依赖图里被明确排除。**
+SnSclaw 用 **Spring MVC**，不是 Spring WebFlux。**WebFlux 在依赖图里被明确排除。**
 
 为什么：Spring MVC + SSE 足以把 LLM 响应流式到前端。它更容易推理、更容易调试、不强迫整个栈变成响应式。
 

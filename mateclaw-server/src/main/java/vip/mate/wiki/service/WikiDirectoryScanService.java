@@ -25,7 +25,7 @@ import java.util.*;
  * </ul>
  * 以 {@code #} 开头的行视为注释，忽略。路径解析与验证委托给 {@link WikiSourcePathValidator}。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

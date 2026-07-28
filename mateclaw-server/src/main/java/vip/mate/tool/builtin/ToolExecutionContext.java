@@ -16,7 +16,7 @@ import vip.mate.agent.context.ChatOrigin;
  * / {@link #workspaceBasePath(ToolContext)} 等三参重载即可——传入 ctx 不为
  * null 时优先返回 origin 的字段，否则回退到 ThreadLocal。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public final class ToolExecutionContext {
 

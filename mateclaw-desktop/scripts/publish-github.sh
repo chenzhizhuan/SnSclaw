@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Publish MateClaw Desktop release artifacts to GitHub Releases
+# Publish SnSclaw Desktop release artifacts to GitHub Releases
 #
 # Prerequisites:
 #   - gh CLI installed and authenticated (gh auth login)
@@ -117,7 +117,7 @@ VERSION=$(node -p "require('$DESKTOP_DIR/package.json').version")
 TAG="${CUSTOM_TAG:-v${VERSION}}"
 
 echo "╔════════════════════════════════════════════════════════╗"
-echo "║       MateClaw Desktop - Publish to GitHub            ║"
+echo "║       SnSclaw Desktop - Publish to GitHub            ║"
 echo "╚════════════════════════════════════════════════════════╝"
 echo ""
 echo "  Version:  $VERSION"
@@ -152,7 +152,7 @@ fi
 ARTIFACTS=()
 
 # macOS artifacts
-for pattern in "MateClaw*.dmg" "MateClaw*.zip"; do
+for pattern in "SnSclaw*.dmg" "SnSclaw*.zip"; do
   while IFS= read -r -d '' f; do
     ARTIFACTS+=("$f")
   done < <(find "$RELEASE_DIR" -maxdepth 1 -name "$pattern" -print0 2>/dev/null)
@@ -161,13 +161,13 @@ done
 # Windows artifacts (skip the architecture-merged installer — only ship per-arch builds)
 while IFS= read -r -d '' f; do
   ARTIFACTS+=("$f")
-done < <(find "$RELEASE_DIR" -maxdepth 1 -name "MateClaw*Setup*.exe" \
-  ! -name "MateClaw_${VERSION}_Setup.exe" -print0 2>/dev/null)
+done < <(find "$RELEASE_DIR" -maxdepth 1 -name "SnSclaw*Setup*.exe" \
+  ! -name "SnSclaw_${VERSION}_Setup.exe" -print0 2>/dev/null)
 
 # Linux artifacts
 while IFS= read -r -d '' f; do
   ARTIFACTS+=("$f")
-done < <(find "$RELEASE_DIR" -maxdepth 1 -name "MateClaw*.AppImage" -print0 2>/dev/null)
+done < <(find "$RELEASE_DIR" -maxdepth 1 -name "SnSclaw*.AppImage" -print0 2>/dev/null)
 
 # Auto-update metadata files
 for pattern in "latest-mac.yml" "latest.yml" "latest-linux.yml"; do
@@ -180,7 +180,7 @@ done
 while IFS= read -r -d '' f; do
   ARTIFACTS+=("$f")
 done < <(find "$RELEASE_DIR" -maxdepth 1 -name "*.blockmap" \
-  ! -name "MateClaw_${VERSION}_Setup.exe.blockmap" -print0 2>/dev/null)
+  ! -name "SnSclaw_${VERSION}_Setup.exe.blockmap" -print0 2>/dev/null)
 
 if [ ${#ARTIFACTS[@]} -eq 0 ]; then
   echo "❌ No release artifacts found in $RELEASE_DIR"
@@ -255,8 +255,8 @@ echo ""
 # ─── Rewrite latest.yml so it does not reference the merged installer ─────
 #
 # electron-builder generates a multi-arch merged Windows installer
-# (MateClaw_X.Y.Z_Setup.exe, ~600 MB) alongside the per-arch installers
-# (MateClaw_X.Y.Z_x64_Setup.exe, MateClaw_X.Y.Z_arm64_Setup.exe). The
+# (SnSclaw_X.Y.Z_Setup.exe, ~600 MB) alongside the per-arch installers
+# (SnSclaw_X.Y.Z_x64_Setup.exe, SnSclaw_X.Y.Z_arm64_Setup.exe). The
 # merged build is too large to be worth uploading, but the default
 # latest.yml top-level `path:` and `files[0]` both point at it. If we
 # upload latest.yml as-is while skipping the merged exe, electron-updater
@@ -267,9 +267,9 @@ echo ""
 # default top-level target (arm64 clients still match via files[]).
 
 LATEST_YML="$RELEASE_DIR/latest.yml"
-MERGED_EXE_NAME="MateClaw_${VERSION}_Setup.exe"
-X64_EXE_NAME="MateClaw_${VERSION}_x64_Setup.exe"
-ARM64_EXE_NAME="MateClaw_${VERSION}_arm64_Setup.exe"
+MERGED_EXE_NAME="SnSclaw_${VERSION}_Setup.exe"
+X64_EXE_NAME="SnSclaw_${VERSION}_x64_Setup.exe"
+ARM64_EXE_NAME="SnSclaw_${VERSION}_arm64_Setup.exe"
 
 if [ -f "$LATEST_YML" ]; then
   echo "🧹 Rewriting latest.yml to drop the merged installer ..."
@@ -306,13 +306,13 @@ echo ""
 
 if [ -s "$NOTES_FILE" ]; then
   gh release create "$TAG" \
-    --title "MateClaw $VERSION" \
+    --title "SnSclaw $VERSION" \
     --notes-file "$NOTES_FILE" \
     $DRAFT \
     "${ARTIFACTS[@]}"
 else
   gh release create "$TAG" \
-    --title "MateClaw $VERSION" \
+    --title "SnSclaw $VERSION" \
     --generate-notes \
     $DRAFT \
     "${ARTIFACTS[@]}"

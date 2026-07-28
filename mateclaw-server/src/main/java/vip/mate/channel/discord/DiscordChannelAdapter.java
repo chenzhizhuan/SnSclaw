@@ -47,7 +47,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
  * - bot_token: Discord Bot Token（必填）
  * - accept_bot_messages: 是否接收其他 Bot 消息，默认 false
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class DiscordChannelAdapter extends AbstractChannelAdapter {
@@ -253,7 +253,7 @@ public class DiscordChannelAdapter extends AbstractChannelAdapter {
     /**
      * 将媒体文件作为 Discord attachment 上传发送。
      * <p>
-     * 参考 MateClaw：远程 URL 先下载到临时文件，再通过 JDA FileUpload 上传。
+     * 参考 SnSclaw：远程 URL 先下载到临时文件，再通过 JDA FileUpload 上传。
      */
     private void sendMediaAttachment(MessageChannel channel, MediaPart media) {
         Path tempFile = null;

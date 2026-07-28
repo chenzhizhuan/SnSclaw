@@ -1,13 +1,13 @@
--- MateClaw 初始数据 - 中文版（KingbaseES / PostgreSQL 语法，ON CONFLICT DO UPDATE）
+-- SnSclaw 初始数据 - 中文版（KingbaseES / PostgreSQL 语法，ON CONFLICT DO UPDATE）
 
 -- 默认管理员（密码：admin123，BCrypt加密）
 INSERT INTO mate_user (id, username, password, nickname, role, enabled, create_time, update_time, deleted)
-VALUES (1, 'admin', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 'MateClaw Admin', 'admin', TRUE, NOW(), NOW(), 0)
+VALUES (1, 'admin', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 'SnSclaw Admin', 'admin', TRUE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET username=EXCLUDED.username, password=EXCLUDED.password, nickname=EXCLUDED.nickname, role=EXCLUDED.role, enabled=EXCLUDED.enabled, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 -- 默认数字员工：通用助手（ReAct 模式）
 INSERT INTO mate_agent (id, name, description, agent_type, system_prompt, model_name, max_iterations, enabled, icon, tags, create_time, update_time, deleted)
-VALUES (1000000001, '通用助手', '日常问答、数据分析、工具调用都能搞定的全能助手', 'react', '你是 MateClaw 的通用助手。你可以帮助用户回答问题、分析数据、调用工具完成任务。请用中文回复，保持专业、友好的态度。', NULL, 100, TRUE, 'pi:robot-face-happy', 'default,assistant', NOW(), NOW(), 0)
+VALUES (1000000001, '通用助手', '日常问答、数据分析、工具调用都能搞定的全能助手', 'react', '你是 SnSclaw 的通用助手。你可以帮助用户回答问题、分析数据、调用工具完成任务。请用中文回复，保持专业、友好的态度。', NULL, 100, TRUE, 'pi:robot-face-happy', 'default,assistant', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, agent_type=EXCLUDED.agent_type, system_prompt=EXCLUDED.system_prompt, model_name=EXCLUDED.model_name, max_iterations=EXCLUDED.max_iterations, enabled=EXCLUDED.enabled, icon=EXCLUDED.icon, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 -- 默认数字员工：任务规划师（Plan-Execute 模式）
@@ -544,9 +544,9 @@ INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name
 VALUES (1000000012, 'BrowserUseTool', '浏览器控制', '启动和控制浏览器，支持打开网页、截图、点击、输入、执行JS等自动化操作。配合 browser_visible / browser_cdp 技能使用。', 'builtin', 'browserUseTool', '🌐', TRUE, TRUE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
--- 内置工具：MateClaw 项目文档读取
+-- 内置工具：SnSclaw 项目文档读取
 INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)
-VALUES (1000000013, 'MateClawDocTool', 'MateClaw 文档', '读取 MateClaw 内置项目文档。action=list 列出所有文档，action=read 读取指定文档内容（如 zh/config.md）。', 'builtin', 'mateClawDocTool', '📚', TRUE, TRUE, NOW(), NOW(), 0)
+VALUES (1000000013, 'MateClawDocTool', 'SnSclaw 文档', '读取 SnSclaw 内置项目文档。action=list 列出所有文档，action=read 读取指定文档内容（如 zh/config.md）。', 'builtin', 'mateClawDocTool', '📚', TRUE, TRUE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 -- 内置工具：Agent 委派（多 Agent 协作）
@@ -591,13 +591,13 @@ INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name
 VALUES (1000000022, 'PdfRenderTool', 'PDF 渲染', '将 Markdown 渲染为最终交付形态的 .pdf 并返回一次性下载链接。双 backend 自动切换（优先 LibreOffice，不可用时回落到进程内 OpenPDF + Flying Saucer）；通过 YAML frontmatter 控制封面、页眉、页脚。', 'builtin', 'pdfRenderTool', '📄', TRUE, TRUE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
--- 示例 MCP Server：Filesystem（参考 MateClaw 文档中的 mcpServers.filesystem）
+-- 示例 MCP Server：Filesystem（参考 SnSclaw 文档中的 mcpServers.filesystem）
 INSERT INTO mate_mcp_server (
     id, name, description, transport, url, headers_json, command, args_json, env_json, cwd,
     enabled, connect_timeout_seconds, read_timeout_seconds, last_status, last_error,
     last_connected_time, tool_count, builtin, create_time, update_time, deleted
 )
-VALUES (1000000901, 'filesystem', 'Filesystem MCP for MateClaw workspace', 'stdio', NULL, NULL, 'npx', '["-y","@modelcontextprotocol/server-filesystem","${user.home}"]', '{}', NULL, FALSE, 30, 60, 'disconnected', NULL, NULL, 0, FALSE, NOW(), NOW(), 0)
+VALUES (1000000901, 'filesystem', 'Filesystem MCP for SnSclaw workspace', 'stdio', NULL, NULL, 'npx', '["-y","@modelcontextprotocol/server-filesystem","${user.home}"]', '{}', NULL, FALSE, 30, 60, 'disconnected', NULL, NULL, 0, FALSE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, transport=EXCLUDED.transport, url=EXCLUDED.url, headers_json=EXCLUDED.headers_json, command=EXCLUDED.command, args_json=EXCLUDED.args_json, env_json=EXCLUDED.env_json, cwd=EXCLUDED.cwd, enabled=EXCLUDED.enabled, connect_timeout_seconds=EXCLUDED.connect_timeout_seconds, read_timeout_seconds=EXCLUDED.read_timeout_seconds, last_status=EXCLUDED.last_status, last_error=EXCLUDED.last_error, last_connected_time=EXCLUDED.last_connected_time, tool_count=EXCLUDED.tool_count, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 -- 预置 MCP Server：GitHub（需配置 GITHUB_TOKEN 环境变量后启用）
@@ -609,30 +609,30 @@ INSERT INTO mate_mcp_server (
 VALUES (1000000902, 'github', 'GitHub MCP Server — 搜索仓库/代码/Issues，管理 PR 和文件', 'stdio', NULL, NULL, 'npx', '["-y","@modelcontextprotocol/server-github"]', '{"GITHUB_PERSONAL_ACCESS_TOKEN":""}', NULL, FALSE, 30, 60, 'disconnected', NULL, NULL, 0, FALSE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, transport=EXCLUDED.transport, url=EXCLUDED.url, headers_json=EXCLUDED.headers_json, command=EXCLUDED.command, args_json=EXCLUDED.args_json, env_json=EXCLUDED.env_json, cwd=EXCLUDED.cwd, enabled=EXCLUDED.enabled, connect_timeout_seconds=EXCLUDED.connect_timeout_seconds, read_timeout_seconds=EXCLUDED.read_timeout_seconds, last_status=EXCLUDED.last_status, last_error=EXCLUDED.last_error, last_connected_time=EXCLUDED.last_connected_time, tool_count=EXCLUDED.tool_count, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
--- 内置技能：从 MateClaw 迁移的技能元数据
+-- 内置技能：从 SnSclaw 迁移的技能元数据
 -- DEPRECATED (RFC-044 §4.2): The authoritative source for builtin skills is now
 -- classpath:skills/<name>/SKILL.md, upserted on startup by BuiltinSkillSeedService.
 -- These INSERT/UPDATE blocks remain as a one-version compatibility shim and will
 -- be removed in the next release. New skills should NOT be added here — drop a
 -- SKILL.md under skills/<name>/ and the seed service will register it.
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000001, 'cron', '定时任务管理。通过命令或控制台创建、查询、暂停、恢复、删除任务，按时间表执行并把结果发到频道。', 'builtin', '⏰', '1.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'cron,schedule,automation', NOW(), NOW(), 0)
+VALUES (1000000001, 'cron', '定时任务管理。通过命令或控制台创建、查询、暂停、恢复、删除任务，按时间表执行并把结果发到频道。', 'builtin', '⏰', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'cron,schedule,automation', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000002, 'file_reader', '读取与摘要文本类文件，如 txt、md、json、csv、log、代码文件等。PDF 与 Office 文件由专用技能处理。', 'builtin', '📄', '1.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'file,reader,text,summary', NOW(), NOW(), 0)
+VALUES (1000000002, 'file_reader', '读取与摘要文本类文件，如 txt、md、json、csv、log、代码文件等。PDF 与 Office 文件由专用技能处理。', 'builtin', '📄', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'file,reader,text,summary', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000003, 'dingtalk_channel_connect', '辅助完成钉钉频道接入流程，支持可视浏览器、登录暂停和发布前检查。', 'builtin', '🤖', '1.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'dingtalk,channel,browser,automation', NOW(), NOW(), 0)
+VALUES (1000000003, 'dingtalk_channel_connect', '辅助完成钉钉频道接入流程，支持可视浏览器、登录暂停和发布前检查。', 'builtin', '🤖', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'dingtalk,channel,browser,automation', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000004, 'himalaya', '通过 CLI 管理邮件，支持多账户 IMAP/SMTP、搜索、阅读、回复和附件处理。', 'builtin', '📧', '1.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md","homepage":"https://github.com/pimalaya/himalaya"}', TRUE, TRUE, 'email,imap,smtp,cli', NOW(), NOW(), 0)
+VALUES (1000000004, 'himalaya', '通过 CLI 管理邮件，支持多账户 IMAP/SMTP、搜索、阅读、回复和附件处理。', 'builtin', '📧', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md","homepage":"https://github.com/pimalaya/himalaya"}', TRUE, TRUE, 'email,imap,smtp,cli', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000005, 'news', '从互联网查询最新新闻。支持政治、财经、社会、国际、科技、体育、娱乐等分类。自动适配内置搜索和工具搜索。', 'builtin', '📰', '2.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'news,web,search,summary', NOW(), NOW(), 0)
+VALUES (1000000005, 'news', '从互联网查询最新新闻。支持政治、财经、社会、国际、科技、体育、娱乐等分类。自动适配内置搜索和工具搜索。', 'builtin', '📰', '2.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'news,web,search,summary', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
@@ -652,43 +652,43 @@ VALUES (1000000009, 'xlsx', '表格文件的读取、编辑、创建与格式整
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000010, 'browser_visible', '以可见模式启动真实浏览器窗口，适用于演示、调试或需要人工参与的场景。', 'builtin', '🖥️', '1.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'browser,visible,headed,automation', NOW(), NOW(), 0)
+VALUES (1000000010, 'browser_visible', '以可见模式启动真实浏览器窗口，适用于演示、调试或需要人工参与的场景。', 'builtin', '🖥️', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'browser,visible,headed,automation', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000012, 'browser_cdp', '通过 Chrome DevTools Protocol (CDP) 连接或启动 Chrome，用于远程调试、共享浏览器或与外部工具协作。', 'builtin', '🔌', '1.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'browser,cdp,chrome,debugging,automation', NOW(), NOW(), 0)
+VALUES (1000000012, 'browser_cdp', '通过 Chrome DevTools Protocol (CDP) 连接或启动 Chrome，用于远程调试、共享浏览器或与外部工具协作。', 'builtin', '🔌', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'browser,cdp,chrome,debugging,automation', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000011, 'guidance', '回答用户关于 MateClaw 安装与配置的问题，优先定位并阅读本地文档，再提炼答案。', 'builtin', '🧭', '1.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'docs,guidance,configuration,qa', NOW(), NOW(), 0)
+VALUES (1000000011, 'guidance', '回答用户关于 SnSclaw 安装与配置的问题，优先定位并阅读本地文档，再提炼答案。', 'builtin', '🧭', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'docs,guidance,configuration,qa', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000013, 'mateclaw_source_index', '将用户问题映射到 MateClaw 文档路径与源码入口，减少盲目搜索。', 'builtin', '🗂️', '1.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'docs,index,source,qa', NOW(), NOW(), 0)
+VALUES (1000000013, 'mateclaw_source_index', '将用户问题映射到 SnSclaw 文档路径与源码入口，减少盲目搜索。', 'builtin', '🗂️', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'docs,index,source,qa', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000014, 'sql_query', '使用自然语言查询数据库。发现表结构、生成 SQL、在已配置的外部数据源上执行只读查询。', 'builtin', '📊', '1.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'sql,database,query,data', NOW(), NOW(), 0)
+VALUES (1000000014, 'sql_query', '使用自然语言查询数据库。发现表结构、生成 SQL、在已配置的外部数据源上执行只读查询。', 'builtin', '📊', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'sql,database,query,data', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000015, 'steve_jobs_perspective', '史蒂夫·乔布斯思维操作系统。以乔布斯视角审视产品、评估决策、提供反馈，运用其六大心智模型和独特表达风格。', 'builtin', '🍎', '1.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'persona,jobs,product,strategy,thinking', NOW(), NOW(), 0)
+VALUES (1000000015, 'steve_jobs_perspective', '史蒂夫·乔布斯思维操作系统。以乔布斯视角审视产品、评估决策、提供反馈，运用其六大心智模型和独特表达风格。', 'builtin', '🍎', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'persona,jobs,product,strategy,thinking', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000016, 'make_plan', '当任务需要多步拆解或不确定执行路径时，向更强 Agent 请求一份分步可落地的执行计划，由当前 Agent 自己执行。', 'builtin', '🗺️', '1.3.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'plan,delegate,agent,collaboration', NOW(), NOW(), 0)
+VALUES (1000000016, 'make_plan', '当任务需要多步拆解或不确定执行路径时，向更强 Agent 请求一份分步可落地的执行计划，由当前 Agent 自己执行。', 'builtin', '🗺️', '1.3.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'plan,delegate,agent,collaboration', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000017, 'chat_with_agent', '当需要咨询其他 Agent、寻求帮助或用户明确要求某个 Agent 参与时，使用本技能进行单次或并行委托。', 'builtin', '💬', '1.2.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'agent,chat,collaborate,delegate', NOW(), NOW(), 0)
+VALUES (1000000017, 'chat_with_agent', '当需要咨询其他 Agent、寻求帮助或用户明确要求某个 Agent 参与时，使用本技能进行单次或并行委托。', 'builtin', '💬', '1.2.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'agent,chat,collaborate,delegate', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000018, 'channel_message', '当需要主动向用户、会话或渠道单向推送消息时使用。任务完成通知、定时提醒、异步结果回推等场景。', 'builtin', '📤', '1.3.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'channel,message,push,notify,dingtalk,feishu', NOW(), NOW(), 0)
+VALUES (1000000018, 'channel_message', '当需要主动向用户、会话或渠道单向推送消息时使用。任务完成通知、定时提醒、异步结果回推等场景。', 'builtin', '📤', '1.3.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'channel,message,push,notify,dingtalk,feishu', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000019, 'multi_agent_collaboration', '当任务需要多个 Agent 的专业能力协同完成时，编排多 Agent 并行或串行协作，整合各方结果。', 'builtin', '🤝', '1.4.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'multi-agent,collaboration,orchestration,parallel', NOW(), NOW(), 0)
+VALUES (1000000019, 'multi_agent_collaboration', '当任务需要多个 Agent 的专业能力协同完成时，编排多 Agent 并行或串行协作，整合各方结果。', 'builtin', '🤝', '1.4.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'multi-agent,collaboration,orchestration,parallel', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 -- RFC-042 §2.2 — bilingual display names for the 19 builtin skills.
@@ -1138,7 +1138,7 @@ metadata:
 
 UPDATE mate_skill SET skill_content = '---
 name: guidance
-description: "回答用户关于 MateClaw 安装、配置、使用的问题：优先读取内置文档，再提炼答案。"
+description: "回答用户关于 SnSclaw 安装、配置、使用的问题：优先读取内置文档，再提炼答案。"
 metadata:
   builtin_skill_version: "1.0"
   mateclaw:
@@ -1146,9 +1146,9 @@ metadata:
     requires: {}
 ---
 
-# MateClaw 使用问答指南
+# SnSclaw 使用问答指南
 
-当用户询问 **MateClaw 的安装、配置、功能使用、架构原理** 时，使用本 skill。
+当用户询问 **SnSclaw 的安装、配置、功能使用、架构原理** 时，使用本 skill。
 
 核心原则：
 
@@ -1220,7 +1220,7 @@ readMateClawDoc(action="read", path="zh/config.md")
 
 UPDATE mate_skill SET skill_content = '---
 name: mateclaw_source_index
-description: "将用户问题中的主题、关键词映射到 MateClaw 文档路径与 Java 源码入口，减少盲目搜索。"
+description: "将用户问题中的主题、关键词映射到 SnSclaw 文档路径与 Java 源码入口，减少盲目搜索。"
 metadata:
   builtin_skill_version: "1.0"
   mateclaw:
@@ -1228,7 +1228,7 @@ metadata:
     requires: {}
 ---
 
-# MateClaw 文档与源码速查
+# SnSclaw 文档与源码速查
 
 回答 **安装、配置、行为原理** 类问题时，先 **按关键词归类**，再按下表 **打开 1～2 个最可能命中的路径** 阅读，避免长时间无目的遍历。
 
@@ -1243,7 +1243,7 @@ metadata:
 | 主题或关键词（示例） | 文档（docs/） | Java 源码入口（vip.mate.*） |
 |---------------------|-------------|---------------------------|
 | 安装、部署、Docker | quickstart.md | README.md, docker-compose.yml |
-| 项目介绍、架构 | intro.md | MateClaw_Design.md |
+| 项目介绍、架构 | intro.md | SnSclaw_Design.md |
 | 配置、环境变量 | config.md | application.yml, config/ |
 | Agent、ReAct、状态机 | agents.md | agent/ReActAgent.java, agent/BaseAgent.java |
 | 工具、@Tool | tools.md | tool/builtin/, tool/ToolRegistry.java |
@@ -1333,17 +1333,17 @@ INSERT INTO mate_cron_job (id, name, cron_expression, timezone, agent_id, task_t
 VALUES (1000100012, '记忆整合', '0 2 * * *', 'Asia/Shanghai', 1000000003, 'text', '请回顾你最近的 memory/ 日记文件，将反复出现的重要信息（用户偏好、稳定事实、经验教训、工作流）提炼整合到 MEMORY.md 中。注意：MEMORY.md 会被注入每一次对话，只整合跨项目长期稳定的信息；具体项目的代号、名称、技术栈、仓库、单项目的指标/预算/团队/上线日期或只对某个项目成立的决策等易变事实，不要写入 MEMORY.md（会随项目切换互相冲突、导致张冠李戴），应留在 daily note 或通过结构化 project 记忆维护。判定口诀：换一个项目后仍成立才进 MEMORY.md。保留日记原文不动，只更新 MEMORY.md。完成后简要说明做了哪些整合。', NULL, TRUE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, cron_expression=EXCLUDED.cron_expression, timezone=EXCLUDED.timezone, agent_id=EXCLUDED.agent_id, task_type=EXCLUDED.task_type, trigger_message=EXCLUDED.trigger_message, request_body=EXCLUDED.request_body, enabled=EXCLUDED.enabled, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
--- ==================== 工作区文件种子数据（参考 MateClaw md_files/zh） ====================
+-- ==================== 工作区文件种子数据（参考 SnSclaw md_files/zh） ====================
 -- 每个 Agent 拥有独立的工作区文档集合：AGENTS.md / SOUL.md / PROFILE.md / MEMORY.md
 -- AGENTS.md / SOUL.md / PROFILE.md / MEMORY.md 默认 enabled = TRUE，纳入系统提示词构建
 -- PROFILE.md / MEMORY.md 提供轻量长期记忆；daily note 仍按需创建为 memory/YYYY-MM-DD.md
 --
--- Agent 1000000001 (MateClaw Assistant)
+-- Agent 1000000001 (SnSclaw Assistant)
 
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
 VALUES (1000200001, 1000000001, 'AGENTS.md', '## 记忆
 
-MateClaw 的持久记忆基于数据库工作区文件，而不是本地磁盘文件系统。当前 Agent 的长期上下文由以下文档组成：
+SnSclaw 的持久记忆基于数据库工作区文件，而不是本地磁盘文件系统。当前 Agent 的长期上下文由以下文档组成：
 
 - PROFILE.md：用户画像、偏好、协作方式、稳定身份信息
 - MEMORY.md：长期记忆、稳定事实、经验教训、工作流、反复出现的规律
@@ -1552,7 +1552,7 @@ ON CONFLICT (id) DO UPDATE SET agent_id=EXCLUDED.agent_id, filename=EXCLUDED.fil
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
 VALUES (1000200011, 1000000002, 'AGENTS.md', '## 记忆
 
-MateClaw 的记忆存储在数据库工作区文件中。对任务规划器来说，记忆不是装饰，而是避免重复规划和保持策略连续性的基础。
+SnSclaw 的记忆存储在数据库工作区文件中。对任务规划器来说，记忆不是装饰，而是避免重复规划和保持策略连续性的基础。
 
 - PROFILE.md：用户偏好、沟通方式、协作习惯
 - MEMORY.md：长期约束、规划经验、稳定决策模式、常见执行套路
@@ -1835,7 +1835,7 @@ INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name
 VALUES (1000000631, 'GzhPublishTool', '公众号发布', '将生成的图文发布到微信公众号：action=draft 上传封面并存入草稿箱（推荐）；action=publish 为认证号群发，需显式确认。需在系统设置配置 weixinoa.app_id / weixinoa.app_secret。', 'builtin', 'gzhPublishTool', '📤', TRUE, TRUE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 INSERT INTO mate_agent (id, name, description, agent_type, system_prompt, model_name, max_iterations, enabled, icon, tags, create_time, update_time, deleted)
-VALUES (1000000640, '内容工作室', '端到端创作公众号与小红书图文：选题搜集、成文、配图、去AI化、排版、入草稿箱发布。', 'react', '你是 MateClaw 的「内容工作室」——专门端到端创作微信公众号（公众号）与小红书图文。
+VALUES (1000000640, '内容工作室', '端到端创作公众号与小红书图文：选题搜集、成文、配图、去AI化、排版、入草稿箱发布。', 'react', '你是 SnSclaw 的「内容工作室」——专门端到端创作微信公众号（公众号）与小红书图文。
 
 工作流（7 段）：
 1）选题——读取 topic_interests 记忆并用 web_search(freshness=week) 找角度。
@@ -1870,7 +1870,7 @@ ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display
 
 -- Content Studio: capture_screenshot (真实后台截图 -> 可嵌入图片 URL, 供产品教程配图)
 INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)
-VALUES (1000000634, 'ScreenshotTool', '后台截图', '截取 MateClaw 后台页面（站内相对路径如 /chat、/channels）并返回可嵌入的图片 URL。用于给「如何用 MateClaw 做 XX」这类操作教程配真实产品截图，把返回 URL 以 ![](url) 嵌进 gzh_package 的 Markdown。', 'builtin', 'screenshotTool', '📷', TRUE, TRUE, NOW(), NOW(), 0)
+VALUES (1000000634, 'ScreenshotTool', '后台截图', '截取 SnSclaw 后台页面（站内相对路径如 /chat、/channels）并返回可嵌入的图片 URL。用于给「如何用 SnSclaw 做 XX」这类操作教程配真实产品截图，把返回 URL 以 ![](url) 嵌进 gzh_package 的 Markdown。', 'builtin', 'screenshotTool', '📷', TRUE, TRUE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)

@@ -7,7 +7,7 @@ import vip.mate.tool.mcp.model.McpServerEntity;
 /**
  * MCP Server Mapper
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface McpServerMapper extends BaseMapper<McpServerEntity> {

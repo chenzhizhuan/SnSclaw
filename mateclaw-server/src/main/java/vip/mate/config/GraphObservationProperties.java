@@ -12,7 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * conservative fallback for tests / unit constructors and intentionally do NOT reflect
  * production-tuned values.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @ConfigurationProperties(prefix = "mate.agent.graph.observation")

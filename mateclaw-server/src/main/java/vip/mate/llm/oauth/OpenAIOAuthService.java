@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
  *
  * <ul>
  *   <li><b>LOCAL</b>: Authorization Code + PKCE with a temporary HTTP server bound on
- *       127.0.0.1:1455 to receive the callback. Used when MateClaw is reached via
+ *       127.0.0.1:1455 to receive the callback. Used when SnSclaw is reached via
  *       localhost — the browser can hit our loopback callback. The Codex CLI client_id
  *       only accepts {@code http://localhost:1455/auth/callback} as redirect_uri, so
  *       this path is impossible for remote deployments.</li>
@@ -154,9 +154,9 @@ public class OpenAIOAuthService {
      * heuristic from the request Host header.
      *
      * <p>Heuristic: if Host is localhost / 127.0.0.1 / ::1, the user is hitting
-     * MateClaw on the same machine they'll do the OAuth login on — LOCAL works.
+     * SnSclaw on the same machine they'll do the OAuth login on — LOCAL works.
      * Any other host (a domain, a public IP, a private LAN IP) means the user's
-     * browser cannot resolve {@code localhost:1455} to MateClaw's server, so we
+     * browser cannot resolve {@code localhost:1455} to SnSclaw's server, so we
      * use DEVICE_CODE (browser-agnostic, no callback server needed).
      *
      * <p>Config override values: {@code local} / {@code device_code} /
@@ -193,7 +193,7 @@ public class OpenAIOAuthService {
 
     /**
      * Manual-paste fallback: user copies the (failed-to-load) callback URL from
-     * their browser's address bar back into MateClaw. We parse code + state and
+     * their browser's address bar back into SnSclaw. We parse code + state and
      * complete the token exchange.
      *
      * @param pastedUrl e.g. {@code http://localhost:1455/auth/callback?code=XXX&state=YYY}

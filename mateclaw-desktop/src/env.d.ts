@@ -34,7 +34,7 @@ interface ConnectionTestResult {
   error?: string
 }
 
-interface MateClawAPI {
+interface SnSclawAPI {
   getPlatform: () => Promise<string>
   getVersion: () => Promise<string>
   getBuildMode: () => Promise<'local' | 'remote'>
@@ -63,5 +63,5 @@ interface MateClawAPI {
 }
 
 interface Window {
-  mateClawAPI: MateClawAPI
+  mateClawAPI: SnSclawAPI
 }

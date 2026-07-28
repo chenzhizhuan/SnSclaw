@@ -16,7 +16,7 @@ import java.nio.ByteOrder;
  * samples — they're the RIFF magic + format chunk metadata.
  *
  * <p>Limitations: handles only the canonical 44-byte WAV layout produced by
- * MateClaw's WavRecorder. WAVs with extra chunks (LIST, JUNK, …) before the
+ * SnSclaw's WavRecorder. WAVs with extra chunks (LIST, JUNK, …) before the
  * data chunk would need a chunk-walking parser. We don't currently accept
  * arbitrary uploads, so the tighter scope is fine; if this changes,
  * extend {@link #extract} to scan for the {@code "data"} chunk header

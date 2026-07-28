@@ -7,7 +7,7 @@ import vip.mate.memory.model.DreamReportEntity;
 /**
  * Mapper for mate_dream_report table.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface DreamReportMapper extends BaseMapper<DreamReportEntity> {

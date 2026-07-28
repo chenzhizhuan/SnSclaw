@@ -1,6 +1,6 @@
 ---
 title: 多智能体引擎 — ReAct + Plan-and-Execute 双模式
-description: MateClaw 的多智能体系统支持 ReAct 推理循环和 Plan-and-Execute 任务拆解两种模式。Agent 之间可以互相委派，实现真正的多智能体协作。
+description: SnSclaw 的多智能体系统支持 ReAct 推理循环和 Plan-and-Execute 任务拆解两种模式。Agent 之间可以互相委派，实现真正的多智能体协作。
 head:
   - - meta
     - name: keywords
@@ -38,7 +38,7 @@ head:
 | **最大迭代次数** | 强制收敛前允许走多少轮推理循环 |
 | **启用开关** | 关掉它 |
 
-注意一个**没有**的东西：模型。整个 MateClaw 部署里只有**一个全局默认模型**（在 `设置 → 模型` 里设置），所有 Agent 在运行时用的都是它。Agent 行上那个 `model_name` 字段是历史遗留——**被忽略**。这是刻意的：换模型是整个部署一次点击的事，不是三十次。
+注意一个**没有**的东西：模型。整个 SnSclaw 部署里只有**一个全局默认模型**（在 `设置 → 模型` 里设置），所有 Agent 在运行时用的都是它。Agent 行上那个 `model_name` 字段是历史遗留——**被忽略**。这是刻意的：换模型是整个部署一次点击的事，不是三十次。
 
 ---
 
@@ -223,7 +223,7 @@ REST：`GET /api/v1/plans?limit=N`（跨员工最近 N 条）、`GET /api/v1/pla
 
 ## 深度思考
 
-不是所有问题都值得深度推理，但有些问题需要。MateClaw 支持按 Agent、按对话打开深度思考模式：
+不是所有问题都值得深度推理，但有些问题需要。SnSclaw 支持按 Agent、按对话打开深度思考模式：
 
 - **`thinkingLevel`**：`off` / `low` / `medium` / `high` / `max`
 - 支持 Anthropic extended thinking、DashScope qwq 推理、OpenAI o1 `reasoning_effort=high`

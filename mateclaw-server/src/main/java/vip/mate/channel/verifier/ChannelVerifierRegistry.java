@@ -16,7 +16,7 @@ import java.util.Optional;
  * contract — duplicates log a warning and the last one wins (keeps test
  * doubles overridable without crashing the context).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

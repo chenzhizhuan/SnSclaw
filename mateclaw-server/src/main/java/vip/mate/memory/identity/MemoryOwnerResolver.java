@@ -10,7 +10,7 @@ import vip.mate.agent.context.ChatOrigin;
  * <p>The key is a prefixed string so a single agent shared across surfaces
  * keeps every subject's memory separate:
  * <ul>
- *   <li>Web console  → {@code user:<requesterId>} (the MateClaw username)</li>
+ *   <li>Web console  → {@code user:<requesterId>} (the SnSclaw username)</li>
  *   <li>IM channels  → {@code <channelType>:<senderId>} (feishu/dingtalk/…)</li>
  *   <li>WebChat / 3rd-party API → {@code api:<visitorId|endUserId>}</li>
  *   <li>Cron / system / unknown → {@link #SYSTEM_OWNER}</li>
@@ -20,7 +20,7 @@ import vip.mate.agent.context.ChatOrigin;
  * any real user's PERSONAL bucket (which would otherwise be a black hole that
  * nobody can read) — such writes are expected to be TEAM-scoped instead.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Component
 public class MemoryOwnerResolver {
@@ -43,7 +43,7 @@ public class MemoryOwnerResolver {
         String channel = origin.channelType();
         if (channel == null || channel.isBlank() || "web".equals(channel)) {
             // Web console (or a degraded origin with no channel): the requester
-            // id is already the MateClaw username.
+            // id is already the SnSclaw username.
             return "user:" + requester;
         }
         // IM / api origins: the requester id is the external sender id; prefix

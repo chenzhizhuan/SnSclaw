@@ -33,7 +33,7 @@ import java.util.Locale;
  * locked down: a pageType with no matching row resolves to
  * {@link WriteDecision#DENY} (fail-safe).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

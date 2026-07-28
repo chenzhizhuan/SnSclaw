@@ -2,7 +2,7 @@
  * scripts/branding.cjs — Vite plugin for build-time white-label branding.
  *
  * Reads brand settings from branding.config.json (or BRAND_* env overrides)
- * and replaces hardcoded "MateClaw" strings in all built files — source code
+ * and replaces hardcoded "SnSclaw" strings in all built files — source code
  * stays untouched.
  *
  * Supported env overrides:
@@ -24,12 +24,12 @@ function loadBrandConfig(rootDir) {
   // Env vars override the config file.
   const env = process.env
   return {
-    name:           env.BRAND_NAME        || config.name        || 'MateClaw',
+    name:           env.BRAND_NAME        || config.name        || 'SnSclaw',
     tagline:        env.BRAND_TAGLINE     || config.tagline     || 'AI Personal Assistant',
-    team:           env.BRAND_TEAM        || config.team        || 'MateClaw Team',
-    copyright:      env.BRAND_COPYRIGHT   || config.copyright   || 'Copyright © 2026 MateClaw Team',
-    appId:          env.BRAND_APP_ID      || config.appId       || 'vip.mate.mateclaw',
-    githubUrl:      env.BRAND_GITHUB_URL  || config.githubUrl   || 'https://github.com/matevip/mateclaw',
+    team:           env.BRAND_TEAM        || config.team        || 'SnSclaw Team',
+    copyright:      env.BRAND_COPYRIGHT   || config.copyright   || 'Copyright © 2026 SnSclaw Team',
+    appId:          env.BRAND_APP_ID      || config.appId       || 'app.sns.claw',
+    githubUrl:      env.BRAND_GITHUB_URL  || config.githubUrl   || 'https://github.com/chenzhizhuan/SnSclaw',
     logoFile:       env.BRAND_LOGO_FILE   || config.logoFile    || 'mateclaw_logo_s.png',
   }
 }
@@ -38,27 +38,27 @@ function loadBrandConfig(rootDir) {
  * Build the string-replacement table.
  *
  * Order matters: longer/more-specific patterns are replaced first to avoid
- * partial matches (e.g. "MateClaw Team" before "MateClaw").
+ * partial matches (e.g. "SnSclaw Team" before "SnSclaw").
  */
 function buildReplacements(brand) {
   const replacements = []
 
   // 1. Copyright line (most specific)
   replacements.push([
-    'Copyright © 2026 MateClaw Team',
+    'Copyright © 2026 SnSclaw Team',
     brand.copyright,
   ])
 
   // 2. Team name
-  replacements.push(['MateClaw Team', brand.team])
+  replacements.push(['SnSclaw Team', brand.team])
 
   // 3. GitHub URLs
   replacements.push([
-    'https://github.com/matevip/mateclaw/issues',
+    'https://github.com/chenzhizhuan/SnSclaw/issues',
     brand.githubUrl + '/issues',
   ])
   replacements.push([
-    'https://github.com/matevip/mateclaw',
+    'https://github.com/chenzhizhuan/SnSclaw',
     brand.githubUrl,
   ])
 
@@ -88,10 +88,10 @@ function buildReplacements(brand) {
   ])
 
   // 7. Brand name (catch-all, must come last)
-  //    Only replace the exact word "MateClaw", not "mateclaw" (lowercase,
+  //    Only replace the exact word "SnSclaw", not "mateclaw" (lowercase,
   //    which is used in H2 database paths and Spring Boot properties that
   //    are coupled with the server and must NOT change).
-  replacements.push(['MateClaw', brand.name])
+  replacements.push(['SnSclaw', brand.name])
 
   return replacements
 }
@@ -122,9 +122,9 @@ function brandingPlugin(options) {
   var replacements = buildReplacements(brand)
 
   var isDefault =
-    brand.name === 'MateClaw' &&
+    brand.name === 'SnSclaw' &&
     brand.tagline === 'AI Personal Assistant' &&
-    brand.team === 'MateClaw Team'
+    brand.team === 'SnSclaw Team'
 
   if (!isDefault) {
     console.log('[branding] White-label build: "' + brand.name + '" (tagline: "' + brand.tagline + '")')

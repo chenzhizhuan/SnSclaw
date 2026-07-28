@@ -21,12 +21,12 @@ import java.nio.charset.StandardCharsets;
  * </ul>
  *
  * <p>Inspired by joyagent-jdgenie's {@code SseEmitterUTF8} — same one-line
- * idea applied throughout MateClaw's SSE endpoints.
+ * idea applied throughout SnSclaw's SSE endpoints.
  *
  * <p>Drop-in replacement: every {@code new SseEmitter(timeout)} should become
  * {@code new Utf8SseEmitter(timeout)}.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class Utf8SseEmitter extends SseEmitter {
 

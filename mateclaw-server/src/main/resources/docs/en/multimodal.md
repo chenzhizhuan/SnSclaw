@@ -1,8 +1,8 @@
 # Multimodal
 
-Speech, music, images, video — all first-class in MateClaw, not tacked on.
+Speech, music, images, video — all first-class in SnSclaw, not tacked on.
 
-Most AI products treat multimodal generation as a plugin you bolt on later. MateClaw ships with it as core infrastructure: **six image providers, six video providers, three TTS backends, two STT backends, and two music providers**, all unified behind a single tool interface so agents can call any of them without knowing which vendor is underneath.
+Most AI products treat multimodal generation as a plugin you bolt on later. SnSclaw ships with it as core infrastructure: **six image providers, six video providers, three TTS backends, two STT backends, and two music providers**, all unified behind a single tool interface so agents can call any of them without knowing which vendor is underneath.
 
 Configure once. Use everywhere.
 
@@ -152,7 +152,7 @@ Agents call them exactly like any other tool. The tool layer handles provider se
 
 ## Async generation and message binding
 
-Image and video generation often takes longer than a normal agent turn. MateClaw handles this cleanly:
+Image and video generation often takes longer than a normal agent turn. SnSclaw handles this cleanly:
 
 1. Agent calls the generate tool.
 2. Tool returns immediately with a job id and a placeholder attachment.

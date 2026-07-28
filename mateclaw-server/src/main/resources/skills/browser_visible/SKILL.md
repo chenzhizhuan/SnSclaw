@@ -66,7 +66,7 @@ browser_use(action="stop")
 
 ## 跨平台可执行文件路径（需自定义浏览器时）
 
-MateClaw 的 `browser_use` 会自动检测系统浏览器，无需手动指定路径。如需调试特定 Chrome 安装位置：
+SnSclaw 的 `browser_use` 会自动检测系统浏览器，无需手动指定路径。如需调试特定 Chrome 安装位置：
 
 **Windows 默认路径：**
 ```

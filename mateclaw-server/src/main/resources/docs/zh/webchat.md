@@ -1,6 +1,6 @@
 # Web / API 接入(WebChat)指南
 
-MateClaw 的 WebChat 渠道让外部网站通过纯 HTTP / SSE 接入对话能力,无需 JWT。访客身份通过 `visitorId + visitorToken`(HMAC 签发)在共享的 API Key 之下做隔离。
+SnSclaw 的 WebChat 渠道让外部网站通过纯 HTTP / SSE 接入对话能力,无需 JWT。访客身份通过 `visitorId + visitorToken`(HMAC 签发)在共享的 API Key 之下做隔离。
 
 接入有两条路径:
 
@@ -16,9 +16,9 @@ MateClaw 的 WebChat 渠道让外部网站通过纯 HTTP / SSE 接入对话能�
 ```html
 <script src="https://<你的部署地址>/mateclaw-webchat.umd.js"></script>
 <script>
-  MateClawWebChat.init({
+  SnSclawWebChat.init({
     apiKey: 'your-channel-api-key',   // 从渠道编辑页拿
-    server: 'https://<你的部署地址>',  // MateClaw 服务地址
+    server: 'https://<你的部署地址>',  // SnSclaw 服务地址
     title: '在线客服',
     placeholder: '输入消息...'
   })
@@ -42,10 +42,10 @@ init({ apiKey: 'your-channel-api-key', server: 'https://<你的部署地址>' })
 | 字段 | 必填 | 默认 | 说明 |
 |---|---|---|---|
 | `apiKey` | 是 | — | 渠道 API Key |
-| `server` | 是 | — | MateClaw 服务地址(不带尾斜杠) |
+| `server` | 是 | — | SnSclaw 服务地址(不带尾斜杠) |
 | `position` | 否 | `bottom-right` | 气泡位置:`bottom-right` / `bottom-left` |
 | `primaryColor` | 否 | `#D97757` | 主色(任意 CSS 颜色) |
-| `title` | 否 | `MateClaw` | 面板标题 |
+| `title` | 否 | `SnSclaw` | 面板标题 |
 | `placeholder` | 否 | `Type a message...` | 输入框占位符 |
 
 **行为说明**
@@ -56,7 +56,7 @@ init({ apiKey: 'your-channel-api-key', server: 'https://<你的部署地址>' })
 
 ## 自定义集成:基础
 
-- **Base URL**:`https://<你的 MateClaw 部署地址>/api/v1/channels/webchat`
+- **Base URL**:`https://<你的 SnSclaw 部署地址>/api/v1/channels/webchat`
 - **认证**:所有端点都要求请求头 `X-MC-Key: <API Key>`(从渠道编辑页拿)。
 - **会话管理端点**额外要求 `X-MC-Visitor-Token: <HMAC>`(首次 `/stream` 调用时由服务端签发并回传)。
 - **响应包装**:`R<T>` → `{"code": 200, "msg": "...", "data": T}`,非 200 视为错误。
@@ -83,7 +83,7 @@ init({ apiKey: 'your-channel-api-key', server: 'https://<你的部署地址>' })
 | POST | `/upload` | + visitorToken | 上传附件(拿 fileId) |
 | GET | `/files` | + visitorToken | 下载文件(上传的或 Agent 生成的) |
 
-管理员级(需要 MateClaw JWT,不在本表的 permitAll 范围内):
+管理员级(需要 SnSclaw JWT,不在本表的 permitAll 范围内):
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
@@ -97,7 +97,7 @@ init({ apiKey: 'your-channel-api-key', server: 'https://<你的部署地址>' })
 ```text
 ┌──────────┐  POST /stream {visitorId:"v1", message:"你好"}
 │  客户端   │ ─────────────────────────────────────────────► ┌──────────┐
-└──────────┘                                                  │ MateClaw │
+└──────────┘                                                  │ SnSclaw │
    ▲                                                          └──────────┘
    │  SSE meta event: {sessionId, conversationId, visitorToken}
    │  SSE content_delta events: {text}
@@ -279,4 +279,4 @@ curl -N -X POST https://mate.example.com/api/v1/channels/webchat/stream \
 
 ## 关联
 
-- 上游 epic issue:https://github.com/mateaix/mateclaw/issues/355
+- 上游 epic issue:https://github.com/chenzhizhuan/SnSclaw/issues/355

@@ -38,7 +38,7 @@ import java.util.Optional;
  *       and the run isn't lost.</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

@@ -68,11 +68,11 @@ public record ChatOrigin(
          */
         @Nullable String baseUrl,
         /**
-         * Immutable numeric id of the MateClaw user behind this request, when the
+         * Immutable numeric id of the SnSclaw user behind this request, when the
          * requester is an <em>authenticated</em> account (JWT/PAT login via the
          * web console). Null for non-account origins — webchat visitors, IM
-         * senders, cron — which carry no MateClaw user row. On-behalf-of identity
-         * forwarding uses this to tell "MateClaw authenticated this user" apart
+         * senders, cron — which carry no SnSclaw user row. On-behalf-of identity
+         * forwarding uses this to tell "SnSclaw authenticated this user" apart
          * from "this is an external/anonymous identifier" (RFC: identity typing).
          */
         @Nullable Long requesterUserId
@@ -105,7 +105,7 @@ public record ChatOrigin(
     /**
      * Web-console origin that also carries the authenticated user's immutable
      * numeric id. Use this overload from the authenticated web entry point so
-     * on-behalf-of identity forwarding can assert "MateClaw authenticated this
+     * on-behalf-of identity forwarding can assert "SnSclaw authenticated this
      * user" rather than an external/anonymous identifier.
      */
     public static ChatOrigin web(@Nullable String conversationId,

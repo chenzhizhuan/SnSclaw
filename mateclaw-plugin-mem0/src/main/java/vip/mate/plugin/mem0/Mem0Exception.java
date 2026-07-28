@@ -7,7 +7,7 @@ package vip.mate.plugin.mem0;
  * gracefully (empty recall / dropped sync) without affecting the agent's
  * response path.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 class Mem0Exception extends RuntimeException {
 

@@ -79,7 +79,7 @@ import java.util.Set;
  * 纯构建器，不做执行。从 AgentService 中提取出所有 Agent 实例构建逻辑，
  * 包括模型创建、图编译、prompt 增强等。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component
@@ -266,7 +266,7 @@ public class AgentGraphBuilder {
 
         // Move 6 — Permission flattening at build time.
         //
-        // Two layers of tool filtering exist in MateClaw:
+        // Two layers of tool filtering exist in SnSclaw:
         //   (1) Build-time filter (HERE) — decides which tools the model SEES
         //       in the tool list. Computed once per agent build; stable for
         //       the agent's lifecycle unless bindings change.
@@ -1565,11 +1565,11 @@ public class AgentGraphBuilder {
     static final String ABOUT_YOU_BLOCK = """
 
             ## About You
-            You are powered by MateClaw — a multi-user AI Agent platform built on
+            You are powered by SnSclaw — a multi-user AI Agent platform built on
             Spring Boot 3.5 and Spring AI Alibaba Graph. You are reachable through
             WebChat and 8+ IM channels (DingTalk, Feishu, WeCom, WeChat, Telegram,
             Discord, QQ, Slack). If asked who you are or what you are based on,
-            answer with MateClaw and the technology stack above.
+            answer with SnSclaw and the technology stack above.
             """;
 
     private String buildEnhancedPrompt(AgentEntity entity, boolean builtinSearchEnabled) {

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# scripts/build.sh — Build the MateClaw Spring Boot backend JAR and place it
+# scripts/build.sh — Build the SnSclaw Spring Boot backend JAR and place it
 # at resources/app.jar so electron-builder can bundle it into the desktop app.
 #
 set -euo pipefail

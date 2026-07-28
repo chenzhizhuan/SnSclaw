@@ -9,11 +9,11 @@ import vip.mate.plugin.api.MateClawPlugin;
 import vip.mate.plugin.api.PluginContext;
 
 /**
- * Sample plugin demonstrating the MateClaw Plugin SDK.
+ * Sample plugin demonstrating the SnSclaw Plugin SDK.
  * <p>
  * Registers a simple "hello_world" tool that agents can call.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class HelloPlugin implements MateClawPlugin {
 
@@ -46,6 +46,6 @@ public class HelloPlugin implements MateClawPlugin {
     @Tool(description = "A greeting tool from the Hello World plugin. Returns a friendly greeting message for the given name.")
     public String hello_world(
             @ToolParam(description = "The name to greet") String name) {
-        return "Hello, " + name + "! This message comes from the MateClaw Hello World plugin.";
+        return "Hello, " + name + "! This message comes from the SnSclaw Hello World plugin.";
     }
 }

@@ -4,7 +4,7 @@
 
     <!-- Page-size pill: opens a small native-style dropdown. We don't
          use el-select to avoid pulling EP styling — the whole point of
-         this component is to read MateClaw, not Element. -->
+         this component is to read SnSclaw, not Element. -->
     <label class="mc-pager-size">
       <select
         :value="size"

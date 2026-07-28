@@ -44,7 +44,7 @@ import java.util.Set;
  *   <li>On-demand via the admin endpoint {@code POST /api/v1/skills/{id}/sync-files}.</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

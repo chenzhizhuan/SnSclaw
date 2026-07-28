@@ -2,7 +2,7 @@
 
 **Code you write here runs on other people's machines.**
 
-That's the only thing to remember. MateClaw is Apache 2.0, self-hosted, and shipped as a single JAR. Every line you add gets downloaded, unpacked, and executed by someone you'll never meet. Write the code you'd be happy to find yourself, six months from now, in someone else's logs at 2 AM.
+That's the only thing to remember. SnSclaw is Apache 2.0, self-hosted, and shipped as a single JAR. Every line you add gets downloaded, unpacked, and executed by someone you'll never meet. Write the code you'd be happy to find yourself, six months from now, in someone else's logs at 2 AM.
 
 ---
 
@@ -322,7 +322,7 @@ Before / After.
 
 When filing a bug:
 
-- MateClaw version (or commit hash)
+- SnSclaw version (or commit hash)
 - Java version and OS
 - Exact steps to reproduce
 - Expected vs. actual behavior

@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
  * remove a flag from the seed list: callers see the feature as disabled
  * until the flag is re-introduced.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

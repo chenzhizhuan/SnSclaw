@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 检查频率从 5min 降到 1min，让短阈值能真正生效；
  * 配合 {@code AbstractChannelAdapter.touchActivity()} 精准刷新活跃时间。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

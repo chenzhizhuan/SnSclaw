@@ -38,7 +38,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * - 应用启动时自动加载并启动所有 enabled 渠道
  * - activeAdapters 使用 ReadWriteLock 保护，读操作并发安全，热替换使用写锁
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

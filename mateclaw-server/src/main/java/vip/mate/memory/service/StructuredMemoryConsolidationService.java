@@ -35,7 +35,7 @@ import java.util.List;
  * always-on prefetch injects each turn. The number of buckets processed per agent
  * per run is capped to bound LLM cost.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

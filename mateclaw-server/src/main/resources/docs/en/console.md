@@ -1,6 +1,6 @@
 # Admin Console
 
-The admin console is the Vue 3 SPA that ships with every MateClaw deployment. It runs in your browser (or inside the Electron desktop window), talks to the Spring Boot backend over REST + SSE, and exposes every capability MateClaw has — chat, agents, knowledge, tools, skills, channels, security, cron jobs, usage analytics — behind one login.
+The admin console is the Vue 3 SPA that ships with every SnSclaw deployment. It runs in your browser (or inside the Electron desktop window), talks to the Spring Boot backend over REST + SSE, and exposes every capability SnSclaw has — chat, agents, knowledge, tools, skills, channels, security, cron jobs, usage analytics — behind one login.
 
 This page is the map. It walks the sidebar group by group, page by page, and points at the API endpoints each page uses so you can automate anything the UI lets you click.
 
@@ -423,7 +423,7 @@ Full guide: [Backstage](./backstage).
 
 ## Pinia stores
 
-MateClaw uses domain-driven Pinia stores. Each store owns its slice of state exclusively.
+SnSclaw uses domain-driven Pinia stores. Each store owns its slice of state exclusively.
 
 | Store | File | Owns |
 |-------|------|------|

@@ -12,7 +12,7 @@ import java.time.Instant;
  * {@link #model} and {@link #capturedAt} at minimum. The other fields
  * are optional and allow callers to render richer UI.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @Builder

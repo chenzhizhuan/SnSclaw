@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
  * <p>Distinct from {@link WikiRelationEntity}, which scores page-to-page edges.
  * A row here is one fact triple connecting two {@link WikiEntityEntity} nodes.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_wiki_entity_relation")

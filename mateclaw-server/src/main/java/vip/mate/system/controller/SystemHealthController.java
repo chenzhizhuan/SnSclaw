@@ -12,7 +12,7 @@ import vip.mate.system.service.SystemHealthService;
 /**
  * System health check endpoint.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "System Health")
 @RestController

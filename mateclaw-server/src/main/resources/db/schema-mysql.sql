@@ -1,4 +1,4 @@
--- MateClaw 数据库初始化脚本（MySQL / MariaDB 专用）
+-- SnSclaw 数据库初始化脚本（MySQL / MariaDB 专用）
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS mate_user (

@@ -14,7 +14,7 @@
  *
  * <p>Reference: openclaw {@code src/media/audio-transcode.ts} solves the same
  * problem with server-side ffmpeg. Doing it client-side avoids the ffmpeg
- * dependency on the MateClaw server and works the same way.
+ * dependency on the SnSclaw server and works the same way.
  */
 
 /** Target sample rate for recordings. 16 kHz is the standard for STT models. */
@@ -47,7 +47,7 @@ export interface WavRecording {
  * ScriptProcessorNode is deprecated in favour of AudioWorklet, but it's still
  * universally supported and zero-config — sufficient for short STT clips.
  *
- * <p>Browser support: every browser MateClaw targets ships AudioContext +
+ * <p>Browser support: every browser SnSclaw targets ships AudioContext +
  * ScriptProcessorNode. Safari requires a user gesture to call
  * {@code getUserMedia}; the caller should already be doing this.
  */

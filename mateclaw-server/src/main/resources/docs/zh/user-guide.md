@@ -1,6 +1,6 @@
 # 用户手册
 
-你打开 MateClaw，是因为你想让 AI 替你干活。不是因为你想学一套新软件。
+你打开 SnSclaw，是因为你想让 AI 替你干活。不是因为你想学一套新软件。
 
 这份手册只做一件事：**让你在最短时间内，从「装好了」走到「它在帮我做事了」。**
 
@@ -21,7 +21,7 @@
 
 ## 模型：先接通一个
 
-**新装的 MateClaw 模型列表是空的。这是故意的——你不需要看 16 个供应商，你只需要一个能跑的。**
+**新装的 SnSclaw 模型列表是空的。这是故意的——你不需要看 16 个供应商，你只需要一个能跑的。**
 
 `设置 → 模型 → 添加供应商`——按钮打开一个抽屉，里面是完整目录。
 
@@ -96,7 +96,7 @@ Agent 会自动拆分成步骤、逐步执行、最后汇总。你能看到计�
 
 ## 记忆：让它记住你
 
-MateClaw 的记忆不需要你手动管理。聊完天，系统自动提取关键信息写入记忆。下次对话，Agent 会带着这些记忆工作。
+SnSclaw 的记忆不需要你手动管理。聊完天，系统自动提取关键信息写入记忆。下次对话，Agent 会带着这些记忆工作。
 
 你能做的：
 
@@ -182,11 +182,11 @@ Wiki 不是全文搜索。它是**语义检索**——问「我们关于认证�
 
 | 症状 | 最可能的原因 |
 |------|------------|
-| 后端起不来 | 18088 端口被占。看 `<用户数据目录>/logs/mateclaw.log`（macOS: `~/Library/Application Support/MateClaw/logs/mateclaw.log`） |
+| 后端起不来 | 18088 端口被占。看 `<用户数据目录>/logs/mateclaw.log`（macOS: `~/Library/Application Support/SnSclaw/logs/mateclaw.log`） |
 | 模型调用报错 | API Key 错了，或者网络不通。回设置里检查 |
 | 界面白屏 | Ctrl+Shift+R 强刷 |
 | Ollama 报 "does not support tools" | 换一个支持 function calling 的模型（qwen3、llama3.1:8b+） |
-| 还是不行 | [GitHub Issues](https://github.com/mateaix/mateclaw/issues)，贴 `app.log` 尾巴 |
+| 还是不行 | [GitHub Issues](https://github.com/chenzhizhuan/SnSclaw/issues)，贴 `app.log` 尾巴 |
 
 ---
 

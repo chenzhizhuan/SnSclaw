@@ -1,36 +1,36 @@
 <div align="center">
 
 <p align="center">
-  <img src="mateclaw-ui/public/logo/mateclaw_logo_s.png" alt="MateClaw Logo" width="120">
+  <img src="mateclaw-ui/public/logo/mateclaw_logo_s.png" alt="SnSclaw Logo" width="120">
 </p>
 
-# 太一（MateClaw）
+# 太一（SnSclaw）
 
 <p align="center"><b>你的超级大脑</b></p>
 
 <p align="center"><sub><b>Agent Harness · Spring Boot 内核 · 一个 JAR 交付</b></sub></p>
 
-[![GitHub 仓库](https://img.shields.io/badge/GitHub-仓库-black.svg?logo=github)](https://github.com/mateaix/mateclaw)
-[![文档](https://img.shields.io/badge/文档-在线-green.svg?logo=readthedocs&label=Docs)](https://claw.mate.vip/docs)
-[![在线演示](https://img.shields.io/badge/演示-在线-orange.svg?logo=vercel&label=Demo)](https://claw-demo.mate.vip)
-[![官网](https://img.shields.io/badge/官网-claw.mate.vip-blue.svg?logo=googlechrome&label=Site)](https://claw.mate.vip)
+[![GitHub 仓库](https://img.shields.io/badge/GitHub-仓库-black.svg?logo=github)](https://github.com/chenzhizhuan/SnSclaw)
+[![文档](https://img.shields.io/badge/文档-在线-green.svg?logo=readthedocs&label=Docs)](https://claw.sns.app/docs)
+[![在线演示](https://img.shields.io/badge/演示-在线-orange.svg?logo=vercel&label=Demo)](https://claw-demo.sns.app)
+[![官网](https://img.shields.io/badge/官网-claw.sns.app-blue.svg?logo=googlechrome&label=Site)](https://claw.sns.app)
 [![Java 版本](https://img.shields.io/badge/Java-21+-blue.svg?logo=openjdk&label=Java)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen.svg?logo=springboot)](https://spring.io/projects/spring-boot)
 [![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg?logo=vuedotjs)](https://vuejs.org/)
-[![最后提交](https://img.shields.io/github/last-commit/mateaix/mateclaw)](https://github.com/mateaix/mateclaw)
+[![最后提交](https://img.shields.io/github/last-commit/mateaix/mateclaw)](https://github.com/chenzhizhuan/SnSclaw)
 [![许可证](https://img.shields.io/badge/license-Apache--2.0-red.svg?logo=opensourceinitiative&label=License)](LICENSE)
 
-[[官网](https://claw.mate.vip)] [[在线演示](https://claw-demo.mate.vip)] [[文档](https://claw.mate.vip/docs)] [[English](README.md)]
+[[官网](https://claw.sns.app)] [[在线演示](https://claw-demo.sns.app)] [[文档](https://claw.sns.app/docs)] [[English](README.md)]
 
 </div>
 
 <p align="center">
-  <img src="assets/images/preview.png" alt="MateClaw 预览" width="800">
+  <img src="assets/images/preview.png" alt="SnSclaw 预览" width="800">
 </p>
 
 ---
 
-> **别的 AI 助手是给一个人用的。MateClaw 是公司允许部署的那一个。**
+> **别的 AI 助手是给一个人用的。SnSclaw 是公司允许部署的那一个。**
 >
 > 多用户工作空间。敏感操作走审批。完整审计日志。Spring Boot Actuator 健康监控。单个渠道挂掉不影响其他渠道的错误隔离。一个 JAR 包跑在自己机器上，数据不出门。
 >
@@ -38,7 +38,7 @@
 
 大多数 AI 工具一到厂商抽风那天就两手一摊。关一次标签页就忘了你是谁。给你一个聊天框，就敢叫产品。
 
-**MateClaw 是完整的一整套。** 一次部署——推理、知识、记忆、工具、多渠道入口，从第一天就一起设计，不是事后拼接。主模型挂了，下一家接着把这句话说完。
+**SnSclaw 是完整的一整套。** 一次部署——推理、知识、记忆、工具、多渠道入口，从第一天就一起设计，不是事后拼接。主模型挂了，下一家接着把这句话说完。
 
 ---
 
@@ -48,7 +48,7 @@
 
 Key 过期。厂商返回 401。网络抖动。配额耗尽。
 
-别的工具丢你一张红色错误卡。MateClaw 自动切到下一家健康的供应商——DashScope、OpenAI、Anthropic、Gemini、DeepSeek、Kimi、Ollama、LM Studio、MLX，共 14+ 家——用户只会看到回答正常完成。内置的 **Provider Health Tracker** 会把连续失败的供应商放进冷却窗口，避免每一轮对话都白白撞壁。
+别的工具丢你一张红色错误卡。SnSclaw 自动切到下一家健康的供应商——DashScope、OpenAI、Anthropic、Gemini、DeepSeek、Kimi、Ollama、LM Studio、MLX，共 14+ 家——用户只会看到回答正常完成。内置的 **Provider Health Tracker** 会把连续失败的供应商放进冷却窗口，避免每一轮对话都白白撞壁。
 
 你不用写重试脚本。在 **设置 → 模型** 里把供应商拖成你想要的优先顺序，健康面板实时亮起一排绿点——请求绕着故障流过去。
 
@@ -56,7 +56,7 @@ Key 过期。厂商返回 401。网络抖动。配额耗尽。
 
 上传 PDF、一批 markdown、抓下来的网页——原始材料进去。
 
-MateClaw 的 **LLM Wiki** 把它消化成结构化页面，页面之间自己长出 `[[链接]]`，每一句话都记得来自哪里。点开引用抽屉，就能看到原始 chunk。问一个问题，得到的页面是从对应片段拼出来的——带可核对的出处。
+SnSclaw 的 **LLM Wiki** 把它消化成结构化页面，页面之间自己长出 `[[链接]]`，每一句话都记得来自哪里。点开引用抽屉，就能看到原始 chunk。问一个问题，得到的页面是从对应片段拼出来的——带可核对的出处。
 
 这是**仓库**和**图书馆**的区别。
 
@@ -120,13 +120,13 @@ RBAC + JWT。**Personal Access Token** 给无人值守脚本和 CI 用。**Webho
 
 这和 2010 年数据库走过的路、2018 年云走过的路**是同一个转弯**：赢的那一层，不再绑在一家供应商身上。**57% 的公司已经把 AI agent 推进生产**——没有一家希望某个厂商的坏日子变成自己的坏日子。
 
-**MateClaw 就是那一层——用 Spring Boot 方式盖的。**
+**SnSclaw 就是那一层——用 Spring Boot 方式盖的。**
 
 ---
 
-## 为什么选 MateClaw
+## 为什么选 SnSclaw
 
-| | MateClaw | [OpenClaw](https://github.com/openclaw/openclaw) | [Hermes Agent](https://github.com/NousResearch/hermes-agent) | [Claude Code](https://github.com/anthropics/claude-code) | [Cursor](https://cursor.com) |
+| | SnSclaw | [OpenClaw](https://github.com/openclaw/openclaw) | [Hermes Agent](https://github.com/NousResearch/hermes-agent) | [Claude Code](https://github.com/anthropics/claude-code) | [Cursor](https://cursor.com) |
 |:---|:---:|:---:|:---:|:---:|:---:|
 | **多厂商失败转移** | **Chain + 健康追踪 + 冷却** | 切换供应商（改配置） | 内置编排重试 | 仅 Anthropic | 单模型 |
 | **知识消化式加工** | **Wiki + 页面级引用溯源** | Canvas + 记忆 | Skills Hub + 记忆 | — | 代码索引 |
@@ -136,9 +136,9 @@ RBAC + JWT。**Personal Access Token** 给无人值守脚本和 CI 用。**Webho
 | **技术栈** | **Java（Spring Boot）** | TypeScript | Python | TypeScript | Electron/TS |
 | **许可 / 定价** | **Apache 2.0 · 免费** | MIT · 免费 | MIT · 免费 | 闭源 · $20–200/月 | 闭源 · $0–200/月 |
 
-**OpenClaw 和 Hermes Agent 是优秀的个人 AI 平台**——如果你是一个人、一台笔记本、习惯从 CLI 搭自己的 agent、所有东西都靠手工配置文件调优，选它们没问题。两家的社区规模今天都大于 MateClaw。
+**OpenClaw 和 Hermes Agent 是优秀的个人 AI 平台**——如果你是一个人、一台笔记本、习惯从 CLI 搭自己的 agent、所有东西都靠手工配置文件调优，选它们没问题。两家的社区规模今天都大于 SnSclaw。
 
-**MateClaw 是那个给团队用的版本。** 每位数字员工、每个模型、每个工具都有 RBAC。危险动作自动暂停等审批。完整审计事件流。Admin 运行时控制台让一个运维能实时看到 50 位员工跑在 14 家供应商上的状态——卡住了一键回收。底座是 Spring Boot——任何一家已经在生产跑 Java 服务的公司可以直接并入。
+**SnSclaw 是那个给团队用的版本。** 每位数字员工、每个模型、每个工具都有 RBAC。危险动作自动暂停等审批。完整审计事件流。Admin 运行时控制台让一个运维能实时看到 50 位员工跑在 14 家供应商上的状态——卡住了一键回收。底座是 Spring Boot——任何一家已经在生产跑 Java 服务的公司可以直接并入。
 
 **同一套"完整一整套"哲学，不同的重心。**
 
@@ -167,7 +167,7 @@ docker compose up -d          # http://localhost:18080
 
 ### 桌面端
 
-从 [GitHub Releases](https://github.com/mateaix/mateclaw/releases) 下载安装包。内嵌 JRE 21，无需额外装 Java。
+从 [GitHub Releases](https://github.com/chenzhizhuan/SnSclaw/releases) 下载安装包。内嵌 JRE 21，无需额外装 Java。
 
 ---
 
@@ -199,7 +199,7 @@ mateclaw/
 └── .env.example
 ```
 
-桌面端安装包通过 [GitHub Releases](https://github.com/mateaix/mateclaw/releases) 分发，内嵌 JRE 21——无需安装 Java。
+桌面端安装包通过 [GitHub Releases](https://github.com/chenzhizhuan/SnSclaw/releases) 分发，内嵌 JRE 21——无需安装 Java。
 
 ## 技术栈
 
@@ -219,7 +219,7 @@ mateclaw/
 
 ## 文档
 
-完整文档 **[claw.mate.vip/docs](https://claw.mate.vip/docs)**——安装、架构、各子系统、API 参考。
+完整文档 **[claw.sns.app/docs](https://claw.sns.app/docs)**——安装、架构、各子系统、API 参考。
 
 ## 路线图
 
@@ -234,9 +234,9 @@ mateclaw/
 
 外加：聊天附件在线预览（pdf / docx / xlsx / html / 文本）、SKILL.md 单一事实源 + 捆绑文件控制台管理、Mem0 可选插件记忆 provider、知识图谱关系模式白名单。
 
-完整故事见 [v2.0.0 release notes](https://claw.mate.vip/docs/zh/releases/2.0.0)。
+完整故事见 [v2.0.0 release notes](https://claw.sns.app/docs/zh/releases/2.0.0)。
 
-**v1.8.0（2026-07-12 发布）** — 员工*转向对外、干完一整件活*:**内容工作室**——第一个完全用 MateClaw 自身原子能力端到端搭起来的招牌场景:
+**v1.8.0（2026-07-12 发布）** — 员工*转向对外、干完一整件活*:**内容工作室**——第一个完全用 SnSclaw 自身原子能力端到端搭起来的招牌场景:
 
 - **内容工作室——一句话到可发布成品** — 预置「内容工作室」员工跑通 选题 → 搜集 → 成文 → 配图 → 去 AI 化 → 排版 → 交付。**微信公众号(公众号)** 图文文章(内联样式 HTML → 草稿箱)与 **小红书** 以图为主图文笔记(≥3 张竖版 3:4 卡片 + 在线预览)首批一等公民
 - **可度量的去 AI 化** — 启发式 AI 痕迹评分(无 LLM、确定性)驱动 检测 → 改写 → 复检 闭环,硬上限 3 轮
@@ -247,7 +247,7 @@ mateclaw/
 
 外加:一次快加载优化(初始加载 ↓约 78%)、聊天上下文占用面板、跨知识库 wikilink、MCP 进度通知、火山方舟供应商,以及公开 Docker 栈切到 PostgreSQL 16。
 
-完整故事见 [v1.8.0 release notes](https://claw.mate.vip/docs/zh/releases/1.8.0)。
+完整故事见 [v1.8.0 release notes](https://claw.sns.app/docs/zh/releases/1.8.0)。
 
 **v1.7.0（2026-07-04 发布）** — 一次*生产化加固*：把它放进真正的协作里之后，那些看不见、收不拢、够不着、装不下、连不通的地方全补上：
 
@@ -258,20 +258,20 @@ mateclaw/
 - **够得着更远** — 桌面端本地内嵌 / 远程集中部署双模式（`mateclaw-desktop` 源码开放）+ 局域网部署模式放开受控内网访问
 - **运营数据一键导出** — Dashboard 9 表 Excel + CLI 命令行离线导出
 
-完整故事见 [v1.7.0 release notes](https://claw.mate.vip/docs/zh/releases/1.7.0)。
+完整故事见 [v1.7.0 release notes](https://claw.sns.app/docs/zh/releases/1.7.0)。
 
-**v1.6.0（2026-06-22 发布）** — 让自驱的数字员工*更快、更会看、更易嵌入*：技能两段式载入 + prefix 压缩（首字节更快）· `execute_code` 原生沙箱代码执行 · 图片跨轮次留存 + `image_analyze` · 可嵌入/无头 webchat 按 `endUserId` 隔离记忆 · 真正可读的 Wiki（阅读与管理分离 · 统一 Sources 标签 · 可点击 `[[wikilinks]]`）· 高负载更稳（MCP 自愈 · 工具调用恢复 · 计划证据闸门）。完整故事见 [v1.6.0 release notes](https://claw.mate.vip/docs/zh/releases/1.6.0)。
+**v1.6.0（2026-06-22 发布）** — 让自驱的数字员工*更快、更会看、更易嵌入*：技能两段式载入 + prefix 压缩（首字节更快）· `execute_code` 原生沙箱代码执行 · 图片跨轮次留存 + `image_analyze` · 可嵌入/无头 webchat 按 `endUserId` 隔离记忆 · 真正可读的 Wiki（阅读与管理分离 · 统一 Sources 标签 · 可点击 `[[wikilinks]]`）· 高负载更稳（MCP 自愈 · 工具调用恢复 · 计划证据闸门）。完整故事见 [v1.6.0 release notes](https://claw.sns.app/docs/zh/releases/1.6.0)。
 
-**v1.5.0（2026-06-04 发布）** — Goal 可勾选清单（模糊评分 → 逐项打勾）· Wiki 自维护（`[[wikilinks]]` · 事实层/经验层 · pageType 模板与权限 · 知识库流水线 · 本地目录接入）· 按拥有者隔离记忆（`owner_key` + 可见域 + `endUserId` 透传）· 每员工绑定主知识库 · 偏好 provider 驱动选型。完整故事见 [v1.5.0 release notes](https://claw.mate.vip/docs/zh/releases/1.5.0)。
+**v1.5.0（2026-06-04 发布）** — Goal 可勾选清单（模糊评分 → 逐项打勾）· Wiki 自维护（`[[wikilinks]]` · 事实层/经验层 · pageType 模板与权限 · 知识库流水线 · 本地目录接入）· 按拥有者隔离记忆（`owner_key` + 可见域 + `endUserId` 透传）· 每员工绑定主知识库 · 偏好 provider 驱动选型。完整故事见 [v1.5.0 release notes](https://claw.sns.app/docs/zh/releases/1.5.0)。
 
-**v1.4.0（2026-05-23 发布）** — 持续目标（锁定目标，每轮自评）· 子员工委派树（最深 3 层 · 同步 / 并行 / 异步 · 一句话组队）· 工具/技能渐进式披露 · 工作空间 RBAC（Owner / Admin / Member / Viewer）· 飞书一等公民（交互卡 / 审批卡 / 流式卡 · 渠道原生工具）。详见 [v1.4.0 release notes](https://claw.mate.vip/docs/zh/releases/1.4.0)。
+**v1.4.0（2026-05-23 发布）** — 持续目标（锁定目标，每轮自评）· 子员工委派树（最深 3 层 · 同步 / 并行 / 异步 · 一句话组队）· 工具/技能渐进式披露 · 工作空间 RBAC（Owner / Admin / Member / Viewer）· 飞书一等公民（交互卡 / 审批卡 / 流式卡 · 渠道原生工具）。详见 [v1.4.0 release notes](https://claw.sns.app/docs/zh/releases/1.4.0)。
 
-**v1.3.0（2026-05-13 发布）** — 工作流引擎 · 6 种 pattern 触发器 · Wiki 加工器 · 每员工独立 MCP 绑定 · 多模态旁路路由 · 4 个 JVM 原生文档生成工具 · 图像编辑。详见 [v1.3.0 release notes](https://claw.mate.vip/docs/zh/releases/1.3.0)。
+**v1.3.0（2026-05-13 发布）** — 工作流引擎 · 6 种 pattern 触发器 · Wiki 加工器 · 每员工独立 MCP 绑定 · 多模态旁路路由 · 4 个 JVM 原生文档生成工具 · 图像编辑。详见 [v1.3.0 release notes](https://claw.sns.app/docs/zh/releases/1.3.0)。
 
 ## 参与贡献
 
 ```bash
-git clone https://github.com/mateaix/mateclaw.git
+git clone https://github.com/chenzhizhuan/SnSclaw.git
 cd mateclaw
 cd mateclaw-server && mvn clean compile
 cd ../mateclaw-ui && pnpm install && pnpm dev

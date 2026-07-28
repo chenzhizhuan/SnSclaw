@@ -38,7 +38,7 @@ import static vip.mate.agent.graph.state.MateClawStateKeys.*;
  * ({@link ProgressLedgerService#MAX_AUTO_RECORDED}) and never overwrite entries
  * the LLM already wrote.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class ActionNode implements NodeAction {

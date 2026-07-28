@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * TTS 语音合成提供商接口
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public interface TtsProvider {
 

@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 /**
  * RFC-090 Phase 7 — ACP (Agent Communication Protocol) endpoint registry.
  *
- * <p>Each row describes one external coding agent that MateClaw can
+ * <p>Each row describes one external coding agent that SnSclaw can
  * delegate to over stdio (codex / claude-code / opencode / qwen-code by
  * default). Bundled via Flyway V68 so the user only has to enable the
  * row once the matching CLI is on their PATH.
@@ -48,7 +48,7 @@ public class AcpEndpointEntity {
     /**
      * call_title | call_detail | update_detail (mirrors the ACP
      * {@code tool_parse_mode} convention). Drives how the wrapper
-     * renders ACP tool-call events into MateClaw's stream protocol.
+     * renders ACP tool-call events into SnSclaw's stream protocol.
      */
     private String toolParseMode;
 

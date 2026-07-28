@@ -256,7 +256,7 @@ function onApply() {
 </script>
 
 <style scoped>
-/* Overlay + panel mirror the MateClaw drawer / confirm — same blur,
+/* Overlay + panel mirror the SnSclaw drawer / confirm — same blur,
  * same warm tone, same iOS-spring entrance. */
 .mc-picker-overlay {
   position: fixed;

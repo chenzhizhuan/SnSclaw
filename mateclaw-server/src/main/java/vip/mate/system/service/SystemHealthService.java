@@ -23,7 +23,7 @@ import java.util.List;
  * Inspects default model, provider configurations, MCP server connections,
  * and database initialization status.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

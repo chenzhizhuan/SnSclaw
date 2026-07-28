@@ -2,7 +2,7 @@
 name: dingtalk_channel_connect
 version: "1.3.0"
 optional: true
-description: "使用可见浏览器自动完成 MateClaw 钉钉渠道接入。遇到登录页必须暂停等待用户手动登录后继续。"
+description: "使用可见浏览器自动完成 SnSclaw 钉钉渠道接入。遇到登录页必须暂停等待用户手动登录后继续。"
 dependencies:
   tools:
     - browser_use
@@ -12,7 +12,7 @@ dependencies:
 
 # 钉钉渠道接入（可见浏览器）
 
-通过可见浏览器自动化完成钉钉应用创建与 MateClaw 渠道绑定。
+通过可见浏览器自动化完成钉钉应用创建与 SnSclaw 渠道绑定。
 
 ## 强制规则
 
@@ -26,7 +26,7 @@ dependencies:
 
 | 配置项 | 默认值 |
 |--------|--------|
-| 应用名称 | `MateClaw` |
+| 应用名称 | `SnSclaw` |
 | 应用描述 | `Your personal AI assistant` |
 | 机器人图标 | `https://img.alicdn.com/imgextra/i4/O1CN01M0iyHF1FVNzM9qjC0_!!6000000000492-2-tps-254-254.png` |
 | 机器人消息预览图 | 同上 |
@@ -58,7 +58,7 @@ execute_shell_command(
 
 **上传步骤**（必须按此顺序）：
 1. 先 `browser_use(action="click", selector="<上传入口>")` 触发文件选择器
-2. 再用文件上传操作（MateClaw browser_use 支持 file input 的 `type` 操作传入路径）
+2. 再用文件上传操作（SnSclaw browser_use 支持 file input 的 `type` 操作传入路径）
 
 ## 自动化流程
 
@@ -110,10 +110,10 @@ browser_use(action="snapshot")
 
 1. 进入「基础信息」→「凭证与基础信息」
 2. 告知用户 `Client ID`（AppKey）和 `Client Secret`（AppSecret）的位置
-3. 引导用户在 MateClaw 控制台绑定：
+3. 引导用户在 SnSclaw 控制台绑定：
 
 **方式 A — 控制台前端：**
-> 进入 MateClaw 管理界面 → 渠道 → 新建渠道 → 选择钉钉 → 填入 Client ID 和 Client Secret
+> 进入 SnSclaw 管理界面 → 渠道 → 新建渠道 → 选择钉钉 → 填入 Client ID 和 Client Secret
 
 **方式 B — 配置文件：**
 ```json
@@ -124,7 +124,7 @@ browser_use(action="snapshot")
 }
 ```
 
-**Agent 不主动修改 MateClaw 配置文件，只引导用户操作。**
+**Agent 不主动修改 SnSclaw 配置文件，只引导用户操作。**
 
 ## 稳定性策略
 

@@ -349,7 +349,7 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
 
     private MultiValueMap<String, String> buildOpenAiHeaders(Map<String, Object> kwargs) {
         LinkedMultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
-        headers.add("User-Agent", "MateClaw/1.0");
+        headers.add("User-Agent", "SnSclaw/1.0");
         // Force a fresh TCP connection per request (no keep-alive pooling). Self-hosted
         // OpenAI-compatible gateways frequently idle-close connections faster than the
         // JDK HttpClient evicts them from its pool, so a reused-but-dead socket gets reset

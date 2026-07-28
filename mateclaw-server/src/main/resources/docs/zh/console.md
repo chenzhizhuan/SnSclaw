@@ -1,6 +1,6 @@
 # 控制台 UI
 
-控制台是每个 MateClaw 部署都自带的 Vue 3 SPA。它跑在你的浏览器里（或者 Electron 桌面窗口里），通过 REST + SSE 跟 Spring Boot 后端对话，把 MateClaw 的每一项能力——聊天、Agent、知识、工具、技能、渠道、安全、定时任务、用量分析——都放在**同一套登录**后面。
+控制台是每个 SnSclaw 部署都自带的 Vue 3 SPA。它跑在你的浏览器里（或者 Electron 桌面窗口里），通过 REST + SSE 跟 Spring Boot 后端对话，把 SnSclaw 的每一项能力——聊天、Agent、知识、工具、技能、渠道、安全、定时任务、用量分析——都放在**同一套登录**后面。
 
 这一页是地图。它按侧边栏分组、按页面一个一个走下来，同时指出每个页面用的 API 端点。
 
@@ -423,7 +423,7 @@ v1.4.0 起，**定时任务**和**触发器**合并为单个**调度中心**页�
 
 ## Pinia Store
 
-MateClaw 用领域驱动的 Pinia store。每个 store **独占**自己的状态。
+SnSclaw 用领域驱动的 Pinia store。每个 store **独占**自己的状态。
 
 | Store | 文件 | 管 |
 |-------|------|-----|

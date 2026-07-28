@@ -21,7 +21,7 @@ import java.util.concurrent.Executor;
  * minute boundary). Excess tasks are rejected immediately so the
  * scheduler threads never block on submission.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Configuration
 @EnableAsync

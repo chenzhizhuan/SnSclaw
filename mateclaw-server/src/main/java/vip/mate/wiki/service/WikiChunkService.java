@@ -23,7 +23,7 @@ import java.util.*;
  *   <li>{@link #deleteByRawId} — 材料删除时级联清理</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

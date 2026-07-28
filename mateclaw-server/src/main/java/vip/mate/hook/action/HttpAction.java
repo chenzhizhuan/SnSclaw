@@ -35,7 +35,7 @@ public final class HttpAction implements HookAction {
     /** RFC-03 Lane H1 default header name; configurable per hook so receivers
      *  with existing conventions (X-Hub-Signature-256, etc.) can be served
      *  without code changes. */
-    public static final String DEFAULT_SIGNATURE_HEADER = "X-MateClaw-Signature";
+    public static final String DEFAULT_SIGNATURE_HEADER = "X-SnSclaw-Signature";
 
     private final RestClient restClient;
     private final String method;          // GET | POST

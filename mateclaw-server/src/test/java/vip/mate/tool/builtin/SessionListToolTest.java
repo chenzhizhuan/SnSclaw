@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
  * spawn / send / list triad, with DB-backed discovery of persisted child
  * sessions overlaid by live registry status.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @ExtendWith(MockitoExtension.class)
 class SessionListToolTest {

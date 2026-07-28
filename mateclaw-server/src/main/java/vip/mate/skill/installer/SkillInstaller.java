@@ -24,9 +24,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * 管理从外部源（GitHub / ClawHub）安装 skill 的完整流程：
  * URL 解析 → bundle 获取 → workspace 落盘 → 数据库注册 → 运行时刷新。
  * <p>
- * 支持异步安装（task_id 轮询模式），参考 MateClaw 实现。
+ * 支持异步安装（task_id 轮询模式），参考 SnSclaw 实现。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

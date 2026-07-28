@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
  * 根据 URL 自动识别来源类型（GitHub / ClawHub），并委托对应 fetcher 获取 bundle。
  * 预留扩展点，可通过增加 pattern 支持更多源。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

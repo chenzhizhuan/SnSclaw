@@ -21,16 +21,16 @@ import java.util.UUID;
  * Resolves what identity to inject into an opt-in MCP server's tool call, and
  * (in token mode) mints the signed assertion.
  *
- * <p><b>Identity typing.</b> Not every requester is a MateClaw-authenticated
+ * <p><b>Identity typing.</b> Not every requester is a SnSclaw-authenticated
  * account. The resolved identity is typed so the REST backend can tell
- * "MateClaw authenticated this user" apart from "this is an external/anonymous
+ * "SnSclaw authenticated this user" apart from "this is an external/anonymous
  * identifier" (see RFC: on-behalf-of identity typing):
  * <ul>
  *   <li><b>authenticated</b> — web-console login (JWT/PAT). {@code sub} = the
  *       user's immutable numeric id (carried on {@link ChatOrigin#requesterUserId()}).
  *       The backend may authorize on-behalf-of freely.</li>
  *   <li><b>anonymous</b> — webchat visitor / third-party {@code endUserId}. No
- *       MateClaw account backs it; {@code sub} = the visitor id. The backend must
+ *       SnSclaw account backs it; {@code sub} = the visitor id. The backend must
  *       treat this as unauthenticated and decide for itself whether/how to serve.</li>
  *   <li><b>external</b> — IM sender (feishu/wecom/…). {@code sub} = the platform
  *       sender id; same caveat as anonymous.</li>
@@ -51,7 +51,7 @@ import java.util.UUID;
  * unparseable, nothing is injected (the call goes out without identity and the
  * backend rejects it) rather than silently downgrading to plaintext.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service
@@ -123,14 +123,14 @@ public class McpIdentityForwardService {
         String channel = origin.channelType();
         // Unknown / unattributed channel: never assert identity. An absent
         // channelType must NOT be promoted to authenticated — only the explicit
-        // "web" channel (built by ChatOrigin.web()) carries MateClaw's assertion
+        // "web" channel (built by ChatOrigin.web()) carries SnSclaw's assertion
         // that a real account backs this request. Treating null/blank as web
         // would silently stamp an untrusted ThreadLocal value with authenticated
         // trust, violating the fail-closed contract this service guarantees.
         if (channel == null || channel.isBlank()) {
             return ResolvedIdentity.NONE;
         }
-        // Authenticated web account: MateClaw vouches for this user. Prefer the
+        // Authenticated web account: SnSclaw vouches for this user. Prefer the
         // immutable numeric id when available (web-console login); fall back to
         // the username when only the ThreadLocal path supplied identity.
         if ("web".equals(channel)) {
@@ -144,8 +144,8 @@ public class McpIdentityForwardService {
                     : ResolvedIdentity.NONE;
         }
         // webchat visitor ("api") or IM sender (feishu/wecom/…): external id,
-        // no MateClaw account — forward with an explicit trust downgrade so the
-        // backend knows it is NOT an authenticated MateClaw user.
+        // no SnSclaw account — forward with an explicit trust downgrade so the
+        // backend knows it is NOT an authenticated SnSclaw user.
         String requester = origin.requesterId();
         if (requester == null || requester.isBlank()) {
             return ResolvedIdentity.NONE;

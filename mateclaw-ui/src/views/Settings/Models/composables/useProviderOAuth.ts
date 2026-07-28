@@ -173,7 +173,7 @@ export function useProviderOAuth(deps: FormDeps & ListDeps) {
 
   async function handleOAuthRevoke(providerId?: string) {
     // Claude Code OAuth credentials live on disk and are owned by the Claude
-    // Code app, not MateClaw — direct the user to log out there instead of
+    // Code app, not SnSclaw — direct the user to log out there instead of
     // clobbering their machine-level login.
     if (providerId === 'anthropic-claude-code') {
       mcToast.info(t('settings.model.claudeCodeOauthRevokeHint'))

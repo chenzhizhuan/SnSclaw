@@ -1,4 +1,4 @@
-# MateClaw Desktop - Build & Publish Scripts
+# SnSclaw Desktop - Build & Publish Scripts
 
 ## Scripts
 
@@ -153,12 +153,12 @@ resources/app.jar            resources/jre/{os}-{arch}/
                     |
                     v
               release/
-              ├── MateClaw_1.0.0_arm64.dmg
-              ├── MateClaw_1.0.0_x64.dmg
-              ├── MateClaw_1.0.0_arm64.zip
-              ├── MateClaw_1.0.0_x64.zip
-              ├── MateClaw_1.0.0_arm64_Setup.exe
-              ├── MateClaw_1.0.0_x64_Setup.exe
+              ├── SnSclaw_1.0.0_arm64.dmg
+              ├── SnSclaw_1.0.0_x64.dmg
+              ├── SnSclaw_1.0.0_arm64.zip
+              ├── SnSclaw_1.0.0_x64.zip
+              ├── SnSclaw_1.0.0_arm64_Setup.exe
+              ├── SnSclaw_1.0.0_x64_Setup.exe
               ├── latest-mac.yml
               └── latest.yml
                     |

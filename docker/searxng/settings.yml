@@ -1,4 +1,4 @@
-# SearXNG config for MateClaw's bundled search sidecar.
+# SearXNG config for SnSclaw's bundled search sidecar.
 #
 # Two things differ from the upstream default:
 #   1. JSON output format is enabled — mateclaw's SearXNGSearchProvider
@@ -17,7 +17,7 @@ use_default_settings: true
 
 general:
   # Cosmetic only; shown in the UI title.
-  instance_name: "MateClaw Search"
+  instance_name: "SnSclaw Search"
   # Keep this private — no outbound metrics.
   donation_url: false
   contact_url: false

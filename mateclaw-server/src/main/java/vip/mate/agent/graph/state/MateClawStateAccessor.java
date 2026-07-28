@@ -16,7 +16,7 @@ import static vip.mate.agent.graph.state.MateClawStateKeys.*;
  * 封装 {@link OverAllState} 的字符串 key 读写，
  * 提供带默认值的强类型方法，避免业务代码散落 state.value("xxx") 调用。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public final class MateClawStateAccessor {
 

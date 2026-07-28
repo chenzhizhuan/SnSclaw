@@ -15,7 +15,7 @@ import java.util.Map;
 /**
  * Plugin management REST API.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "Plugin Management")
 @RestController

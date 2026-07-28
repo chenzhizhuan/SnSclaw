@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * OAuth 2.0 Device Authorization Grant (RFC 8628) for the OpenAI Codex CLI client_id.
  *
- * <p>Used when MateClaw runs on a remote host and the browser cannot reach
+ * <p>Used when SnSclaw runs on a remote host and the browser cannot reach
  * {@code localhost:1455}. Authorization happens entirely on
  * {@code auth.openai.com}; we just poll a server-side endpoint until OpenAI hands
  * us an authorization code, then delegate the token exchange to

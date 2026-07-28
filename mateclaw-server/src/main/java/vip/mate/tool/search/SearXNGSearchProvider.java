@@ -17,10 +17,10 @@ import java.util.List;
 /**
  * SearXNG 搜索提供商 — 无需 API Key，但需要 base URL（自部署实例）
  *
- * <p>SearXNG 是开源的元搜索引擎，可自部署。Docker 部署 MateClaw 时自动包含 SearXNG 服务，
+ * <p>SearXNG 是开源的元搜索引擎，可自部署。Docker 部署 SnSclaw 时自动包含 SearXNG 服务，
  * 默认 base URL 为 {@code http://searxng:8080}。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

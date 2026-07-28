@@ -13,7 +13,7 @@ class MemorySummarizationGateTest {
     @Test
     @DisplayName("skips conversations whose final assistant message is evidence_insufficient")
     void skipsEvidenceInsufficientTurns() {
-        MessageEntity user = message("user", "分析 MateClaw 技能系统源码", null);
+        MessageEntity user = message("user", "分析 SnSclaw 技能系统源码", null);
         MessageEntity assistant = message("assistant", "SkillServiceImpl.java 负责业务。",
                 "{\"finishReason\":\"evidence_insufficient\"}");
 

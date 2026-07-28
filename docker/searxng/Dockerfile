@@ -1,4 +1,4 @@
-# Custom SearXNG image for MateClaw.
+# Custom SearXNG image for SnSclaw.
 #
 # Bakes our settings.yml into /etc/searxng/settings.yml so the sidecar works
 # out of the box with no host bind-mount. The upstream image ships JSON output

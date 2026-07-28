@@ -22,7 +22,7 @@ import java.util.Set;
  *       authenticates the MCP service by API key.</li>
  *   <li><b>Signed token</b> ({@code token.enabled=true}) — injects a short-lived
  *       RS256 JWT under {@link #TOKEN_ARG} (sub=user, aud=server, short exp),
- *       minted by {@link McpIdentityForwardService} with MateClaw's private key.
+ *       minted by {@link McpIdentityForwardService} with SnSclaw's private key.
  *       The REST backend <em>verifies</em> it with the public key, so it trusts
  *       the signature — not the MCP service, the Python script, or the transport.
  *       This is the cross-trust-boundary baseline.</li>
@@ -52,7 +52,7 @@ import java.util.Set;
  *           my-internal-api: my-internal-api
  * </pre>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Component
 @ConfigurationProperties(prefix = "mateclaw.mcp.identity-forward")

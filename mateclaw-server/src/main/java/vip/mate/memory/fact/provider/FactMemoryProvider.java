@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  * - onMemoryWrite: triggers incremental projection rebuild
  * - getToolBeans: exposes FactQueryTool to agents
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

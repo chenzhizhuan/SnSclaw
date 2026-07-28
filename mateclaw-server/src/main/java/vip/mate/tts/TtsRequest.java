@@ -6,7 +6,7 @@ import lombok.Data;
 /**
  * TTS 语音合成统一请求
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @Builder

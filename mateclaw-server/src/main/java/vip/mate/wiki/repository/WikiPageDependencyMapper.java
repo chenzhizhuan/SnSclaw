@@ -7,7 +7,7 @@ import vip.mate.wiki.model.WikiPageDependencyEntity;
 /**
  * Mapper for {@link WikiPageDependencyEntity}.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface WikiPageDependencyMapper extends BaseMapper<WikiPageDependencyEntity> {

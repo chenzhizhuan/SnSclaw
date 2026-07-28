@@ -30,7 +30,7 @@ async function afterPack(context) {
 
 function findAppJar(context) {
   const appOutDir = context.appOutDir
-  const productFilename = context.packager?.appInfo?.productFilename || context.packager?.appInfo?.productName || 'MateClaw'
+  const productFilename = context.packager?.appInfo?.productFilename || context.packager?.appInfo?.productName || 'SnSclaw'
   const platform = context.electronPlatformName || context.packager?.platform?.name
 
   const candidates = []

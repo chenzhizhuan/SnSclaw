@@ -24,7 +24,7 @@ import java.util.Map;
  * <p>
  * Entries are stored as workspace files (structured/*.md) via StructuredMemoryService.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

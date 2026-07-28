@@ -37,7 +37,7 @@ class DatasourceServicePasswordPersistenceTest {
             return true;
         }).when(connectionManager).testConnection(datasource);
 
-        // When MateClaw tests the JDBC connection.
+        // When SnSclaw tests the JDBC connection.
         assertTrue(service.testConnection(1L));
 
         // Then the entity sent back to MyBatis must be encrypted again.

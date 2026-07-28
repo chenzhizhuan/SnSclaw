@@ -10,7 +10,7 @@ import vip.mate.wiki.model.WikiEntityMentionEntity;
  * <p>Read paths fetch mentions by {@code entity_id} or by {@code page_id};
  * cache invalidation soft-deletes by {@code chunk_id} or {@code kb_id}.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface WikiEntityMentionMapper extends BaseMapper<WikiEntityMentionEntity> {

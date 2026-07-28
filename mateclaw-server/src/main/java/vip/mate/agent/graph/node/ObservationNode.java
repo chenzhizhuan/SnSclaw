@@ -26,7 +26,7 @@ import static vip.mate.agent.graph.state.MateClawStateKeys.*;
  * <p>
  * 这是 maxIterations 强制执行的核心节点之一，配合 ObservationDispatcher 实现迭代控制。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class ObservationNode implements NodeAction {

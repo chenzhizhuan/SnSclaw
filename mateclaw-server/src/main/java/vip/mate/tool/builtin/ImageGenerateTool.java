@@ -20,7 +20,7 @@ import java.util.StringJoiner;
 /**
  * 图片生成工具 — Agent 可调用的 @Tool，提交图片生成任务
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

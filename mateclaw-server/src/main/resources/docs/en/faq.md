@@ -1,6 +1,6 @@
 # FAQ
 
-Common questions and real answers. If your question isn't here, check the relevant feature page or open a [GitHub issue](https://github.com/mateaix/mateclaw/issues).
+Common questions and real answers. If your question isn't here, check the relevant feature page or open a [GitHub issue](https://github.com/chenzhizhuan/SnSclaw/issues).
 
 ---
 
@@ -8,7 +8,7 @@ Common questions and real answers. If your question isn't here, check the releva
 
 ### What Java version do I need?
 
-**Java 17 or higher.** MateClaw uses features introduced in Java 17 (sealed classes, text blocks, records, pattern matching). Verify with `java -version`.
+**Java 17 or higher.** SnSclaw uses features introduced in Java 17 (sealed classes, text blocks, records, pattern matching). Verify with `java -version`.
 
 If you're using the desktop app, **you don't need Java installed at all** — the installer bundles JRE 21.
 
@@ -16,18 +16,18 @@ If you're using the desktop app, **you don't need Java installed at all** — th
 
 No. Three keyless paths:
 
-- **Ollama** — local GPU inference; MateClaw auto-detects it on `localhost:11434` at startup
+- **Ollama** — local GPU inference; SnSclaw auto-detects it on `localhost:11434` at startup
 - **ChatGPT OAuth** — if you have a ChatGPT Plus or Pro subscription, log in through the browser flow — your subscription is used directly, no API key needed
 - **OpenRouter free tier** — 200+ free models, one OpenRouter key gives you access
 
-**You also don't need to set any API key as an environment variable to start MateClaw.** All provider configuration is done through the UI at `Settings → Models` after startup.
+**You also don't need to set any API key as an environment variable to start SnSclaw.** All provider configuration is done through the UI at `Settings → Models` after startup.
 
 ### How do I get a DashScope API key?
 
 1. Go to the [Alibaba Cloud DashScope console](https://dashscope.console.aliyun.com/)
 2. Sign up or log in
 3. Create an API key
-4. In MateClaw, go to `Settings → Models → DashScope` and paste it
+4. In SnSclaw, go to `Settings → Models → DashScope` and paste it
 
 ### The backend won't start — port 18088 is in use
 
@@ -61,7 +61,7 @@ Username `admin`, password `admin123`. **Change it immediately in any real deplo
 
 ### My JWT token keeps expiring
 
-MateClaw implements **sliding-window renewal** — when a token is within 25% of expiry, the server issues a new one in the `X-New-Token` response header. The frontend handles this automatically.
+SnSclaw implements **sliding-window renewal** — when a token is within 25% of expiry, the server issues a new one in the `X-New-Token` response header. The frontend handles this automatically.
 
 If you're calling the API manually (curl, Postman), read the `X-New-Token` header and use the new value for subsequent requests.
 
@@ -83,7 +83,7 @@ UPDATE mate_user SET password = '$2a$10$...' WHERE username = 'admin';
 
 LLM API keys are not read from environment variables — setting `DASHSCOPE_API_KEY` and friends has no effect. The container starts with zero providers; sign in and add the first one in the UI.
 
-### How do I use GPT-4 with MateClaw?
+### How do I use GPT-4 with SnSclaw?
 
 `Settings → Models → Add Provider`. Either paste your OpenAI API key, or use **OpenAI OAuth** if you have ChatGPT Plus/Pro — a browser window opens for you to log in. After saving, pick `gpt-4o` (or whichever model) from the model picker.
 
@@ -302,9 +302,9 @@ docker exec mateclaw-mysql mysqldump -u root -p${MYSQL_ROOT_PASSWORD} mateclaw >
 
 **Desktop** data lives in the per-user directory:
 
-- macOS: `~/Library/Application Support/MateClaw/`
-- Windows: `%APPDATA%/MateClaw/`
-- Linux: `~/.local/share/MateClaw/`
+- macOS: `~/Library/Application Support/SnSclaw/`
+- Windows: `%APPDATA%/SnSclaw/`
+- Linux: `~/.local/share/SnSclaw/`
 
 ---
 
@@ -314,15 +314,15 @@ docker exec mateclaw-mysql mysqldump -u root -p${MYSQL_ROOT_PASSWORD} mateclaw >
 
 The installer bundles JRE 21. Check the logs:
 
-- macOS: `~/Library/Logs/MateClaw/`
-- Windows: `%APPDATA%/MateClaw/logs/`
-- Linux: `~/.local/share/MateClaw/logs/`
+- macOS: `~/Library/Logs/SnSclaw/`
+- Windows: `%APPDATA%/SnSclaw/logs/`
+- Linux: `~/.local/share/SnSclaw/logs/`
 
 Try launching from a terminal. On Windows, right-click → Unblock. On macOS, allow the unsigned app in System Settings → Privacy.
 
 ### How do I update the desktop app?
 
-**Auto-updates** via electron-updater. On startup, checks GitHub Releases and prompts you when a new version is available. Manual download also available from [Releases](https://github.com/mateaix/mateclaw/releases).
+**Auto-updates** via electron-updater. On startup, checks GitHub Releases and prompts you when a new version is available. Manual download also available from [Releases](https://github.com/chenzhizhuan/SnSclaw/releases).
 
 ---
 
@@ -419,4 +419,4 @@ Stored in `localStorage`. Clearing browser data wipes it.
 - [Quick Start](./quickstart) — setup walkthrough
 - [Configuration](./config) — full configuration reference
 - [Contributing](./contributing) — how to report bugs and request features
-- [GitHub Issues](https://github.com/mateaix/mateclaw/issues) — when the docs don't answer your question
+- [GitHub Issues](https://github.com/chenzhizhuan/SnSclaw/issues) — when the docs don't answer your question

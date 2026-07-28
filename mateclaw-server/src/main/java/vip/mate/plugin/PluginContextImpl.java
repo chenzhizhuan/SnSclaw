@@ -28,7 +28,7 @@ import java.util.function.Supplier;
  * Platform-side implementation of {@link PluginContext}.
  * Bridges plugin registrations to the corresponding platform services.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class PluginContextImpl implements PluginContext {
 

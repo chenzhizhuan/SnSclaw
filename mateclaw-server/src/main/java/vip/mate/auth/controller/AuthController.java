@@ -18,7 +18,7 @@ import java.util.List;
 /**
  * 认证接口
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "认证管理")
 @RestController

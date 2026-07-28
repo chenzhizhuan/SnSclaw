@@ -12,7 +12,7 @@
 
 | 类型 | 来源 | 维护者 |
 |------|------|--------|
-| **`builtin`** | 跟着 MateClaw 一起发布 | 核心团队 |
+| **`builtin`** | 跟着 SnSclaw 一起发布 | 核心团队 |
 | **`custom`** | 你通过 UI、API 或直接往工作空间扔文件创建 | 你自己 |
 | **`dynamic`** | Agent 在工作中自动合成 | Agent + 你的审批 |
 | **`mcp`** | 由 MCP 服务暴露的工具支撑（同名技能会被 `custom` 真技能覆盖） | MCP 服务作者 |
@@ -274,7 +274,7 @@ mateclaw:
 
 **技能市场** 页面（`/skills`）是你浏览、安装、编辑、管理技能的地方。三个来源：
 
-- **内置**——MateClaw 出厂带的技能
+- **内置**——SnSclaw 出厂带的技能
 - **你的自定义技能**——你创建或上传的
 - **ClawHub**——一个社区技能库，浏览上千个社区技能、预览、一键安装
 
@@ -421,7 +421,7 @@ Agent 的记忆和你一起长大。不用再反复说"记住我喜欢按这个�
 
 ## 安装前的 Preflight 检查
 
-技能装进来不一定能用——它可能需要某个 API key、某个 CLI 工具、某个 MateClaw 开关被打开。
+技能装进来不一定能用——它可能需要某个 API key、某个 CLI 工具、某个 SnSclaw 开关被打开。
 
 之前你装完一跑才发现少东西。现在：
 
@@ -613,7 +613,7 @@ mateclaw:
 
 ## ACP 桥接：把外部编码 Agent 接进来
 
-ACP（Agent Client Protocol）是一种把外部 Agent 客户端（Claude Code、Codex、其他兼容客户端）以技能身份接入 MateClaw 的协议。
+ACP（Agent Client Protocol）是一种把外部 Agent 客户端（Claude Code、Codex、其他兼容客户端）以技能身份接入 SnSclaw 的协议。
 
 接入之后：
 

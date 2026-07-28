@@ -1,7 +1,7 @@
 package vip.mate.plugin.api;
 
 /**
- * Plugin SPI contract — all MateClaw plugins implement this interface.
+ * Plugin SPI contract — all SnSclaw plugins implement this interface.
  *
  * <p>Lifecycle:
  * <ol>
@@ -10,7 +10,7 @@ package vip.mate.plugin.api;
  *   <li>{@link #onDisable()} — called when the plugin is disabled, clean up resources</li>
  * </ol>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public interface MateClawPlugin {
 

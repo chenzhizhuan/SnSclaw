@@ -6,7 +6,7 @@ import lombok.Data;
 /**
  * 统一搜索结果结构 — 所有 provider 返回此格式
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @Builder

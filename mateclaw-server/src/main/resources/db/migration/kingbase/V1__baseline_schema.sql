@@ -1,4 +1,4 @@
--- MateClaw 数据库初始化脚本（KingbaseES / PostgreSQL 兼容）
+-- SnSclaw 数据库初始化脚本（KingbaseES / PostgreSQL 兼容）
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS mate_user (

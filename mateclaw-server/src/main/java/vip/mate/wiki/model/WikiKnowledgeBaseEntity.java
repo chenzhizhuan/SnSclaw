@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * Wiki 知识库实体
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_wiki_knowledge_base")

@@ -107,7 +107,7 @@ public class DeepSeekV4ThinkingDecorator implements ChatModel {
     }
 
     /**
-     * Map MateClaw's thinking levels (off/low/medium/high/max) to DeepSeek's
+     * Map SnSclaw's thinking levels (off/low/medium/high/max) to DeepSeek's
      * accepted reasoning_effort values: max collapses into high since DeepSeek
      * does not expose a "max" tier on V4.
      */

@@ -1,4 +1,4 @@
-# MateClaw Desktop UI 热更新设计
+# SnSclaw Desktop UI 热更新设计
 
 ## 背景
 
@@ -114,7 +114,7 @@ Electron Shell
 运行时目录建议：
 
 ```text
-~/Library/Application Support/MateClaw/        # macOS 示例
+~/Library/Application Support/SnSclaw/        # macOS 示例
 ├── data/
 ├── ui-bundles/
 │   ├── current.json
@@ -496,7 +496,7 @@ UI 热更新本质上是在本地执行新的前端资源，必须做完整校�
 
 ## 结论
 
-对当前 MateClaw 架构，最合适的不是把桌面端改成远程站点壳，而是：
+对当前 SnSclaw 架构，最合适的不是把桌面端改成远程站点壳，而是：
 
 **保留 `Electron + localhost Spring Boot` 架构，引入“外置 UI Bundle 覆盖内置 static 资源”的 OTA 机制。**
 

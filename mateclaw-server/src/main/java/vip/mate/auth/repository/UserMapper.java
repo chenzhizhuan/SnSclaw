@@ -7,7 +7,7 @@ import vip.mate.auth.model.UserEntity;
 /**
  * 用户 Mapper
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface UserMapper extends BaseMapper<UserEntity> {

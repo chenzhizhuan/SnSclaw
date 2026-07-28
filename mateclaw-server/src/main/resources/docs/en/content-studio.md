@@ -2,9 +2,9 @@
 
 **One sentence in. A publishable post out.**
 
-Content Studio (内容工作室) is MateClaw's first flagship *scene* — not a single tool, but an orchestrated pipeline that turns *"write me something about X"* into a finished, on-platform artifact: a **WeChat Official Account (公众号)** image-text article sitting in your draft box, or a **Xiaohongshu (小红书 / RED)** note packaged as ready-to-post vertical cards.
+Content Studio (内容工作室) is SnSclaw's first flagship *scene* — not a single tool, but an orchestrated pipeline that turns *"write me something about X"* into a finished, on-platform artifact: a **WeChat Official Account (公众号)** image-text article sitting in your draft box, or a **Xiaohongshu (小红书 / RED)** note packaged as ready-to-post vertical cards.
 
-It's built entirely from MateClaw's own primitives — web search, page fetch, image generation, HTML-to-image rendering, structured memory, cron, and the skill runtime — stitched into a repeatable SOP. Everything below ships in **v1.8.0+**.
+It's built entirely from SnSclaw's own primitives — web search, page fetch, image generation, HTML-to-image rendering, structured memory, cron, and the skill runtime — stitched into a repeatable SOP. Everything below ships in **v1.8.0+**.
 
 ---
 
@@ -115,7 +115,7 @@ Getting a draft out once is easy; running it every day for three months is where
 - **Retry + plain-language errors.** Transient WeChat error codes retry with backoff; known codes translate into actionable hints — e.g. *"add the server's public IP to the Official Account whitelist."*
 - **A draft always has a cover.** If the cover can't be resolved, a **built-in placeholder cover** is rendered so the draft still lands, and the response says a placeholder was used.
 
-**Draft-box-first.** Mass-send and publish are outward, irreversible, and rate-limited, so MateClaw drafts and you press "publish" in the Official Account backstage. The optional `publish` action is gated through the [approval](./security) flow.
+**Draft-box-first.** Mass-send and publish are outward, irreversible, and rate-limited, so SnSclaw drafts and you press "publish" in the Official Account backstage. The optional `publish` action is gated through the [approval](./security) flow.
 
 ---
 
@@ -165,7 +165,7 @@ Xiaohongshu needs no API key — Content Studio produces a downloadable card pac
 
 ## Limitations & non-goals
 
-- **No mass-send / one-click push to all followers.** Rate-limited and outward-irreversible; MateClaw drafts, you publish from the backstage.
+- **No mass-send / one-click push to all followers.** Rate-limited and outward-irreversible; SnSclaw drafts, you publish from the backstage.
 - **No official Xiaohongshu publish API.** None exists. Content Studio produces a ready-to-post card package (default); browser-assisted upload is optional, approval-gated, and **does not bypass any risk control or human verification**.
 - **De-AI-ification is heuristic**, not an adversarial guarantee against detectors.
 - **No content laundering.** Reference fetching is for understanding existing angles and differentiating — output must be original and cite its references. Compliance responsibility rests with you.

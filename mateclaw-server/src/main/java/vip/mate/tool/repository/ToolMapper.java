@@ -7,7 +7,7 @@ import vip.mate.tool.model.ToolEntity;
 /**
  * 工具 Mapper
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface ToolMapper extends BaseMapper<ToolEntity> {

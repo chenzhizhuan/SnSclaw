@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 /**
  * Session search result — a matched message from conversation history.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record SessionSearchResult(
         String conversationId,

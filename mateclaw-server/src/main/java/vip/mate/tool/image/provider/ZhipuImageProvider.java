@@ -22,7 +22,7 @@ import java.util.Set;
  * CogView-3-Flash 模型免费。
  * API 文档: https://open.bigmodel.cn/dev/api/image-generate/cogview
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

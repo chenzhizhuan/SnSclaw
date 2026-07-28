@@ -26,7 +26,7 @@
 
   <rect width="960" height="580" rx="20" fill="url(#bg)"/>
 
-  <text x="480" y="42" text-anchor="middle" font-size="22" font-weight="800" fill="#1d1612" letter-spacing="-0.5">MateClaw Business Architecture</text>
+  <text x="480" y="42" text-anchor="middle" font-size="22" font-weight="800" fill="#1d1612" letter-spacing="-0.5">SnSclaw Business Architecture</text>
   <text x="480" y="62" text-anchor="middle" font-size="11" fill="#9b7d6c" letter-spacing="2">AN AI OPERATING SYSTEM — THE COMPLETE PICTURE</text>
 
   <!-- ===== Center: Agent Core ===== -->

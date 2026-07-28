@@ -1,6 +1,6 @@
 # UI 精简改动 - 验证测试用例
 
-> 基于 MateClaw 内置的 3 个 Agent、19 个工具、31 条 Guard 规则和审批工作流设计。
+> 基于 SnSclaw 内置的 3 个 Agent、19 个工具、31 条 Guard 规则和审批工作流设计。
 > 默认登录：admin / admin123
 
 ---
@@ -16,7 +16,7 @@
 ## 一、StreamLoadingBar 状态简化验证
 
 ### TC-1.1 思考中状态（Thinking）
-- **Agent**: MateClaw Assistant（ReAct）
+- **Agent**: SnSclaw Assistant（ReAct）
 - **操作**: 发送 "请分析一下量子计算的发展趋势"
 - **预期**:
   - 加载条显示 **"思考中…"** 和 ◐ 图标，不再显示 "准备上下文"/"读取记忆"/"推理中" 等内部阶段
@@ -25,7 +25,7 @@
   - 仅显示耗时计时器（如 "12s"），不显示 token 计数
 
 ### TC-1.2 执行中状态（Working）
-- **Agent**: MateClaw Assistant（ReAct），绑定 WebSearch 工具
+- **Agent**: SnSclaw Assistant（ReAct），绑定 WebSearch 工具
 - **操作**: 发送 "搜索一下今天的科技新闻"
 - **预期**:
   - 工具调用时加载条切换为 **"执行中…"** 和 ⚙ 图标
@@ -33,7 +33,7 @@
   - 不显示 "正在执行工具" 的详情文本
 
 ### TC-1.3 撰写中状态（Writing）
-- **Agent**: MateClaw Assistant（ReAct）
+- **Agent**: SnSclaw Assistant（ReAct）
 - **操作**: 发送 "写一篇 500 字的短文"
 - **预期**:
   - 内容流输出阶段，加载条显示 **"生成中…"** 和 ▸ 图标
@@ -50,7 +50,7 @@
 ## 二、审批 UI 精简验证
 
 ### TC-2.1 Shell 命令触发审批（高危操作）
-- **Agent**: MateClaw Assistant（ReAct），绑定 Shell 工具
+- **Agent**: SnSclaw Assistant（ReAct），绑定 Shell 工具
 - **操作**: 发送 "帮我删除 /tmp/test 目录下的所有临时文件"
 - **预期**:
   - Agent 推理后调用 `execute_shell_command`，参数含 `rm`
@@ -60,7 +60,7 @@
   - 点击"批准"后，气泡状态变为 "已批准：`execute_shell_command`"
 
 ### TC-2.2 文件写入触发审批
-- **Agent**: MateClaw Assistant（ReAct），绑定 WriteFile 工具
+- **Agent**: SnSclaw Assistant（ReAct），绑定 WriteFile 工具
 - **操作**: 发送 "创建一个 hello.txt 文件，内容写 Hello World"
 - **预期**:
   - `write_file` 工具触发审批
@@ -68,7 +68,7 @@
   - 拒绝后，气泡状态变为 "已拒绝：`write_file`"
 
 ### TC-2.3 危险命令直接阻断（CRITICAL 级别）
-- **Agent**: MateClaw Assistant（ReAct），绑定 Shell 工具
+- **Agent**: SnSclaw Assistant（ReAct），绑定 Shell 工具
 - **操作**: 发送 "执行 rm -rf /"
 - **预期**:
   - Guard 规则 `SHELL_RM_RF_ROOT` 直接 BLOCK
@@ -81,7 +81,7 @@
 
 ### TC-3.1 PlanStepsPanel 渲染唯一性
 - **Agent**: Task Planner（Plan-Execute）
-- **操作**: 发送 "帮我调研 MateClaw 项目的技术栈，列出前端和后端分别用了哪些核心技术，然后生成一个技术概览文档"
+- **操作**: 发送 "帮我调研 SnSclaw 项目的技术栈，列出前端和后端分别用了哪些核心技术，然后生成一个技术概览文档"
 - **预期**:
   - 生成计划后，PlanStepsPanel 只在消息气泡中出现**一次**
   - 步骤进度正确显示（pending → running → completed）
@@ -102,7 +102,7 @@
 ## 四、BrowserTimeline 默认收起验证
 
 ### TC-4.1 浏览器操作时间线默认折叠
-- **Agent**: MateClaw Assistant（ReAct），绑定 BrowserUse 工具
+- **Agent**: SnSclaw Assistant（ReAct），绑定 BrowserUse 工具
 - **操作**: 发送 "打开浏览器访问 baidu.com，截图"
 - **预期**:
   - 浏览器操作完成后，时间线默认**收起**
@@ -162,12 +162,12 @@
 ## 八、回归测试
 
 ### TC-8.1 普通对话流程（无工具调用）
-- **Agent**: MateClaw Assistant
+- **Agent**: SnSclaw Assistant
 - **操作**: 发送 "你好，介绍一下你自己"
 - **预期**: 正常生成回复，无 UI 异常
 
 ### TC-8.2 多轮对话 + 工具调用
-- **Agent**: MateClaw Assistant，绑定多个工具
+- **Agent**: SnSclaw Assistant，绑定多个工具
 - **操作**: 连续发送 3-5 条消息，触发不同工具
 - **预期**: 每轮消息的加载条、工具调用显示、内容输出均正常
 

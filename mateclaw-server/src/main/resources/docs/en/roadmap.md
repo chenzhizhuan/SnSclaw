@@ -12,7 +12,7 @@ Everyone deserves an AI assistant that actually understands them.
 
 Not a chat toy. Not a tech demo. A **digital counterpart** — one that knows how you work, connects to all your tools, thinks for you, executes for you, and remembers for you.
 
-**MateClaw is that thing.**
+**SnSclaw is that thing.**
 
 ---
 
@@ -73,7 +73,7 @@ Flows were scripted by you, but the employee itself still "answered one round an
 - **Persistent goals**: say it once — the employee locks the goal, self-checks every round, and keeps itself going until done or out of budget
 - **Sub-employee delegation tree**: recursive delegation up to 3 levels deep, with sync / parallel fan-out / async delegation tools; the Employee Builder spins up a whole team from one sentence
 - **Progressive tool/skill disclosure**: core tier always visible, extension tier activated on demand via `enable_tool` / `load_skill` — pile on tools without blowing the context
-- **Workspace RBAC**: Owner / Admin / Member / Viewer roles + capability gates — MateClaw is usable by a team for the first time
+- **Workspace RBAC**: Owner / Admin / Member / Viewer roles + capability gates — SnSclaw is usable by a team for the first time
 - **Feishu as a first-class citizen**: interactive cards, approval cards, streaming cards, voice transcription, file/audio/video I/O, channel-native tools
 - Native Gemini, xAI / Grok, per-conversation model pinning, structured context compaction, rate-limit failover
 
@@ -119,7 +119,7 @@ Full story: [v1.7.0 release notes](./releases/1.7.0.md).
 
 ### v1.8 — It does a whole job ✅ Released (2026-07-12)
 
-The employee turns **outward and finishes a whole job** — from a one-sentence brief to a publishable post — on MateClaw's own primitives.
+The employee turns **outward and finishes a whole job** — from a one-sentence brief to a publishable post — on SnSclaw's own primitives.
 
 - **Content Studio** — the first flagship *scene*: a seeded employee runs pick-topic → research → draft → illustrate → de-AI → layout → deliver. **WeChat Official Account (公众号)** image-text articles (inline-style HTML → draft box) and **Xiaohongshu (小红书)** image-first notes (≥3 vertical 3:4 cards + online preview) ship first-class
 - **De-AI-ification you can measure** — a heuristic AI-trace score drives a detect → rewrite → re-check loop, capped at 3 rounds
@@ -205,7 +205,7 @@ A leader on a loop, members summoned on demand — that's a **self-running digit
 | **Multi-tenancy** | Premature multi-tenancy is architectural cancer. Workspace isolation already covers multiple teams in one org | When there's a clear SaaS commercialization path |
 | **SSO / LDAP / SAML** | Enterprise integration is a bottomless pit | When paying enterprise customers explicitly ask |
 | **30+ node visual workflow editor** | 7 step modes already cover 90% of real-world scenarios; the rest is pushed to natural-language generation | When a user case actually needs 30+ nodes (rare) |
-| **Native mobile app** | 8 IM channels + desktop (now with remote connect) + Web already cover it. On your phone, you use MateClaw via DingTalk / Feishu / Telegram | When Web / IM channels can't deliver an irreplaceable mobile-only feature |
+| **Native mobile app** | 8 IM channels + desktop (now with remote connect) + Web already cover it. On your phone, you use SnSclaw via DingTalk / Feishu / Telegram | When Web / IM channels can't deliver an irreplaceable mobile-only feature |
 | **Replacing ReAct / Plan-Execute** | Workflows, teams, and loops **collaborate** with those two engines, not replace them — single-agent multi-turn reasoning still lives there | Never replaces |
 | **Unbudgeted full autonomy** | Agent Loop always ships with budgets, circuit breakers, and approval gates. "Run until the money's gone" isn't autonomy, it's loss of control | Never |
 
@@ -231,7 +231,7 @@ A leader on a loop, members summoned on demand — that's a **self-running digit
 
 ## One More Thing
 
-We're not building MateClaw to chase ChatGPT, not to be the next Dify, not to add another buzzword to a funding deck.
+We're not building SnSclaw to chase ChatGPT, not to be the next Dify, not to add another buzzword to a funding deck.
 
 We're building it because we believe one thing:
 

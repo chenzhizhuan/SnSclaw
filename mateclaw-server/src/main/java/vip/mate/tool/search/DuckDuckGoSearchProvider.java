@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
  * <p>通过 DuckDuckGo HTML 端点实现免 key 搜索。
  * 作为零配置兜底方案，结果质量不如 Serper/Tavily 但"总比没有强"。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

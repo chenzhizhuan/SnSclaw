@@ -27,7 +27,7 @@ import java.util.Map;
  * 负责设置最终的 finalAnswer、finalThinking 和 finishReason。
  * 保留上游节点设置的 CONTENT_STREAMED / THINKING_STREAMED 标志位。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class FinalAnswerNode implements NodeAction {

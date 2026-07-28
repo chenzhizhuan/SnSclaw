@@ -15,7 +15,7 @@ package vip.mate.llm.model;
  * via the {@code chatModel} column on {@link ModelProviderEntity}, matching
  * {@link ModelProtocol#fromChatModel}.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public enum EmbeddingProtocol {
 

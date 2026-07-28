@@ -15,7 +15,7 @@ import vip.mate.memory.service.MemorySummarizationService;
  * <p>
  * 异步执行，不阻塞用户响应。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

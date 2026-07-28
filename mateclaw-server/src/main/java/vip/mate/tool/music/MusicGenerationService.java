@@ -37,7 +37,7 @@ import java.util.concurrent.Executors;
  * provider call to a dedicated virtual-thread worker. The chat thread returns
  * with a taskId immediately.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

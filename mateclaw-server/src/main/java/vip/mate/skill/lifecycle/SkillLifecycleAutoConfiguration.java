@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Auto-configuration for the skill lifecycle curator.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Configuration
 @EnableConfigurationProperties(SkillLifecycleProperties.class)

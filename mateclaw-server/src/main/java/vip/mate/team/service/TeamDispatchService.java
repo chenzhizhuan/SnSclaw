@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
  * most one task at a time. A scheduled sweep self-heals anything a
  * notification-path dispatch missed (releases, retries, restarts).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

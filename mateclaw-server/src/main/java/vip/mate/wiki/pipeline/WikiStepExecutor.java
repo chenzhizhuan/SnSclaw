@@ -8,7 +8,7 @@ package vip.mate.wiki.pipeline;
  * <p>Python execution is intentionally not provided here — it requires a real
  * OS sandbox and a separate security review, and is out of the MVP.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public interface WikiStepExecutor {
 

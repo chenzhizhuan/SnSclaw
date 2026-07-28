@@ -33,7 +33,7 @@ import java.util.Set;
  *
  * <p>API: POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 /**
  * Wiki 知识库服务
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

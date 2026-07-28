@@ -13,7 +13,7 @@ package vip.mate.agent.graph.state;
  * @param fullResult   the complete tool result, never truncated or spilled
  * @param executedAtMs epoch milliseconds when the tool returned
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record DirectToolOutput(
         String toolCallId,

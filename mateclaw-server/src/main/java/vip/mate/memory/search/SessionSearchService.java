@@ -21,7 +21,7 @@ import java.util.Map;
  * - MySQL: FULLTEXT index with MATCH ... AGAINST
  * - H2: LIKE fallback for dev mode
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

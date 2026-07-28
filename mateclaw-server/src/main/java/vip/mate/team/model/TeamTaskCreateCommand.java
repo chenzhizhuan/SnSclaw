@@ -10,7 +10,7 @@ import java.util.List;
  * name the member expected to execute it, so each delegation is trackable on
  * the board.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @Builder

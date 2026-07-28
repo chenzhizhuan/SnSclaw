@@ -32,14 +32,14 @@ import java.util.stream.Collectors;
  * 技能业务服务
  * <p>
  * 负责技能的 CRUD 管理、启用/禁用控制，以及与 Agent 运行时的集成。
- * Skill 在 MateClaw 中的定位是"可扩展的能力模块"，分为三种类型：
+ * Skill 在 SnSclaw 中的定位是"可扩展的能力模块"，分为三种类型：
  * <ul>
  *   <li>builtin — 系统内置技能（不可删除），通常对应预定义的 systemPrompt 片段</li>
  *   <li>mcp — 通过 MCP 协议连接外部工具服务器</li>
  *   <li>dynamic — 用户自定义的动态技能（可包含脚本或配置）</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

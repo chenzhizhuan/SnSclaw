@@ -18,7 +18,7 @@ import java.util.concurrent.Executors;
 /**
  * TTS 语音合成服务 — 核心编排，处理 provider 选择、文本预处理、fallback、文件保存
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

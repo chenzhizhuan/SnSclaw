@@ -9,11 +9,11 @@ import vip.mate.agent.AgentService.StreamDelta;
  * 实现此接口的渠道能够以自身方式渲染流式事件（如钉钉 AI Card、飞书卡片更新等），
  * 而非等待完整回复后一次性发送。
  * <p>
- * 设计参考 MateClaw 的事件流与渲染分离模式：
+ * 设计参考 SnSclaw 的事件流与渲染分离模式：
  * - ChannelMessageRouter 负责"事件产生"（调用 Agent 获取 StreamDelta 流）
  * - StreamingChannelAdapter 负责"UI 渲染"（决定如何呈现流式事件）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public interface StreamingChannelAdapter extends ChannelAdapter {
 

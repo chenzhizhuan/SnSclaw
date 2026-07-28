@@ -7,7 +7,7 @@ import vip.mate.planning.model.PlanEntity;
 /**
  * 计划 Mapper
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface PlanMapper extends BaseMapper<PlanEntity> {

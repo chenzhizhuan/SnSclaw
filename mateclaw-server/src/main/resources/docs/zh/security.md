@@ -2,7 +2,7 @@
 
 **手能伸得远，但边界清清楚楚。**
 
-MateClaw 给 Agent 真实的能力——shell 访问、文件写入、浏览器自动化、委托给其他 Agent、通过 MCP 调用远程工具。这是"手能伸得远"那一半。这一页讲的是另一半：**不让强有力的手干蠢事的边界**。
+SnSclaw 给 Agent 真实的能力——shell 访问、文件写入、浏览器自动化、委托给其他 Agent、通过 MCP 调用远程工具。这是"手能伸得远"那一半。这一页讲的是另一半：**不让强有力的手干蠢事的边界**。
 
 - **JWT 认证**——你是谁
 - **Tool Guard（基于规则）**——每个 Agent 被允许做什么
@@ -11,20 +11,20 @@ MateClaw 给 Agent 真实的能力——shell 访问、文件写入、浏览器�
 - **工作空间隔离**——每个团队能看到什么
 - **审计日志**——所有人做过的所有事，按时间顺序，永远保留
 
-生产环境跑 MateClaw 的话，从头到尾读完这页。
+生产环境跑 SnSclaw 的话，从头到尾读完这页。
 
 ::: tip Agentic, but not autonomous
 每个公司的 IT 部门和 CISO 在买 AI 之前问的同一个问题：
 
 > **"它会不会跑飞了，删了我不该删的东西？"**
 
-任何说"AI 不会跑飞"的人都在骗你。MateClaw 的答案不一样——**敏感操作问你一句再执行。**
+任何说"AI 不会跑飞"的人都在骗你。SnSclaw 的答案不一样——**敏感操作问你一句再执行。**
 
 Agent 想删文件、发邮件、跑写入型 SQL、调付费 API——任何一条 Tool Guard 规则匹配上的调用，会**在回合中途暂停**，审批通知推到你的 IM（飞书 / 钉钉 / Slack / 邮件），你点批准，Agent 从暂停的地方接着跑。每一个动作进 `mate_tool_guard_audit_log`——按时间序、永远保留、可导出 CSV。
 
 **会动手（agentic），但不擅自动手（not autonomous）。**
 
-这是「让 AI 替你干活」和「让 AI 替你做主」之间那条线。MateClaw 站在线的左边——也是你的 CISO 第一次不会一上来就否决的那一边。
+这是「让 AI 替你干活」和「让 AI 替你做主」之间那条线。SnSclaw 站在线的左边——也是你的 CISO 第一次不会一上来就否决的那一边。
 :::
 
 ---
@@ -67,7 +67,7 @@ curl -X POST http://localhost:18088/api/v1/auth/login \
 
 ### 滑动窗口续签
 
-MateClaw 实现了滑动窗口 token 续签。当 token 剩余有效期低于 `renewal-threshold`（默认 2 小时 / 7200000ms）时，服务器在响应头 `X-New-Token` 里发一个新 token。前端自动拿到新 token 替换旧的，**用户感知不到**。活跃用户不会被踢下线；空闲会话该过期还是过期。
+SnSclaw 实现了滑动窗口 token 续签。当 token 剩余有效期低于 `renewal-threshold`（默认 2 小时 / 7200000ms）时，服务器在响应头 `X-New-Token` 里发一个新 token。前端自动拿到新 token 替换旧的，**用户感知不到**。活跃用户不会被踢下线；空闲会话该过期还是过期。
 
 ### 配置
 
@@ -94,7 +94,7 @@ mateclaw:
 
 ### 默认凭证
 
-MateClaw 出厂带 `admin` / `admin123`。**除了你自己笔记本之外的任何部署都必须立刻改。**
+SnSclaw 出厂带 `admin` / `admin123`。**除了你自己笔记本之外的任何部署都必须立刻改。**
 
 ### Spring Security 配置
 
@@ -107,7 +107,7 @@ MateClaw 出厂带 `admin` / `admin123`。**除了你自己笔记本之外的任
 
 ## Tool Guard —— 基于规则的权限引擎
 
-Tool Guard 是 MateClaw 决定一次工具调用被允许做什么的机制。**它不是一个扁平的"危险工具清单"。** 它是一个规则引擎。每条规则说：*对这个工具，可选匹配这些参数，在这个工作空间里，做 X*——X 是 `allow`、`deny`、或 `require_approval`。
+Tool Guard 是 SnSclaw 决定一次工具调用被允许做什么的机制。**它不是一个扁平的"危险工具清单"。** 它是一个规则引擎。每条规则说：*对这个工具，可选匹配这些参数，在这个工作空间里，做 X*——X 是 `allow`、`deny`、或 `require_approval`。
 
 ### 三张表
 
@@ -207,13 +207,13 @@ curl -X POST http://localhost:18088/api/v1/security/guard/rules \
 
 ### 危险模式检测
 
-除了用户定义的规则之外，MateClaw 的 shell 工具内置了一套危险模式检测——不管你的规则怎么写，有些模式本身就是危险的。`find -delete`、`rm -rf /`、用管道把 `bash` 接到下载上之类的模式，**即使有规则本来会 allow，也会强制触发更高级别的审批**。
+除了用户定义的规则之外，SnSclaw 的 shell 工具内置了一套危险模式检测——不管你的规则怎么写，有些模式本身就是危险的。`find -delete`、`rm -rf /`、用管道把 `bash` 接到下载上之类的模式，**即使有规则本来会 allow，也会强制触发更高级别的审批**。
 
 ---
 
 ## 审批工作流 —— 人在回路
 
-当一条规则评估为 `require_approval` 时，MateClaw 不会简单地让调用失败。它会**在回合中途挂起 Agent**，创建一条 pending approval，呈现给用户，等用户决定之后**从暂停的地方恢复执行**。
+当一条规则评估为 `require_approval` 时，SnSclaw 不会简单地让调用失败。它会**在回合中途挂起 Agent**，创建一条 pending approval，呈现给用户，等用户决定之后**从暂停的地方恢复执行**。
 
 ::: tip 1.3.0 起：工作流也走同一套审批
 v1.3.0 的 [工作流](./workflow) `await_approval` step 通过同一套 `mate_tool_approval` 表挂起整条 workflow run，跨服务重启不丢；审批结果通过 channel 通知（飞书 / 钉钉 / Slack / 企微）推回审批人，resolve 后 workflow runtime 自动 resume 下一 step。也就是说——同一份审计、同一份通知、同一种"暂停—恢复"语义，同时覆盖 Agent 工具调用和 workflow step。
@@ -282,7 +282,7 @@ Pending approval 在一个可配置的超时后过期（默认 30 分钟）。�
 
 ### 通知
 
-MateClaw 可以通过 `channel/notification/` 适配器通知——邮件、应用内提醒、钉钉/飞书推送。在 `设置 → 安全与审批 → 通知` 里配置。
+SnSclaw 可以通过 `channel/notification/` 适配器通知——邮件、应用内提醒、钉钉/飞书推送。在 `设置 → 安全与审批 → 通知` 里配置。
 
 ### 当前 API 表面
 
@@ -374,7 +374,7 @@ mateclaw:
 
 ## 工作空间隔离
 
-工作空间是 MateClaw 把多个团队的数据隔开的方式。每个 Agent、技能、Wiki、会话、记忆文件都**属于且只属于一个工作空间**。
+工作空间是 SnSclaw 把多个团队的数据隔开的方式。每个 Agent、技能、Wiki、会话、记忆文件都**属于且只属于一个工作空间**。
 
 ### 沿工作空间边界生效的安全基元
 

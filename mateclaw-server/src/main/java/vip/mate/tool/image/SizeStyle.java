@@ -18,7 +18,7 @@ package vip.mate.tool.image;
  * translates the unified {@code aspectRatio} input ({@code landscape} /
  * {@code square} / {@code portrait} or a literal ratio) to the model-native form.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public enum SizeStyle {
     LITERAL_DIMENSION,

@@ -1,14 +1,14 @@
 package vip.mate.agent.graph.state;
 
 /**
- * MateClaw 增强版状态键常量
+ * SnSclaw 增强版状态键常量
  * <p>
  * 包含原 ReActStateKeys 的所有字段，并新增 summarizing、超限处理、
  * 观察压缩等字段，支撑完整的标准 ReAct 状态图。
  * <p>
  * 所有节点和路由统一引用此类，避免字符串散落。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public final class MateClawStateKeys {
 

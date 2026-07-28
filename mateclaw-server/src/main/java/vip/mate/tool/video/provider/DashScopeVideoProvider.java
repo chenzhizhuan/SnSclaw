@@ -42,7 +42,7 @@ import java.util.Set;
  * shape, and capability set; submit/build code consults the spec rather than
  * branching on model id strings.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

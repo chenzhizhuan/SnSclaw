@@ -17,7 +17,7 @@ import java.util.Map;
 /**
  * 会话管理接口
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "会话管理")
 @RestController

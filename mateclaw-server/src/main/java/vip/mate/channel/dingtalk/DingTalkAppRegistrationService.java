@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 跟 {@code FeishuAppRegistrationService} 同构，但飞书走 SDK 阻塞调用 + 回调，钉钉这边纯 HTTP，
  * 我们自己起 worker 线程做轮询（每 5 秒一次直到终态）。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

@@ -1,6 +1,6 @@
 # OpenAPI / Swagger Guide
 
-The MateClaw backend integrates [SpringDoc OpenAPI](https://springdoc.org/) (`springdoc-openapi-starter-webmvc-ui`), which auto-generates an OpenAPI 3 document from every `@RestController` and serves an interactive debugging UI. This page covers how to access and use it.
+The SnSclaw backend integrates [SpringDoc OpenAPI](https://springdoc.org/) (`springdoc-openapi-starter-webmvc-ui`), which auto-generates an OpenAPI 3 document from every `@RestController` and serves an interactive debugging UI. This page covers how to access and use it.
 
 > This is the **machine-readable** doc entry point. For the human-readable endpoint details, conventions, and the full route inventory, see the [API Reference](./api.md). Relationship: Swagger = the auto-generated, machine-readable contract from source annotations; `api.md` = flagship endpoint walkthroughs + shared conventions.
 
@@ -51,7 +51,7 @@ Global OpenAPI metadata (title, description, version, server URL) is driven by t
 ```yaml
 mateclaw:
   openapi:
-    title: ${MATECLAW_OPENAPI_TITLE:MateClaw REST API}
+    title: ${MATECLAW_OPENAPI_TITLE:SnSclaw REST API}
     version: ${MATECLAW_OPENAPI_VERSION:1.0}
     server-url: ${MATECLAW_OPENAPI_SERVER_URL:}   # empty → derived from request host
     description: ${MATECLAW_OPENAPI_DESCRIPTION:}  # empty → built-in default

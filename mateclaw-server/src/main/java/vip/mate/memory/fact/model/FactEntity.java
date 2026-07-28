@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * are rebuilt by FactProjectionBuilder.
  * Accumulated columns (last_used_at, use_count) are only written by FactQueryService.bumpUseCount.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_fact")

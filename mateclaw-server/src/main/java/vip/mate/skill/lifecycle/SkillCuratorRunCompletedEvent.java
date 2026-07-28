@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * <p>This event has no compile-time dependency on any notification
  * subsystem: if nothing listens, it is simply a no-op.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record SkillCuratorRunCompletedEvent(
         String runId,

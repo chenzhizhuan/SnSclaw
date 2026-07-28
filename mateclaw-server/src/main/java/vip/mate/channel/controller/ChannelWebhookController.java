@@ -33,7 +33,7 @@ import java.util.Optional;
  * URL 格式：/api/v1/channels/webhook/{channelType}
  * 此接口不需要 JWT 认证（由各平台的签名/Token 机制保障安全）。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "渠道Webhook")
 @Slf4j

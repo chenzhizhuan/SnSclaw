@@ -221,7 +221,7 @@ final class OpenAiRequestRewriter {
      *   <li>{@code patchCrossTurn}: whether to also patch prior-turn assistants
      *       ({@code i <= lastUserIdx}). DeepSeek requires reasoning_content on
      *       every assistant message in the request, including prior-turn history,
-     *       and MateClaw does not persist reasoning_content — so cross-turn
+     *       and SnSclaw does not persist reasoning_content — so cross-turn
      *       patching keeps multi-turn conversations from 400-ing.</li>
      * </ul>
      *

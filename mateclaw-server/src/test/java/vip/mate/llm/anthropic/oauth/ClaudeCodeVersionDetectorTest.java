@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  *
  * <p>The {@code claude --version} output format has shifted between Claude Code
  * releases (early builds prefixed with the binary name; recent ones print just
- * the number). The regex must match both so MateClaw stays in sync without
+ * the number). The regex must match both so SnSclaw stays in sync without
  * manual config when users upgrade.
  */
 class ClaudeCodeVersionDetectorTest {

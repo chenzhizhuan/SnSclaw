@@ -13,7 +13,7 @@ import java.util.Optional;
  * <p>
  * Provider 通过构造函数注入 (Spring 按 {@code @ConditionalOnProperty} 按需实例化)。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Component
 @ConditionalOnProperty(name = "mateclaw.sso.enabled", havingValue = "true")

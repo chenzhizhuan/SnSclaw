@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# scripts/build-all-platforms.sh — Build MateClaw desktop packages for all
+# scripts/build-all-platforms.sh — Build SnSclaw desktop packages for all
 # platforms (macOS + Windows) in the specified build mode.
 #
 # Usage:

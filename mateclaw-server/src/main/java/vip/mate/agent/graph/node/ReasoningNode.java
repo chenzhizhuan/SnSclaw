@@ -51,7 +51,7 @@ import static vip.mate.agent.graph.state.MateClawStateKeys.*;
  * <p>
  * 使用 {@link NodeStreamingChatHelper} 进行流式调用，实时推送 content/thinking 增量。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class ReasoningNode implements NodeAction {

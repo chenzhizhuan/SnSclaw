@@ -38,7 +38,7 @@ import java.util.*;
  *   <li>后续请求均带 Bearer token</li>
  * </ol>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class ILinkClient {

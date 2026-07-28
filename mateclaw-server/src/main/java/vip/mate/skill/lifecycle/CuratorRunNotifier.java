@@ -15,7 +15,7 @@ import java.util.Map;
  * a notification subsystem may listen for. Neither channel couples the
  * curator to any subsystem that may not be present.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

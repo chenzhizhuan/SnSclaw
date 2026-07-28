@@ -22,7 +22,7 @@ import static vip.mate.agent.graph.state.MateClawStateKeys.*;
  * finishReason(ERROR_FALLBACK)，因此会命中分支 2 直接走 finalAnswerNode，
  * 不需要也不应该路由到 LimitExceededNode（后者会再发一次 LLM 调用）。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class ReasoningDispatcher implements EdgeAction {

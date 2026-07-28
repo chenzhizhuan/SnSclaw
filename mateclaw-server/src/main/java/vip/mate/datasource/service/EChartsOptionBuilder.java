@@ -23,7 +23,7 @@ import java.util.Map;
  *   <li>其他情况（单行、纯文本、列太多）→ 不生成图表</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class EChartsOptionBuilder {
 

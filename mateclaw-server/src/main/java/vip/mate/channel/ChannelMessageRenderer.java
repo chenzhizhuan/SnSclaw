@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  * - 按平台字数限制分割长消息
  * - 保持代码块完整性（不在 ``` 中间切割）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public final class ChannelMessageRenderer {
 

@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 默认构造保持 {@code jitter=0.0} 完全等价既有行为；WeChat 等高并发场景构造时传 0.2 启用
  * ±20% 随机扰动，避免多实例同步重连造成"雷群效应"。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class ExponentialBackoff {
 

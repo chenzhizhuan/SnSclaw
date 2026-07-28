@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
  * <p>The pure {@code MessageNormalizer} contract is covered by
  * {@code MessageNormalizerTest}. This test guards against a refactor that
  * accidentally drops the call site at the top of {@code doStreamCall} —
- * which is the only thing standing between MateClaw and the LM Studio
+ * which is the only thing standing between SnSclaw and the LM Studio
  * {@code 400 "System message must be at the beginning"} regression.
  */
 class NodeStreamingChatHelperNormalizerWiringTest {

@@ -40,7 +40,7 @@ import java.util.function.Function;
  * a future increment — that needs a proper async bus and ties into the
  * agent graph layer.
  *
- * <p>Why not the official {@code acp} Python SDK: MateClaw runs on the
+ * <p>Why not the official {@code acp} Python SDK: SnSclaw runs on the
  * JVM. The protocol is JSON-RPC 2.0 line-delimited over stdio; the
  * surface we need for "test connection" is small enough to implement
  * directly.

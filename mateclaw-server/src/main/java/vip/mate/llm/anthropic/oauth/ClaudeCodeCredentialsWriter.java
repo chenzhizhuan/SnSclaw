@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
  * </ol>
  *
  * <h2>Concurrent-write defence</h2>
- * Claude Code itself may rewrite the credentials file while MateClaw is doing
+ * Claude Code itself may rewrite the credentials file while SnSclaw is doing
  * a refresh. The flow is:
  * <ol>
  *   <li>Re-read the file just before write.</li>

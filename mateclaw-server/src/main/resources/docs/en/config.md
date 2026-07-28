@@ -1,6 +1,6 @@
 # Configuration
 
-**Three places to configure MateClaw: `application.yml`, environment variables, and the database.**
+**Three places to configure SnSclaw: `application.yml`, environment variables, and the database.**
 
 Most settings live in `application.yml` (Spring Boot's default config file), with sensitive values overridden by environment variables. Anything you want to change at runtime — model providers, search keys, feature toggles — lives in the `mate_system_setting` table and is edited through the Settings page.
 
@@ -257,7 +257,7 @@ After startup, open `http://localhost:18080`, sign in as `admin / admin123`, and
 
 ## Database schema init
 
-MateClaw uses **Flyway** for schema migrations:
+SnSclaw uses **Flyway** for schema migrations:
 
 1. `db/migration/h2/V*__*.sql` — H2-dialect migration scripts
 2. `db/migration/mysql/V*__*.sql` — MySQL-dialect migration scripts

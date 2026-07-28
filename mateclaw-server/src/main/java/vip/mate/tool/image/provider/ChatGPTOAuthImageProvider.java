@@ -37,7 +37,7 @@ import java.util.Set;
  * <ul>
  *   <li>{@code Authorization: Bearer <oauth_access_token>} (auto-refreshed)</li>
  *   <li>{@code originator: codex_cli_rs}</li>
- *   <li>{@code User-Agent: codex_cli_rs/0.0.0 (MateClaw)}</li>
+ *   <li>{@code User-Agent: codex_cli_rs/0.0.0 (SnSclaw)}</li>
  *   <li>{@code ChatGPT-Account-ID: <chatgpt_account_id>} parsed from JWT</li>
  * </ul>
  *
@@ -155,7 +155,7 @@ public class ChatGPTOAuthImageProvider implements ImageGenerationProvider {
                     .header("Authorization", "Bearer " + token)
                     .header("Content-Type", "application/json")
                     .header("Accept", "text/event-stream")
-                    .header("User-Agent", "codex_cli_rs/0.0.0 (MateClaw)")
+                    .header("User-Agent", "codex_cli_rs/0.0.0 (SnSclaw)")
                     .header("originator", "codex_cli_rs")
                     .body(body)
                     .timeout(timeoutMs);

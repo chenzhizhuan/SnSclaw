@@ -5,7 +5,7 @@ import lombok.Data;
 /**
  * Skill 安装请求
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 public class InstallRequest {

@@ -127,7 +127,7 @@ springdoc:
   # 把单个嵌套 query 参数对象（如分页 wrapper）拍平成独立字段，减少 schema 噪音
   default-flat-param-object: true
 
-# MateClaw 自定义配置
+# SnSclaw 自定义配置
 mateclaw:
   server:
     # Public base URL used to build absolute download links for tool-generated
@@ -140,7 +140,7 @@ mateclaw:
     # SpringDoc OpenAPI 元信息（驱动 /swagger-ui.html 与 /v3/api-docs）。
     # server-url 留空时由 SpringDoc 从请求 host 推导，避免 Try it out 打到错误地址。
     # 生产若需固定，通过 MATECLAW_OPENAPI_SERVER_URL 覆盖（如 https://mate.example.com）。
-    title: ${MATECLAW_OPENAPI_TITLE:MateClaw REST API}
+    title: ${MATECLAW_OPENAPI_TITLE:SnSclaw REST API}
     version: ${MATECLAW_OPENAPI_VERSION:1.0}
     server-url: ${MATECLAW_OPENAPI_SERVER_URL:}
     # description 留空则使用 OpenApiConfig 中的内置默认描述
@@ -151,7 +151,7 @@ mateclaw:
     # 生产数据库 profile（mysql/kingbase/postgres）默认覆盖为 false。
     expose-ui: ${MATECLAW_OPENAPI_EXPOSE_UI:true}
   jwt:
-    secret: ${JWT_SECRET:MateClaw-JWT-Secret-Key-2024-Please-Change-In-Production}
+    secret: ${JWT_SECRET:SnSclaw-JWT-Secret-Key-2024-Please-Change-In-Production}
     expiration: 86400000
   sso:
     # 全局开关（默认关闭，不影响现有部署）
@@ -288,7 +288,7 @@ mateclaw:
     # when the child must produce multi-section structured output.
     parallel-timeout-seconds: 300
 
-# MateClaw Agent 配置
+# SnSclaw Agent 配置
 mate:
   agent:
     # Deterministic Markdown cleanup of the final answer (heading spaces, glued

@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 /**
  * One step invocation within a {@link WikiPipelineRunEntity}.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_wiki_pipeline_step_run")

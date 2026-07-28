@@ -221,12 +221,12 @@ public class SkillManifest {
         /**
          * Optional system-prompt override delivered to the upstream agent
          * before the user's message. Useful when a single ACP CLI is
-         * shared across several MateClaw skills with different personas.
+         * shared across several SnSclaw skills with different personas.
          */
         private String systemPrefix;
         /**
          * Working directory hint for the spawned ACP process; defaults
-         * to the current MateClaw workspace path when null.
+         * to the current SnSclaw workspace path when null.
          */
         private String cwd;
         /**

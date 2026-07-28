@@ -6,7 +6,7 @@
   "description": "Registers a custom web-search provider backed by a configurable JSON search endpoint.",
   "entrypoint": "vip.mate.plugin.sample.search.SimpleSearchPlugin",
   "minPlatformVersion": "1.1.0",
-  "author": "MateClaw Team",
+  "author": "SnSclaw Team",
   "config": {
     "baseUrl": {
       "type": "string",

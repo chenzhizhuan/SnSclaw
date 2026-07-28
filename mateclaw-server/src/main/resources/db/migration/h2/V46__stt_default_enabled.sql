@@ -16,7 +16,7 @@
 -- tried to insert a fresh row at id=1000000020 and tripped the UNIQUE index
 -- on setting_key. Skip-if-exists preserves whatever value the user picked
 -- (don't override an explicit "off" with "on"). See
--- https://git.mate.vip/mate/MateClaw issue noted 2026-04-26.
+-- https://git.sns.app/mate/SnSclaw issue noted 2026-04-26.
 
 INSERT INTO mate_system_setting (id, setting_key, setting_value, description, create_time, update_time)
 SELECT 1000000020, 'sttEnabled', 'true', 'Enable speech-to-text (TalkMode mic input)', NOW(), NOW()

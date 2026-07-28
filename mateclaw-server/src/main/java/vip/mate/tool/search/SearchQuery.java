@@ -8,7 +8,7 @@ package vip.mate.tool.search;
  * @param language  语言偏好：zh-CN / en / auto（可选）
  * @param count     最大结果数：1-10，默认 5（可选）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record SearchQuery(
         String query,

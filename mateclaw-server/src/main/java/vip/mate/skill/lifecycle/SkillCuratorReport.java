@@ -21,7 +21,7 @@ import java.util.Optional;
  * are populated in both dry-run and applied modes. {@code applied} counts
  * reflect what actually committed and stay zero for a dry-run.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Getter
 public class SkillCuratorReport {

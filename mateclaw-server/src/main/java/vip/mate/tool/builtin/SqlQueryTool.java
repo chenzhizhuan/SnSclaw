@@ -24,7 +24,7 @@ import java.util.List;
  * 查询超时 30 秒。结果格式化为 Markdown 表格或 JSON。
  * 自动分析数据特征并生成 ECharts 图表配置。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

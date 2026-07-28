@@ -10,7 +10,7 @@ tags:
 - meta
 author: ported
 ---
-# Authoring MateClaw Skills
+# Authoring SnSclaw Skills
 
 ## Overview
 
@@ -23,7 +23,7 @@ This skill covers both. Note that `skill_manage` does NOT write into the in-repo
 
 ## When to Use
 
-- You're adding a reusable workflow that should ship with MateClaw → builtin.
+- You're adding a reusable workflow that should ship with SnSclaw → builtin.
 - You're editing an existing builtin skill under `mateclaw-server/src/main/resources/skills/`.
 - An agent finished a complex task and wants to persist the approach → custom, via `skill_manage`.
 - You're reviewing a SKILL.md for correct frontmatter and structure.
@@ -74,7 +74,7 @@ Fields `BuiltinSkillSeedService` projects onto the `mate_skill` row:
 | `description` | shown in skill lists | empty |
 | `version` | `mate_skill.version` | `1.0.0` |
 | `icon` | emoji, or a `/skill-assets/...` path | `🛠️` |
-| `author` | attribution | `MateClaw` |
+| `author` | attribution | `SnSclaw` |
 | `tags` | YAML list or CSV string | skill name |
 | `nameZh` / `nameEn` | bilingual display names | none |
 | `optional: true` | seeds the skill **disabled** — user opts in from the Skills page | `false` (enabled) |

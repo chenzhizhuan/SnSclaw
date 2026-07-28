@@ -44,7 +44,7 @@ import java.util.Set;
  *   <li><b>System prompt prefix</b>: prepend
  *       {@code "You are Claude Code, Anthropic's official CLI for Claude."}.
  *       Insert a new SystemMessage if none exists.</li>
- *   <li><b>Brand scrub</b>: replace {@code "MateClaw"}/{@code "mateclaw"}
+ *   <li><b>Brand scrub</b>: replace {@code "SnSclaw"}/{@code "mateclaw"}
  *       in system text with their Claude Code equivalents — Anthropic's
  *       content filter flags identity contradictions.</li>
  *   <li><b>Tool {@code mcp_} prefix (outgoing)</b>: every tool definition
@@ -55,7 +55,7 @@ import java.util.Set;
  *       AssistantMessage history get the prefix re-applied (we strip on
  *       response, so they're stored unprefixed).</li>
  *   <li><b>Tool {@code mcp_} prefix (incoming)</b>: ChatResponse tool_use
- *       names are stripped of the {@code mcp_} prefix so MateClaw's tool
+ *       names are stripped of the {@code mcp_} prefix so SnSclaw's tool
  *       registry can resolve them.</li>
  * </ol>
  */
@@ -120,7 +120,7 @@ public class ClaudeCodeIdentityChatModelDecorator implements ChatModel {
                 systemSeen = true;
             } else if (msg instanceof AssistantMessage am && am.hasToolCalls()) {
                 // Re-prefix tool_use names in history. We strip on response, so
-                // by the time MateClaw stores the AssistantMessage the names
+                // by the time SnSclaw stores the AssistantMessage the names
                 // are unprefixed — must put the prefix back when echoing the
                 // history to Anthropic for it to match its own prior turn.
                 rewritten.add(rebuildAssistantMessage(am, true));
@@ -165,7 +165,7 @@ public class ClaudeCodeIdentityChatModelDecorator implements ChatModel {
         }
         if (hasToolNames) {
             // toolNames is a set used by Spring AI's tool resolver to filter from
-            // a wider registry. If MateClaw populates it (most paths use callbacks
+            // a wider registry. If SnSclaw populates it (most paths use callbacks
             // directly so this is rare), prefix the names so they line up with
             // the wrapped callbacks above.
             Set<String> prefixed = new LinkedHashSet<>(originalToolNames.size());
@@ -260,7 +260,7 @@ public class ClaudeCodeIdentityChatModelDecorator implements ChatModel {
             return text;
         }
         return text
-                .replace("MateClaw", "Claude Code")
+                .replace("SnSclaw", "Claude Code")
                 .replace("mateclaw", "claude-code")
                 .replace("Mate Claw", "Claude Code");
     }
@@ -273,7 +273,7 @@ public class ClaudeCodeIdentityChatModelDecorator implements ChatModel {
      * Wraps a {@link ToolCallback} so its {@code getToolDefinition().name()}
      * returns {@code mcp_<orig>}, while {@code call(...)} forwards verbatim
      * to the underlying tool. Anthropic sees the prefixed name on the wire;
-     * MateClaw's tool implementation never sees the prefix.
+     * SnSclaw's tool implementation never sees the prefix.
      */
     static final class PrefixedToolCallback implements ToolCallback {
 

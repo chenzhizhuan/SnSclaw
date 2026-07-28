@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * 认证服务（JWT）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service
@@ -33,7 +33,7 @@ public class AuthService {
     private final UserMapper userMapper;
     private final BCryptPasswordEncoder passwordEncoder;
 
-    @Value("${mateclaw.jwt.secret:MateClaw-Secret-Key-2024-Very-Long-String}")
+    @Value("${mateclaw.jwt.secret:SnSclaw-Secret-Key-2024-Very-Long-String}")
     private String jwtSecret;
 
     @Value("${mateclaw.jwt.expiration:86400000}")

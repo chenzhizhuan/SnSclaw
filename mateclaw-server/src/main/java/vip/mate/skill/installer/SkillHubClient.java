@@ -32,7 +32,7 @@ import java.util.Map;
  * response, which is why an earlier "expect a {@code content} field on the
  * skill JSON" implementation always saw empty content and aborted installs.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service
@@ -244,7 +244,7 @@ public class SkillHubClient {
                         .timeout(Duration.ofSeconds(properties.getHttpTimeout()))
                         .GET()
                         .header("Accept", "application/zip, application/octet-stream")
-                        .header("User-Agent", "MateClaw/1.0")
+                        .header("User-Agent", "SnSclaw/1.0")
                         .build();
 
                 HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
@@ -293,7 +293,7 @@ public class SkillHubClient {
                 .timeout(Duration.ofSeconds(properties.getHttpTimeout()))
                 .GET()
                 .header("Accept", "application/json")
-                .header("User-Agent", "MateClaw/1.0")
+                .header("User-Agent", "SnSclaw/1.0")
                 .build();
     }
 

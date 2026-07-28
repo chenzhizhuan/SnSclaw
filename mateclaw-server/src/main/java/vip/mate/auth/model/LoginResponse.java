@@ -6,7 +6,7 @@ import lombok.Data;
 /**
  * 登录响应
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @AllArgsConstructor

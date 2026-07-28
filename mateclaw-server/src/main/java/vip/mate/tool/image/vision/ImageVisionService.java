@@ -39,7 +39,7 @@ import java.util.Optional;
  *       the i18n key {@code err.wiki.vision.all_failed}.</li>
  * </ol>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

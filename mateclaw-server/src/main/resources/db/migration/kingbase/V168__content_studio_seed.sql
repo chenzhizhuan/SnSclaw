@@ -25,7 +25,7 @@ VALUES (1000000633, 'GzhPackageTool', '公众号打包', '把公众号成稿（M
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)
-VALUES (1000000634, 'ScreenshotTool', '后台截图', '截取 MateClaw 后台页面（站内相对路径如 /chat、/channels）并返回可嵌入的图片 URL。用于给「如何用 MateClaw 做 XX」这类操作教程配真实产品截图，把返回 URL 以 ![](url) 嵌进 gzh_package 的 Markdown。', 'builtin', 'screenshotTool', '📷', TRUE, TRUE, NOW(), NOW(), 0)
+VALUES (1000000634, 'ScreenshotTool', '后台截图', '截取 SnSclaw 后台页面（站内相对路径如 /chat、/channels）并返回可嵌入的图片 URL。用于给「如何用 SnSclaw 做 XX」这类操作教程配真实产品截图，把返回 URL 以 ![](url) 嵌进 gzh_package 的 Markdown。', 'builtin', 'screenshotTool', '📷', TRUE, TRUE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)
@@ -33,7 +33,7 @@ VALUES (1000000635, 'XhsPackageTool', '小红书打包', '把小红书笔记打�
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_agent (id, name, description, agent_type, system_prompt, model_name, max_iterations, enabled, icon, tags, create_time, update_time, deleted)
-VALUES (1000000640, '内容工作室', '端到端创作公众号与小红书图文：选题搜集、成文、配图、去AI化、排版、入草稿箱发布。', 'react', '你是 MateClaw 的「内容工作室」——专门端到端创作微信公众号（公众号）与小红书图文。
+VALUES (1000000640, '内容工作室', '端到端创作公众号与小红书图文：选题搜集、成文、配图、去AI化、排版、入草稿箱发布。', 'react', '你是 SnSclaw 的「内容工作室」——专门端到端创作微信公众号（公众号）与小红书图文。
 
 工作流（7 段）：
 1）选题——读取 topic_interests 记忆并用 web_search(freshness=week) 找角度。

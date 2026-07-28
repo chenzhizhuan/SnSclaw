@@ -13,7 +13,7 @@ head:
 
 ChatGPT, Claude, Gemini — every AI assistant waits for you to open it. Open the browser, log in, click into the input box, type, wait. The AI is something you have to walk over to.
 
-MateClaw isn't.
+SnSclaw isn't.
 
 You can have any agent show up at any time, in any messenger you use, **and find you**.
 
@@ -89,7 +89,7 @@ The big chase across 2025–2026 in AI was the same thing — **make it so you d
 
 All of them tried to do it with new hardware.
 
-MateClaw's answer is the opposite: **the messengers your team already uses are the hardware.**
+SnSclaw's answer is the opposite: **the messengers your team already uses are the hardware.**
 
 Feishu, DingTalk, WeCom, Slack, Telegram, Discord, QQ — they're already open on your phone and your desktop. AI showing up where you're already looking is enough. **No new device. No new habit.**
 
@@ -97,7 +97,7 @@ Feishu, DingTalk, WeCom, Slack, Telegram, Discord, QQ — they're already open o
 
 ## What's different from other AI products
 
-| | Conversational AI | Ambient AI (MateClaw) |
+| | Conversational AI | Ambient AI (SnSclaw) |
 |---|---|---|
 | How it triggers | You open it | It shows up at the right time |
 | Where it lives | A browser tab | The IM you already use |
@@ -105,7 +105,7 @@ Feishu, DingTalk, WeCom, Slack, Telegram, Discord, QQ — they're already open o
 | When you're offline | You miss it | Pushes when you come back |
 | When something fails | Red error toast | Auto-reconnect, next push lands clean |
 
-Only MateClaw fills out the right column completely, because only MateClaw has all of these at once:
+Only SnSclaw fills out the right column completely, because only SnSclaw has all of these at once:
 
 - **Multi-agent runtime** (ReAct + Plan-Execute)
 - **Cron scheduling + retry**

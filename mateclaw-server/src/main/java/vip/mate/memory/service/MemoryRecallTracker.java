@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
  * 在每次对话时异步记录哪些 workspace 文件/片段被实际注入到上下文中。
  * 追踪粒度为片段级（daily note 按 ## 标题拆分），而非文件级。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

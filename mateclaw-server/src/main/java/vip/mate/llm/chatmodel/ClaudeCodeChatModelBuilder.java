@@ -25,7 +25,7 @@ import vip.mate.llm.model.ModelProviderEntity;
  *
  * <p>Sends Anthropic Messages API requests authenticated with the user's
  * Claude Code OAuth subscription token instead of an API key — letting users
- * with a Claude Pro/Max plan run MateClaw against their existing entitlement.
+ * with a Claude Pro/Max plan run SnSclaw against their existing entitlement.
  *
  * <h2>How OAuth changes the wire format</h2>
  * <ol>

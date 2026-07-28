@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * MateClaw 项目文档读取工具
+ * SnSclaw 项目文档读取工具
  * 允许 Agent 在运行时读取内置项目文档（classpath:docs/ 下的 Markdown 文件）
  */
 @Slf4j
@@ -21,8 +21,8 @@ public class MateClawDocTool {
     private final MateClawDocService docService;
 
     @Tool(description = """
-        Read MateClaw project documentation.
-        Use this tool to look up information about MateClaw's features, configuration, and usage.
+        Read SnSclaw project documentation.
+        Use this tool to look up information about SnSclaw's features, configuration, and usage.
 
         Parameters:
         - action: "list" to list all available doc files, "read" to read a specific doc
@@ -51,7 +51,7 @@ public class MateClawDocTool {
 
     private String listDocs() {
         StringBuilder sb = new StringBuilder();
-        sb.append("MateClaw Documentation\n\n");
+        sb.append("SnSclaw Documentation\n\n");
 
         sb.append("## 中文文档 (zh/)\n");
         appendGroup(sb, "zh");

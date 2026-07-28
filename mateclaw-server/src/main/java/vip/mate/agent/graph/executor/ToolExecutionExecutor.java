@@ -45,7 +45,7 @@ import java.util.regex.Pattern;
  * <p>
  * 审批有前序语义：如果第 N 个工具需要审批，第 N+1、N+2 个工具不会执行。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class ToolExecutionExecutor {

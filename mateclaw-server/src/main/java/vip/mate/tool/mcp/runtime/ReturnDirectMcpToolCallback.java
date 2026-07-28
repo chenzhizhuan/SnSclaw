@@ -12,14 +12,14 @@ import org.springframework.ai.tool.metadata.ToolMetadata;
  * <p>Spring AI 1.1.4's {@code SyncMcpToolCallback} / {@code AsyncMcpToolCallback}
  * never override {@code getToolMetadata()} (they inherit the framework default
  * which yields {@code returnDirect=false}), and the upstream MCP protocol layer
- * has no equivalent field. So MateClaw must wrap MCP callbacks at registration
+ * has no equivalent field. So SnSclaw must wrap MCP callbacks at registration
  * time when their server+tool config opts in via
  * {@code mateclaw.mcp.return-direct.tools}.
  *
  * <p>Everything else (definition, invocation, exceptions) is delegated verbatim
  * — guard, approval, observability, audit all see the original callback.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public final class ReturnDirectMcpToolCallback implements ToolCallback {
 

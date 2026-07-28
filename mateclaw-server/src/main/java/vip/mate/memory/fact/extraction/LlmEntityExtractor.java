@@ -14,7 +14,7 @@ import java.util.List;
  * Phase 3 L1: placeholder that delegates to pattern extractor.
  * Full LLM implementation in Phase 3 L2+.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

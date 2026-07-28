@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * they bypass DB and message-metadata writes, which is the original ghost-approval
  * source.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

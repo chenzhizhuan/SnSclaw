@@ -7,7 +7,7 @@ import vip.mate.workspace.document.model.WorkspaceFileEntity;
 /**
  * 工作区文件 Mapper
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface WorkspaceFileMapper extends BaseMapper<WorkspaceFileEntity> {

@@ -48,7 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 安全设计：摘要内容作为 UserMessage 注入（非 SystemMessage），
  * 避免历史用户输入被提升为系统级指令。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

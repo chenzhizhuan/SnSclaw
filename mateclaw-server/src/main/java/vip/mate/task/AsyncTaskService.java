@@ -26,7 +26,7 @@ import java.util.function.Function;
  * <p>
  * 可复用于视频生成、图片生成、音频生成等异步场景。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

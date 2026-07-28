@@ -22,7 +22,7 @@ import java.util.Set;
  * {@code classpath:prompts/wiki/default-page-type-profile.json}. The default
  * is never stored as a row — existing KBs keep working with zero migration.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

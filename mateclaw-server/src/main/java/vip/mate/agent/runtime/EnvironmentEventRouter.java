@@ -37,7 +37,7 @@ import java.time.Instant;
  * cache invalidation so the NEXT turn sees fresh state; this router handles
  * in-flight notification so the CURRENT turn can adapt.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

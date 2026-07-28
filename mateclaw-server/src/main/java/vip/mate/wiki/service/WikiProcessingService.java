@@ -68,7 +68,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>
  * 核心管线：将原始材料通过 LLM 消化为结构化 Wiki 页面。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

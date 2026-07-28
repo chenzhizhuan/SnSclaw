@@ -38,7 +38,7 @@ import java.util.function.Supplier;
  * 负责 Agent 的 CRUD 管理和运行时实例管理。
  * 构建逻辑委托给 {@link AgentGraphBuilder}。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

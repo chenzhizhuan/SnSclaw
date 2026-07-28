@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Unit tests for the {@link SubagentRunContext} value object and its use as an
  * explicitly-threaded carrier across executor threads.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 class SubagentRunContextTest {
 

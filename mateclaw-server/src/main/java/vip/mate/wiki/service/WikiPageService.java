@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 /**
  * Wiki 页面服务
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

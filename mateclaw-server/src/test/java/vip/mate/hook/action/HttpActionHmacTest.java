@@ -101,8 +101,8 @@ class HttpActionHmacTest {
     }
 
     @Test
-    @DisplayName("default signature header constant matches MateClaw convention")
+    @DisplayName("default signature header constant matches SnSclaw convention")
     void defaultHeaderName() {
-        assertEquals("X-MateClaw-Signature", HttpAction.DEFAULT_SIGNATURE_HEADER);
+        assertEquals("X-SnSclaw-Signature", HttpAction.DEFAULT_SIGNATURE_HEADER);
     }
 }

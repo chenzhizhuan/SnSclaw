@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
  * 路径段正则 {@code [^\\.]*} 排除含 "." 的路径（静态资源如 .js/.css/.ico），
  * 同时 Spring MVC 会优先匹配 @RestController 精确路由，因此不会影响 /api/** 接口。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Controller
 public class SpaForwardController {

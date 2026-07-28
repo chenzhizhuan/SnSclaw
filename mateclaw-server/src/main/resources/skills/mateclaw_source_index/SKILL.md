@@ -1,14 +1,14 @@
 ---
 name: mateclaw_source_index
 version: "1.0.0"
-description: "将用户问题映射到 MateClaw 文档路径与源码入口，减少盲目搜索。回答'XX 功能在哪里实现'、'怎么修改 YY 逻辑'等源码定位问题。"
+description: "将用户问题映射到 SnSclaw 文档路径与源码入口，减少盲目搜索。回答'XX 功能在哪里实现'、'怎么修改 YY 逻辑'等源码定位问题。"
 dependencies:
   tools:
     - readMateClawDoc
     - read_file
 ---
 
-# MateClaw 源码导航
+# SnSclaw 源码导航
 
 当用户询问"XX 功能在哪里实现"、"Agent 流程入口在哪"、"如何修改 YY 逻辑"等源码定位问题时使用本技能。
 

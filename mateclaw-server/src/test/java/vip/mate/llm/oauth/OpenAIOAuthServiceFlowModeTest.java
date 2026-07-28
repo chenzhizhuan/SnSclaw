@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Issue: OAuth callback fails on Linux server deployment because the
  * redirect_uri is hardcoded to http://localhost:1455/auth/callback. When the
  * user's browser hits this URL it tries to reach the user's own machine, not
- * the remote MateClaw server, so the auth code never reaches the server.
+ * the remote SnSclaw server, so the auth code never reaches the server.
  *
  * <p>Tests focus on the deployment-mode resolution logic (Host header heuristic
  * + config override + paste-URL parser). Network-bound paths (token exchange,
@@ -62,8 +62,8 @@ class OpenAIOAuthServiceFlowModeTest {
     @DisplayName("public hosts resolve to DEVICE_CODE (browser-agnostic, no callback server needed)")
     void publicHosts_resolveToDeviceCode() throws Exception {
         assertEquals(OAuthFlowMode.DEVICE_CODE, invokeResolve("mateclaw.example.com"));
-        assertEquals(OAuthFlowMode.DEVICE_CODE, invokeResolve("api.mate.vip"));
-        assertEquals(OAuthFlowMode.DEVICE_CODE, invokeResolve("api.mate.vip:443"));
+        assertEquals(OAuthFlowMode.DEVICE_CODE, invokeResolve("api.sns.app"));
+        assertEquals(OAuthFlowMode.DEVICE_CODE, invokeResolve("api.sns.app:443"));
         assertEquals(OAuthFlowMode.DEVICE_CODE, invokeResolve("192.168.1.10"),
                 "private LAN IP — not localhost, browser still won't reach server's localhost");
         assertEquals(OAuthFlowMode.DEVICE_CODE, invokeResolve("10.0.0.5:8080"));
@@ -100,7 +100,7 @@ class OpenAIOAuthServiceFlowModeTest {
     void configOverride_forcesManualPaste() throws Exception {
         System.setProperty("mateclaw.oauth.openai.deployment-mode", "manual_paste");
         assertEquals(OAuthFlowMode.MANUAL_PASTE, invokeResolve("localhost"));
-        assertEquals(OAuthFlowMode.MANUAL_PASTE, invokeResolve("api.mate.vip"));
+        assertEquals(OAuthFlowMode.MANUAL_PASTE, invokeResolve("api.sns.app"));
     }
 
     @Test
@@ -108,7 +108,7 @@ class OpenAIOAuthServiceFlowModeTest {
     void configOverride_autoFallsThrough() throws Exception {
         System.setProperty("mateclaw.oauth.openai.deployment-mode", "auto");
         assertEquals(OAuthFlowMode.LOCAL, invokeResolve("localhost"));
-        assertEquals(OAuthFlowMode.DEVICE_CODE, invokeResolve("api.mate.vip"));
+        assertEquals(OAuthFlowMode.DEVICE_CODE, invokeResolve("api.sns.app"));
 
         System.setProperty("mateclaw.oauth.openai.deployment-mode", "garbage");
         assertEquals(OAuthFlowMode.LOCAL, invokeResolve("localhost"));

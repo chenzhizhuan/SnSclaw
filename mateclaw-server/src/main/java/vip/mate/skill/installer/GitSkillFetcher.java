@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * 使用 git CLI（ProcessBuilder）进行 shallow clone，不引入 JGit 依赖。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

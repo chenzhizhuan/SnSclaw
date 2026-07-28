@@ -1,10 +1,10 @@
 ---
 title: Agent Teams — one lead, a crew of digital employees, one shared task board
-description: MateClaw agent teams let a lead employee break a complex goal into tasks, dispatch them to team members in parallel, with dependencies, approvals, deliverables and full observability on a shared board.
+description: SnSclaw agent teams let a lead employee break a complex goal into tasks, dispatch them to team members in parallel, with dependencies, approvals, deliverables and full observability on a shared board.
 head:
   - - meta
     - name: keywords
-      content: agent teams,task board,kanban,multi-agent collaboration,dispatch,deliverables,MateClaw
+      content: agent teams,task board,kanban,multi-agent collaboration,dispatch,deliverables,SnSclaw
 ---
 
 # Agent Teams (2.0.0+)
@@ -13,7 +13,7 @@ head:
 
 Sub-agent delegation (`delegateToAgent`) solves "one person temporarily calls a helper": synchronous, one-to-one, black-box. But real complex delivery looks like a project: **break down tasks, declare dependencies, run in parallel, gate on approvals, archive deliverables, and see who is doing what at any time**.
 
-Agent Teams bring that project machinery into MateClaw: you create a **team**, assign one **lead** employee and several **members**; tell the lead a goal, it breaks the goal into tasks on a **shared task board**; the dispatch engine hands tasks to members and runs them **in parallel**; settled results are announced back to the lead, which reviews, re-dispatches, and drives the whole thing to done. You watch it all from the Teams page — or drop tasks onto the board yourself.
+Agent Teams bring that project machinery into SnSclaw: you create a **team**, assign one **lead** employee and several **members**; tell the lead a goal, it breaks the goal into tasks on a **shared task board**; the dispatch engine hands tasks to members and runs them **in parallel**; settled results are announced back to the lead, which reviews, re-dispatches, and drives the whole thing to done. You watch it all from the Teams page — or drop tasks onto the board yourself.
 
 ---
 

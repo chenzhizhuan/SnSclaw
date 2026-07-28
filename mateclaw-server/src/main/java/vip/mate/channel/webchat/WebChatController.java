@@ -57,11 +57,11 @@ import vip.mate.agent.context.ChatOrigin;
  * WebChat 嵌入式对话接口
  * <p>
  * 独立于 ChatController，使用 API Key 认证（不依赖 JWT）。
- * 供外部网站通过 JS SDK 嵌入 MateClaw 对话能力。
+ * 供外部网站通过 JS SDK 嵌入 SnSclaw 对话能力。
  * <p>
  * 认证方式：请求头 X-MC-Key 携带 API Key
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "WebChat 嵌入式对话")
 @Slf4j
@@ -100,7 +100,7 @@ public class WebChatController {
      * Server-only secret used to sign per-visitor tokens. Reuses the JWT secret so no extra
      * config/migration is needed; it is never sent to the client (unlike the public channel API key).
      */
-    @Value("${mateclaw.jwt.secret:MateClaw-JWT-Secret-Key-2024-Please-Change-In-Production}")
+    @Value("${mateclaw.jwt.secret:SnSclaw-JWT-Secret-Key-2024-Please-Change-In-Production}")
     private String visitorTokenSecret;
 
     private final ExecutorService sseExecutor = Executors.newCachedThreadPool();
@@ -1036,7 +1036,7 @@ public class WebChatController {
      * Approval sweep (ISSUE #413 P1-A4): deny any pending approvals on this
      * conversation so they do not hang for 30 minutes until the GC timeout.
      * The visitor username derived from visitorId is the actor -- it resolves
-     * the "no MateClaw username" blocker noted in the old javadoc.
+     * the "no SnSclaw username" blocker noted in the old javadoc.
      * Each denied approval broadcasts a { tool_approval_resolved} SSE
      * event so the SDK clears its banner immediately.
      */

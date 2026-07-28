@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
  * 2. Long→String：MyBatis Plus 生成的 19 位 Snowflake ID 超过 JS Number.MAX_SAFE_INTEGER (2^53-1)，
  *    序列化为字符串避免前端精度丢失。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Configuration
 public class JacksonConfig {

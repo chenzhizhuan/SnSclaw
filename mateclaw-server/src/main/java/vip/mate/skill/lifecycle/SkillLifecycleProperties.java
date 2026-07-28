@@ -10,7 +10,7 @@ import java.util.List;
  * Configuration for the skill lifecycle curator — the daily job that moves
  * idle, agent-created skills through {@code active -> stale -> archived}.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @ConfigurationProperties(prefix = "mateclaw.skill.curator")

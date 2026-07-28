@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
  * at memory/dreams/YYYY-MM.md. Idempotent: already-archived entries
  * are not moved again.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

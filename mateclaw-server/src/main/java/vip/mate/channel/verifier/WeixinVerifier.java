@@ -26,7 +26,7 @@ import java.util.Random;
  * the bearer token was accepted, so a clean {@link java.net.http.HttpTimeoutException}
  * is treated as success. 401/403 means the token is dead.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

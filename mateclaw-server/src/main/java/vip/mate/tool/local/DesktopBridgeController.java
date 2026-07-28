@@ -14,7 +14,7 @@ import java.util.Map;
  * Exposes whether the current user has a live desktop tunnel, so the admin UI
  * can show local-tool availability and the connection state.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @RestController
 @RequestMapping("/api/v1/desktop")

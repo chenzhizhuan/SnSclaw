@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  *   <li>如果没有有 credential 的 provider，回退到第一个可用的 keyless provider</li>
  * </ol>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

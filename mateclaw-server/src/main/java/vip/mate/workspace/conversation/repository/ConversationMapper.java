@@ -7,7 +7,7 @@ import vip.mate.workspace.conversation.model.ConversationEntity;
 /**
  * 会话 Mapper
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface ConversationMapper extends BaseMapper<ConversationEntity> {

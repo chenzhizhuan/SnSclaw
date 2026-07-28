@@ -44,7 +44,7 @@ import java.util.UUID;
  *   <li>校验: 验签 + 过期 + 单次消费 (jti 写入 sso_state 撞 PK, 只有首个请求成功)</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service
@@ -59,7 +59,7 @@ public class SsoStateService {
 
     private final SsoStateMapper stateMapper;
 
-    @Value("${mateclaw.jwt.secret:MateClaw-JWT-Secret-Key-2024-Please-Change-In-Production}")
+    @Value("${mateclaw.jwt.secret:SnSclaw-JWT-Secret-Key-2024-Please-Change-In-Production}")
     private String jwtSecret;
 
     // ==================== State (OAuth2 CSRF) ====================

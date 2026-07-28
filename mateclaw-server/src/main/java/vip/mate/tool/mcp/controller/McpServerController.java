@@ -22,7 +22,7 @@ import vip.mate.workspace.core.annotation.RequireWorkspaceRole;
  * 若后续引入多用户/多角色，必须在此类上增加 @PreAuthorize("hasRole('ADMIN')") 并启用
  * {@code @EnableMethodSecurity}。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "MCP Server 管理")
 @RestController

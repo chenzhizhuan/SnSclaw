@@ -27,7 +27,7 @@ import java.util.Optional;
  * {@link #USERNAME_ATTR} for the handler to read; on failure the handshake is
  * rejected so an unauthenticated socket never reaches the tool bridge.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

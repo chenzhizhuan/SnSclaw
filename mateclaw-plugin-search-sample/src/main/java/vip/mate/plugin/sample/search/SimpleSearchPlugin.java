@@ -25,7 +25,7 @@ import java.util.List;
  * provider that queries a configurable JSON endpoint. Expected response shape:
  * {@code {"results":[{"title":"...","url":"...","snippet":"..."}]}}
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class SimpleSearchPlugin implements MateClawPlugin {
 

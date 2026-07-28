@@ -1,6 +1,6 @@
 # macOS 代码签名证书操作指南
 
-本文档详细说明如何创建、导出和配置 macOS **Developer ID Application** 证书，用于 MateClaw Desktop 的签名与公证。
+本文档详细说明如何创建、导出和配置 macOS **Developer ID Application** 证书，用于 SnSclaw Desktop 的签名与公证。
 
 ---
 
@@ -146,14 +146,14 @@ base64 -i developer_id_application.p12 | pbcopy
 
 ```bash
 # 验证代码签名
-codesign --verify --deep --strict release/mac-arm64/MateClaw.app
+codesign --verify --deep --strict release/mac-arm64/SnSclaw.app
 
 # 验证 Gatekeeper 公证状态
-spctl --assess --type execute --verbose release/mac-arm64/MateClaw.app
+spctl --assess --type execute --verbose release/mac-arm64/SnSclaw.app
 # 期望输出: accepted, source=Developer ID
 
 # 验证 DMG
-spctl --assess --type open --context context:primary-signature release/MateClaw-*.dmg
+spctl --assess --type open --context context:primary-signature release/SnSclaw-*.dmg
 ```
 
 ---
@@ -226,21 +226,21 @@ unset APPLE_TEAM_ID
 bash scripts/build-all-platforms.sh --mac-only
 
 # 2. 手动公证
-xcrun notarytool submit release/MateClaw_1.0.0_arm64.zip \
+xcrun notarytool submit release/SnSclaw_1.0.0_arm64.zip \
   --apple-id "your@apple.id" \
   --password "app专用密码" \
   --team-id "XXXXXXXXXX" \
   --wait
 
-xcrun notarytool submit release/MateClaw_1.0.0_x64.zip \
+xcrun notarytool submit release/SnSclaw_1.0.0_x64.zip \
   --apple-id "your@apple.id" \
   --password "app专用密码" \
   --team-id "XXXXXXXXXX" \
   --wait
 
 # 3. 装订公证票据到 DMG
-xcrun stapler staple release/MateClaw_1.0.0_arm64.dmg
-xcrun stapler staple release/MateClaw_1.0.0_x64.dmg
+xcrun stapler staple release/SnSclaw_1.0.0_arm64.dmg
+xcrun stapler staple release/SnSclaw_1.0.0_x64.dmg
 ```
 
 ---

@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
  * agent has no rows for a KB at all, access falls back to the KB-level
  * default read policy (see {@code WikiKbConfig#getDefaultReadPolicy()}).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_wiki_agent_page_type_permission")

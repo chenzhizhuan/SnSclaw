@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * Schema for one pageType metadata field within a {@link WikiPageTypeDef}.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)

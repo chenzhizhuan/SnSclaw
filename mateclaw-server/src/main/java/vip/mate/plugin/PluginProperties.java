@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 /**
  * Plugin SDK configuration properties.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @Component

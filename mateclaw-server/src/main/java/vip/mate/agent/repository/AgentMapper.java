@@ -7,7 +7,7 @@ import vip.mate.agent.model.AgentEntity;
 /**
  * Agent 数据访问层
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Mapper
 public interface AgentMapper extends BaseMapper<AgentEntity> {

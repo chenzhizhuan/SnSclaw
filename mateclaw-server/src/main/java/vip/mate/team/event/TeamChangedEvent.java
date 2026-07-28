@@ -8,7 +8,7 @@ import java.util.List;
  * baked into their system prompts is rebuilt on the next turn.
  *
  * @param agentIds every agent whose prompt may embed this team's context
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public record TeamChangedEvent(List<Long> agentIds) {
 }

@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "type": "memory",
   "displayName": "Mem0 Memory Provider (Optional)",
-  "description": "Bridges MateClaw's memory system to a self-hosted Mem0 service. Adds semantic recall from Mem0 alongside the built-in local memory providers. Requires a separately deployed Mem0 service (FastAPI + pgvector). Not part of the default stack.",
+  "description": "Bridges SnSclaw's memory system to a self-hosted Mem0 service. Adds semantic recall from Mem0 alongside the built-in local memory providers. Requires a separately deployed Mem0 service (FastAPI + pgvector). Not part of the default stack.",
   "entrypoint": "vip.mate.plugin.mem0.Mem0Plugin",
   "minPlatformVersion": "2.0.0",
-  "author": "MateClaw Team",
+  "author": "SnSclaw Team",
   "config": {
     "baseUrl": {
       "type": "string",

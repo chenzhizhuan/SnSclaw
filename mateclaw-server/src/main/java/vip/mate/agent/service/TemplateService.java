@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  * 扫描 classpath:templates/*.json 下的模板文件，
  * 支持列出模板和应用模板创建 Agent。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Service

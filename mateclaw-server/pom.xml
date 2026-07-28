@@ -14,11 +14,11 @@
     <artifactId>mateclaw-server</artifactId>
     <packaging>jar</packaging>
 
-    <name>MateClaw Server</name>
-    <description>MateClaw - Java+Vue Personal AI Assistant powered by Spring AI Alibaba</description>
+    <name>SnSclaw Server</name>
+    <description>SnSclaw - Java+Vue Personal AI Assistant powered by Spring AI Alibaba</description>
 
     <dependencies>
-        <!-- ===== MateClaw Plugin API ===== -->
+        <!-- ===== SnSclaw Plugin API ===== -->
         <dependency>
             <groupId>vip.mate</groupId>
             <artifactId>mateclaw-plugin-api</artifactId>

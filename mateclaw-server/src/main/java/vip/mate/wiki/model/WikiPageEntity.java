@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * Wiki 页面实体（AI 生成的结构化知识页面）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_wiki_page")

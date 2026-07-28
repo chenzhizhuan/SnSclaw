@@ -2,12 +2,12 @@
 layout: home
 
 hero:
-  name: MateClaw
+  name: SnSclaw
   text: The personal AI your IT department can actually sign off on.
-  tagline: Other personal AI agents are built for one person. MateClaw is built for a team — multi-user workspaces, approval-gated sensitive actions, full audit trail, production-grade health monitoring. One JAR on your own machine. Zero data egress.
+  tagline: Other personal AI agents are built for one person. SnSclaw is built for a team — multi-user workspaces, approval-gated sensitive actions, full audit trail, production-grade health monitoring. One JAR on your own machine. Zero data egress.
   image:
     src: /logo.png
-    alt: MateClaw
+    alt: SnSclaw
   actions:
     - theme: brand
       text: Get Started →
@@ -17,7 +17,7 @@ hero:
       link: /en/intro
     - theme: alt
       text: GitHub
-      link: https://github.com/mateaix/mateclaw
+      link: https://github.com/chenzhizhuan/SnSclaw
 
 features:
   - icon: 🧑‍💼

@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * - Long-Polling（默认）：通过 getUpdates 轮询，无需公网 IP，适合开发和内网部署
  * - Webhook：配置 webhook_url 后自动切换，需要公网可访问的 URL
  * <p>
- * 参考 MateClaw 实现，增强了：
+ * 参考 SnSclaw 实现，增强了：
  * - 持续 Typing 指示器（每 4 秒发送一次，直到回复完成）
  * - 指数退避重连（2s→30s，无限重试）
  * - Markdown 解析失败时自动降级为纯文本
@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * - show_typing: 是否显示"正在输入"状态，默认 true
  * - polling_timeout: Long-Polling 超时秒数，默认 20
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 public class TelegramChannelAdapter extends AbstractChannelAdapter {
@@ -204,7 +204,7 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
     /**
      * Long-Polling 主循环
      * <p>
-     * 参考 MateClaw 的 _polling_cycle：
+     * 参考 SnSclaw 的 _polling_cycle：
      * - 使用 long poll（timeout=20s），Telegram 服务器在有新消息时立即返回
      * - 失败时通过 AbstractChannelAdapter 的指数退避重连
      */
@@ -651,7 +651,7 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
     /**
      * 启动持续 Typing 指示（每 4 秒发送一次，最长 180 秒）
      * <p>
-     * 参考 MateClaw 的 _typing_loop 实现。
+     * 参考 SnSclaw 的 _typing_loop 实现。
      * Telegram 的 typing 状态持续约 5 秒，所以每 4 秒重发一次。
      */
     private void startTyping(String chatId) {

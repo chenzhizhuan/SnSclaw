@@ -36,7 +36,7 @@ import java.util.Map;
  *   <li>Returns the accumulated text or a JSON error blob on failure.</li>
  * </ol>
  *
- * <p>The streaming surface (chunk-by-chunk relay back through MateClaw's
+ * <p>The streaming surface (chunk-by-chunk relay back through SnSclaw's
  * own SSE stream) is intentionally not done yet — the wrapper tool is
  * synchronous so it composes cleanly with the existing ReAct graph.
  * When we want native streaming, we'll add a second method that takes

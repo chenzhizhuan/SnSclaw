@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 每个数据源维护一个独立的 HikariCP 连接池（max=3），
  * 通过 ConcurrentHashMap 缓存，配置变更时自动失效。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

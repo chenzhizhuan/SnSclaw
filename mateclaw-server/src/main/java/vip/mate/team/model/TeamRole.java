@@ -3,7 +3,7 @@ package vip.mate.team.model;
 /**
  * Team membership role constants.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public final class TeamRole {
 

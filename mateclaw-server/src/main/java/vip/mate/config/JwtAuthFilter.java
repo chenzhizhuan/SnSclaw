@@ -27,7 +27,7 @@ import java.util.Optional;
  * 1. Authorization: Bearer <token>  （标准方式）
  * 2. ?token=<token>                 （SSE/EventSource 不支持自定义 Header，通过 query param 传递）
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Component
 @RequiredArgsConstructor

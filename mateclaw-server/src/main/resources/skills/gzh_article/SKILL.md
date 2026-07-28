@@ -83,7 +83,7 @@ platforms:
 - **广告法**：极限词（最/第一/唯一/国家级/100%）、虚假功效、承诺收益、敏感内容、侵权。
 - **微信平台红线**（比广告法更容易封号，见 `references/gzh_platform_rules.md` 第 5 节）：**诱导分享**（集赞/助力/分享解锁）、**诱导关注**（关注才能看全文）、**违规外链/二维码**、标题党。引导互动只用话术、不用利诱。
 
-**产品教程/操作类文章配真实截图**：写"如何用 MateClaw 做 XX"这类教程时，用 `capture_screenshot(path)` 截真实后台界面（`path` 为站内相对路径，如 `/chat`、`/channels`、`/agents`、`/skills`），把返回的图片 URL 以 `![步骤说明](URL)` **直接嵌进对应步骤的 Markdown**，替代【截图】占位；再整体交给 `gzh_package`。这样成品里是真实产品截图，不用手动补图。
+**产品教程/操作类文章配真实截图**：写"如何用 SnSclaw 做 XX"这类教程时，用 `capture_screenshot(path)` 截真实后台界面（`path` 为站内相对路径，如 `/chat`、`/channels`、`/agents`、`/skills`），把返回的图片 URL 以 `![步骤说明](URL)` **直接嵌进对应步骤的 Markdown**，替代【截图】占位；再整体交给 `gzh_package`。这样成品里是真实产品截图，不用手动补图。
 
 ### 7. 打包交付（gzh_package —— 在线预览 + 素材下载）
 

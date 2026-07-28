@@ -13,20 +13,20 @@ A knowledge base isn't a place you search. It's a place you **read**.
 
 Most AI knowledge systems do one thing: chunk your files, embed them, hand back fragments at query time. You get pieces. You can't browse them. You can't tell what the system "knows" without asking. Nothing is ever *finished*.
 
-MateClaw's LLM Wiki does something different. Drop raw material into a knowledge base and the system reads it, digests it, and writes structured Wiki pages — each with a summary, backlinks, and provenance pointers back to the source passage. You can open any page and read it. You can edit it. Agents read summaries automatically and pull full pages on demand.
+SnSclaw's LLM Wiki does something different. Drop raw material into a knowledge base and the system reads it, digests it, and writes structured Wiki pages — each with a summary, backlinks, and provenance pointers back to the source passage. You can open any page and read it. You can edit it. Agents read summaries automatically and pull full pages on demand.
 
 **It's a library, not a vector store.**
 
 ::: tip How it differs from the open-source "LLM Wiki" clones
 In April 2026, Andrej Karpathy published a GitHub Gist that gave the idea a name: the material you feed an AI shouldn't be re-shredded into vector fragments at query time — it should be read once and written into a readable wiki. Within a month, at least nine `llm-wiki` single-file implementations had appeared on GitHub — useful, local, personal.
 
-MateClaw's LLM Wiki **is the same idea, raised into a product**:
+SnSclaw's LLM Wiki **is the same idea, raised into a product**:
 
 - Not one person's notebook — a **team-shared knowledge base** with multi-user access, permissions, audit, and archive
 - Not a script that runs once — a capability **agents use continuously**, wired into memory, retrieval, and citation
 - Not eager-only — **lazy mode compiles pages on demand**, saving 90%+ of LLM calls at scale
 - Not raw markdown dumped on disk — a page layer with **provenance, bidirectional links, manual-edit protection, and reversible archive**
-- Not an isolated tool — the **knowledge layer of MateClaw's agent operating system**, threaded through memory, agents, and channel delivery
+- Not an isolated tool — the **knowledge layer of SnSclaw's agent operating system**, threaded through memory, agents, and channel delivery
 
 > They built a clone. We built a home.
 :::
@@ -52,7 +52,7 @@ This matters because the agent's context window stops getting wasted on re-readi
 Once it exists, add material:
 
 - **Upload files** — drag PDF, Word, Excel, PowerPoint, HTML, markdown, or plain-text (incl. CSV) files into the upload area. Each file becomes a raw material row.
-- **Scan a local directory** — desktop only. Point at a folder and MateClaw walks it recursively, respecting `.gitignore`, importing everything that looks like text.
+- **Scan a local directory** — desktop only. Point at a folder and SnSclaw walks it recursively, respecting `.gitignore`, importing everything that looks like text.
 - **Paste text** — for short excerpts or conversation transcripts.
 
 The system starts indexing as soon as material arrives. You'll see a status indicator on each row: `pending → processing → completed`. If some chunks fail and others succeed, the row lands as `partial` — you keep what worked, instead of throwing the whole document away.
@@ -580,7 +580,7 @@ All new REST endpoints are in the [API Reference](./api#llm-wiki).
 
 A wiki that can't read images is half-blind. PDFs are the worst offenders — half the actual information often lives inside the figures.
 
-When the `wiki.ocr.enabled` feature flag is on, MateClaw runs every uploaded image — and every image *embedded in a PDF page* — through a vision pipeline that extracts a **caption** plus any **visible text** in the image. Those become first-class chunks alongside the surrounding prose, so retrieval finds them, agents quote them, and search results show inline thumbnails with a click-to-zoom lightbox.
+When the `wiki.ocr.enabled` feature flag is on, SnSclaw runs every uploaded image — and every image *embedded in a PDF page* — through a vision pipeline that extracts a **caption** plus any **visible text** in the image. Those become first-class chunks alongside the surrounding prose, so retrieval finds them, agents quote them, and search results show inline thumbnails with a click-to-zoom lightbox.
 
 ### How it works
 

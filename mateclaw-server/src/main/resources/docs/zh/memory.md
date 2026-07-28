@@ -1,6 +1,6 @@
 ---
 title: AI 记忆系统 — 四层记忆生命周期（提取-整合-Dreaming-召回）
-description: MateClaw 的四层记忆生命周期：即时上下文、对话后提取、工作空间持久化（PROFILE.md/MEMORY.md）、定时 Dreaming 整合。让 AI 越用越懂你，不再每天从零开始。
+description: SnSclaw 的四层记忆生命周期：即时上下文、对话后提取、工作空间持久化（PROFILE.md/MEMORY.md）、定时 Dreaming 整合。让 AI 越用越懂你，不再每天从零开始。
 head:
   - - meta
     - name: keywords
@@ -11,7 +11,7 @@ head:
 
 **记忆是系统越用越懂你的机制。**
 
-MateClaw 里其他所有东西，在你配置完之后就静止了。Agent、工具、知识库——你改它们的时候才改。记忆是**唯一一个**会自己改变的部分，变化是实际使用过程的副产品。这就是整个设计的核心意图。
+SnSclaw 里其他所有东西，在你配置完之后就静止了。Agent、工具、知识库——你改它们的时候才改。记忆是**唯一一个**会自己改变的部分，变化是实际使用过程的副产品。这就是整个设计的核心意图。
 
 ::: tip 它在你睡着的时候做了一个关于你的梦
 不是营销词。是 `memory/dreaming/` 包里真实跑的代码。
@@ -20,7 +20,7 @@ MateClaw 里其他所有东西，在你配置完之后就静止了。Agent、工
 
 第二天早上你打开它，它**从昨天结束的地方继续**，不是从零开始。
 
-> 别的 AI 每天从零开始。MateClaw 从昨天结束的地方继续。
+> 别的 AI 每天从零开始。SnSclaw 从昨天结束的地方继续。
 :::
 
 这一页讲组成记忆的四个层、每个 Agent 的记忆文件、以及 Agent 自己怎么在对话中读写这些文件。
@@ -97,7 +97,7 @@ system prompt 里只烤进 TEAM/GLOBAL 的共享记忆（可缓存）；每轮�
 
 ### 第三方 API 透传终端用户身份
 
-`/api/v1/chat` 和 `/api/v1/chat/stream` 的请求体新增可选字段 **`endUserId`**（字符串，保大整数精度）。一个 PAT 认证的接入方代表一个 MateClaw 用户，但可以为每个终端用户传不同的 `endUserId`，记忆按终端用户自动隔离。
+`/api/v1/chat` 和 `/api/v1/chat/stream` 的请求体新增可选字段 **`endUserId`**（字符串，保大整数精度）。一个 PAT 认证的接入方代表一个 SnSclaw 用户，但可以为每个终端用户传不同的 `endUserId`，记忆按终端用户自动隔离。
 
 ### 这是一个可开关的特性
 
@@ -117,7 +117,7 @@ Java 属性的裸默认值是 `false`，但**随发行版打包的 `application.
 
 记忆这一层不是一个硬编码的实现。它是一个**接口**——多层架构允许你**堆叠 provider**：
 
-- **默认 Provider** 就是这页后面讲的基于工作空间文件的记忆。MateClaw 出厂就带这个，对大多数人来说这一个就够了。
+- **默认 Provider** 就是这页后面讲的基于工作空间文件的记忆。SnSclaw 出厂就带这个，对大多数人来说这一个就够了。
 - **自定义 Provider** 可以插入用于专用检索——基于向量的长期记忆、图结构记忆、外部记忆服务。
 - **分层**意味着同一个 Agent 可以同时和多个 provider 对话。短期 provider 返回最近上下文；语义 provider 返回相关记忆；Wiki provider 返回权威引用。它们在读取时组合。
 
@@ -162,7 +162,7 @@ v1.3.0 起，[工作流](./workflow) 的 `write_memory` step 可以在流程跑�
 
 ## 短期：上下文窗口
 
-每一次 LLM 调用之前，MateClaw 都会构造真正送出去的那个 prompt：
+每一次 LLM 调用之前，SnSclaw 都会构造真正送出去的那个 prompt：
 
 ```
 [System Prompt]                        ← 永远在最前
@@ -566,10 +566,10 @@ mate:
 ## Mem0 集成（可选）
 
 ::: warning 非默认栈
-Mem0 集成是**可选的社区贡献项**，不在 MateClaw 的默认安装里。它需要你**自己部署一份 Mem0 服务**（FastAPI + pgvector + 可选 Neo4j）。MateClaw 的"本地优先、零外部依赖"定位不变——这个插件只是给愿意多跑一套服务的人一个**叠加的语义召回通道**。
+Mem0 集成是**可选的社区贡献项**，不在 SnSclaw 的默认安装里。它需要你**自己部署一份 Mem0 服务**（FastAPI + pgvector + 可选 Neo4j）。SnSclaw 的"本地优先、零外部依赖"定位不变——这个插件只是给愿意多跑一套服务的人一个**叠加的语义召回通道**。
 :::
 
-[Mem0](https://github.com/mem0ai/mem0) 是一个独立的记忆服务，做的是 LLM 记忆的提取、去重、向量化召回。MateClaw 的 `mateclaw-plugin-mem0` 模块把它作为一个**插件式 memory provider** 接进来——内部 4 个 provider（Builtin / Structured / Session / Fact）一个都不动，Mem0 作为第 5 个外部 provider 叠加上去，**互不替代**。
+[Mem0](https://github.com/mem0ai/mem0) 是一个独立的记忆服务，做的是 LLM 记忆的提取、去重、向量化召回。SnSclaw 的 `mateclaw-plugin-mem0` 模块把它作为一个**插件式 memory provider** 接进来——内部 4 个 provider（Builtin / Structured / Session / Fact）一个都不动，Mem0 作为第 5 个外部 provider 叠加上去，**互不替代**。
 
 ### 它做什么
 
@@ -580,13 +580,13 @@ Mem0 集成是**可选的社区贡献项**，不在 MateClaw 的默认安装里�
 | `syncTurn(agentId, conversationId, userMessage, assistantReply, ownerKey)` | 当 `syncEnabled=true` 且 `ownerKey` 非空时，**异步**把这一轮的 user/assistant 消息以 `user_id = ownerKey` 推到 `POST {baseUrl}/memories/` —— 与召回查询用同一个标识。失败只记日志、不阻塞响应 |
 | `getToolBeans` | 空列表——v1 不暴露 Agent 可调用的工具 |
 
-**故障隔离**：recall 或 sync 任何一边抛异常，插件自己吞掉、写日志，平台继续走其他 provider。Mem0 挂了不会影响 MateClaw 的本地记忆。
+**故障隔离**：recall 或 sync 任何一边抛异常，插件自己吞掉、写日志，平台继续走其他 provider。Mem0 挂了不会影响 SnSclaw 的本地记忆。
 
 ### per-owner 隔离的映射
 
-Mem0 用 `user_id` + `agent_id` 做隔离。MateClaw 的映射：
+Mem0 用 `user_id` + `agent_id` 做隔离。SnSclaw 的映射：
 
-| MateClaw 字段 | Mem0 字段 | 说明 |
+| SnSclaw 字段 | Mem0 字段 | 说明 |
 |---|---|---|
 | `ownerKey`（如 `user:42` / `feishu:sender_abc`） | `user_id` | 透传，原样作为 user_id |
 | `agentId` | `agent_id` | 数字员工 ID |
@@ -596,8 +596,8 @@ Mem0 用 `user_id` + `agent_id` 做隔离。MateClaw 的映射：
 ### 安装步骤
 
 1. **部署 Mem0 服务**：参考 Mem0 官方文档，自托管一份（FastAPI + pgvector + 可选 Neo4j）。记下它的 base URL，比如 `http://localhost:8080`。
-2. **构建插件 JAR**：在 MateClaw 仓库根目录跑 `mvn -pl mateclaw-plugin-mem0 -am package`，得到 `mateclaw-plugin-mem0/target/mateclaw-plugin-mem0-*.jar`。
-3. **放 JAR**：把 JAR 丢进 MateClaw 的 `plugins/` 目录。
+2. **构建插件 JAR**：在 SnSclaw 仓库根目录跑 `mvn -pl mateclaw-plugin-mem0 -am package`，得到 `mateclaw-plugin-mem0/target/mateclaw-plugin-mem0-*.jar`。
+3. **放 JAR**：把 JAR 丢进 SnSclaw 的 `plugins/` 目录。
 4. **配置**：在插件管理 UI 里填 `baseUrl`（必填），按需填 `apiKey`、调其他参数。重启或重载插件。
 
 ### 配置项

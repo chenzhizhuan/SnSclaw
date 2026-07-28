@@ -1,6 +1,6 @@
 ---
 title: MCP Integration — Model Context Protocol Tool Extension
-description: MateClaw acts as an MCP client, connecting to any external tool server via Model Context Protocol. JSON-RPC dynamic discovery, SSE/stdio dual transport, seamless unification with built-in tools.
+description: SnSclaw acts as an MCP client, connecting to any external tool server via Model Context Protocol. JSON-RPC dynamic discovery, SSE/stdio dual transport, seamless unification with built-in tools.
 head:
   - - meta
     - name: keywords
@@ -9,11 +9,11 @@ head:
 
 # MCP — Model Context Protocol
 
-**MCP is how MateClaw talks to tools someone else built.**
+**MCP is how SnSclaw talks to tools someone else built.**
 
-Model Context Protocol is an open standard from Anthropic for connecting AI models to external tools and data. An MCP server is a process — local or remote — that advertises a set of tools over JSON-RPC. MateClaw acts as an MCP *client*: it connects, discovers tools via `tools/list`, and exposes them to your agents as if they were native. **From the agent's point of view, there's no difference between a built-in `@Tool` Spring bean and a tool coming from an MCP server.**
+Model Context Protocol is an open standard from Anthropic for connecting AI models to external tools and data. An MCP server is a process — local or remote — that advertises a set of tools over JSON-RPC. SnSclaw acts as an MCP *client*: it connects, discovers tools via `tools/list`, and exposes them to your agents as if they were native. **From the agent's point of view, there's no difference between a built-in `@Tool` Spring bean and a tool coming from an MCP server.**
 
-This is the escape hatch. If you need a capability MateClaw doesn't ship with — filesystem access for a sandboxed directory, Tavily search, a custom internal data service, a browser automation suite — there's probably already an MCP server for it, and you can plug it in without writing a line of Java.
+This is the escape hatch. If you need a capability SnSclaw doesn't ship with — filesystem access for a sandboxed directory, Tavily search, a custom internal data service, a browser automation suite — there's probably already an MCP server for it, and you can plug it in without writing a line of Java.
 
 ---
 
@@ -21,7 +21,7 @@ This is the escape hatch. If you need a capability MateClaw doesn't ship with �
 
 ```
 ┌───────────────────────┐              ┌───────────────────────┐
-│     MateClaw           │              │     MCP Server        │
+│     SnSclaw           │              │     MCP Server        │
 │     (MCP Client)       │              │     (Tool Provider)   │
 │                       │   JSON-RPC   │                       │
 │  Agent Engine  ───────┼──────────────┼──► Tool A             │
@@ -33,7 +33,7 @@ This is the escape hatch. If you need a capability MateClaw doesn't ship with �
 
 Core concepts:
 
-- **MCP Client** — MateClaw, connecting to servers, discovering tools, forwarding invocations
+- **MCP Client** — SnSclaw, connecting to servers, discovering tools, forwarding invocations
 - **MCP Server** — a third-party process declaring its available tools and executing calls
 - **Tool Discovery** — the client sends `tools/list` to retrieve every tool and its parameter schema
 - **Tool Invocation** — when the agent decides to call a tool, the client forwards the request to the right MCP server
@@ -48,10 +48,10 @@ Three transports for different deployment scenarios:
 
 ### stdio (Standard I/O)
 
-MateClaw spawns a local child process and exchanges JSON-RPC messages via stdin/stdout.
+SnSclaw spawns a local child process and exchanges JSON-RPC messages via stdin/stdout.
 
 ```
-MateClaw  ── stdin ──►  MCP Server subprocess
+SnSclaw  ── stdin ──►  MCP Server subprocess
           ◄─ stdout ──
 ```
 
@@ -64,7 +64,7 @@ MateClaw  ── stdin ──►  MCP Server subprocess
 Standard HTTP POST for JSON-RPC, responses streamed back over HTTP. **Recommended for production.**
 
 ```
-MateClaw  ── HTTP POST ──►  Remote MCP Server
+SnSclaw  ── HTTP POST ──►  Remote MCP Server
           ◄─ HTTP Stream ──
 ```
 
@@ -82,7 +82,7 @@ Earlier HTTP transport using SSE for server-to-client push. Legacy compatibility
 | Deployment | Local only | Local or remote | Local or remote |
 | Network requirement | None | HTTP reachable | HTTP reachable |
 | Authentication | Environment variables | HTTP Headers | HTTP Headers |
-| Process management | MateClaw manages subprocess | External | External |
+| Process management | SnSclaw manages subprocess | External | External |
 | Recommendation | Local tools | Remote services | Legacy compatibility |
 
 ---
@@ -103,7 +103,7 @@ Earlier HTTP transport using SSE for server-to-client push. Legacy compatibility
 - **Connect timeout** — default 30s
 - **Read timeout** — default **60s** (raised from 30s in 1.5.0, #247; a single callTool round-trip that legitimately runs longer no longer gets cut off. Each server is tunable 5–300s)
 
-Save. If enabled, MateClaw auto-attempts to connect and discover tools.
+Save. If enabled, SnSclaw auto-attempts to connect and discover tools.
 
 ### Testing, enabling, status
 
@@ -390,7 +390,7 @@ user; its environment is fixed at spawn and STDIO has no per-request header
 channel like HTTP. So per-user identity **cannot travel via env** — it must ride
 in-band with each tool call.
 
-MateClaw can inject the **authenticated username** into every tool call for a
+SnSclaw can inject the **authenticated username** into every tool call for a
 chosen server, so the server can call its downstream REST backend on behalf of
 that user.
 
@@ -410,7 +410,7 @@ mateclaw:
 
 ### Data contract
 
-When enabled, MateClaw injects the reserved argument **`__mateclaw_user__`**
+When enabled, SnSclaw injects the reserved argument **`__mateclaw_user__`**
 (value = authenticated username) into each tool call's JSON arguments. It is
 injected by trusted server code, **never by the LLM** — any model-supplied value
 of the same key is overwritten, so the model cannot spoof identity. When there is
@@ -455,7 +455,7 @@ network where the backend authenticates the MCP service by API key and treats
 the forwarded user as on-behalf-of. The backend trusts the raw string.
 
 **② Signed token (recommended across a trust boundary)**: injects a short-lived
-**RS256 JWT** that MateClaw signs with a private key (reserved key becomes
+**RS256 JWT** that SnSclaw signs with a private key (reserved key becomes
 **`__mateclaw_token__`**); the REST backend **verifies it with the public key**,
 so it trusts the signature — not the MCP service, the Python script, or the
 transport.
@@ -476,7 +476,7 @@ mateclaw:
           my-internal-api: https://api.internal
 ```
 
-Generate the key pair (private → MateClaw, public → REST backend):
+Generate the key pair (private → SnSclaw, public → REST backend):
 
 ```bash
 openssl genpkey -algorithm RSA -pkcs8 -out mcp-idfwd-private.pem
@@ -490,7 +490,7 @@ token mode is on but no key is configured, it fails closed** (no token minted,
 nothing injected — the backend rejects) rather than silently downgrading to
 plaintext.
 
-> `sub` carries the MateClaw user identifier (`ChatOrigin.requesterId`). If your
+> `sub` carries the SnSclaw user identifier (`ChatOrigin.requesterId`). If your
 > backend authorizes on an immutable numeric id, resolve username→id before
 > minting (kept decoupled from the user store here).
 
@@ -529,7 +529,7 @@ user = claims["sub"]            # trusted only after signature verification
 
 ### "Command not found" (stdio)
 
-1. Confirm the command is in PATH of the user running MateClaw
+1. Confirm the command is in PATH of the user running SnSclaw
 2. Verify: `which npx` or `npx --version`
 3. Docker: confirm command is installed in the container
 4. Use full path: `/usr/local/bin/npx`
@@ -564,7 +564,7 @@ user = claims["sub"]            # trusted only after signature verification
 
 ### Orphaned subprocesses (stdio)
 
-Subprocesses are cleaned up on normal shutdown. If MateClaw was force-killed (`kill -9`), subprocesses may remain. `ps aux | grep mcp` and terminate.
+Subprocesses are cleaned up on normal shutdown. If SnSclaw was force-killed (`kill -9`), subprocesses may remain. `ps aux | grep mcp` and terminate.
 
 ---
 

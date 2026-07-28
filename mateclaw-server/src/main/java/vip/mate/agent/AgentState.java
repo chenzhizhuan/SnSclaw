@@ -3,7 +3,7 @@ package vip.mate.agent;
 /**
  * Agent 运行状态枚举
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public enum AgentState {
 

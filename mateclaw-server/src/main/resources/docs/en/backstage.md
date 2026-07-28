@@ -11,7 +11,7 @@ head:
 
 **The page you open when someone says "my agent is stuck."**
 
-A digital employee that's frozen mid-step is one of the few things in MateClaw that doesn't fix itself. Streams hang, subagents fan out into the void, the SSE buffer keeps a flux alive that nobody is reading. Backstage is the one screen that surfaces all of that and lets you reach in.
+A digital employee that's frozen mid-step is one of the few things in SnSclaw that doesn't fix itself. Streams hang, subagents fan out into the void, the SSE buffer keeps a flux alive that nobody is reading. Backstage is the one screen that surfaces all of that and lets you reach in.
 
 It is **admin-only** (`ROLE_ADMIN`), live (auto-refresh every 5 s, pausable), and intentionally simple — one card per running agent, four actions, no menus.
 

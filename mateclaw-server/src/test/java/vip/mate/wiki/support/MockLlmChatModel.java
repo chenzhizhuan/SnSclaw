@@ -36,7 +36,7 @@ import java.util.Objects;
  * <p>Tests can also pass an explicit {@code Map<String,String>} (skipping the
  * JSON load) to keep fixtures co-located with the test class.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public class MockLlmChatModel implements ChatModel {
 

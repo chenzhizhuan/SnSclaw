@@ -15,14 +15,14 @@ import vip.mate.tool.ConcurrencyUnsafe;
 /**
  * Tools that operate on files on the <b>user's local desktop machine</b> (not
  * the server). Each call is forwarded over the desktop WebSocket tunnel to the
- * MateClaw desktop app, which enforces a directory whitelist, prompts the user
+ * SnSclaw desktop app, which enforces a directory whitelist, prompts the user
  * for approval on writes/edits, and executes the operation locally.
  * <p>
  * These tools require a connected desktop tunnel for the requesting user; when
  * none is connected they return a friendly {@code OFFLINE} error so the agent
  * can fall back to server-side tools or tell the user to open the desktop app.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component
@@ -40,7 +40,7 @@ public class LocalFileTools {
     @Tool(description = """
             LOCAL: Read a file on the USER'S LOCAL DESKTOP machine (not the server). \
             Supports an optional 1-based line range. Output is truncated to ~30KB. \
-            Requires the MateClaw desktop app to be connected and the path to be \
+            Requires the SnSclaw desktop app to be connected and the path to be \
             inside the user's configured local directory whitelist. Use the plain \
             read_file tool for server-side files.""")
     public String local_read_file(

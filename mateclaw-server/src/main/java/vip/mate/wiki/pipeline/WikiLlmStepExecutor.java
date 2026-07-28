@@ -17,7 +17,7 @@ import java.util.List;
  * previous step's output is passed as the user message so steps compose. The
  * model is resolved through the existing wiki model routing.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

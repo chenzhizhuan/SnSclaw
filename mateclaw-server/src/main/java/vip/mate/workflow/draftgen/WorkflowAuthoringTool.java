@@ -37,7 +37,7 @@ public class WorkflowAuthoringTool {
         this.workflowService = workflowService;
     }
 
-    @Tool(description = "把用户描述的业务流程转换成一个 MateClaw workflow 草稿并保存到当前 workspace。"
+    @Tool(description = "把用户描述的业务流程转换成一个 SnSclaw workflow 草稿并保存到当前 workspace。"
             + "适用场景：用户说「把 X 这件事做成 workflow / 自动化 / 流程」、「每周一让 X 员工 ...」、"
             + "「客户消息进来时让 X 应对」。工具会输出 workflowId + 简短摘要，前端会自动在 workflow 编辑器里打开。"
             + "不会自动发布，不会自动启用 trigger — 用户需要在编辑器里 review 后再 publish。")

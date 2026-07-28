@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * auto-enables matching pre-configured models. If offline, silently skips
  * (debug log only).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

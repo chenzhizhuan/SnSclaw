@@ -9,7 +9,7 @@ Workflow orchestration is available from v1.3.0. Earlier releases (v1.2.0 and be
 **What workflow is not**:
 - Not a replacement for ReAct / Plan-and-Execute — single-agent multi-turn reasoning still lives in those engines
 - Not a low-code drag-and-drop if/else builder — v0 is **JSON-first** (canvas comes in v1)
-- Not a 30-node Dify-style orchestrator — MateClaw workflows stay deliberately minimal: **a linear array of steps with one `mode` field expressing the control flow**
+- Not a 30-node Dify-style orchestrator — SnSclaw workflows stay deliberately minimal: **a linear array of steps with one `mode` field expressing the control flow**
 
 ::: warning v1.3.0 scope
 v0 = internal alpha. **7 step modes + 6 trigger pattern types**. `loop` and `invoke_skill` are deferred. Run it on a flagship account / internal workspace before rolling out broadly.
@@ -279,7 +279,7 @@ There is **no** `POST /api/v1/workflows/{id}/runs` "fire one now" endpoint in v0
 
 Every step carries in its ExecutionContext:
 - `workspaceId`: must equal the workflow's workspace
-- `actingAgentId`: for `sequential` and the three MateClaw modes → that step's agent; for other modes → publisher as fallback
+- `actingAgentId`: for `sequential` and the three SnSclaw modes → that step's agent; for other modes → publisher as fallback
 - `triggeredBy` / `workflowId` / `revisionId` / `runId`: for audit traceability
 
 ### Cross-workspace isolation

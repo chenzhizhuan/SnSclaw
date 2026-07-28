@@ -210,7 +210,7 @@ onMounted(async () => {
   try {
     const res: any = await wikiApi.listKBs()
     availableKbs.value = (res?.data || []).map((kb: any) => ({
-      // KBs don't have slugs in MateClaw — fall back to id-as-slug for the
+      // KBs don't have slugs in SnSclaw — fall back to id-as-slug for the
       // wizard. The backend can still bind via id; manifest just stores
       // whichever value the user picked here.
       slug: kb.slug || (kb.id != null ? String(kb.id) : ''),

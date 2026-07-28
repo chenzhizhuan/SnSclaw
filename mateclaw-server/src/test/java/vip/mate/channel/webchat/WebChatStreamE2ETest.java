@@ -65,7 +65,7 @@ import static org.mockito.ArgumentMatchers.isNull;
  * and attachment ingestion (requires POST /upload first; out of scope for this
  * PR's wire-format focus).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @SpringBootTest(
         classes = MateClawApplication.class,

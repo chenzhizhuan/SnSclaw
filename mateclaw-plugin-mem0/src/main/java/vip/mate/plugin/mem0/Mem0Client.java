@@ -27,7 +27,7 @@ import java.util.Map;
  * {@link Mem0Exception}. Callers are expected to catch and degrade gracefully
  * (return empty recall / log sync failures).
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 class Mem0Client {
 
@@ -45,8 +45,8 @@ class Mem0Client {
     /**
      * Push a conversation turn to Mem0 for extraction.
      *
-     * @param userId         Mem0 user_id, typically MateClaw's ownerKey
-     * @param agentId        Mem0 agent_id, typically MateClaw's agentId
+     * @param userId         Mem0 user_id, typically SnSclaw's ownerKey
+     * @param agentId        Mem0 agent_id, typically SnSclaw's agentId
      * @param conversationId optional conversation identifier (stored as metadata)
      * @param userMessage    user's message text
      * @param assistantReply assistant's reply text

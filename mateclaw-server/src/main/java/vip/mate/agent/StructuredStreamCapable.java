@@ -7,7 +7,7 @@ import reactor.core.publisher.Flux;
  * <p>
  * 实现此接口的 Agent 可以在 SSE 流中同时发送事件（工具调用、阶段变更等）和内容。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public interface StructuredStreamCapable {
 

@@ -38,7 +38,7 @@ import java.util.Optional;
  * report progress, and comment; everyone reads. All errors return structured
  * strings written for LLM self-correction, never exceptions.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Component
 @RequiredArgsConstructor

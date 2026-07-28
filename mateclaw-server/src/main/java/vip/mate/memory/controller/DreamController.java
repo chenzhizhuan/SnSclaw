@@ -28,7 +28,7 @@ import java.util.Map;
 /**
  * Dream report API — provides paginated access to dream history for the Memory Timeline UI.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Tag(name = "Dream Reports")
 @RestController

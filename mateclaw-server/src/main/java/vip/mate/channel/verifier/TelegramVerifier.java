@@ -22,7 +22,7 @@ import java.util.Map;
  * proxy to reach api.telegram.org — get a representative result instead of
  * a misleading timeout.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

@@ -4,9 +4,9 @@ import lombok.Getter;
 import vip.mate.common.result.ResultCode;
 
 /**
- * MateClaw 业务异常
+ * SnSclaw 业务异常
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Getter
 public class MateClawException extends RuntimeException {

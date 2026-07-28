@@ -6,7 +6,7 @@ package vip.mate.plugin.api.channel;
  * Plugins implement this interface to register new messaging channels.
  * The platform wraps it in an internal ChannelAdapter via a bridge.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 public interface PluginChannelAdapter {
 

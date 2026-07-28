@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  * 管理所有可供 Agent 使用的工具（内置 + 自定义）
  * 工具启用状态由数据库 mate_tool 表的 enabled 字段控制
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

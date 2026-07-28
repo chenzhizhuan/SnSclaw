@@ -24,7 +24,7 @@ import java.util.Set;
  * <p>
  * API: POST {@code <baseUrl>/v1/image_generation} —— host 由 region 决定。
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Slf4j
 @Component

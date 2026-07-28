@@ -16,7 +16,7 @@ package vip.mate.channel.verifier;
  * onboarding wizard — the user can still save and start the channel, but
  * loses the live connection check.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  * @see ChannelVerifierRegistry
  * @see VerificationResult
  */

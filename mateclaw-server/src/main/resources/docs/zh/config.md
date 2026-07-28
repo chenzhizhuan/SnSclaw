@@ -1,6 +1,6 @@
 # 配置参考
 
-**MateClaw 有三个配置位：`application.yml`、环境变量、数据库。**
+**SnSclaw 有三个配置位：`application.yml`、环境变量、数据库。**
 
 大部分设置在 `application.yml`（Spring Boot 默认配置文件）里，敏感值通过环境变量覆盖。你想要**运行时修改**的东西——模型供应商、搜索 key、功能开关——存在 `mate_system_setting` 表里，通过设置页面编辑。
 
@@ -257,7 +257,7 @@ JWT_SECRET=your-production-secret-at-least-32-chars
 
 ## 数据库 schema 初始化
 
-MateClaw 用 **Flyway** 管理 schema 迁移：
+SnSclaw 用 **Flyway** 管理 schema 迁移：
 
 1. `db/migration/h2/V*__*.sql`——H2 方言的迁移脚本
 2. `db/migration/mysql/V*__*.sql`——MySQL 方言的迁移脚本

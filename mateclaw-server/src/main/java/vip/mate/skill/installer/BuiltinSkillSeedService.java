@@ -61,7 +61,7 @@ import java.util.TreeMap;
 public class BuiltinSkillSeedService implements ApplicationRunner {
 
     private static final String SKILL_GLOB = "classpath*:skills/*/SKILL.md";
-    private static final String DEFAULT_AUTHOR = "MateClaw";
+    private static final String DEFAULT_AUTHOR = "SnSclaw";
     private static final String DEFAULT_ICON = "🛠️";
     private static final String DEFAULT_VERSION = "1.0.0";
     private static final String SKILL_TYPE_BUILTIN = "builtin";

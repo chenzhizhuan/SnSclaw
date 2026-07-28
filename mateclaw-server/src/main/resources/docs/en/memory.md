@@ -1,6 +1,6 @@
 ---
 title: AI Memory System — 4-Layer Memory Lifecycle (Extract, Consolidate, Dream, Recall)
-description: MateClaw's 4-layer memory lifecycle — in-conversation context, post-chat extraction, workspace persistence (PROFILE.md/MEMORY.md), and scheduled Dreaming consolidation. Your AI gets smarter every day.
+description: SnSclaw's 4-layer memory lifecycle — in-conversation context, post-chat extraction, workspace persistence (PROFILE.md/MEMORY.md), and scheduled Dreaming consolidation. Your AI gets smarter every day.
 head:
   - - meta
     - name: keywords
@@ -11,16 +11,16 @@ head:
 
 **Memory is how the system gets better at knowing you.**
 
-Everything else in MateClaw is static the moment you configure it. Agents, tools, knowledge bases — they change when you change them. Memory is the one part that changes on its own, as a byproduct of actual use. That's the whole point.
+Everything else in SnSclaw is static the moment you configure it. Agents, tools, knowledge bases — they change when you change them. Memory is the one part that changes on its own, as a byproduct of actual use. That's the whole point.
 
 ::: tip Your AI dreams about you while you sleep
 That's not a marketing line. It's literal code in the `memory/dreaming/` package.
 
 Every night at 3 AM (default; configurable) a scheduled job runs — its name is **Dreaming**. It walks every agent's conversation trail from the day, consolidates scattered signals into a coherent understanding of you, filters out one-offs and contradictions and stale facts, promotes recurring patterns into `MEMORY.md`, and appends "what it saw, what it concluded, what it rewrote" to `DREAMS.md` — a human-readable audit trail of how memory got to where it is today.
 
-When you open MateClaw the next morning, it **picks up where yesterday left off** — not from zero.
+When you open SnSclaw the next morning, it **picks up where yesterday left off** — not from zero.
 
-> Every other AI starts each day from scratch. MateClaw continues from where yesterday ended.
+> Every other AI starts each day from scratch. SnSclaw continues from where yesterday ended.
 :::
 
 This page covers the four layers that make up memory, the files the system writes for each agent, and how agents themselves read and write those files during a conversation.
@@ -98,7 +98,7 @@ The system prompt bakes in only the shared TEAM/GLOBAL memory (cacheable); each 
 
 ### Third-party APIs pass through an end-user identity
 
-`/api/v1/chat` and `/api/v1/chat/stream` request bodies gain an optional **`endUserId`** field (a string, to preserve large-integer precision). One PAT-authenticated integration represents one MateClaw user but can pass a distinct `endUserId` per end user, and memory isolates per end user automatically.
+`/api/v1/chat` and `/api/v1/chat/stream` request bodies gain an optional **`endUserId`** field (a string, to preserve large-integer precision). One PAT-authenticated integration represents one SnSclaw user but can pass a distinct `endUserId` per end user, and memory isolates per end user automatically.
 
 ### It's a feature flag
 
@@ -118,7 +118,7 @@ Under the hood: migration `V137` adds `owner_key` + `scope` columns to `mate_wor
 
 The memory layer is not one hard-coded implementation. It's an **interface** — the multi-layer architecture lets you stack providers:
 
-- The **default provider** is the workspace-file-based memory described in the rest of this page. It ships with MateClaw, and for most people it's all they'll ever need.
+- The **default provider** is the workspace-file-based memory described in the rest of this page. It ships with SnSclaw, and for most people it's all they'll ever need.
 - **Custom providers** can be dropped in for specialized retrieval — vector-based long-term memory, graph memory, external memory services.
 - **Layering** means a single agent can talk to multiple providers at once. A short-term provider returns recent context; a semantic provider returns related memories; a Wiki provider returns authoritative references. They compose at read time.
 
@@ -163,7 +163,7 @@ Conversation highlights archived by date, in append mode — multiple conversati
 
 ## Short-term: the context window
 
-Before every LLM call, MateClaw builds the prompt that actually gets sent:
+Before every LLM call, SnSclaw builds the prompt that actually gets sent:
 
 ```
 [System Prompt]                        ← Always first
@@ -572,10 +572,10 @@ For developers extending the memory layer, see [Architecture](./architecture).
 ## Mem0 Integration (Optional)
 
 ::: warning Not in the default stack
-Mem0 integration is an **optional community contribution** — it is NOT part of a default MateClaw install. It requires you to **self-host a Mem0 service** (FastAPI + pgvector + optional Neo4j). MateClaw's "local-first, zero external dependencies" stance is unchanged — this plugin just adds an **additive semantic recall channel** for people willing to run that extra service.
+Mem0 integration is an **optional community contribution** — it is NOT part of a default SnSclaw install. It requires you to **self-host a Mem0 service** (FastAPI + pgvector + optional Neo4j). SnSclaw's "local-first, zero external dependencies" stance is unchanged — this plugin just adds an **additive semantic recall channel** for people willing to run that extra service.
 :::
 
-[Mem0](https://github.com/mem0ai/mem0) is a standalone memory service that handles LLM memory extraction, deduplication, and vector-based recall. MateClaw's `mateclaw-plugin-mem0` module plugs it in as a **plugin-style memory provider** — none of the 4 built-in providers (Builtin / Structured / Session / Fact) are touched. Mem0 stacks on top as a 5th, external provider. **They don't replace each other.**
+[Mem0](https://github.com/mem0ai/mem0) is a standalone memory service that handles LLM memory extraction, deduplication, and vector-based recall. SnSclaw's `mateclaw-plugin-mem0` module plugs it in as a **plugin-style memory provider** — none of the 4 built-in providers (Builtin / Structured / Session / Fact) are touched. Mem0 stacks on top as a 5th, external provider. **They don't replace each other.**
 
 ### What it does
 
@@ -586,13 +586,13 @@ Mem0 integration is an **optional community contribution** — it is NOT part of
 | `syncTurn(agentId, conversationId, userMessage, assistantReply, ownerKey)` | When `syncEnabled=true` and `ownerKey` is non-blank, **asynchronously** pushes this turn's user/assistant messages to `POST {baseUrl}/memories/` under `user_id = ownerKey` — the same identifier recall queries by. Failures are logged only, never block the response |
 | `getToolBeans` | Empty list — v1 exposes no agent-callable tools |
 
-**Fault isolation**: any exception in recall or sync is swallowed and logged by the plugin itself; the platform keeps going with the other providers. Mem0 being down does not affect MateClaw's local memory.
+**Fault isolation**: any exception in recall or sync is swallowed and logged by the plugin itself; the platform keeps going with the other providers. Mem0 being down does not affect SnSclaw's local memory.
 
 ### Per-owner isolation mapping
 
-Mem0 isolates by `user_id` + `agent_id`. MateClaw maps them as:
+Mem0 isolates by `user_id` + `agent_id`. SnSclaw maps them as:
 
-| MateClaw field | Mem0 field | Notes |
+| SnSclaw field | Mem0 field | Notes |
 |---|---|---|
 | `ownerKey` (e.g. `user:42` / `feishu:sender_abc`) | `user_id` | Passed through verbatim |
 | `agentId` | `agent_id` | The digital employee ID |
@@ -602,8 +602,8 @@ Both `prefetch` and `syncTurn` receive `ownerKey` from the platform, so writes a
 ### Installation
 
 1. **Deploy Mem0**: following Mem0's official docs, self-host an instance (FastAPI + pgvector + optional Neo4j). Note its base URL, e.g. `http://localhost:8080`.
-2. **Build the plugin JAR**: from the MateClaw repo root, run `mvn -pl mateclaw-plugin-mem0 -am package` — the JAR lands at `mateclaw-plugin-mem0/target/mateclaw-plugin-mem0-*.jar`.
-3. **Drop the JAR**: place it in MateClaw's `plugins/` directory.
+2. **Build the plugin JAR**: from the SnSclaw repo root, run `mvn -pl mateclaw-plugin-mem0 -am package` — the JAR lands at `mateclaw-plugin-mem0/target/mateclaw-plugin-mem0-*.jar`.
+3. **Drop the JAR**: place it in SnSclaw's `plugins/` directory.
 4. **Configure**: in the plugin admin UI, set `baseUrl` (required) and optionally `apiKey` and other tunables. Restart or reload the plugin.
 
 ### Configuration

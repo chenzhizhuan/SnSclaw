@@ -117,7 +117,7 @@ test('afterPack throws when app.jar is missing', async () => {
       arch: 'arm64',
       electronPlatformName: 'darwin',
       packager: {
-        appInfo: { productFilename: 'MateClaw' },
+        appInfo: { productFilename: 'SnSclaw' },
       },
     }),
     /app\.jar not found/

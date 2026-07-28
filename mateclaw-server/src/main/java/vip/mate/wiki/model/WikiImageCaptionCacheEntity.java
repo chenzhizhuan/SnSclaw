@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
  * across all knowledge bases so an image uploaded twice in different
  * contexts costs exactly one vision call.
  *
- * @author MateClaw Team
+ * @author SnSclaw Team
  */
 @Data
 @TableName("mate_wiki_image_caption_cache")
