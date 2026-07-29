@@ -1497,13 +1497,18 @@ async function cancelTask() {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(124, 63, 30, 0.45);
+  background: color-mix(in srgb, var(--mc-ink, #111827) 45%, transparent);
+  backdrop-filter: saturate(140%) blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
   z-index: 1000;
   animation: team-fade-in 0.15s ease;
+}
+
+:global(html.dark) .modal-overlay {
+  background: color-mix(in srgb, #020617 70%, transparent);
 }
 
 .modal {
@@ -1515,10 +1520,20 @@ async function cancelTask() {
   background: var(--mc-bg-elevated);
   border: 1px solid var(--mc-border);
   border-radius: 16px;
-  box-shadow: 0 16px 48px rgba(25, 14, 8, 0.18);
+  box-shadow:
+    0 18px 44px rgba(2, 6, 23, 0.14),
+    0 4px 10px rgba(2, 6, 23, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
   overflow: hidden;
   animation: team-slide-up 0.2s ease;
 }
+
+:global(html.dark) .modal {
+  box-shadow:
+    0 22px 48px rgba(2, 6, 23, 0.6),
+    0 6px 16px rgba(2, 6, 23, 0.45);
+}
+
 .modal--wide {
   width: 620px;
 }

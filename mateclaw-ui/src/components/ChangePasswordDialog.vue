@@ -123,7 +123,8 @@ async function handleSubmit() {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(124, 63, 30, 0.45);
+  background: color-mix(in srgb, var(--mc-ink, #111827) 45%, transparent);
+  backdrop-filter: saturate(140%) blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -132,15 +133,28 @@ async function handleSubmit() {
   animation: fadeIn 0.15s ease;
 }
 
+:global(html.dark) .modal-overlay {
+  background: color-mix(in srgb, #020617 70%, transparent);
+}
+
 .modal {
   width: 420px;
   max-width: 100%;
   background: var(--mc-bg-elevated);
   border: 1px solid var(--mc-border);
   border-radius: 16px;
-  box-shadow: 0 16px 48px rgba(25, 14, 8, 0.18);
+  box-shadow:
+    0 18px 44px rgba(2, 6, 23, 0.14),
+    0 4px 10px rgba(2, 6, 23, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
   overflow: hidden;
   animation: slideUp 0.2s ease;
+}
+
+:global(html.dark) .modal {
+  box-shadow:
+    0 22px 48px rgba(2, 6, 23, 0.6),
+    0 6px 16px rgba(2, 6, 23, 0.45);
 }
 
 .modal-header {
@@ -214,7 +228,7 @@ async function handleSubmit() {
 .form-input:focus {
   outline: none;
   border-color: var(--mc-primary);
-  box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.12);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mc-primary, #008878) 16%, transparent);
 }
 
 .password-wrapper {
@@ -258,19 +272,27 @@ async function handleSubmit() {
 
 .btn-primary,
 .btn-secondary {
-  padding: 8px 16px;
-  border-radius: 8px;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 12px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
   border: 1px solid transparent;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-primary {
   background: var(--mc-primary);
-  color: white;
-  border-color: var(--mc-primary);
+  color: #f8fafc;
+  border-color: color-mix(in srgb, var(--mc-primary, #008878) 80%, #000000);
+  box-shadow:
+    0 2px 6px color-mix(in srgb, var(--mc-primary, #008878) 20%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -278,19 +300,52 @@ async function handleSubmit() {
   border-color: var(--mc-primary-hover);
 }
 
+.btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
+.btn-primary:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--mc-primary, #008878) 24%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
 .btn-secondary {
-  background: var(--mc-bg);
+  background: var(--mc-bg-elevated);
   color: var(--mc-text-primary);
-  border-color: var(--mc-border);
+  border-color: var(--mc-border-light);
+  box-shadow:
+    var(--mc-shadow-soft),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .btn-secondary:hover {
   background: var(--mc-bg-muted);
+  border-color: var(--mc-border);
+}
+
+.btn-secondary:active {
+  transform: translateY(1px);
+}
+
+.btn-secondary:focus-visible {
+  outline: none;
+  border-color: var(--mc-primary);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--mc-primary, #008878) 20%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+:global(html.dark) .btn-secondary {
+  box-shadow:
+    0 2px 6px rgba(2, 6, 23, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 @keyframes fadeIn {

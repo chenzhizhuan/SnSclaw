@@ -97,22 +97,40 @@ async function copyCode() {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(124, 63, 30, 0.45);
+  background: color-mix(in srgb, var(--mc-ink, #111827) 45%, transparent);
+  backdrop-filter: saturate(140%) blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
   z-index: 50;
 }
+
+:global(html.dark) .modal-overlay {
+  background: color-mix(in srgb, #020617 70%, transparent);
+}
+
 .modal {
   background: var(--mc-bg-elevated);
+  border: 1px solid var(--mc-border);
   border-radius: 16px;
   width: 100%;
   max-width: 480px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 18px 44px rgba(2, 6, 23, 0.14),
+    0 4px 10px rgba(2, 6, 23, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  overflow: hidden;
 }
+
+:global(html.dark) .modal {
+  box-shadow:
+    0 22px 48px rgba(2, 6, 23, 0.6),
+    0 6px 16px rgba(2, 6, 23, 0.45);
+}
+
 .modal-header,
 .modal-footer {
   display: flex;
@@ -176,16 +194,43 @@ async function copyCode() {
   text-align: center;
 }
 .btn-copy {
-  border: 1px solid var(--mc-border);
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--mc-border-light);
   background: var(--mc-bg-elevated);
   color: var(--mc-text-primary);
-  border-radius: 8px;
-  padding: 8px 14px;
+  border-radius: 12px;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
+  box-shadow:
+    var(--mc-shadow-soft),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 .btn-copy:hover {
-  background: var(--mc-bg-sunken);
+  background: var(--mc-bg-muted);
+  border-color: var(--mc-border);
+}
+.btn-copy:active {
+  transform: translateY(1px);
+}
+.btn-copy:focus-visible {
+  outline: none;
+  border-color: var(--mc-primary);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--mc-primary, #008878) 20%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+:global(html.dark) .btn-copy {
+  box-shadow:
+    0 2px 6px rgba(2, 6, 23, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .device-countdown {
   margin-top: 4px;
