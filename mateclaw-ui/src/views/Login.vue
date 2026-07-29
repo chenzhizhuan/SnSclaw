@@ -241,13 +241,19 @@ function cancelBind() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, #FAF5F0 0%, #F5EDE5 100%);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(0, 136, 120, 0.12), transparent 60%),
+    radial-gradient(900px 500px at 100% 110%, rgba(94, 212, 173, 0.12), transparent 60%),
+    linear-gradient(160deg, var(--mc-bg) 0%, var(--mc-bg-muted) 100%);
   padding: 24px;
 }
 
 :root.dark .login-page,
 html.dark .login-page {
-  background: linear-gradient(160deg, var(--mc-bg) 0%, #1A1210 100%);
+  background:
+    radial-gradient(1000px 500px at 10% -10%, rgba(51, 193, 146, 0.16), transparent 60%),
+    radial-gradient(800px 500px at 100% 110%, rgba(0, 136, 120, 0.2), transparent 60%),
+    linear-gradient(160deg, var(--mc-bg) 0%, var(--mc-bg-sunken, #0d1918) 100%);
 }
 
 .login-center {
@@ -271,7 +277,7 @@ html.dark .login-page {
   width: 100px;
   height: 100px;
   object-fit: contain;
-  filter: drop-shadow(0 6px 20px rgba(217, 119, 87, 0.3));
+  filter: drop-shadow(0 6px 20px var(--mc-primary-bg));
   animation: breathe 3.5s ease-in-out infinite;
 }
 
@@ -320,7 +326,7 @@ html.dark .login-page {
 .form-input:focus {
   border-color: var(--mc-primary);
   background: var(--mc-bg-elevated);
-  box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.08);
+  box-shadow: 0 0 0 3px var(--mc-primary-bg);
 }
 
 .eye-btn {
@@ -373,7 +379,7 @@ html.dark .login-page {
 
 .login-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(217, 119, 87, 0.3);
+  box-shadow: 0 8px 24px var(--mc-primary-bg);
 }
 
 .login-btn:disabled {
@@ -501,11 +507,11 @@ html.dark .login-page {
 @keyframes breathe {
   0%, 100% {
     transform: scale(1);
-    filter: drop-shadow(0 6px 20px rgba(217, 119, 87, 0.3));
+    filter: drop-shadow(0 6px 20px var(--mc-primary-bg));
   }
   50% {
     transform: scale(1.06);
-    filter: drop-shadow(0 8px 28px rgba(217, 119, 87, 0.45));
+    filter: drop-shadow(0 8px 28px var(--mc-primary-bg));
   }
 }
 
