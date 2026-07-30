@@ -72,7 +72,7 @@ const router = createRouter({
           path: 'enterprise',
           name: 'Enterprise',
           component: () => import('@/views/Enterprise/index.vue'),
-          meta: { title: 'Enterprise Scenarios', requiredCapability: 'manage:agents' },
+          meta: { title: 'Enterprise Scenarios', requiredCapability: 'manage:settings' },
         },
         {
           path: 'memory',
@@ -108,7 +108,7 @@ const router = createRouter({
           path: 'content-calendar',
           name: 'ContentCalendar',
           component: () => import('@/views/ContentCalendar.vue'),
-          meta: { title: 'Content Calendar', requiredCapability: 'manage:agents' },
+          meta: { title: 'Content Calendar', requiredCapability: 'manage:settings' },
         },
         // Tools 顶层入口已降级到 Settings ▸ Tools (Catalog) (RFC-090 Phase 1)
         // 旧路径 /tools 由下方 redirect 兼容

@@ -1,9 +1,14 @@
 {
-  "name": "mateclaw-desktop",
+  "name": "snsclaw-desktop",
   "version": "1.0.0-SNAPSHOT",
   "description": "SnSclaw Desktop - AI Assistant powered by Spring AI Alibaba",
   "author": "SnSclaw Team",
   "license": "Apache-2.0",
+  "homepage": "https://www.sns.app",
+  "repository": {
+    "type": "git",
+    "url": "https://help.sns.app"
+  },
   "main": "dist-electron/main/index.js",
   "scripts": {
     "dev": "vite",
