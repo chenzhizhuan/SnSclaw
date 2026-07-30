@@ -34,7 +34,7 @@ public final class RoleCapabilities {
         member.add(Capability.MANAGE_WIKI);
 
         Set<String> admin = new LinkedHashSet<>(member);
-        member.add(Capability.MANAGE_AGENTS);
+        admin.add(Capability.MANAGE_AGENTS);
         admin.add(Capability.MANAGE_SKILLS);
         admin.add(Capability.MANAGE_CHANNELS);
         admin.add(Capability.MANAGE_MODELS);

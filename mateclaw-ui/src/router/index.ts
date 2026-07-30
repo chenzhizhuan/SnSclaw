@@ -116,7 +116,7 @@ const router = createRouter({
           path: 'activity',
           name: 'Activity',
           component: () => import('@/views/Security/Activity/index.vue'),
-          meta: { title: 'Activity', requiredCapability: 'manage:security' },
+          meta: { title: 'Activity', requiredCapability: 'manage:wiki' },
         },
         // RFC-091: Skill 模板库 + 创作向导
         {
