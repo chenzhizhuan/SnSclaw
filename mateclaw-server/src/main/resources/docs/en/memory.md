@@ -575,7 +575,7 @@ For developers extending the memory layer, see [Architecture](./architecture).
 Mem0 integration is an **optional community contribution** — it is NOT part of a default SnSclaw install. It requires you to **self-host a Mem0 service** (FastAPI + pgvector + optional Neo4j). SnSclaw's "local-first, zero external dependencies" stance is unchanged — this plugin just adds an **additive semantic recall channel** for people willing to run that extra service.
 :::
 
-[Mem0](https://github.com/mem0ai/mem0) is a standalone memory service that handles LLM memory extraction, deduplication, and vector-based recall. SnSclaw's `mateclaw-plugin-mem0` module plugs it in as a **plugin-style memory provider** — none of the 4 built-in providers (Builtin / Structured / Session / Fact) are touched. Mem0 stacks on top as a 5th, external provider. **They don't replace each other.**
+[Mem0](https://github.com/mem0ai/mem0) is a standalone memory service that handles LLM memory extraction, deduplication, and vector-based recall. SnSclaw's `snsclaw-plugin-mem0` module plugs it in as a **plugin-style memory provider** — none of the 4 built-in providers (Builtin / Structured / Session / Fact) are touched. Mem0 stacks on top as a 5th, external provider. **They don't replace each other.**
 
 ### What it does
 
@@ -602,7 +602,7 @@ Both `prefetch` and `syncTurn` receive `ownerKey` from the platform, so writes a
 ### Installation
 
 1. **Deploy Mem0**: following Mem0's official docs, self-host an instance (FastAPI + pgvector + optional Neo4j). Note its base URL, e.g. `http://localhost:8080`.
-2. **Build the plugin JAR**: from the SnSclaw repo root, run `mvn -pl mateclaw-plugin-mem0 -am package` — the JAR lands at `mateclaw-plugin-mem0/target/mateclaw-plugin-mem0-*.jar`.
+2. **Build the plugin JAR**: from the SnSclaw repo root, run `mvn -pl snsclaw-plugin-mem0 -am package` — the JAR lands at `snsclaw-plugin-mem0/target/snsclaw-plugin-mem0-*.jar`.
 3. **Drop the JAR**: place it in SnSclaw's `plugins/` directory.
 4. **Configure**: in the plugin admin UI, set `baseUrl` (required) and optionally `apiKey` and other tunables. Restart or reload the plugin.
 

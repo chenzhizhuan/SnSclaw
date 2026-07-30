@@ -20,7 +20,7 @@ No Java install. No Node install. No Maven. The desktop app bundles JRE 21 and t
 
 Double-click. First launch takes 10 to 30 seconds while the backend boots.
 
-Log in. Username `admin`, password `SnS3.14@W`. Change the password from `Settings → Security` the moment you're inside. Do it now. Your future self will thank you.
+Log in. Username `admin`, password `admin123`. Change the password from `Settings → Security` the moment you're inside. Do it now. Your future self will thank you.
 
 ## 3. Add one model
 
@@ -68,7 +68,7 @@ Each of those has its own page in the sidebar when you're ready to go deeper.
 First run should Just Work. If it didn't:
 
 - **Installer won't launch** — On Windows, right-click → Properties → Unblock. On macOS, allow the unsigned app in System Settings → Privacy & Security.
-- **Backend never boots** — Check the log file (macOS: `~/Library/Application Support/SnSclaw/logs/mateclaw.log`; Windows: `%APPDATA%\SnSclaw\logs\mateclaw.log`). The desktop app picks a dynamic port — any port conflict is reported clearly in the log.
+- **Backend never boots** — Check the log file (macOS: `~/Library/Application Support/SnSclaw/logs/snsclaw.log`; Windows: `%APPDATA%\SnSclaw\logs\snsclaw.log`). The desktop app picks a dynamic port — any port conflict is reported clearly in the log.
 - **Model call fails** — Wrong API key or network can't reach the provider. Go back to Settings, re-verify the key, or try a different provider.
 - **UI is blank** — Hard-refresh with Ctrl/Cmd+Shift+R. Electron caches aggressively.
 - **Still broken** — Open an issue on [GitHub](https://github.com/chenzhizhuan/SnSclaw/issues) with the tail of `app.log`. We read them.
@@ -78,7 +78,7 @@ First run should Just Work. If it didn't:
 ## Other ways to run SnSclaw
 
 - **Docker** — `cp .env.example .env`, set the passwords, then `docker compose up -d --build`. Full prerequisites, Maven mirror selection (China vs US), browser-tool self-check, and upgrade flow live in [Docker Deployment](./docker-deploy).
-- **From source** — `mvn spring-boot:run` in `mateclaw-server/` and `pnpm dev` in `mateclaw-ui/`. See [Contributing](./contributing).
+- **From source** — `mvn spring-boot:run` in `snsclaw-server/` and `pnpm dev` in `snsclaw-ui/`. See [Contributing](./contributing).
 - **Desktop internals** — packaging, code signing, auto-update. See [Desktop App](./desktop).
 
 ---

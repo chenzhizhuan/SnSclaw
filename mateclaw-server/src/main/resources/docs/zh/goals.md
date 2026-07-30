@@ -148,7 +148,7 @@ Plan-Execute 模式下，单个步骤可能**抛异常**，也可能陷入**停�
 
 ### 多步计划自动派生目标
 
-一个**多步**（≥2 步）的 Plan-Execute 计划，如果当前对话还没有活跃目标，规划节点会**自动建一个目标**，以计划的步骤作为验收准则，并广播 `goal_created` 事件刷新 UI 的目标面板。这样长计划天然就被目标系统的"跟到完成"语义托住。由 `mateclaw.goal.auto-goal-from-plan` 控制（默认开）。
+一个**多步**（≥2 步）的 Plan-Execute 计划，如果当前对话还没有活跃目标，规划节点会**自动建一个目标**，以计划的步骤作为验收准则，并广播 `goal_created` 事件刷新 UI 的目标面板。这样长计划天然就被目标系统的"跟到完成"语义托住。由 `snsclaw.goal.auto-goal-from-plan` 控制（默认开）。
 
 ---
 
@@ -292,7 +292,7 @@ turnsUsed >= turnBudget  或  (agentLlmCallsUsed + evalLlmCallsUsed) >= llmCallB
 `application.yml`：
 
 ```yaml
-mateclaw:
+snsclaw:
   goal:
     # 主开关；关闭后图节点对所有调用 pass-through
     enabled: true

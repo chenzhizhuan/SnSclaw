@@ -7,14 +7,14 @@ There are two integration paths:
 - **Embeddable widget** — drop in one JS file, call `init(...)` once, and a chat bubble appears in the corner. Fastest to ship; ideal for marketing sites / landing-page support.
 - **Custom HTTP / SSE integration** — call the REST + SSE endpoints below and render your own UI. For deeply customized experiences.
 
-## Embeddable widget (mateclaw-webchat)
+## Embeddable widget (snsclaw-webchat)
 
 The widget is a zero-dependency browser library shipped in both UMD (`<script>` tag) and ESM (npm) formats.
 
 **Option 1: script tag (UMD)**
 
 ```html
-<script src="https://<your-deployment>/mateclaw-webchat.umd.js"></script>
+<script src="https://<your-deployment>/snsclaw-webchat.umd.js"></script>
 <script>
   SnSclawWebChat.init({
     apiKey: 'your-channel-api-key',   // from the channel edit page
@@ -28,11 +28,11 @@ The widget is a zero-dependency browser library shipped in both UMD (`<script>` 
 **Option 2: npm (ESM)**
 
 ```bash
-npm install @mateclaw/webchat
+npm install @snsclaw/webchat
 ```
 
 ```ts
-import { init } from '@mateclaw/webchat'
+import { init } from '@snsclaw/webchat'
 
 init({ apiKey: 'your-channel-api-key', server: 'https://<your-deployment>' })
 ```

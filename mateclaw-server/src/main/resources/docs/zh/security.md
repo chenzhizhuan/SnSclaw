@@ -43,7 +43,7 @@ Agent 想删文件、发邮件、跑写入型 SQL、调付费 API——任何一
 ```bash
 curl -X POST http://localhost:18088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "SnS3.14@W"}'
+  -d '{"username": "admin", "password": "admin123"}'
 ```
 
 响应：
@@ -72,7 +72,7 @@ SnSclaw 实现了滑动窗口 token 续签。当 token 剩余有效期低于 `re
 ### 配置
 
 ```yaml
-mateclaw:
+snsclaw:
   jwt:
     secret: your-secret-key-must-be-at-least-32-characters-long
     expiration: 86400000          # token 有效期（毫秒，默认 24 小时）
@@ -94,7 +94,7 @@ mateclaw:
 
 ### 默认凭证
 
-SnSclaw 出厂带 `admin` / `SnS3.14@W`。**除了你自己笔记本之外的任何部署都必须立刻改。**
+SnSclaw 出厂带 `admin` / `admin123`。**除了你自己笔记本之外的任何部署都必须立刻改。**
 
 ### Spring Security 配置
 
@@ -165,7 +165,7 @@ Tool Guard 是 SnSclaw 决定一次工具调用被允许做什么的机制。**�
 `设置 → 安全与审批 → Tool Guard 规则` 提供完整 UI。或者走配置文件：
 
 ```yaml
-mateclaw:
+snsclaw:
   tool:
     guard:
       enabled: true
@@ -361,7 +361,7 @@ File Guard 是文件系统级的访问控制。它坐在读写文件的任何工
 允许 / 禁止路径规则存在数据库，从管理台「安全」页或 `GET` / `PUT /api/v1/security/guard/config/file-guard` 管理——**不在 application.yml**。application.yml 里只有一项：会话没有 per-workspace base path 时，文件 / Shell 工具被限制其中的**全局兜底沙箱根**：
 
 ```yaml
-mateclaw:
+snsclaw:
   workspace:
     sandbox:
       enabled: true                    # 设 false 恢复旧的不受限行为
@@ -501,10 +501,10 @@ curl "http://localhost:18088/api/v1/audit/events?from=2026-04-01&to=2026-04-11&a
 ```nginx
 server {
     listen 443 ssl;
-    server_name mateclaw.example.com;
+    server_name snsclaw.example.com;
 
-    ssl_certificate /etc/ssl/certs/mateclaw.pem;
-    ssl_certificate_key /etc/ssl/private/mateclaw.key;
+    ssl_certificate /etc/ssl/certs/snsclaw.pem;
+    ssl_certificate_key /etc/ssl/private/snsclaw.key;
 
     location / {
         proxy_pass http://localhost:18080;
@@ -532,7 +532,7 @@ server {
 
 默认拦截的地址类别：回环（`127.0.0.0/8`、`::1`）、私网（`10/8`、`172.16/12`、`192.168/16`）、链路本地（`169.254/16`、`fe80::/10`）、任意本地地址、组播，以及云厂商元数据端点（`169.254.169.254`、`100.100.100.200`、`192.0.0.192` 等）。
 
-#### 放行内网地址：`mateclaw.security.ssrf-allowlist`
+#### 放行内网地址：`snsclaw.security.ssrf-allowlist`
 
 需要让 Agent 访问某个内网服务时，把它加进统一白名单。**一处配置，三条出站路径同时生效。** 每个条目是以下三种之一：
 
@@ -543,7 +543,7 @@ server {
 | IPv4 CIDR 段 | `192.168.100.0/24` | 匹配该网段内的所有 IP |
 
 ```yaml
-mateclaw:
+snsclaw:
   security:
     ssrf-allowlist:
       - 192.168.100.100      # 单个内网地址
@@ -557,7 +557,7 @@ mateclaw:
 白名单条目**可以重新放开云厂商元数据端点**（如 `169.254.169.254`）。一旦放开，被攻陷的 Agent 可能借此窃取云凭据。只加确实需要的内网地址，**永远不要**用宽 CIDR（如 `0.0.0.0/0`、`10.0.0.0/8`）一把放开。
 :::
 
-浏览器工具另有一个总开关 `mateclaw.browser.ssrf-check-enabled`（默认 `true`）。把它设为 `false` 会**整体关闭**浏览器路径的 SSRF 校验——连元数据端点一起放开，不推荐；优先用上面的白名单做精确放行。
+浏览器工具另有一个总开关 `snsclaw.browser.ssrf-check-enabled`（默认 `true`）。把它设为 `false` 会**整体关闭**浏览器路径的 SSRF 校验——连元数据端点一起放开，不推荐；优先用上面的白名单做精确放行。
 
 ---
 
@@ -580,7 +580,7 @@ mateclaw:
 application.yml 里有**三块**安全相关配置——JWT、文件沙箱，以及出站请求白名单：
 
 ```yaml
-mateclaw:
+snsclaw:
   jwt:
     secret: ${JWT_SECRET:your-secret-key-at-least-32-chars}
     expiration: 86400000          # token 有效期（毫秒）

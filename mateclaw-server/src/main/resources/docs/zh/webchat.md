@@ -7,14 +7,14 @@ SnSclaw 的 WebChat 渠道让外部网站通过纯 HTTP / SSE 接入对话能力
 - **嵌入式小部件** —— 引入一个 JS 文件、调一次 `init(...)`,右下角即出现聊天气泡。最快上线,适合官网 / 落地页客服。
 - **自定义 HTTP / SSE 集成** —— 直接调用下面的 REST + SSE 端点,自己渲染 UI。适合需要深度定制交互的场景。
 
-## 嵌入式小部件(mateclaw-webchat)
+## 嵌入式小部件(snsclaw-webchat)
 
 小部件是一个零依赖的浏览器库,产物同时提供 UMD(`<script>` 标签)和 ESM(npm)两种格式。
 
 **方式一:script 标签(UMD)**
 
 ```html
-<script src="https://<你的部署地址>/mateclaw-webchat.umd.js"></script>
+<script src="https://<你的部署地址>/snsclaw-webchat.umd.js"></script>
 <script>
   SnSclawWebChat.init({
     apiKey: 'your-channel-api-key',   // 从渠道编辑页拿
@@ -28,11 +28,11 @@ SnSclaw 的 WebChat 渠道让外部网站通过纯 HTTP / SSE 接入对话能力
 **方式二:npm(ESM)**
 
 ```bash
-npm install @mateclaw/webchat
+npm install @snsclaw/webchat
 ```
 
 ```ts
-import { init } from '@mateclaw/webchat'
+import { init } from '@snsclaw/webchat'
 
 init({ apiKey: 'your-channel-api-key', server: 'https://<你的部署地址>' })
 ```

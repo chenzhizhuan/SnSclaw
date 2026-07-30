@@ -42,7 +42,7 @@ The **desktop app picks a free port dynamically**, so you don't see this error t
 ### H2 database lock error on startup
 
 ```bash
-rm -f data/mateclaw.mv.db.lock
+rm -f data/snsclaw.mv.db.lock
 ```
 
 Or wipe the data directory to start fresh:
@@ -57,7 +57,7 @@ rm -rf data/
 
 ### What are the default credentials?
 
-Username `admin`, password `SnS3.14@W`. **Change it immediately in any real deployment.**
+Username `admin`, password `admin123`. **Change it immediately in any real deployment.**
 
 ### My JWT token keeps expiring
 
@@ -146,14 +146,14 @@ This is **by design** — dangerous tools require approval. Three ways to loosen
 1. **Add a specific allow rule** for the exact pattern you need (`Settings → Security & Approval → Tool Guard Rules`). Example: `ShellExecuteTool` with arg pattern `^(ls|cat|grep|find)\s` → `allow`.
 2. **Lower the default policy** in `application.yml`:
    ```yaml
-   mateclaw:
+   snsclaw:
      tool:
        guard:
          default-policy: allow   # Not recommended in production
    ```
 3. **Disable Tool Guard entirely** (only for dev):
    ```yaml
-   mateclaw:
+   snsclaw:
      tool:
        guard:
          enabled: false
@@ -282,22 +282,22 @@ Configure `http_proxy` in the channel config:
 
 ### How do I back up my data?
 
-**H2 (development / desktop):** stop, copy `./data/mateclaw.mv.db`:
+**H2 (development / desktop):** stop, copy `./data/snsclaw.mv.db`:
 
 ```bash
-cp ./data/mateclaw.mv.db ./backup/mateclaw-$(date +%Y%m%d).mv.db
+cp ./data/snsclaw.mv.db ./backup/snsclaw-$(date +%Y%m%d).mv.db
 ```
 
 **MySQL (production):**
 
 ```bash
-mysqldump -u root -p mateclaw > mateclaw-backup-$(date +%Y%m%d).sql
+mysqldump -u root -p snsclaw > snsclaw-backup-$(date +%Y%m%d).sql
 ```
 
 **Docker:**
 
 ```bash
-docker exec mateclaw-mysql mysqldump -u root -p${MYSQL_ROOT_PASSWORD} mateclaw > backup.sql
+docker exec snsclaw-mysql mysqldump -u root -p${MYSQL_ROOT_PASSWORD} snsclaw > backup.sql
 ```
 
 **Desktop** data lives in the per-user directory:
@@ -331,8 +331,8 @@ Try launching from a terminal. On Windows, right-click → Unblock. On macOS, al
 ### Docker containers fail to start
 
 ```bash
-docker compose logs mateclaw-server
-docker compose logs mateclaw-mysql
+docker compose logs snsclaw-server
+docker compose logs snsclaw-mysql
 ```
 
 Common:
@@ -344,7 +344,7 @@ Common:
 ### How do I access the database in Docker?
 
 ```bash
-docker exec -it mateclaw-mysql mysql -u root -p mateclaw
+docker exec -it snsclaw-mysql mysql -u root -p snsclaw
 ```
 
 ---
@@ -371,7 +371,7 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--logging.level.vip.mate=DEBUG"
 ### How do I access the H2 console?
 
 1. Visit `http://localhost:18088/h2-console`
-2. JDBC URL: `jdbc:h2:file:./data/mateclaw`
+2. JDBC URL: `jdbc:h2:file:./data/snsclaw`
 3. Username: `sa`
 4. Password: (empty)
 
@@ -396,9 +396,9 @@ curl -N -X POST 'http://localhost:18088/api/v1/chat/stream' \
 ### Frontend shows a blank page after build
 
 ```bash
-cd mateclaw-ui
+cd snsclaw-ui
 pnpm build
-ls ../mateclaw-server/src/main/resources/static/
+ls ../snsclaw-server/src/main/resources/static/
 # Should contain index.html and asset files
 ```
 

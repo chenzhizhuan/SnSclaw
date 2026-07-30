@@ -75,7 +75,7 @@ Tool Guard 是守门员。超时是**每个工具独立**的（这样一个慢�
 
 - **页面控制**——Tools 页面分「核心 / 扩展」两栏，内置工具和渠道工具每行有一个层级开关；MCP / ACP 工具的层级是锁定的。
 - **持久化**——层级存在 `mate_tool.disclosure_tier` 和 `mate_mcp_server.disclosure_tier`。
-- **配置**——`mateclaw.tools.disclosure.mode`，默认 `progressive`；设成 `legacy` 则恢复"全部广播"的老行为。
+- **配置**——`snsclaw.tools.disclosure.mode`，默认 `progressive`；设成 `legacy` 则恢复"全部广播"的老行为。
 
 **为什么这么做**：不让上下文被白白撑爆——系统 prompt 的体积应该跟当前任务的需要成正比，而不是跟你装了多少工具成正比。
 
@@ -99,7 +99,7 @@ Tool Guard 是守门员。超时是**每个工具独立**的（这样一个慢�
 | `SkillManageTool` | 创建 / 编辑 / 删除技能包 | ⚠️ |
 | `BrowserUseTool` | 驱动无头浏览器 | ⚠️ |
 | `DelegateAgentTool` | 把任务委托给另一个 Agent（支持并行） | — |
-| `MateClawDocTool` | 读取内置项目文档 | — |
+| `SnSclawDocTool` | 读取内置项目文档 | — |
 | `ImageGenerateTool` | 文生图 / **图生图（1.3.0+）** | — |
 | `VideoGenerateTool` | 文生视频 / 图生视频 | — |
 | `DocxRenderTool` | **1.3.0+** Markdown → .docx（Word 文档） | — |
@@ -227,7 +227,7 @@ Agent A：[调 WebSearchTool]
 - **隔离会话**——被委托的 Agent 跑在自己的会话里
 - **结果截断**——委托结果上限 4000 字符
 
-### MateClawDocTool
+### SnSclawDocTool
 
 读取内置的 SnSclaw 项目文档。让 Agent 回答"SnSclaw 里 X 是怎么工作的"这种问题时，**去查真文档**而不是猜。
 
@@ -245,7 +245,7 @@ Agent A：[调 WebSearchTool]
 
 - **走消息历史注入**——加载的内容是注入到**消息历史**里，而不是系统 prompt，这样 **prompt 缓存保持稳定**（系统 prompt 不变，缓存不失效）。
 - **后续回合保持**——已加载的技能在之后的回合里**钉住**，不用反复加载。
-- **配置**——`mateclaw.skill.disclosure.load-skill-tool.enabled`，默认开启。
+- **配置**——`snsclaw.skill.disclosure.load-skill-tool.enabled`，默认开启。
 
 详见 [技能系统](./skills)。
 
@@ -281,7 +281,7 @@ Tool Guard 是 SnSclaw 不让强工具干蠢事的机制。它是**基于规则�
 示例规则：*`ShellExecuteTool`，命令以 `ls`、`cat`、`grep`、`find` 开头时允许。其他情况要求审批。*
 
 ```yaml
-mateclaw:
+snsclaw:
   tool:
     guard:
       enabled: true

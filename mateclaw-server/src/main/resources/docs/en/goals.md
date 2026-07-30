@@ -148,7 +148,7 @@ Progressive disclosure tools such as `load_skill` / `enable_tool` are **configur
 
 ### Auto-deriving a goal from a multi-step plan
 
-When a Plan-Execute plan has **two or more steps** and the current conversation has no active goal, the planning node **automatically creates a goal**, using the plan's steps as exit criteria, and broadcasts a `goal_created` event so the UI's goal panel refreshes. This means long plans are naturally held under the goal system's "follow-through to completion" semantics. Controlled by `mateclaw.goal.auto-goal-from-plan` (on by default).
+When a Plan-Execute plan has **two or more steps** and the current conversation has no active goal, the planning node **automatically creates a goal**, using the plan's steps as exit criteria, and broadcasts a `goal_created` event so the UI's goal panel refreshes. This means long plans are naturally held under the goal system's "follow-through to completion" semantics. Controlled by `snsclaw.goal.auto-goal-from-plan` (on by default).
 
 ---
 
@@ -292,7 +292,7 @@ Pull via `GET /api/v1/goals/{id}/events`. See [API reference](./api).
 `application.yml`:
 
 ```yaml
-mateclaw:
+snsclaw:
   goal:
     # Master switch; when off, the graph node passes through for every call.
     enabled: true

@@ -348,7 +348,7 @@ while (true) {
 }
 ```
 
-See `mateclaw-ui/src/composables/chat/useChat.ts` for a full client implementation.
+See `snsclaw-ui/src/composables/chat/useChat.ts` for a full client implementation.
 
 ### SSE event types
 

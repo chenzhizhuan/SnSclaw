@@ -1,6 +1,6 @@
 # Docker Deployment
 
-The only recommended production deployment outside the desktop app. One `docker compose up -d` brings up three containers: PostgreSQL, SearXNG, and mateclaw-server.
+The only recommended production deployment outside the desktop app. One `docker compose up -d` brings up three containers: PostgreSQL, SearXNG, and snsclaw-server.
 
 > **⚠️ Upgrading from the MySQL stack**: the Docker stack switched from MySQL to PostgreSQL 16. Pulling this change and running `up -d` on an existing host starts a **fresh, empty PostgreSQL volume** — the old `mysql_data` volume is not read (data is not lost, but the new stack cannot see it). To carry data across, `mysqldump` from the old stack first and import into PostgreSQL with a cross-engine tool such as pgloader; or stay on a pre-switch tag to keep running MySQL (the `mysql` Spring profile remains supported).
 
@@ -29,7 +29,7 @@ This page covers **requirements, steps, verification, and common gotchas**. For 
 |---|---|---|---|
 | `postgres` | `postgres:16` | Business data | compose network only (no host port by default) |
 | `searxng` | Built from `./docker/searxng/` | Keyless search fallback | `8088` |
-| `mateclaw-server` | Built from `mateclaw-server/Dockerfile` | Spring Boot backend + embedded browser | `18080` |
+| `snsclaw-server` | Built from `snsclaw-server/Dockerfile` | Spring Boot backend + embedded browser | `18080` |
 
 ---
 
@@ -39,7 +39,7 @@ This page covers **requirements, steps, verification, and common gotchas**. For 
 
 `docker/searxng/Dockerfile` derives from upstream `searxng/searxng:latest` and **bakes our own `settings.yml` into `/etc/searxng/settings.yml`**. This isn't polish — it's mandatory:
 
-- **Upstream ships with only `html` output enabled**, while mateclaw calls `GET /search?q=...&format=json`. The default image responds to JSON requests with an HTML error page, `SearXNGSearchProvider` fails to parse it, returns empty results, and the UI shows "search temporarily unavailable".
+- **Upstream ships with only `html` output enabled**, while snsclaw calls `GET /search?q=...&format=json`. The default image responds to JSON requests with an HTML error page, `SearXNGSearchProvider` fails to parse it, returns empty results, and the UI shows "search temporarily unavailable".
 - **Upstream enables the anti-bot Limiter plugin by default**, which rejects server-side calls (no JS, no cookies) with HTTP 429.
 
 Our `docker/searxng/settings.yml` changes three things:
@@ -73,18 +73,18 @@ curl -s 'http://localhost:8088/search?q=test&format=json' | head -5
 # Expect: {"query": ..., "results": [...]}
 # If you get HTML back, settings.yml didn't take effect.
 
-# 2. Hit it from inside the mateclaw-server container
-docker exec mateclaw-server wget -qO- 'http://searxng:8080/search?q=test&format=json' | head -5
+# 2. Hit it from inside the snsclaw-server container
+docker exec snsclaw-server wget -qO- 'http://searxng:8080/search?q=test&format=json' | head -5
 # If this fails, compose networking is the problem.
 
 # 3. Ask an agent to search and tail backend logs
-docker compose logs -f mateclaw-server | grep "搜索 provider"
+docker compose logs -f snsclaw-server | grep "搜索 provider"
 # Expect: 搜索 provider 解析: searxng (source=keyless-fallback)
 ```
 
 ### Using an external SearXNG instance
 
-If you're already running SearXNG elsewhere, point mateclaw at it via `.env`:
+If you're already running SearXNG elsewhere, point snsclaw at it via `.env`:
 
 ```properties
 SEARXNG_BASE_URL=https://your-searxng.example.com
@@ -98,7 +98,7 @@ Then comment out the `searxng` service block in `docker-compose.yml`. Make sure 
 
 ### What the image actually contains
 
-The backend runtime stage (`mateclaw-server/Dockerfile` stage 3) is based on `mcr.microsoft.com/playwright:v1.52.0-noble` (Ubuntu Noble 24.04, glibc) and installs on top of it:
+The backend runtime stage (`snsclaw-server/Dockerfile` stage 3) is based on `mcr.microsoft.com/playwright:v1.52.0-noble` (Ubuntu Noble 24.04, glibc) and installs on top of it:
 
 - `openjdk-21-jre-headless` — runs the Spring Boot JAR
 - `fonts-noto-cjk` — Chinese/Japanese/Korean rendering in screenshots
@@ -137,7 +137,7 @@ Inside the Docker image, **strategy 4 or 6 always hits** and no configuration is
 
 ### `/dev/shm` must be 2 GB
 
-`docker-compose.yml` sets `shm_size: 2gb` for `mateclaw-server`. Docker defaults to 64 MB per container — Chromium uses shared memory for GPU compositing and page rendering, and three tabs is enough to SIGBUS the browser. Playwright surfaces this as `TargetClosedError: Target page, context or browser has been closed`. **Do not shrink this value.**
+`docker-compose.yml` sets `shm_size: 2gb` for `snsclaw-server`. Docker defaults to 64 MB per container — Chromium uses shared memory for GPU compositing and page rendering, and three tabs is enough to SIGBUS the browser. Playwright surfaces this as `TargetClosedError: Target page, context or browser has been closed`. **Do not shrink this value.**
 
 ### SSRF protection
 
@@ -147,7 +147,7 @@ Before any `navigate` call, `BrowserUseTool` runs the URL through `UrlSafetyChec
 - `169.254.169.254` (AWS / GCP / Azure IMDS), `100.100.100.200` (Alibaba Cloud IMDS), `192.0.0.192` (Azure IMDS alternative)
 - All link-local / private / multicast IP ranges
 
-An LLM generating a malicious URL to dump cloud credentials is therefore a closed loop. If you genuinely need to scrape internal infrastructure from a specific host, either disable via `mateclaw.browser.ssrf-check-enabled` or edit the `UrlSafetyChecker` allowlist. **Think twice before doing this in production.**
+An LLM generating a malicious URL to dump cloud credentials is therefore a closed loop. If you genuinely need to scrape internal infrastructure from a specific host, either disable via `snsclaw.browser.ssrf-check-enabled` or edit the `UrlSafetyChecker` allowlist. **Think twice before doing this in production.**
 
 ### Verifying the browser path
 
@@ -169,7 +169,7 @@ curl -s http://localhost:18080/api/v1/system/browser-health | jq .
 
 ```sh
 git clone https://github.com/chenzhizhuan/SnSclaw.git
-cd mateclaw
+cd snsclaw
 
 # 1. Fill in required values
 cp .env.example .env
@@ -188,18 +188,18 @@ vi .env   # see table below
 | Variable | Notes |
 |---|---|
 | `JWT_SECRET` | JWT signing key — generate with `openssl rand -base64 48` |
-| `MATECLAW_CORS_ALLOWED_ORIGINS` | Production allowlist, e.g. `https://mateclaw.example.com` |
+| `MATECLAW_CORS_ALLOWED_ORIGINS` | Production allowlist, e.g. `https://snsclaw.example.com` |
 
 Then bring the stack up:
 
 ```sh
 docker compose up -d --build   # first build takes 3-10 minutes
-docker compose logs -f mateclaw-server
+docker compose logs -f snsclaw-server
 ```
 
 First boot runs Flyway migrations (~5 s) and seeds default data (~3 s), then binds `0.0.0.0:18080`.
 
-Open `http://localhost:18080`, sign in as `admin / SnS3.14@W`, and **change the password immediately** under `Settings → Security`.
+Open `http://localhost:18080`, sign in as `admin / admin123`, and **change the password immediately** under `Settings → Security`.
 
 ---
 
@@ -207,11 +207,11 @@ Open `http://localhost:18080`, sign in as `admin / SnS3.14@W`, and **change the 
 
 ### US / EU servers
 
-**Already optimal.** `mateclaw-server/pom.xml` lists repositories in the order `Maven Central → Google CDN → Aliyun`; Central direct is fastest over US/EU backbones.
+**Already optimal.** `snsclaw-server/pom.xml` lists repositories in the order `Maven Central → Google CDN → Aliyun`; Central direct is fastest over US/EU backbones.
 
 ### China servers
 
-Flip to Aliyun-first. Either edit the `mvn` lines in `mateclaw-server/Dockerfile` to add `-Paliyun-first`, or (easier) expose it as a build arg:
+Flip to Aliyun-first. Either edit the `mvn` lines in `snsclaw-server/Dockerfile` to add `-Paliyun-first`, or (easier) expose it as a build arg:
 
 ```dockerfile
 # from
@@ -227,7 +227,7 @@ RUN mvn package -DskipTests -q ${MAVEN_PROFILE:+-P${MAVEN_PROFILE}}
 Then:
 
 ```sh
-docker compose build --build-arg MAVEN_PROFILE=aliyun-first mateclaw-server
+docker compose build --build-arg MAVEN_PROFILE=aliyun-first snsclaw-server
 ```
 
 Aliyun's public + Spring mirrors are promoted to the top of the lookup chain, keeping traffic inside China.
@@ -279,11 +279,11 @@ If any of these fail, jump to the next section.
 **Build stage `mvn dependency:go-offline` hangs**
 US servers pulling through Aliyun is slow. The default `pom.xml` puts Maven Central first, so it should be fast. If it's still slow, the container has no outbound access — check your egress firewall.
 
-**`mateclaw-server` stays unhealthy at startup**
-`docker compose logs mateclaw-server` and look for Flyway migration errors. Nine times out of ten, a special character in `DB_PASSWORD` got eaten by the shell — wrap the value in double quotes in `.env`.
+**`snsclaw-server` stays unhealthy at startup**
+`docker compose logs snsclaw-server` and look for Flyway migration errors. Nine times out of ten, a special character in `DB_PASSWORD` got eaten by the shell — wrap the value in double quotes in `.env`.
 
 **Browser tool reports "Target page closed" or SIGBUS**
-`shm_size: 2gb` didn't take effect. Check the actual value with `docker inspect mateclaw-server | grep ShmSize`. Upgrade Docker Engine to 24.0+ if it's still showing 64 MB.
+`shm_size: 2gb` didn't take effect. Check the actual value with `docker inspect snsclaw-server | grep ShmSize`. Upgrade Docker Engine to 24.0+ if it's still showing 64 MB.
 
 **Search returns "Search temporarily unavailable"**
 SearXNG either isn't up or the image default settings disabled JSON output. Our own `./docker/searxng/` build patches this; if you're reusing an old named volume, reset it: `docker compose down -v searxng && docker compose up -d searxng`.
@@ -297,11 +297,11 @@ The image already installs `fonts-noto-cjk` and `fonts-noto-color-emoji`, so thi
 
 ```sh
 git pull
-docker compose build mateclaw-server   # only rebuild the backend
-docker compose up -d mateclaw-server
+docker compose build snsclaw-server   # only rebuild the backend
+docker compose up -d snsclaw-server
 ```
 
-The `postgres_data` volume persists across rebuilds. Flyway runs incremental migrations automatically and self-heals checksum changes on restart. **Version is pinned in `mateclaw-server/pom.xml` and the git tag** — prefer pinning to a tag in production, not tracking `dev`.
+The `postgres_data` volume persists across rebuilds. Flyway runs incremental migrations automatically and self-heals checksum changes on restart. **Version is pinned in `snsclaw-server/pom.xml` and the git tag** — prefer pinning to a tag in production, not tracking `dev`.
 
 ---
 

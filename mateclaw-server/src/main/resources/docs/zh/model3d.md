@@ -154,7 +154,7 @@
 → Worker 默认 15 分钟超时。看后端日志：
 
 ```bash
-grep '\[Hunyuan3D\]\|\[Model3dGen\]' logs/mateclaw.log | tail -10
+grep '\[Hunyuan3D\]\|\[Model3dGen\]' logs/snsclaw.log | tail -10
 ```
 
 查 polling 是不是被网络抖动卡死，或腾讯端长期 `RUN`/`WAIT` 没推进。可手动取消任务（重启后端 + 它会被标 failed）。

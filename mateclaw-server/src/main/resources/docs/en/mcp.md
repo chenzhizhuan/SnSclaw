@@ -400,7 +400,7 @@ Off by default — injecting into every server would leak the username to any
 third-party MCP server. Enable per server by **name or id**:
 
 ```yaml
-mateclaw:
+snsclaw:
   mcp:
     identity-forward:
       servers:
@@ -410,7 +410,7 @@ mateclaw:
 
 ### Data contract
 
-When enabled, SnSclaw injects the reserved argument **`__mateclaw_user__`**
+When enabled, SnSclaw injects the reserved argument **`__snsclaw_user__`**
 (value = authenticated username) into each tool call's JSON arguments. It is
 injected by trusted server code, **never by the LLM** — any model-supplied value
 of the same key is overwritten, so the model cannot spoof identity. When there is
@@ -429,12 +429,12 @@ REST_BASE = os.environ["REST_BASE"]
 API_KEY = os.environ["BACKEND_API_KEY"]      # service-level key (authenticates the MCP service)
 
 @mcp.tool()
-def query_orders(keyword: str, __mateclaw_user__: str | None = None) -> str:
-    if not __mateclaw_user__:
+def query_orders(keyword: str, __snsclaw_user__: str | None = None) -> str:
+    if not __snsclaw_user__:
         raise ValueError("missing injected identity")   # reject identity-less calls
     headers = {
         "Authorization": f"ApiKey {API_KEY}",            # service identity
-        "X-On-Behalf-Of": __mateclaw_user__,             # the acting user
+        "X-On-Behalf-Of": __snsclaw_user__,             # the acting user
     }
     r = httpx.get(f"{REST_BASE}/orders", params={"q": keyword}, headers=headers, timeout=30)
     r.raise_for_status()
@@ -445,7 +445,7 @@ if __name__ == "__main__":
 ```
 
 > If a tool's input schema is `additionalProperties: false`, declare
-> `__mateclaw_user__` as an optional parameter (as above) or strict validation
+> `__snsclaw_user__` as an optional parameter (as above) or strict validation
 > will reject it.
 
 ### Two trust models
@@ -456,21 +456,21 @@ the forwarded user as on-behalf-of. The backend trusts the raw string.
 
 **② Signed token (recommended across a trust boundary)**: injects a short-lived
 **RS256 JWT** that SnSclaw signs with a private key (reserved key becomes
-**`__mateclaw_token__`**); the REST backend **verifies it with the public key**,
+**`__snsclaw_token__`**); the REST backend **verifies it with the public key**,
 so it trusts the signature — not the MCP service, the Python script, or the
 transport.
 
 ```yaml
-mateclaw:
+snsclaw:
   mcp:
     identity-forward:
       servers:
         - my-internal-api
       token:
         enabled: true
-        issuer: mateclaw
+        issuer: snsclaw
         ttl-seconds: 60                 # short, tens of seconds
-        key-id: mateclaw-mcp-1
+        key-id: snsclaw-mcp-1
         private-key-pem: ${MCP_IDFWD_PRIVATE_KEY_PEM:}   # PKCS#8 PEM (RS256 private key)
         audiences:                      # optional; default aud = server name
           my-internal-api: https://api.internal
@@ -498,10 +498,10 @@ The MCP server (Python) only forwards — it does not verify:
 
 ```python
 @mcp.tool()
-def query_orders(keyword: str, __mateclaw_token__: str | None = None) -> str:
-    if not __mateclaw_token__:
+def query_orders(keyword: str, __snsclaw_token__: str | None = None) -> str:
+    if not __snsclaw_token__:
         raise ValueError("missing identity token")
-    headers = {"Authorization": f"Bearer {__mateclaw_token__}"}   # forward to REST
+    headers = {"Authorization": f"Bearer {__snsclaw_token__}"}   # forward to REST
     return httpx.get(f"{REST_BASE}/orders", params={"q": keyword}, headers=headers, timeout=30).text
 ```
 
@@ -510,7 +510,7 @@ REST backend verifies (pseudocode):
 ```python
 import jwt  # PyJWT
 claims = jwt.decode(token, public_key_pem, algorithms=["RS256"],
-                    issuer="mateclaw", audience="https://api.internal")
+                    issuer="snsclaw", audience="https://api.internal")
 user = claims["sub"]            # trusted only after signature verification
 # → per-user authorization; invalid/expired → 401
 ```

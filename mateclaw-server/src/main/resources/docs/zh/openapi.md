@@ -21,7 +21,7 @@ SnSclaw 后端集成了 [SpringDoc OpenAPI](https://springdoc.org/)（`springdoc
 open http://localhost:18088/swagger-ui.html
 
 # 下载 YAML
-curl http://localhost:18088/v3/api-docs.yaml -o mateclaw-openapi.yaml
+curl http://localhost:18088/v3/api-docs.yaml -o snsclaw-openapi.yaml
 ```
 
 ## 鉴权（Authorize）
@@ -46,10 +46,10 @@ SpringDoc 自动扫描所有 `@RestController`，约 85% 的 Controller 已标�
 
 ## 配置项
 
-全局 OpenAPI 元信息（标题、描述、版本、服务器地址）由 `OpenApiConfig` Bean 驱动，可通过 `application.yml` 的 `mateclaw.openapi.*` 覆盖：
+全局 OpenAPI 元信息（标题、描述、版本、服务器地址）由 `OpenApiConfig` Bean 驱动，可通过 `application.yml` 的 `snsclaw.openapi.*` 覆盖：
 
 ```yaml
-mateclaw:
+snsclaw:
   openapi:
     title: ${MATECLAW_OPENAPI_TITLE:SnSclaw REST API}
     version: ${MATECLAW_OPENAPI_VERSION:1.0}
@@ -62,7 +62,7 @@ mateclaw:
 
 ## 🔒 访问控制：Swagger 生产默认收口
 
-Swagger UI / OpenAPI 文档路径（`/swagger-ui*`、`/v3/api-docs*`、`/webjars/**`）的访问由 `mateclaw.openapi.expose-ui` 开关控制，并由 `SecurityConfig.filterChain` 显式强制（不再依赖 `.anyRequest().permitAll()` 兜底）：
+Swagger UI / OpenAPI 文档路径（`/swagger-ui*`、`/v3/api-docs*`、`/webjars/**`）的访问由 `snsclaw.openapi.expose-ui` 开关控制，并由 `SecurityConfig.filterChain` 显式强制（不再依赖 `.anyRequest().permitAll()` 兜底）：
 
 | `expose-ui` | 行为 | 默认生效的场景 |
 |---|---|---|

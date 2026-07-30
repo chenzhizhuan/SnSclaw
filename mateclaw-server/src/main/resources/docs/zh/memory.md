@@ -569,7 +569,7 @@ mate:
 Mem0 集成是**可选的社区贡献项**，不在 SnSclaw 的默认安装里。它需要你**自己部署一份 Mem0 服务**（FastAPI + pgvector + 可选 Neo4j）。SnSclaw 的"本地优先、零外部依赖"定位不变——这个插件只是给愿意多跑一套服务的人一个**叠加的语义召回通道**。
 :::
 
-[Mem0](https://github.com/mem0ai/mem0) 是一个独立的记忆服务，做的是 LLM 记忆的提取、去重、向量化召回。SnSclaw 的 `mateclaw-plugin-mem0` 模块把它作为一个**插件式 memory provider** 接进来——内部 4 个 provider（Builtin / Structured / Session / Fact）一个都不动，Mem0 作为第 5 个外部 provider 叠加上去，**互不替代**。
+[Mem0](https://github.com/mem0ai/mem0) 是一个独立的记忆服务，做的是 LLM 记忆的提取、去重、向量化召回。SnSclaw 的 `snsclaw-plugin-mem0` 模块把它作为一个**插件式 memory provider** 接进来——内部 4 个 provider（Builtin / Structured / Session / Fact）一个都不动，Mem0 作为第 5 个外部 provider 叠加上去，**互不替代**。
 
 ### 它做什么
 
@@ -596,7 +596,7 @@ Mem0 用 `user_id` + `agent_id` 做隔离。SnSclaw 的映射：
 ### 安装步骤
 
 1. **部署 Mem0 服务**：参考 Mem0 官方文档，自托管一份（FastAPI + pgvector + 可选 Neo4j）。记下它的 base URL，比如 `http://localhost:8080`。
-2. **构建插件 JAR**：在 SnSclaw 仓库根目录跑 `mvn -pl mateclaw-plugin-mem0 -am package`，得到 `mateclaw-plugin-mem0/target/mateclaw-plugin-mem0-*.jar`。
+2. **构建插件 JAR**：在 SnSclaw 仓库根目录跑 `mvn -pl snsclaw-plugin-mem0 -am package`，得到 `snsclaw-plugin-mem0/target/snsclaw-plugin-mem0-*.jar`。
 3. **放 JAR**：把 JAR 丢进 SnSclaw 的 `plugins/` 目录。
 4. **配置**：在插件管理 UI 里填 `baseUrl`（必填），按需填 `apiKey`、调其他参数。重启或重载插件。
 

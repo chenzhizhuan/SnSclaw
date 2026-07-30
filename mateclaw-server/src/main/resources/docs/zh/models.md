@@ -154,7 +154,7 @@ Gemini 不再走 OpenAI 兼容层——SnSclaw 直接对接 Google 的**原生 `
 
 **SnSclaw 怎么决定走哪个流：**
 
-| `mateclaw.oauth.openai.deployment-mode` | 行为 |
+| `snsclaw.oauth.openai.deployment-mode` | 行为 |
 |---|---|
 | `auto` *（默认）* | `localhost` / `127.0.0.1` / `::1` → 浏览器回调；其它 host → 设备授权 |
 | `local` | 强制走浏览器回调（loopback 服务器） |
@@ -376,7 +376,7 @@ SnSclaw 用一个**活跃模型**作为全局默认。没有指定自己模型�
 
 下拉只列**支持对应 modality 的模型**——筛选逻辑走后端 `ModelCapabilityService.supports(...)`，未启用 / 没声明 vision 能力的模型都不会出现在选项里。每张卡片有独立的"保存"按钮，互不干扰。
 
-什么时候触发？运行时由 `MultimodalRouter` 决策（[源码](https://github.com/chenzhizhuan/SnSclaw/blob/main/mateclaw-server/src/main/java/vip/mate/llm/routing/MultimodalRouter.java)）：
+什么时候触发？运行时由 `MultimodalRouter` 决策（[源码](https://github.com/chenzhizhuan/SnSclaw/blob/main/snsclaw-server/src/main/java/vip/mate/llm/routing/MultimodalRouter.java)）：
 
 - 主模型已支持图片 → 不路由（走原 native multimodal 路径）
 - 主模型不支持图片 + 配了视觉旁路 → SIDECAR 策略，视觉模型转描述

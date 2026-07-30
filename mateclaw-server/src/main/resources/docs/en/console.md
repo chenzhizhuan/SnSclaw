@@ -64,7 +64,7 @@ Username/password form with password visibility toggle.
 
 **API:** `POST /api/v1/auth/login`
 
-**Default credentials:** `admin` / `SnS3.14@W` — change immediately.
+**Default credentials:** `admin` / `admin123` — change immediately.
 
 ---
 
@@ -553,10 +553,10 @@ Unmatched paths redirect to `/chat`.
 ## Build and development
 
 ```bash
-cd mateclaw-ui
+cd snsclaw-ui
 pnpm install
 pnpm dev          # Port 5173, proxies /api to :18088
-pnpm build        # vue-tsc + vite build into ../mateclaw-server/.../static
+pnpm build        # vue-tsc + vite build into ../snsclaw-server/.../static
 pnpm lint         # ESLint
 ```
 

@@ -348,7 +348,7 @@ while (true) {
 }
 ```
 
-完整客户端实现可以参考 `mateclaw-ui/src/composables/chat/useChat.ts`。
+完整客户端实现可以参考 `snsclaw-ui/src/composables/chat/useChat.ts`。
 
 ### SSE 事件类型
 

@@ -12,7 +12,7 @@
 
 | Profile | 数据库 | 激活方式 |
 |---------|--------|----------|
-| `default` | H2 文件 `./data/mateclaw` | 不用做什么 |
+| `default` | H2 文件 `./data/snsclaw` | 不用做什么 |
 | `mysql` | MySQL 8.0+ | `spring.profiles.active=mysql` 或环境变量 |
 
 Docker 部署自动激活 `mysql`。桌面版用 `default`。
@@ -35,7 +35,7 @@ server:
 ```yaml
 spring:
   datasource:
-    url: jdbc:h2:file:./data/mateclaw;MODE=MYSQL
+    url: jdbc:h2:file:./data/snsclaw;MODE=MYSQL
     username: sa
     password:
     driver-class-name: org.h2.Driver
@@ -51,7 +51,7 @@ spring:
   profiles:
     active: mysql
   datasource:
-    url: jdbc:mysql://localhost:3306/mateclaw?useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/snsclaw?useSSL=false&serverTimezone=UTC
     username: root
     password: ${MYSQL_ROOT_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -159,7 +159,7 @@ File Guard 分两层：
 2. **全局兜底沙箱根**——唯一写在 application.yml 里的部分。当某个会话没有配置 per-workspace base path 时，文件 / Shell 工具被限制在这个根目录内（fail-closed 默认）：
 
 ```yaml
-mateclaw:
+snsclaw:
   workspace:
     sandbox:
       enabled: true                       # 设 false 恢复旧的不受限行为
@@ -171,7 +171,7 @@ mateclaw:
 ### JWT 认证
 
 ```yaml
-mateclaw:
+snsclaw:
   jwt:
     secret: ${JWT_SECRET:your-secret-key-at-least-32-characters-long}
     expiration: 86400000
@@ -184,10 +184,10 @@ mateclaw:
 ### 技能工作空间
 
 ```yaml
-mateclaw:
+snsclaw:
   skill:
     workspace:
-      root: ${user.home}/.mateclaw/skills
+      root: ${user.home}/.snsclaw/skills
       auto-init: true
       delete-policy: archive
       bundled-skills-path: skills
@@ -251,7 +251,7 @@ DB_ROOT_PASSWORD=different-secure-password-here
 JWT_SECRET=your-production-secret-at-least-32-chars
 ```
 
-启动后到 `http://localhost:18080`，`admin / SnS3.14@W` 登录，「设置 → 模型 → 添加供应商」配第一家 LLM。
+启动后到 `http://localhost:18080`，`admin / admin123` 登录，「设置 → 模型 → 添加供应商」配第一家 LLM。
 
 ---
 
@@ -278,14 +278,14 @@ SnSclaw 用 **Flyway** 管理 schema 迁移：
 
 | 字段 | 值 |
 |------|----|
-| JDBC URL | `jdbc:h2:file:./data/mateclaw` |
+| JDBC URL | `jdbc:h2:file:./data/snsclaw` |
 | 用户名 | `sa` |
 | 密码 | *（空）* |
 
 ### 切到 MySQL
 
 ```sql
-CREATE DATABASE mateclaw CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE snsclaw CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 ```bash
@@ -350,7 +350,7 @@ logging:
 单独部署前端的话：
 
 ```yaml
-mateclaw:
+snsclaw:
   cors:
     allowed-origins:
       - http://localhost:5173

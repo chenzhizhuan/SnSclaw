@@ -47,7 +47,7 @@ If you naively partition conversations by chatId (the obvious approach), you get
 - Same sender → merge (typical case: paste-split fragments)
 - Different sender → flush the existing pending immediately, start a new window for the new sender
 
-The decision lives in [`ChannelMessageRouter.isSameSender`](https://github.com/anthropics/mateclaw/blob/main/mateclaw-server/src/main/java/vip/mate/channel/ChannelMessageRouter.java). Null-defensive: if either senderId is missing, refuse to merge — better to flush twice than to mis-attribute one fragment.
+The decision lives in [`ChannelMessageRouter.isSameSender`](https://github.com/anthropics/snsclaw/blob/main/snsclaw-server/src/main/java/vip/mate/channel/ChannelMessageRouter.java). Null-defensive: if either senderId is missing, refuse to merge — better to flush twice than to mis-attribute one fragment.
 
 **2. `[@sender]` prefix on persisted content + prompt.** Every group message (`chatId != null`) gets wrapped before save and before the LLM call:
 
@@ -212,7 +212,7 @@ Fix: `AsyncTaskMediaDispatcher.forwardToImIfBound(conversationId, parts)`:
 - Slack: via `filesUploadV2` (see [Slack channel](./channels#slack))
 - Channels without `sendContentParts` (QQ, etc.): catch UnsupportedOperationException + log; one unsupported channel doesn't block the rest
 
-Files live at `data/chat-uploads/{conversationId}/` by default, but when the conversation's Agent / Workspace has a `basePath` configured, attachments land under `{basePath}/chat-uploads/{conversationId}/` (precedence: Agent `workspaceBasePath` → Workspace `basePath` → default dir `mateclaw.chat.upload.base-dir`). Reads and cleanup probe both the new and legacy locations, so pre-migration attachments stay accessible. Served at `/api/v1/chat/files/{conversationId}/{storedName}`; frontend and channel attachment views all read by this URL.
+Files live at `data/chat-uploads/{conversationId}/` by default, but when the conversation's Agent / Workspace has a `basePath` configured, attachments land under `{basePath}/chat-uploads/{conversationId}/` (precedence: Agent `workspaceBasePath` → Workspace `basePath` → default dir `snsclaw.chat.upload.base-dir`). Reads and cleanup probe both the new and legacy locations, so pre-migration attachments stay accessible. Served at `/api/v1/chat/files/{conversationId}/{storedName}`; frontend and channel attachment views all read by this URL.
 
 ---
 
@@ -266,7 +266,7 @@ Users stare at "generating..." for tens of seconds to minutes, finally receive a
 
 **Two-layer guard**:
 
-1. **Detection**: [`hasRepeatingSuffix`](https://github.com/anthropics/mateclaw/blob/main/mateclaw-server/src/main/java/vip/mate/agent/graph/NodeStreamingChatHelper.java) checks if the buffer ends with the same 24-240 character unit repeated 4+ times consecutively → immediately disposes the upstream subscription
+1. **Detection**: [`hasRepeatingSuffix`](https://github.com/anthropics/snsclaw/blob/main/snsclaw-server/src/main/java/vip/mate/agent/graph/NodeStreamingChatHelper.java) checks if the buffer ends with the same 24-240 character unit repeated 4+ times consecutively → immediately disposes the upstream subscription
 2. **Dedup + flag**: `dedupTrailingRepeats` collapses N trailing copies to 1; ReasoningNode sets finishReason to `INCOMPLETE`; the frontend renders a truncation banner with a "regenerate" button
 
 Why not just emit a warning: the user already saw the duplicates in the SSE stream (one-way push, can't unsend), but the **DB-persisted finalAnswer** and **WeCom outbound** both use `finalAnswer` — so the IM group only sees one clean copy of the answer + an INCOMPLETE banner.
@@ -362,7 +362,7 @@ If the group doesn't see the bot's reply but logs show this line with a non-null
 ### Verify keepalive
 
 ```bash
-grep "wecom-keepalive" logs/mateclaw.log | tail
+grep "wecom-keepalive" logs/snsclaw.log | tail
 ```
 
 Expect periodic "Heartbeat sent" + "Heartbeat ACK received", with occasional "force-finished stream" hard-finishes.

@@ -10,7 +10,7 @@
 
 | 步骤 | 做什么 | 花多久 |
 |------|--------|--------|
-| 1 | 双击打开，`admin` / `SnS3.14@W` 登录 | 10 秒 |
+| 1 | 双击打开，`admin` / `admin123` 登录 | 10 秒 |
 | 2 | 设置 → 模型 → 添加供应商，**启用一个**，粘贴 Key | 30 秒 |
 | 3 | 聊天 → 选 Agent → 说「你好」 | 10 秒 |
 | 4 | 看到回复流出来 → **系统活了** | — |
@@ -182,7 +182,7 @@ Wiki 不是全文搜索。它是**语义检索**——问「我们关于认证�
 
 | 症状 | 最可能的原因 |
 |------|------------|
-| 后端起不来 | 18088 端口被占。看 `<用户数据目录>/logs/mateclaw.log`（macOS: `~/Library/Application Support/SnSclaw/logs/mateclaw.log`） |
+| 后端起不来 | 18088 端口被占。看 `<用户数据目录>/logs/snsclaw.log`（macOS: `~/Library/Application Support/SnSclaw/logs/snsclaw.log`） |
 | 模型调用报错 | API Key 错了，或者网络不通。回设置里检查 |
 | 界面白屏 | Ctrl+Shift+R 强刷 |
 | Ollama 报 "does not support tools" | 换一个支持 function calling 的模型（qwen3、llama3.1:8b+） |

@@ -47,7 +47,7 @@
 - 同一个人 → 合并（典型场景：粘贴长文被 IM 客户端切片）
 - 不同人 → 立即 flush 已有 pending，给新发送人开新窗口
 
-代码层面是 [`ChannelMessageRouter.isSameSender`](https://github.com/anthropics/mateclaw/blob/main/mateclaw-server/src/main/java/vip/mate/channel/ChannelMessageRouter.java)。null 防御：任一 senderId 缺失都不合并，宁可多 flush 一次也不要错串归属。
+代码层面是 [`ChannelMessageRouter.isSameSender`](https://github.com/anthropics/snsclaw/blob/main/snsclaw-server/src/main/java/vip/mate/channel/ChannelMessageRouter.java)。null 防御：任一 senderId 缺失都不合并，宁可多 flush 一次也不要错串归属。
 
 **2. 持久化 + Prompt 都带 `[@sender]` 前缀。** 群聊（`chatId != null`）的每条 user 消息在落库时和送给 LLM 之前都会被 `applyGroupTag(message, content)` 包一层：
 
@@ -212,7 +212,7 @@ SnSclaw 在 link 分支检测到 `mp.weixin.qq.com` 后，会自动给模型追�
 - Slack：通过 `filesUploadV2` 直传（参考 [Slack channel](./channels#slack)）
 - 不支持 `sendContentParts` 的渠道（QQ 等）：catch UnsupportedOperationException + log，不让一个不支持的渠道卡住整批分发
 
-文件路径默认在 `data/chat-uploads/{conversationId}/`，但当会话的 Agent / Workspace 配置了 `basePath` 时，附件落在 `{basePath}/chat-uploads/{conversationId}/`（解析优先级：Agent `workspaceBasePath` → Workspace `basePath` → 默认目录 `mateclaw.chat.upload.base-dir`）。读取与清理会同时探测新旧位置，迁移前的旧附件仍可访问。serve URL 是 `/api/v1/chat/files/{conversationId}/{storedName}`，前端 / 渠道附件视图都按这个 URL 读。
+文件路径默认在 `data/chat-uploads/{conversationId}/`，但当会话的 Agent / Workspace 配置了 `basePath` 时，附件落在 `{basePath}/chat-uploads/{conversationId}/`（解析优先级：Agent `workspaceBasePath` → Workspace `basePath` → 默认目录 `snsclaw.chat.upload.base-dir`）。读取与清理会同时探测新旧位置，迁移前的旧附件仍可访问。serve URL 是 `/api/v1/chat/files/{conversationId}/{storedName}`，前端 / 渠道附件视图都按这个 URL 读。
 
 ---
 
@@ -266,7 +266,7 @@ SnSclaw 在 link 分支检测到 `mp.weixin.qq.com` 后，会自动给模型追�
 
 **两层守卫**：
 
-1. **检测**：[`hasRepeatingSuffix`](https://github.com/anthropics/mateclaw/blob/main/mateclaw-server/src/main/java/vip/mate/agent/graph/NodeStreamingChatHelper.java) 探测 buffer 尾部是否被同一个 24~240 字符的 unit 连续重复 4 次以上 → 立即 dispose 上游订阅
+1. **检测**：[`hasRepeatingSuffix`](https://github.com/anthropics/snsclaw/blob/main/snsclaw-server/src/main/java/vip/mate/agent/graph/NodeStreamingChatHelper.java) 探测 buffer 尾部是否被同一个 24~240 字符的 unit 连续重复 4 次以上 → 立即 dispose 上游订阅
 2. **去重 + 标记**：`dedupTrailingRepeats` 把已累积的 buffer 尾部 N 份拷贝缩成 1 份；ReasoningNode 把 finishReason 设为 `INCOMPLETE`，前端展示截断卡 + "重新生成"按钮
 
 为什么不无脑发警告就算了：用户已经在 SSE 流里看到那坨重复文本（SSE 单向 push 没法 unsend），但 **DB 持久化** 和 **WeCom 回推** 用的都是 `finalAnswer`——所以 IM 群里只看到一份干净的回答 + INCOMPLETE 提示。
@@ -362,7 +362,7 @@ ls data/chat-uploads/wecom:{chatId}/
 ### 看 keepalive 状态
 
 ```bash
-grep "wecom-keepalive" logs/mateclaw.log | tail
+grep "wecom-keepalive" logs/snsclaw.log | tail
 ```
 
 期望看到周期性的 "Heartbeat sent" + "Heartbeat ACK received" / 偶尔的 "force-finished stream" 强制完成。

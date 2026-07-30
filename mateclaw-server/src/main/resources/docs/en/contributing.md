@@ -11,14 +11,14 @@ That's the only thing to remember. SnSclaw is Apache 2.0, self-hosted, and shipp
 ### 1. Fork and clone
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/mateclaw.git
-cd mateclaw
+git clone https://github.com/YOUR_USERNAME/snsclaw.git
+cd snsclaw
 ```
 
 ### 2. Start the backend
 
 ```bash
-cd mateclaw-server
+cd snsclaw-server
 mvn spring-boot:run
 ```
 
@@ -31,7 +31,7 @@ Model configuration is **UI-driven** — no need to set `DASHSCOPE_API_KEY` as a
 ### 3. Start the frontend
 
 ```bash
-cd mateclaw-ui
+cd snsclaw-ui
 pnpm install
 pnpm dev
 ```
@@ -40,7 +40,7 @@ Frontend on port 5173, proxies `/api` to the backend.
 
 ### 4. Verify
 
-Open [http://localhost:5173](http://localhost:5173). Log in with `admin` / `SnS3.14@W`. Add a model in `Settings → Models`. Send a test message. If tokens stream back, you're ready.
+Open [http://localhost:5173](http://localhost:5173). Log in with `admin` / `admin123`. Add a model in `Settings → Models`. Send a test message. If tokens stream back, you're ready.
 
 ---
 
@@ -130,7 +130,7 @@ Don't look for a `BaseAgent` class hierarchy — the agent runtime is a **StateG
 
 - **A node** (reasoning, action, observation, plan generation) — in `vip.mate.agent.graph.node` or `vip.mate.agent.graph.plan.node`
 - **An edge** or **dispatcher** — in `vip.mate.agent.graph.edge` or `vip.mate.agent.graph.plan.edge`
-- **A state key** — in `vip.mate.agent.graph.state.MateClawStateKeys`
+- **A state key** — in `vip.mate.agent.graph.state.SnSclawStateKeys`
 
 The builder that wires it up is `AgentGraphBuilder`. Streaming events from nodes go through `GraphEventPublisher` and `NodeStreamingChatHelper`.
 
@@ -242,7 +242,7 @@ onMounted(async () => {
 ### Backend tests
 
 ```bash
-cd mateclaw-server
+cd snsclaw-server
 mvn test                                  # All tests
 mvn test -Dtest=StateGraphReActAgentTest  # Single class
 mvn test -Dtest=StateGraphReActAgentTest#testChat  # Single method
@@ -251,7 +251,7 @@ mvn test -Dtest=StateGraphReActAgentTest#testChat  # Single method
 ### Frontend type check and lint
 
 ```bash
-cd mateclaw-ui
+cd snsclaw-ui
 pnpm build          # vue-tsc type check + vite build
 pnpm lint           # ESLint with auto-fix
 ```

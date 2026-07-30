@@ -1,6 +1,6 @@
 # Docker 部署
 
-桌面端之外的唯一推荐生产部署方式。一条 `docker compose up -d` 起三个容器：PostgreSQL、SearXNG、mateclaw-server。
+桌面端之外的唯一推荐生产部署方式。一条 `docker compose up -d` 起三个容器：PostgreSQL、SearXNG、snsclaw-server。
 
 > **⚠️ 从 MySQL 栈升级**：Docker 栈已从 MySQL 切换到 PostgreSQL 16。老部署直接 `git pull` 后 `up -d` 会启动一个**全新的空 PostgreSQL 卷**——旧 `mysql_data` 卷不会被读取（数据不丢，但新栈看不到）。要携带数据请先在旧栈上 `mysqldump`，再用 pgloader 等工具导入 PostgreSQL；或钉在切换前的 tag 上继续用 MySQL（`mysql` Spring profile 仍然支持）。
 
@@ -29,7 +29,7 @@
 |---|---|---|---|
 | `postgres` | `postgres:16` | 业务数据存储 | 仅容器网络内（默认不映射宿主端口） |
 | `searxng` | 本地构建 `./docker/searxng/` | 无 API Key 搜索兜底 | `8088` |
-| `mateclaw-server` | 本地构建 `mateclaw-server/Dockerfile` | Spring Boot 后端 + 内置浏览器 | `18080` |
+| `snsclaw-server` | 本地构建 `snsclaw-server/Dockerfile` | Spring Boot 后端 + 内置浏览器 | `18080` |
 
 ---
 
@@ -39,7 +39,7 @@
 
 `docker/searxng/Dockerfile` 从官方 `searxng/searxng:latest` 派生，**把自定义 `settings.yml` 打进 `/etc/searxng/settings.yml`**。这不是洁癖，是**必须**：
 
-- **上游默认只开 `html` 格式**，mateclaw 后端请求的是 `GET /search?q=...&format=json` —— 默认配置下直接返回 HTML 错误页，`SearXNGSearchProvider` 解析失败返回空列表，UI 显示"搜索暂时不可用"
+- **上游默认只开 `html` 格式**，snsclaw 后端请求的是 `GET /search?q=...&format=json` —— 默认配置下直接返回 HTML 错误页，`SearXNGSearchProvider` 解析失败返回空列表，UI 显示"搜索暂时不可用"
 - **上游默认启用反爬 Limiter 插件**，拦截没有 JS / Cookie 的服务端调用，回 HTTP 429
 
 我们的 `docker/searxng/settings.yml` 做了三件事：
@@ -73,12 +73,12 @@ curl -s 'http://localhost:8088/search?q=test&format=json' | head -5
 # 期望：{"query": ..., "results": [...]}
 # 如果拿到 HTML：settings.yml 没生效
 
-# 2. 从 mateclaw-server 容器内部打
-docker exec mateclaw-server wget -qO- 'http://searxng:8080/search?q=test&format=json' | head -5
+# 2. 从 snsclaw-server 容器内部打
+docker exec snsclaw-server wget -qO- 'http://searxng:8080/search?q=test&format=json' | head -5
 # 如果不通：compose 网络有问题
 
 # 3. 在 UI 聊天里让 agent 搜点东西，看后端日志
-docker compose logs -f mateclaw-server | grep "搜索 provider"
+docker compose logs -f snsclaw-server | grep "搜索 provider"
 # 期望看到：搜索 provider 解析: searxng (source=keyless-fallback)
 ```
 
@@ -98,7 +98,7 @@ SEARXNG_BASE_URL=https://your-searxng.example.com
 
 ### 镜像里到底装了什么
 
-后端镜像以 `mcr.microsoft.com/playwright:v1.52.0-noble` 为基础（Ubuntu Noble 24.04，glibc），由 `mateclaw-server/Dockerfile` 的第三阶段拉起，额外装：
+后端镜像以 `mcr.microsoft.com/playwright:v1.52.0-noble` 为基础（Ubuntu Noble 24.04，glibc），由 `snsclaw-server/Dockerfile` 的第三阶段拉起，额外装：
 
 - `openjdk-21-jre-headless` —— 跑 Spring Boot JAR
 - `fonts-noto-cjk` —— 中文页面截图不出豆腐块
@@ -137,7 +137,7 @@ Docker 部署下 **默认走第 4 或第 6 级**，零配置可用。如果你�
 
 ### `/dev/shm` 必须 2 GB
 
-`docker-compose.yml` 给 `mateclaw-server` 设了 `shm_size: 2gb`。Docker 默认给每个容器只 64 MB `/dev/shm`，Chromium 用共享内存做 GPU / 页面渲染，跑 3 个 tab 就会 SIGBUS 挂掉，表现为 Playwright `TargetClosedError: Target page, context or browser has been closed`。**不要改小这个值**。
+`docker-compose.yml` 给 `snsclaw-server` 设了 `shm_size: 2gb`。Docker 默认给每个容器只 64 MB `/dev/shm`，Chromium 用共享内存做 GPU / 页面渲染，跑 3 个 tab 就会 SIGBUS 挂掉，表现为 Playwright `TargetClosedError: Target page, context or browser has been closed`。**不要改小这个值**。
 
 ### SSRF 防护
 
@@ -147,7 +147,7 @@ BrowserUseTool 在 `navigate` 前会过 `UrlSafetyChecker`，**硬阻断**以下
 - 169.254.169.254（AWS / GCP / Azure IMDS）、100.100.100.200（阿里云 IMDS）、192.0.0.192（Azure IMDS alt）
 - 所有 link-local / private / multicast IP 段
 
-也就是说 LLM 生成一个恶意 URL 指向云元数据端点偷凭据这条路是封死的。如果你有内网抓取需求需要放行特定地址，关 `mateclaw.browser.ssrf-check-enabled` 或改 `UrlSafetyChecker` 的白名单。**生产环境谨慎**。
+也就是说 LLM 生成一个恶意 URL 指向云元数据端点偷凭据这条路是封死的。如果你有内网抓取需求需要放行特定地址，关 `snsclaw.browser.ssrf-check-enabled` 或改 `UrlSafetyChecker` 的白名单。**生产环境谨慎**。
 
 ### 验证浏览器通路
 
@@ -169,7 +169,7 @@ curl -s http://localhost:18080/api/v1/system/browser-health | jq .
 
 ```sh
 git clone https://github.com/chenzhizhuan/SnSclaw.git
-cd mateclaw
+cd snsclaw
 
 # 1. 必填项写到 .env
 cp .env.example .env
@@ -180,7 +180,7 @@ vi .env   # 见下方必填表
 
 | 变量 | 说明 |
 |---|---|
-| `DB_PASSWORD` | 应用账号密码（最小权限角色，仅拥有 `mateclaw` schema），建议 16+ 位 + 大小写 + 数字 + 符号 |
+| `DB_PASSWORD` | 应用账号密码（最小权限角色，仅拥有 `snsclaw` schema），建议 16+ 位 + 大小写 + 数字 + 符号 |
 | `DB_ADMIN_PASSWORD` | PostgreSQL 引导超级账号密码，仅用于首次初始化与运维，**与上面不同** |
 
 **强烈建议**（不填不会报错，启动日志里 WARN）：
@@ -188,18 +188,18 @@ vi .env   # 见下方必填表
 | 变量 | 说明 |
 |---|---|
 | `JWT_SECRET` | JWT 签名密钥，`openssl rand -base64 48` 生成 |
-| `MATECLAW_CORS_ALLOWED_ORIGINS` | 生产白名单，如 `https://mateclaw.example.com` |
+| `MATECLAW_CORS_ALLOWED_ORIGINS` | 生产白名单，如 `https://snsclaw.example.com` |
 
 然后起服务：
 
 ```sh
 docker compose up -d --build   # 首次构建，约 3-10 分钟
-docker compose logs -f mateclaw-server
+docker compose logs -f snsclaw-server
 ```
 
 首次启动会跑 Flyway 迁移（~5 秒）+ 应用内种子数据（~3 秒），然后绑 `0.0.0.0:18080`。
 
-浏览器打开 `http://localhost:18080`，`admin / SnS3.14@W` 登录，**立刻在「设置 → 安全」改密码**。
+浏览器打开 `http://localhost:18080`，`admin / admin123` 登录，**立刻在「设置 → 安全」改密码**。
 
 ---
 
@@ -207,11 +207,11 @@ docker compose logs -f mateclaw-server
 
 ### 美国 / 欧洲服务器
 
-**默认就是最快的**：`mateclaw-server/pom.xml` 里 `<repositories>` 的优先级是 `Maven Central → Google CDN → Aliyun`，Central 直连最快。
+**默认就是最快的**：`snsclaw-server/pom.xml` 里 `<repositories>` 的优先级是 `Maven Central → Google CDN → Aliyun`，Central 直连最快。
 
 ### 中国服务器
 
-切 Aliyun 优先：改 `mateclaw-server/Dockerfile` 的 `mvn` 命令加 `-Paliyun-first`，或者（更简单）在 `docker-compose.yml` 加一行 `build args` 传进去。
+切 Aliyun 优先：改 `snsclaw-server/Dockerfile` 的 `mvn` 命令加 `-Paliyun-first`，或者（更简单）在 `docker-compose.yml` 加一行 `build args` 传进去。
 
 ```dockerfile
 # 原
@@ -227,7 +227,7 @@ RUN mvn package -DskipTests -q ${MAVEN_PROFILE:+-P${MAVEN_PROFILE}}
 然后：
 
 ```sh
-docker compose build --build-arg MAVEN_PROFILE=aliyun-first mateclaw-server
+docker compose build --build-arg MAVEN_PROFILE=aliyun-first snsclaw-server
 ```
 
 Aliyun Spring 镜像和公共仓库会被推到最前，中国出口不用经美国骨干。
@@ -279,11 +279,11 @@ curl -s 'http://localhost:8088/search?q=hello&format=json' | head -5
 **构建阶段 `mvn dependency:go-offline` 卡死**
 美国服务器拉 Aliyun 镜像慢。pom.xml 默认把 Maven Central 放最前，应该快。如果还是慢，网络不通——检查出站防火墙。
 
-**`mateclaw-server` 启动前就 unhealthy**
-`docker compose logs mateclaw-server` 看 Flyway 迁移是否成功。通常是 DB_PASSWORD 含特殊字符被 shell 吃了 —— 用双引号包住。
+**`snsclaw-server` 启动前就 unhealthy**
+`docker compose logs snsclaw-server` 看 Flyway 迁移是否成功。通常是 DB_PASSWORD 含特殊字符被 shell 吃了 —— 用双引号包住。
 
 **浏览器工具报 "Target page closed" / SIGBUS**
-`shm_size: 2gb` 没生效。`docker inspect mateclaw-server | grep ShmSize` 看实际值。老版本 Docker Engine 要升级到 24.0+。
+`shm_size: 2gb` 没生效。`docker inspect snsclaw-server | grep ShmSize` 看实际值。老版本 Docker Engine 要升级到 24.0+。
 
 **搜索返回 "搜索暂时不可用"**
 SearXNG 容器没起来或 JSON 格式被镜像默认 settings 禁用。我们自己构建 `./docker/searxng/` 已经改好；如果用了旧的 volume 缓存要清：`docker compose down -v searxng && docker compose up -d searxng`。
@@ -297,11 +297,11 @@ SearXNG 容器没起来或 JSON 格式被镜像默认 settings 禁用。我们�
 
 ```sh
 git pull
-docker compose build mateclaw-server   # 只重建后端
-docker compose up -d mateclaw-server
+docker compose build snsclaw-server   # 只重建后端
+docker compose up -d snsclaw-server
 ```
 
-PostgreSQL 数据卷（`postgres_data`）不会动，Flyway 自动跑增量迁移 + 自愈 checksum 变化。**版本号写在 `mateclaw-server/pom.xml` 和 git tag**，生产环境建议钉 tag 而不是 `dev` 分支。
+PostgreSQL 数据卷（`postgres_data`）不会动，Flyway 自动跑增量迁移 + 自愈 checksum 变化。**版本号写在 `snsclaw-server/pom.xml` 和 git tag**，生产环境建议钉 tag 而不是 `dev` 分支。
 
 ---
 

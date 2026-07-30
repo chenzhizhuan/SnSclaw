@@ -135,7 +135,7 @@ head:
 - `remember` / `remember_structured` / `forget_structured`（子员工不能写入父员工的长期记忆）
 - `create_employee`（子员工不能凭空造新员工）
 
-这组默认拒绝列表可通过 `mateclaw.delegation.child-denied-tools` 调整。
+这组默认拒绝列表可通过 `snsclaw.delegation.child-denied-tools` 调整。
 
 委派和[目标系统](./goals)配合使用——父员工定目标、拆任务、把子任务委派下去，子员工专注执行。
 

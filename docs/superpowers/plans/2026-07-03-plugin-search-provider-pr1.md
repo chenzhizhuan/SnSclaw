@@ -1233,7 +1233,7 @@ mvn spring-boot:run
 2. `插件搜索提供商已注册: demo-search (order=500)`
 3. 无 id 冲突/rollback 报错。
 
-再验证 disable 路径：登录（admin/SnS3.14@W）→ 插件页关掉该插件 → 日志出现 `插件搜索提供商已反注册: demo-search` 与 `Plugin disabled: ... search=1`。
+再验证 disable 路径：登录（admin/admin123）→ 插件页关掉该插件 → 日志出现 `插件搜索提供商已反注册: demo-search` 与 `Plugin disabled: ... search=1`。
 
 验证完清理：
 

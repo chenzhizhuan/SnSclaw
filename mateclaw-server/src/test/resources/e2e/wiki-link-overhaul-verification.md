@@ -11,7 +11,7 @@ async job lifecycle, and prompt-template variable substitution.
 | | |
 |---|---|
 | Base URL | `http://localhost:18088` |
-| Auth | `POST /api/v1/auth/login` with `{username:"admin", password:"SnS3.14@W"}` |
+| Auth | `POST /api/v1/auth/login` with `{username:"admin", password:"admin123"}` |
 | JWT header | `Authorization: Bearer <token>` on every other call |
 | Test KB | A fresh KB is created at section §1.0 so verification doesn't mutate existing data |
 | H2 console | `http://localhost:18088/h2-console` (for DB cross-check) |

@@ -43,7 +43,7 @@ That's the line between "let AI do work for you" and "let AI make decisions for 
 ```bash
 curl -X POST http://localhost:18088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "SnS3.14@W"}'
+  -d '{"username": "admin", "password": "admin123"}'
 ```
 
 Response:
@@ -72,7 +72,7 @@ SnSclaw does sliding-window token renewal. When a token's remaining lifetime fal
 ### Configuration
 
 ```yaml
-mateclaw:
+snsclaw:
   jwt:
     secret: your-secret-key-must-be-at-least-32-characters-long
     expiration: 86400000          # token lifetime (ms, default 24h)
@@ -94,7 +94,7 @@ Frontend handles both uniformly — redirect to login, clear stored tokens.
 
 ### Default credentials
 
-SnSclaw ships with `admin` / `SnS3.14@W`. **Change this immediately in any deployment other than your laptop.**
+SnSclaw ships with `admin` / `admin123`. **Change this immediately in any deployment other than your laptop.**
 
 ### Spring Security config
 
@@ -165,7 +165,7 @@ Read-only shell commands execute immediately. Anything else needs approval. File
 `Settings → Security & Approval → Tool Guard Rules`: list, create, edit, reorder, disable. Or via config:
 
 ```yaml
-mateclaw:
+snsclaw:
   tool:
     guard:
       enabled: true
@@ -361,7 +361,7 @@ Allow / Deny
 Allowed / denied path rules live in the database and are managed from the admin Security page or `GET` / `PUT /api/v1/security/guard/config/file-guard` — **not application.yml**. The only YAML piece is the **global fallback sandbox root** that file/shell tools are confined to when a conversation has no per-workspace base path:
 
 ```yaml
-mateclaw:
+snsclaw:
   workspace:
     sandbox:
       enabled: true                    # set false to restore the legacy unconstrained behaviour
@@ -501,10 +501,10 @@ Scan reports live in `Settings → Security & Approval → Skill Scans`.
 ```nginx
 server {
     listen 443 ssl;
-    server_name mateclaw.example.com;
+    server_name snsclaw.example.com;
 
-    ssl_certificate /etc/ssl/certs/mateclaw.pem;
-    ssl_certificate_key /etc/ssl/private/mateclaw.key;
+    ssl_certificate /etc/ssl/certs/snsclaw.pem;
+    ssl_certificate_key /etc/ssl/private/snsclaw.key;
 
     location / {
         proxy_pass http://localhost:18080;
@@ -532,7 +532,7 @@ Every **outbound HTTP request an agent can drive** carries SSRF protection by de
 
 Address classes blocked by default: loopback (`127.0.0.0/8`, `::1`), private (`10/8`, `172.16/12`, `192.168/16`), link-local (`169.254/16`, `fe80::/10`), any-local, multicast, and cloud metadata endpoints (`169.254.169.254`, `100.100.100.200`, `192.0.0.192`, …).
 
-#### Allowing internal addresses: `mateclaw.security.ssrf-allowlist`
+#### Allowing internal addresses: `snsclaw.security.ssrf-allowlist`
 
 When an agent legitimately needs to reach an internal service, add it to the shared allowlist. **One setting, applied across all three outbound paths.** Each entry is one of:
 
@@ -543,7 +543,7 @@ When an agent legitimately needs to reach an internal service, add it to the sha
 | IPv4 CIDR block | `192.168.100.0/24` | matches every IP in the range |
 
 ```yaml
-mateclaw:
+snsclaw:
   security:
     ssrf-allowlist:
       - 192.168.100.100      # a single internal address
@@ -557,7 +557,7 @@ The allowlist opens **only the entries you list**: `192.168.100.0/24` does not a
 Allowlist entries **can re-expose cloud metadata endpoints** (e.g. `169.254.169.254`). Once exposed, a compromised agent could use one to steal cloud credentials. Add only the internal addresses you actually need, and **never** open things up with a broad CIDR such as `0.0.0.0/0` or `10.0.0.0/8`.
 :::
 
-The browser tool also has a master switch `mateclaw.browser.ssrf-check-enabled` (default `true`). Setting it to `false` **disables the SSRF check entirely** for the browser path — including the metadata endpoints — and is discouraged; prefer the allowlist above for precise exceptions.
+The browser tool also has a master switch `snsclaw.browser.ssrf-check-enabled` (default `true`). Setting it to `false` **disables the SSRF check entirely** for the browser path — including the metadata endpoints — and is discouraged; prefer the allowlist above for precise exceptions.
 
 ---
 
@@ -580,7 +580,7 @@ The browser tool also has a master switch `mateclaw.browser.ssrf-check-enabled` 
 application.yml carries **three** security-related blocks — JWT, the filesystem sandbox, and the outbound request allowlist:
 
 ```yaml
-mateclaw:
+snsclaw:
   jwt:
     secret: ${JWT_SECRET:your-secret-key-at-least-32-chars}
     expiration: 86400000          # token lifetime (milliseconds)

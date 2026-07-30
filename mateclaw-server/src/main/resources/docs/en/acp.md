@@ -169,7 +169,7 @@ acp:
   endpoint: claude-code
   systemPrefix: |
     You are working inside the SnSclaw repo. Always run `mvn test` before reporting done.
-  cwd: /workspaces/mateclaw
+  cwd: /workspaces/snsclaw
 ```
 
 This is how the `claude-code-helper` and `codex-helper` skill templates ship.

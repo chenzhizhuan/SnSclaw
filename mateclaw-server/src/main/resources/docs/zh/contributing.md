@@ -11,14 +11,14 @@
 ### 1. Fork 并克隆
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/mateclaw.git
-cd mateclaw
+git clone https://github.com/YOUR_USERNAME/snsclaw.git
+cd snsclaw
 ```
 
 ### 2. 启动后端
 
 ```bash
-cd mateclaw-server
+cd snsclaw-server
 mvn spring-boot:run
 ```
 
@@ -31,7 +31,7 @@ mvn spring-boot:run
 ### 3. 启动前端
 
 ```bash
-cd mateclaw-ui
+cd snsclaw-ui
 pnpm install
 pnpm dev
 ```
@@ -40,7 +40,7 @@ pnpm dev
 
 ### 4. 验证
 
-打开 [http://localhost:5173](http://localhost:5173)。用 `admin` / `SnS3.14@W` 登录。在 `设置 → 模型` 里加一个供应商。发一条测试消息。如果 token 流式回来，你就准备好了。
+打开 [http://localhost:5173](http://localhost:5173)。用 `admin` / `admin123` 登录。在 `设置 → 模型` 里加一个供应商。发一条测试消息。如果 token 流式回来，你就准备好了。
 
 ---
 
@@ -130,7 +130,7 @@ chore(deps): upgrade Spring Boot to 3.5.1
 
 - **一个节点**（reasoning、action、observation、plan generation）——在 `vip.mate.agent.graph.node` 或 `vip.mate.agent.graph.plan.node`
 - **一条边**或 **dispatcher**——在 `vip.mate.agent.graph.edge` 或 `vip.mate.agent.graph.plan.edge`
-- **一个 state key**——在 `vip.mate.agent.graph.state.MateClawStateKeys`
+- **一个 state key**——在 `vip.mate.agent.graph.state.SnSclawStateKeys`
 
 把这些拼起来的 builder 是 `AgentGraphBuilder`。节点的流式事件通过 `GraphEventPublisher` 和 `NodeStreamingChatHelper` 发出去。
 
@@ -241,7 +241,7 @@ onMounted(async () => {
 ### 后端测试
 
 ```bash
-cd mateclaw-server
+cd snsclaw-server
 mvn test                                  # 全部测试
 mvn test -Dtest=StateGraphReActAgentTest  # 单个类
 mvn test -Dtest=StateGraphReActAgentTest#testChat  # 单个方法
@@ -250,7 +250,7 @@ mvn test -Dtest=StateGraphReActAgentTest#testChat  # 单个方法
 ### 前端类型检查和 lint
 
 ```bash
-cd mateclaw-ui
+cd snsclaw-ui
 pnpm build          # vue-tsc 类型检查 + vite build
 pnpm lint           # ESLint 自动修复
 ```

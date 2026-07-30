@@ -42,7 +42,7 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=19090"
 ### 启动时 H2 数据库锁错误
 
 ```bash
-rm -f data/mateclaw.mv.db.lock
+rm -f data/snsclaw.mv.db.lock
 ```
 
 或者清空数据目录重新开始：
@@ -57,7 +57,7 @@ rm -rf data/
 
 ### 默认凭证是什么？
 
-用户名 `admin`，密码 `SnS3.14@W`。**任何真实部署都要立刻改。**
+用户名 `admin`，密码 `admin123`。**任何真实部署都要立刻改。**
 
 ### 我的 JWT token 老过期
 
@@ -146,14 +146,14 @@ public class MyCustomTool {
 1. **给具体的命令模式加一条 allow 规则**（`设置 → 安全与审批 → Tool Guard 规则`）。例子：`ShellExecuteTool`，参数模式 `^(ls|cat|grep|find)\s` → `allow`。
 2. **把默认策略调成 `allow`**（`application.yml`）：
    ```yaml
-   mateclaw:
+   snsclaw:
      tool:
        guard:
          default-policy: allow   # 生产不推荐
    ```
 3. **完全关掉 Tool Guard**（**只开发**）：
    ```yaml
-   mateclaw:
+   snsclaw:
      tool:
        guard:
          enabled: false
@@ -282,22 +282,22 @@ UI 里用 `工具 → MCP 服务`。三种传输模式：stdio、streamable_http
 
 ### 怎么备份数据？
 
-**H2（开发 / 桌面）：** 停服务，拷贝 `./data/mateclaw.mv.db`：
+**H2（开发 / 桌面）：** 停服务，拷贝 `./data/snsclaw.mv.db`：
 
 ```bash
-cp ./data/mateclaw.mv.db ./backup/mateclaw-$(date +%Y%m%d).mv.db
+cp ./data/snsclaw.mv.db ./backup/snsclaw-$(date +%Y%m%d).mv.db
 ```
 
 **MySQL（生产）：**
 
 ```bash
-mysqldump -u root -p mateclaw > mateclaw-backup-$(date +%Y%m%d).sql
+mysqldump -u root -p snsclaw > snsclaw-backup-$(date +%Y%m%d).sql
 ```
 
 **Docker：**
 
 ```bash
-docker exec mateclaw-mysql mysqldump -u root -p${MYSQL_ROOT_PASSWORD} mateclaw > backup.sql
+docker exec snsclaw-mysql mysqldump -u root -p${MYSQL_ROOT_PASSWORD} snsclaw > backup.sql
 ```
 
 **桌面端**数据在每个用户目录下：
@@ -331,8 +331,8 @@ docker exec mateclaw-mysql mysqldump -u root -p${MYSQL_ROOT_PASSWORD} mateclaw >
 ### Docker 容器起不来
 
 ```bash
-docker compose logs mateclaw-server
-docker compose logs mateclaw-mysql
+docker compose logs snsclaw-server
+docker compose logs snsclaw-mysql
 ```
 
 常见：
@@ -344,7 +344,7 @@ docker compose logs mateclaw-mysql
 ### 怎么在 Docker 里访问数据库？
 
 ```bash
-docker exec -it mateclaw-mysql mysql -u root -p mateclaw
+docker exec -it snsclaw-mysql mysql -u root -p snsclaw
 ```
 
 ---
@@ -371,7 +371,7 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--logging.level.vip.mate=DEBUG"
 ### 怎么访问 H2 console？
 
 1. 访问 `http://localhost:18088/h2-console`
-2. JDBC URL：`jdbc:h2:file:./data/mateclaw`
+2. JDBC URL：`jdbc:h2:file:./data/snsclaw`
 3. 用户名：`sa`
 4. 密码：（空）
 
@@ -396,9 +396,9 @@ curl -N -X POST 'http://localhost:18088/api/v1/chat/stream' \
 ### 构建后前端显示空白页
 
 ```bash
-cd mateclaw-ui
+cd snsclaw-ui
 pnpm build
-ls ../mateclaw-server/src/main/resources/static/
+ls ../snsclaw-server/src/main/resources/static/
 # 应该包含 index.html 和资源文件
 ```
 

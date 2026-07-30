@@ -192,14 +192,14 @@ The database is the source of truth, the filesystem is a materialized cache. Tha
 | `id` | Primary key |
 | `skill_id` | FK to `mate_skill` |
 | `file_path` | Relative path like `scripts/run.py` or `references/cfg.md` |
-| `content` | UTF-8 text (defaults: ≤1 MB per file, ≤50 MB per bundle — configurable via `mateclaw.skill.upload.max-entry-size-mb` / `max-total-size-mb`) |
+| `content` | UTF-8 text (defaults: ≤1 MB per file, ≤50 MB per bundle — configurable via `snsclaw.skill.upload.max-entry-size-mb` / `max-total-size-mb`) |
 | `content_size` | Byte count (so listings don't have to load the blob) |
 | `sha256` | Content fingerprint, drives the syncer's idempotent diff |
 
 ### Filesystem: skill workspace
 
 ```
-~/.mateclaw/skills/
+~/.snsclaw/skills/
 ├── translate/
 │   ├── SKILL.md               # Skill definition
 │   ├── references/            # Reference materials
@@ -228,7 +228,7 @@ Two sync passes run at boot, so every node has the latest bundle:
 
 Third-party packagers package weirdly — some put `setup.sh` at the zip root, some emit `scripts/` entries before `SKILL.md`. As of v1.3, `ZipSkillFetcher`:
 
-- **Two-pass extraction** — the entire archive is buffered in memory first (cap-protected, 50 MB by default via `mateclaw.skill.upload.max-total-size-mb`), `SKILL.md` is located and the wrapper-dir prefix computed, then entries are classified. **Zip entry order no longer affects the result.**
+- **Two-pass extraction** — the entire archive is buffered in memory first (cap-protected, 50 MB by default via `snsclaw.skill.upload.max-total-size-mb`), `SKILL.md` is located and the wrapper-dir prefix computed, then entries are classified. **Zip entry order no longer affects the result.**
 - **Root-level extension fallback** — files sitting next to `SKILL.md` that aren't already under a known bucket get classified by extension: `.sh / .py / .js / .rb / ...` → `scripts/`, `.md / .json / .yaml / .csv / ...` → `references/`. Unknown extensions are dropped with a `WARN` line so packaging mistakes surface instead of vanishing.
 - **Write-then-prune + empty-bundle guard** — reinstalls **write new files first, then prune anything in the bucket that's not in the new bundle**. If the new bundle has zero entries for a bucket (`scripts/` or `references/`), the disk copies for that bucket are **left alone** — a malformed re-extract can no longer wipe your scripts. Pass `forcePrune=true` if you really want to clear a bucket via an intentionally empty bundle.
 - **No more mojibake in CJK file names** (2.0.0) — zip entry names and file content have their encodings **detected independently**: an archive built by a Windows packer with GBK entry names and UTF-8 content decodes each side correctly, so you no longer get "garbled names but readable content" (or the reverse) after install.
@@ -238,10 +238,10 @@ Third-party packagers package weirdly — some put `setup.sh` at the zip root, s
 ### Configuration
 
 ```yaml
-mateclaw:
+snsclaw:
   skill:
     workspace:
-      root: ${user.home}/.mateclaw/skills
+      root: ${user.home}/.snsclaw/skills
       auto-init: true
       delete-policy: archive                 # `archive` or `ignore`
       bundled-skills-path: skills
@@ -505,7 +505,7 @@ Then when the agent runs setup.sh or scripts/tencent_meeting.py:
   → mcporter / Python script calls the Tencent API → meeting ID returned
 ```
 
-No `~/.zshrc` edit, no mateclaw restart needed.
+No `~/.zshrc` edit, no snsclaw restart needed.
 
 ---
 
@@ -549,7 +549,7 @@ Dumping every skill's full SKILL.md into the system prompt doesn't scale — it 
 - The catalog guidance tells the model to `load_skill(skillName=<name>)` before using a skill, and to call it directly when the user names a specific skill.
 
 ```yaml
-mateclaw:
+snsclaw:
   skill:
     disclosure:
       load-skill-tool:
@@ -568,7 +568,7 @@ Don't want to prompt the employee in natural language about which skill to use? 
 - The list comes from `GET /api/v1/skills/enabled` — real skills plus MCP/ACP-derived virtual skills (a real skill shadows a same-named virtual one). Cached per workspace for 30 seconds so reopening doesn't re-fetch.
 - Selecting a skill inserts a directive into the box: `Use the "skill name" skill: `, cursor at the end, ready for you to add context and send. The employee sees the directive in message history and runs `load_skill` to pull it.
 
-The menu shows whenever **an employee is selected and that employee hasn't disabled skills** (the frontend checks `currentAgent && !skillsDisabled`) — it is unrelated to the global progressive-disclosure switch. Setting `mateclaw.skill.disclosure.load-skill-tool.enabled` to `false` globally only stops the backend from registering the `load_skill` tool; the menu still opens (the employee just falls back to pulling skills via `readSkillFile` and similar).
+The menu shows whenever **an employee is selected and that employee hasn't disabled skills** (the frontend checks `currentAgent && !skillsDisabled`) — it is unrelated to the global progressive-disclosure switch. Setting `snsclaw.skill.disclosure.load-skill-tool.enabled` to `false` globally only stops the backend from registering the `load_skill` tool; the menu still opens (the employee just falls back to pulling skills via `readSkillFile` and similar).
 
 ---
 
@@ -588,7 +588,7 @@ Agents that synthesize skills accumulate cruft — a one-off skill from three we
 ### Configuration
 
 ```yaml
-mateclaw:
+snsclaw:
   skill:
     curator:
       enabled: true

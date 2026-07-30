@@ -105,7 +105,7 @@
 ## 模块布局
 
 ```
-mateclaw-desktop/
+snsclaw-desktop/
 ├── electron/
 │   ├── main/index.ts           # 主进程——后端生命周期、自动更新、托盘
 │   └── preload/index.ts        # IPC 桥
@@ -124,7 +124,7 @@ mateclaw-desktop/
 ## 开发模式
 
 ```bash
-cd mateclaw-desktop
+cd snsclaw-desktop
 pnpm install
 pnpm dev
 ```
@@ -143,7 +143,7 @@ pnpm dev
 ## 生产构建
 
 ```bash
-cd mateclaw-desktop
+cd snsclaw-desktop
 pnpm build && npx electron-builder --mac     # macOS
 pnpm build && npx electron-builder --win     # Windows
 pnpm build && npx electron-builder --linux   # Linux
@@ -161,19 +161,19 @@ pnpm build && npx electron-builder --linux   # Linux
 
 ```bash
 # 1. 构建前端静态资源
-cd mateclaw-ui
+cd snsclaw-ui
 pnpm install && pnpm build
 
 # 2. 构建后端 JAR
-cd ../mateclaw-server
+cd ../snsclaw-server
 mvn clean package -DskipTests
 
 # 3. 把 JAR 拷到桌面项目
-JAR_FILE=$(ls -1 target/mateclaw-server-*.jar | grep -v sources | head -n 1)
-cp "$JAR_FILE" ../mateclaw-desktop/resources/app.jar
+JAR_FILE=$(ls -1 target/snsclaw-server-*.jar | grep -v sources | head -n 1)
+cp "$JAR_FILE" ../snsclaw-desktop/resources/app.jar
 
 # 4. 下载平台特定的 JRE
-cd ../mateclaw-desktop
+cd ../snsclaw-desktop
 bash scripts/download-jre.sh
 
 # 5. 构建桌面安装包
@@ -215,7 +215,7 @@ Electron 主进程通过 Node.js `child_process` 管理 Spring Boot 后端：
     {
       "provider": "github",
       "owner": "matevip",
-      "repo": "mateclaw"
+      "repo": "snsclaw"
     }
   ]
 }
@@ -223,7 +223,7 @@ Electron 主进程通过 Node.js `child_process` 管理 Spring Boot 后端：
 
 ### UI 热更新（不用重新打包）
 
-**前端资源可以独立热更新**——只改前端的修复不需要重发新安装器。看 `mateclaw-desktop/scripts/` 和 `desktop-ui-hot-update.md`。
+**前端资源可以独立热更新**——只改前端的修复不需要重发新安装器。看 `snsclaw-desktop/scripts/` 和 `desktop-ui-hot-update.md`。
 
 ---
 
@@ -272,7 +272,7 @@ Electron 主进程通过 Node.js `child_process` 管理 Spring Boot 后端：
 
 ### 代码签名警告
 
-- **macOS**——右键选**打开**绕过 Gatekeeper（首次启动）。生产分发：Apple Developer 证书做签名和公证。看 `mateclaw-desktop/CODESIGNING.md`。
+- **macOS**——右键选**打开**绕过 Gatekeeper（首次启动）。生产分发：Apple Developer 证书做签名和公证。看 `snsclaw-desktop/CODESIGNING.md`。
 - **Windows**——SmartScreen 警告 → **更多信息 → 仍要运行**。生产分发：EV 代码签名证书。
 
 ### 桌面 app 启动不了

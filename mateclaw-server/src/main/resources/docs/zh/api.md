@@ -1,6 +1,6 @@
 # API 参考
 
-本页以 `mateclaw-server/src/main/java` 下的 Spring MVC Controller 注解为准。下面的路由索引由源码注解重建；如果它和旧功能页冲突，以本页和源码为接口契约。
+本页以 `snsclaw-server/src/main/java` 下的 Spring MVC Controller 注解为准。下面的路由索引由源码注解重建；如果它和旧功能页冲突，以本页和源码为接口契约。
 
 > 想要机读的 OpenAPI 文档（导入 Postman / Apifox、在线调试）？见 [OpenAPI / Swagger 指南](./openapi.md) —— 部署后访问 `/swagger-ui.html`。
 
@@ -140,7 +140,7 @@ Authorization: Bearer <token>
 2. **Personal Access Token (PAT)**：`Authorization: Bearer <pat>`。以 `mc_` 前缀开头，用于 headless / CI / SDK 场景。PAT 在 `POST /api/v1/auth/tokens` 创建时**明文只返回一次**，之后只存哈希。filter 按 `mc_` 前缀分发到 PAT 校验路径。
 3. **SSE 的 `?token=` 查询参数**：浏览器原生 `EventSource` 不能设置自定义请求头，SSE 流式端点额外接受 `?token=<token>`（JWT 或 PAT 均可）。
 
-**滑动续期**：JWT 接近过期（默认剩余 < 2 小时）时，响应头回传新 token —— `X-New-Token: <newJwt>`（同时设 `Access-Control-Expose-Headers: X-New-Token`）。客户端应监听并替换本地存储的 token。JWT TTL 默认 24 小时（`mateclaw.jwt.expiration=86400000`）。
+**滑动续期**：JWT 接近过期（默认剩余 < 2 小时）时，响应头回传新 token —— `X-New-Token: <newJwt>`（同时设 `Access-Control-Expose-Headers: X-New-Token`）。客户端应监听并替换本地存储的 token。JWT TTL 默认 24 小时（`snsclaw.jwt.expiration=86400000`）。
 
 ### `X-Workspace-Id` 的工作机制
 
@@ -156,7 +156,7 @@ Authorization: Bearer <token>
 ```bash
 curl -X POST http://localhost:18088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"SnS3.14@W"}'
+  -d '{"username":"admin","password":"admin123"}'
 ```
 
 ### 聊天
@@ -230,7 +230,7 @@ curl -N -X POST http://localhost:18088/api/v1/chat/stream \
 ```bash
 curl -X POST http://localhost:18088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"SnS3.14@W"}'
+  -d '{"username":"admin","password":"admin123"}'
 ```
 
 ### 流式对话：`POST /api/v1/chat/stream`
@@ -378,7 +378,7 @@ curl "http://localhost:18088/api/v1/audit/events?page=1&size=20&resourceType=AGE
 3. 需登录（非 `@RequireGlobalAdmin`）。
 
 ```bash
-curl -X PUT "http://localhost:18088/api/v1/auth/users/1/password?oldPassword=SnS3.14@W&newPassword=newPass456" \
+curl -X PUT "http://localhost:18088/api/v1/auth/users/1/password?oldPassword=admin123&newPassword=newPass456" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

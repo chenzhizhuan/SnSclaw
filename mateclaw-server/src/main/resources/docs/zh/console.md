@@ -64,7 +64,7 @@
 
 **API：** `POST /api/v1/auth/login`
 
-**默认凭证：** `admin` / `SnS3.14@W`——**立刻改掉**。
+**默认凭证：** `admin` / `admin123`——**立刻改掉**。
 
 ---
 
@@ -553,10 +553,10 @@ fetch('/api/v1/chat/stream', {
 ## 构建和开发
 
 ```bash
-cd mateclaw-ui
+cd snsclaw-ui
 pnpm install
 pnpm dev          # 5173 端口，把 /api proxy 到 18088
-pnpm build        # vue-tsc + vite build，产物进 ../mateclaw-server/.../static
+pnpm build        # vue-tsc + vite build，产物进 ../snsclaw-server/.../static
 pnpm lint         # ESLint
 ```
 

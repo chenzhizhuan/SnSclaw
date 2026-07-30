@@ -153,7 +153,7 @@ Enter the user code in your browser, authorize, and the dialog closes itself the
 
 **How SnSclaw decides which flow to use:**
 
-| `mateclaw.oauth.openai.deployment-mode` | Behaviour |
+| `snsclaw.oauth.openai.deployment-mode` | Behaviour |
 |---|---|
 | `auto` *(default)* | `localhost` / `127.0.0.1` / `::1` → browser callback; everything else → device code |
 | `local` | Force browser callback (loopback server) |
@@ -375,7 +375,7 @@ The setting stores `mate_model_config.id` rather than `model_name` — the same 
 
 The dropdown only lists models that **actually support the relevant modality** — filtered by `ModelCapabilityService.supports(...)` on the backend; disabled providers or models without a declared vision capability never appear. Each card has its own Save button, independent of the other.
 
-When does it fire? `MultimodalRouter` ([source](https://github.com/chenzhizhuan/SnSclaw/blob/main/mateclaw-server/src/main/java/vip/mate/llm/routing/MultimodalRouter.java)) decides per turn:
+When does it fire? `MultimodalRouter` ([source](https://github.com/chenzhizhuan/SnSclaw/blob/main/snsclaw-server/src/main/java/vip/mate/llm/routing/MultimodalRouter.java)) decides per turn:
 
 - Primary already supports vision → no routing (native multimodal path)
 - Primary lacks vision + vision sidecar configured → SIDECAR strategy, captions to text

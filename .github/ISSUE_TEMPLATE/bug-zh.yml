@@ -33,7 +33,7 @@ body:
       description: |
         让一个完全不知情的人能按步骤复现。**说不出步骤的现象不是 bug，是猜想。**
       placeholder: |
-        1. 用 admin / SnS3.14@W 登录，新建工作区 ws-b
+        1. 用 admin / admin123 登录，新建工作区 ws-b
         2. 添加用户 bob 为 ws-b 的 member
         3. 注销，用 bob 登录，前端切到 ws-b
         4. 点 Agents 页面 → 「从模板创建」 → 选 assistant → 应用

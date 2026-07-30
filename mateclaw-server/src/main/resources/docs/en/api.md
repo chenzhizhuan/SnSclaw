@@ -1,6 +1,6 @@
 # API Reference
 
-This page is source-aligned with the Spring MVC controllers under `mateclaw-server/src/main/java`. The route inventory below was rebuilt from controller annotations; when it conflicts with an older feature page, this page and the source code are the contract.
+This page is source-aligned with the Spring MVC controllers under `snsclaw-server/src/main/java`. The route inventory below was rebuilt from controller annotations; when it conflicts with an older feature page, this page and the source code are the contract.
 
 > Want a machine-readable OpenAPI doc (import into Postman / Apifox, online debugging)? See the [OpenAPI / Swagger guide](./openapi.md) — visit `/swagger-ui.html` on your deployment.
 
@@ -140,7 +140,7 @@ Common query params: `page` (default 1), `size` (default 20). Examples: `GET /ap
 2. **Personal Access Token (PAT)**: `Authorization: Bearer <pat>`. Prefixed with `mc_`, for headless / CI / SDK use. The plaintext is returned **only once** at `POST /api/v1/auth/tokens` creation; only the hash is stored afterwards. The filter dispatches by the `mc_` prefix to the PAT verification path.
 3. **SSE `?token=` query param**: the native browser `EventSource` cannot set custom headers, so SSE streaming endpoints additionally accept `?token=<token>` (JWT or PAT).
 
-**Sliding renewal**: when a JWT is near expiry (default < 2h remaining), the response header returns a fresh token — `X-New-Token: <newJwt>` (with `Access-Control-Expose-Headers: X-New-Token`). Clients should watch for and replace the locally stored token. JWT TTL defaults to 24h (`mateclaw.jwt.expiration=86400000`).
+**Sliding renewal**: when a JWT is near expiry (default < 2h remaining), the response header returns a fresh token — `X-New-Token: <newJwt>` (with `Access-Control-Expose-Headers: X-New-Token`). Clients should watch for and replace the locally stored token. JWT TTL defaults to 24h (`snsclaw.jwt.expiration=86400000`).
 
 ### How `X-Workspace-Id` works
 
@@ -156,7 +156,7 @@ Common query params: `page` (default 1), `size` (default 20). Examples: `GET /ap
 ```bash
 curl -X POST http://localhost:18088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"SnS3.14@W"}'
+  -d '{"username":"admin","password":"admin123"}'
 ```
 
 ### Chat
@@ -230,7 +230,7 @@ Public endpoint (no auth required). Exchanges credentials for a JWT.
 ```bash
 curl -X POST http://localhost:18088/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"SnS3.14@W"}'
+  -d '{"username":"admin","password":"admin123"}'
 ```
 
 ### Streaming chat: `POST /api/v1/chat/stream`
@@ -378,7 +378,7 @@ Three things to note (they differ from intuition):
 3. Requires login (not `@RequireGlobalAdmin`).
 
 ```bash
-curl -X PUT "http://localhost:18088/api/v1/auth/users/1/password?oldPassword=SnS3.14@W&newPassword=newPass456" \
+curl -X PUT "http://localhost:18088/api/v1/auth/users/1/password?oldPassword=admin123&newPassword=newPass456" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

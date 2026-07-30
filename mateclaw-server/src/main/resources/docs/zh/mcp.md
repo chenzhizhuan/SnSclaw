@@ -390,7 +390,7 @@ SnSclaw 支持把**认证用户名**注入到每次工具调用的参数里，�
 默认关闭——全量注入会把用户名泄漏给任意第三方 MCP server。用允许清单按 **server 名或 id** 开启：
 
 ```yaml
-mateclaw:
+snsclaw:
   mcp:
     identity-forward:
       servers:
@@ -400,7 +400,7 @@ mateclaw:
 
 ### 数据契约
 
-开启后，SnSclaw 在调用该 server 的每个工具时，往参数 JSON 里注入保留字段 **`__mateclaw_user__`**（值=认证用户名）。该值由受信服务端注入、**不经 LLM**；若 LLM 伪造了同名字段会被覆盖，因此模型无法冒充身份。无认证用户时不注入（不伪造身份）。
+开启后，SnSclaw 在调用该 server 的每个工具时，往参数 JSON 里注入保留字段 **`__snsclaw_user__`**（值=认证用户名）。该值由受信服务端注入、**不经 LLM**；若 LLM 伪造了同名字段会被覆盖，因此模型无法冒充身份。无认证用户时不注入（不伪造身份）。
 
 MCP server 侧读出该字段、剥掉，再连同自己持有的后端 API Key 一起调 REST（如 `X-On-Behalf-Of` header）：
 
@@ -414,12 +414,12 @@ REST_BASE = os.environ["REST_BASE"]          # 后端地址
 API_KEY = os.environ["BACKEND_API_KEY"]      # 服务级 API Key（认证 MCP 服务本身）
 
 @mcp.tool()
-def query_orders(keyword: str, __mateclaw_user__: str | None = None) -> str:
-    if not __mateclaw_user__:
+def query_orders(keyword: str, __snsclaw_user__: str | None = None) -> str:
+    if not __snsclaw_user__:
         raise ValueError("missing injected identity")   # 拒绝无身份调用
     headers = {
         "Authorization": f"ApiKey {API_KEY}",            # 服务身份
-        "X-On-Behalf-Of": __mateclaw_user__,             # 代表的用户
+        "X-On-Behalf-Of": __snsclaw_user__,             # 代表的用户
     }
     r = httpx.get(f"{REST_BASE}/orders", params={"q": keyword}, headers=headers, timeout=30)
     r.raise_for_status()
@@ -429,25 +429,25 @@ if __name__ == "__main__":
     mcp.run()   # STDIO
 ```
 
-> 工具的入参 schema 若是 `additionalProperties: false`，记得像上面那样把 `__mateclaw_user__` 声明为可选参数，否则严格校验会拒绝。
+> 工具的入参 schema 若是 `additionalProperties: false`，记得像上面那样把 `__snsclaw_user__` 声明为可选参数，否则严格校验会拒绝。
 
 ### 两种信任模型
 
 **① 明文（默认）**：注入明文用户名。适合 REST 在内网、且后端用 API Key 认证 MCP 服务、把转发用户当 on-behalf-of 的场景。后端裸信这个字符串。
 
-**② 签名 token（推荐用于跨信任边界）**：注入一个 SnSclaw 用私钥现签的**短时 RS256 JWT**（保留字段换成 **`__mateclaw_token__`**），REST 后端用**公钥验签**——它信任的是签名，而非 MCP 服务/Python/传输。
+**② 签名 token（推荐用于跨信任边界）**：注入一个 SnSclaw 用私钥现签的**短时 RS256 JWT**（保留字段换成 **`__snsclaw_token__`**），REST 后端用**公钥验签**——它信任的是签名，而非 MCP 服务/Python/传输。
 
 ```yaml
-mateclaw:
+snsclaw:
   mcp:
     identity-forward:
       servers:
         - my-internal-api
       token:
         enabled: true
-        issuer: mateclaw
+        issuer: snsclaw
         ttl-seconds: 60                 # 短时，几十秒
-        key-id: mateclaw-mcp-1
+        key-id: snsclaw-mcp-1
         private-key-pem: ${MCP_IDFWD_PRIVATE_KEY_PEM:}   # PKCS#8 PEM（RS256 私钥）
         audiences:                      # 可选；默认 aud = server 名
           my-internal-api: https://api.internal
@@ -469,10 +469,10 @@ MCP server（Python）只透传、不验签：
 
 ```python
 @mcp.tool()
-def query_orders(keyword: str, __mateclaw_token__: str | None = None) -> str:
-    if not __mateclaw_token__:
+def query_orders(keyword: str, __snsclaw_token__: str | None = None) -> str:
+    if not __snsclaw_token__:
         raise ValueError("missing identity token")
-    headers = {"Authorization": f"Bearer {__mateclaw_token__}"}   # 直接透传给 REST
+    headers = {"Authorization": f"Bearer {__snsclaw_token__}"}   # 直接透传给 REST
     return httpx.get(f"{REST_BASE}/orders", params={"q": keyword}, headers=headers, timeout=30).text
 ```
 
@@ -481,7 +481,7 @@ REST 后端验签（伪代码）：
 ```python
 import jwt  # PyJWT
 claims = jwt.decode(token, public_key_pem, algorithms=["RS256"],
-                    issuer="mateclaw", audience="https://api.internal")
+                    issuer="snsclaw", audience="https://api.internal")
 user = claims["sub"]            # 验签通过才相信
 # → 按 user 做 per-user 授权；验签失败/过期 → 401
 ```

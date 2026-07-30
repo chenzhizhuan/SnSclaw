@@ -169,7 +169,7 @@ acp:
   endpoint: claude-code
   systemPrefix: |
     你正在 SnSclaw 仓库里工作。报完成前一定要先跑 `mvn test`。
-  cwd: /workspaces/mateclaw
+  cwd: /workspaces/snsclaw
 ```
 
 `claude-code-helper` 和 `codex-helper` 这两个出厂技能模板就是这么做的。

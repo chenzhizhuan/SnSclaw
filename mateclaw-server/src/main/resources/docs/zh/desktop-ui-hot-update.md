@@ -2,24 +2,24 @@
 
 ## 背景
 
-当前 `mateclaw-desktop` 的运行链路不是“Electron 直接加载 `mateclaw-ui`”，而是：
+当前 `snsclaw-desktop` 的运行链路不是“Electron 直接加载 `snsclaw-ui`”，而是：
 
 1. Electron 启动并显示本地 Splash。
-2. Electron 用内置 JRE 启动 `mateclaw-server.jar`。
-3. `mateclaw-ui` 已提前构建到 `mateclaw-server/src/main/resources/static`。
+2. Electron 用内置 JRE 启动 `snsclaw-server.jar`。
+3. `snsclaw-ui` 已提前构建到 `snsclaw-server/src/main/resources/static`。
 4. `BrowserWindow` 最终加载 `http://localhost:{动态端口}`（由主进程在启动时随机选取）。
 
 这意味着：
 
 - 现在的 UI 资源和后端 JAR 强绑定。
-- 任何 `mateclaw-ui` 改动，都要重新打包 `mateclaw-server.jar`，再跟着桌面安装包一起发布。
+- 任何 `snsclaw-ui` 改动，都要重新打包 `snsclaw-server.jar`，再跟着桌面安装包一起发布。
 - 现有 `electron-updater` 只能做“整包升级”，不能做“仅 UI 升级”。
 
-因此这里要解决的问题，不是开发态 HMR，而是生产态 OTA：让 `mateclaw-ui` 可以脱离桌面安装包独立更新。
+因此这里要解决的问题，不是开发态 HMR，而是生产态 OTA：让 `snsclaw-ui` 可以脱离桌面安装包独立更新。
 
 ## 目标
 
-- 支持 `mateclaw-ui` 独立于 `mateclaw-desktop` 发布。
+- 支持 `snsclaw-ui` 独立于 `snsclaw-desktop` 发布。
 - UI 更新不要求用户下载新的桌面安装包。
 - 保持当前本地 `localhost` 架构，不把桌面应用直接改成远程网站壳子。
 - 更新失败可回滚到内置 UI。
@@ -35,15 +35,15 @@
 
 ### 1. UI 当前被打进 Spring Boot JAR
 
-`mateclaw-ui` 构建输出目录目前是：
+`snsclaw-ui` 构建输出目录目前是：
 
-- `../mateclaw-server/src/main/resources/static`
+- `../snsclaw-server/src/main/resources/static`
 
 也就是 UI 构建产物直接进入后端静态资源目录，最终随 JAR 发布。
 
 ### 2. Desktop 最终加载的是后端地址
 
-`mateclaw-desktop` 主窗口业务页当前加载：
+`snsclaw-desktop` 主窗口业务页当前加载：
 
 - `http://localhost:{动态端口}`（端口由 Electron 主进程在启动时随机分配）
 
@@ -66,8 +66,8 @@
 
 核心思路：
 
-1. `mateclaw-ui` 产出独立的静态包（zip）。
-2. `mateclaw-desktop` 在启动时检查 UI 更新 Manifest。
+1. `snsclaw-ui` 产出独立的静态包（zip）。
+2. `snsclaw-desktop` 在启动时检查 UI 更新 Manifest。
 3. 下载并校验新的 UI 包后，解压到 `userData/ui-bundles/<version>/`。
 4. Electron 启动后端时，通过环境变量把“当前启用的 UI 目录”传给 Spring Boot。
 5. Spring Boot 优先从外部目录提供静态资源；若外部目录不存在或损坏，则回退到 JAR 内置 `classpath:/static/`。
@@ -105,7 +105,7 @@ Electron Shell
 ├── Splash UI（本地 dist）
 ├── UI Update Manager（新增）
 ├── Bundled JRE
-├── mateclaw-server.jar
+├── snsclaw-server.jar
 └── BrowserWindow → http://localhost:{动态端口}
                      ├── 优先读取 userData/ui-bundles/current/
                      └── fallback 到 classpath:/static/
@@ -170,7 +170,7 @@ Electron Shell
   "latest": {
     "uiVersion": "1.0.4",
     "buildId": "20260410.1",
-    "url": "https://download.example.com/mateclaw/ui/1.0.4/ui-bundle.zip",
+    "url": "https://download.example.com/snsclaw/ui/1.0.4/ui-bundle.zip",
     "sha256": "..."
   },
   "minimumDesktopVersion": "1.0.0",
@@ -190,14 +190,14 @@ Manifest 最好放在稳定的静态地址，不要依赖 GitHub API 动态查�
 
 ### 3. Spring Boot 静态资源加载改造
 
-需要在 `mateclaw-server` 中新增静态资源优先级：
+需要在 `snsclaw-server` 中新增静态资源优先级：
 
-1. 外部目录 `file:${mateclaw.ui.dir}/`
+1. 外部目录 `file:${snsclaw.ui.dir}/`
 2. 内置资源 `classpath:/static/`
 
 实现建议：
 
-- 新增配置项 `mateclaw.ui.dir`
+- 新增配置项 `snsclaw.ui.dir`
 - 在 `WebMvcConfigurer` 中注册资源处理器
 - 对 `/assets/**`、`/icons/**`、`/logo/**`、`/favicon.ico`、`/index.html` 和 SPA 路由统一转发
 - 当外部目录不存在时自动回退内置资源
@@ -313,7 +313,7 @@ UI 热更新本质上是在本地执行新的前端资源，必须做完整校�
 
 ### 当前链路
 
-1. `mateclaw-ui` 构建到后端 `static/`
+1. `snsclaw-ui` 构建到后端 `static/`
 2. Maven 打 JAR
 3. Electron 打包安装包
 4. GitHub Releases 发布
@@ -333,7 +333,7 @@ UI 热更新本质上是在本地执行新的前端资源，必须做完整校�
 
 新增：
 
-1. `mateclaw-ui` 单独构建到临时目录
+1. `snsclaw-ui` 单独构建到临时目录
 2. 生成 `meta.json`
 3. 打 zip
 4. 计算 `sha256`
@@ -358,14 +358,14 @@ UI 热更新本质上是在本地执行新的前端资源，必须做完整校�
 
 需要改动：
 
-- `mateclaw-server`
+- `snsclaw-server`
   - 支持外部静态目录优先级
   - 提供 SPA fallback
-- `mateclaw-desktop`
+- `snsclaw-desktop`
   - 增加 UI Update Manager
   - 增加 Manifest 拉取、下载、校验、解压、指针切换
   - 将 UI 版本信息暴露给 Splash / 设置页
-- `mateclaw-ui`
+- `snsclaw-ui`
   - 构建时生成 `meta.json`
   - 设置页增加当前 UI 版本展示
 
@@ -390,7 +390,7 @@ UI 热更新本质上是在本地执行新的前端资源，必须做完整校�
 
 ## 建议新增模块
 
-### `mateclaw-desktop`
+### `snsclaw-desktop`
 
 建议新增：
 
@@ -402,7 +402,7 @@ UI 热更新本质上是在本地执行新的前端资源，必须做完整校�
 - `ui-updater.ts`：远程检查、下载、校验、解压、切换
 - `ui-runtime.ts`：读取当前 UI 指针、提供给 Java 进程环境变量
 
-### `mateclaw-server`
+### `snsclaw-server`
 
 建议新增：
 
@@ -416,7 +416,7 @@ UI 热更新本质上是在本地执行新的前端资源，必须做完整校�
 - 注册静态资源与 SPA fallback
 - 对前端暴露当前运行版本信息
 
-### `mateclaw-ui`
+### `snsclaw-ui`
 
 建议新增：
 
@@ -489,8 +489,8 @@ UI 热更新本质上是在本地执行新的前端资源，必须做完整校�
 
 如果现在就开始做，建议按下面顺序推进：
 
-1. 先改 `mateclaw-server`，让它支持“外部目录覆盖 classpath static”。
-2. 再改 `mateclaw-desktop`，把 UI 包下载到 `userData/ui-bundles/`，并通过环境变量传给 Java。
+1. 先改 `snsclaw-server`，让它支持“外部目录覆盖 classpath static”。
+2. 再改 `snsclaw-desktop`，把 UI 包下载到 `userData/ui-bundles/`，并通过环境变量传给 Java。
 3. 再补 Manifest、签名校验和版本展示。
 4. 最后再做“运行中更新提示”和“自动回滚”。
 

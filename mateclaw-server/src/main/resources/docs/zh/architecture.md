@@ -75,10 +75,10 @@
 ## 仓库布局
 
 ```
-mateclaw/
-├── mateclaw-server/          # Spring Boot 后端（心脏）
+snsclaw/
+├── snsclaw-server/          # Spring Boot 后端（心脏）
 │   └── src/main/java/vip/mate/
-│       ├── MateClawApplication.java
+│       ├── SnSclawApplication.java
 │       ├── agent/            # StateGraph 运行时、节点、边、状态
 │       ├── planning/         # Plan 和 SubPlan 持久化
 │       ├── workflow/         # 工作流引擎（1.3.0+）：DSL 编译、线性 runtime、payload spill
@@ -110,9 +110,9 @@ mateclaw/
 │       ├── prompts/          # LLM prompt 模板
 │       ├── skills/           # 捆绑的技能包
 │       └── static/           # 前端构建产物
-├── mateclaw-ui/              # Vue 3 管理控制台
-├── mateclaw-desktop/         # Electron 桌面壳
-├── mateclaw-webchat/         # 可嵌入的聊天小部件
+├── snsclaw-ui/              # Vue 3 管理控制台
+├── snsclaw-desktop/         # Electron 桌面壳
+├── snsclaw-webchat/         # 可嵌入的聊天小部件
 ├── matevip-sites/            # 营销和文档站点（pnpm workspace）
 ├── docs/                     # 这份文档（VitePress）
 ├── deploy/                   # 生产部署配置
@@ -137,15 +137,15 @@ mateclaw/
 - `agent/graph/node/`——`ReasoningNode`、`ActionNode`、`ObservationNode`、`FinalAnswerNode`、`SummarizingNode`、`LimitExceededNode`、`GoalEvaluationNode`
 - `agent/graph/plan/node/`——`PlanGenerationNode`、`StepExecutionNode`、`PlanSummaryNode`、`DirectAnswerNode`
 - `agent/graph/edge/` + `plan/edge/`——基于状态决定下一个节点的 dispatcher 函数
-- `agent/graph/state/MateClawStateKeys.java`——共享 state 对象的 key
-- `agent/graph/state/MateClawStateAccessor.java`——state map 的类型化访问器（**别直接动 map**）
+- `agent/graph/state/SnSclawStateKeys.java`——共享 state 对象的 key
+- `agent/graph/state/SnSclawStateAccessor.java`——state map 的类型化访问器（**别直接动 map**）
 - `agent/graph/lifecycle/ReActLifecycleListener.java`——节点级插桩 hook
 - `agent/AgentGraphBuilder.java`——按 Agent 配置拼装节点和边的 builder
 - `agent/GraphEventPublisher.java` + `agent/graph/NodeStreamingChatHelper.java`——流式事件怎么从图里逃到 SSE 流里
 
 ### 怎么扩展
 
-**加 Agent 行为**——在 `agent/graph/node/` 创建新节点，或在 `agent/graph/edge/` 创建新边 dispatcher。把它接进 `AgentGraphBuilder`。通过 `MateClawStateAccessor` 读写 state。
+**加 Agent 行为**——在 `agent/graph/node/` 创建新节点，或在 `agent/graph/edge/` 创建新边 dispatcher。把它接进 `AgentGraphBuilder`。通过 `SnSclawStateAccessor` 读写 state。
 
 **不要**创建新的 `XxxAgent` 类。你会把图已经在做的事情重新实现一遍。
 
@@ -254,7 +254,7 @@ public interface ChannelAdapter {
 
 ### Agent 图节点和边
 
-更深的定制——在 `agent/graph/node/` 加新节点或在 `agent/graph/edge/` 加新 dispatcher。在配置 flag 后面接进 `AgentGraphBuilder`。State 访问走 `MateClawStateAccessor`。
+更深的定制——在 `agent/graph/node/` 加新节点或在 `agent/graph/edge/` 加新 dispatcher。在配置 flag 后面接进 `AgentGraphBuilder`。State 访问走 `SnSclawStateAccessor`。
 
 ---
 
@@ -332,10 +332,10 @@ SnSclaw 用 **Spring MVC**，不是 Spring WebFlux。**WebFlux 在依赖图里�
 同一份后端 JAR，三种发布方式：
 
 1. **Web**——直接跑 JAR，浏览器打开 `http://localhost:18088`。前端嵌入 JAR 的 `static/`。
-2. **桌面**——`mateclaw-desktop/` 里的 Electron 壳捆绑 JRE 21 和 JAR。**用户永远不装 Java**。通过 electron-updater 自动更新。
+2. **桌面**——`snsclaw-desktop/` 里的 Electron 壳捆绑 JRE 21 和 JAR。**用户永远不装 Java**。通过 electron-updater 自动更新。
 3. **Docker**——`docker-compose.yml` 带 MySQL。生产部署。
 
-`mateclaw-webchat/` 里的 webchat widget 是第四条路——一个你可以丢进任何网站的可嵌入聊天 UI。它和同样的后端 API 对话。
+`snsclaw-webchat/` 里的 webchat widget 是第四条路——一个你可以丢进任何网站的可嵌入聊天 UI。它和同样的后端 API 对话。
 
 ---
 

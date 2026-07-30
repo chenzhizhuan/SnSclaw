@@ -75,7 +75,7 @@ As the tool count grows, the system prompt balloons with dozens of full tool sch
 
 - **Page control** — the Tools page has Core and Extension sections with a per-row tier toggle for built-in and channel tools; MCP / ACP tools are locked.
 - **Persistence** — the tier is stored in `mate_tool.disclosure_tier` and `mate_mcp_server.disclosure_tier`.
-- **Config** — `mateclaw.tools.disclosure.mode`, default `progressive`; set it to `legacy` to restore the old "advertise everything" behavior.
+- **Config** — `snsclaw.tools.disclosure.mode`, default `progressive`; set it to `legacy` to restore the old "advertise everything" behavior.
 
 **Why** — to stop context bloat. The system prompt should scale with what the current task needs, not with how many tools you've installed.
 
@@ -99,7 +99,7 @@ As the tool count grows, the system prompt balloons with dozens of full tool sch
 | `SkillManageTool` | Create / edit / delete skill packages | ⚠️ |
 | `BrowserUseTool` | Drive a headless browser | ⚠️ |
 | `DelegateAgentTool` | Delegate a task to another agent (parallel supported) | — |
-| `MateClawDocTool` | Read built-in project documentation | — |
+| `SnSclawDocTool` | Read built-in project documentation | — |
 | `ImageGenerateTool` | Text-to-image / **image-to-image (1.3.0+)** | — |
 | `VideoGenerateTool` | Text-to-video / image-to-video generation | — |
 | `DocxRenderTool` | **1.3.0+** Markdown → .docx (Word document) | — |
@@ -232,7 +232,7 @@ Safety:
 - **Isolated sessions** — the delegated agent runs in its own conversation
 - **Result truncation** — delegated results capped at 4000 characters
 
-### MateClawDocTool
+### SnSclawDocTool
 
 Reads the built-in SnSclaw project documentation. Lets an agent answer "how does X work in SnSclaw" questions by consulting actual docs rather than guessing.
 
@@ -250,7 +250,7 @@ Reads the built-in SnSclaw project documentation. Lets an agent answer "how does
 
 - **Injected via message history** — the loaded content goes into **message history**, not the system prompt, so the **prompt cache stays stable** (the system prompt is unchanged, so the cache isn't invalidated).
 - **Pinned in later turns** — a loaded skill stays **pinned** for the rest of the conversation, so it doesn't have to be reloaded.
-- **Config** — `mateclaw.skill.disclosure.load-skill-tool.enabled`, default true.
+- **Config** — `snsclaw.skill.disclosure.load-skill-tool.enabled`, default true.
 
 See [Skills](./skills).
 
@@ -286,7 +286,7 @@ Core pieces:
 Example rule: *allow `ShellExecuteTool` when the command starts with `ls`, `cat`, `grep`, or `find`. Require approval for anything else.*
 
 ```yaml
-mateclaw:
+snsclaw:
   tool:
     guard:
       enabled: true

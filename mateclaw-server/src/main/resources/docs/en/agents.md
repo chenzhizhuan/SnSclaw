@@ -135,7 +135,7 @@ Children deny a default set of tools so the tree can't run away:
 - `remember` / `remember_structured` / `forget_structured` (children can't write into the parent's long-term memory)
 - `create_employee` (children can't conjure new employees)
 
-This default deny list is tunable via `mateclaw.delegation.child-denied-tools`.
+This default deny list is tunable via `snsclaw.delegation.child-denied-tools`.
 
 Delegation pairs with the [Goals](./goals) system — the parent sets goals, breaks the work down, and delegates sub-tasks; children focus on execution.
 

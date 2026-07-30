@@ -12,7 +12,7 @@ Deep-dive topics have their own pages — Tool Guard rules in [Security & Approv
 
 | Profile | Database | Activated by |
 |---------|----------|--------------|
-| `default` | H2 file at `./data/mateclaw` | No action needed |
+| `default` | H2 file at `./data/snsclaw` | No action needed |
 | `mysql` | MySQL 8.0+ | `spring.profiles.active=mysql` or `SPRING_PROFILES_ACTIVE=mysql` |
 
 Docker deployments activate `mysql` automatically. Desktop builds use `default`.
@@ -35,7 +35,7 @@ server:
 ```yaml
 spring:
   datasource:
-    url: jdbc:h2:file:./data/mateclaw;MODE=MYSQL
+    url: jdbc:h2:file:./data/snsclaw;MODE=MYSQL
     username: sa
     password:
     driver-class-name: org.h2.Driver
@@ -51,7 +51,7 @@ spring:
   profiles:
     active: mysql
   datasource:
-    url: jdbc:mysql://localhost:3306/mateclaw?useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/snsclaw?useSSL=false&serverTimezone=UTC
     username: root
     password: ${MYSQL_ROOT_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -159,7 +159,7 @@ File Guard has two layers:
 2. **Global fallback sandbox root** — the only piece that lives in application.yml. When a conversation has no per-workspace base path configured, file/shell tools are confined to this root (fail-closed default):
 
 ```yaml
-mateclaw:
+snsclaw:
   workspace:
     sandbox:
       enabled: true                       # set false to restore the legacy unconstrained behaviour
@@ -171,7 +171,7 @@ Environment overrides: `MATECLAW_WORKSPACE_SANDBOX_ENABLED` / `MATECLAW_WORKSPAC
 ### JWT authentication
 
 ```yaml
-mateclaw:
+snsclaw:
   jwt:
     secret: ${JWT_SECRET:your-secret-key-at-least-32-characters-long}
     expiration: 86400000
@@ -184,10 +184,10 @@ Change the default JWT secret in production. Must be at least 32 characters. Use
 ### Skill workspace
 
 ```yaml
-mateclaw:
+snsclaw:
   skill:
     workspace:
-      root: ${user.home}/.mateclaw/skills
+      root: ${user.home}/.snsclaw/skills
       auto-init: true
       delete-policy: archive
       bundled-skills-path: skills
@@ -251,7 +251,7 @@ DB_ROOT_PASSWORD=different-secure-password-here
 JWT_SECRET=your-production-secret-at-least-32-chars
 ```
 
-After startup, open `http://localhost:18080`, sign in as `admin / SnS3.14@W`, and add your first LLM provider under `Settings → Models → Add Provider`.
+After startup, open `http://localhost:18080`, sign in as `admin / admin123`, and add your first LLM provider under `Settings → Models → Add Provider`.
 
 ---
 
@@ -278,14 +278,14 @@ Flyway auto-selects the correct dialect path based on the active Spring profile.
 
 | Field | Value |
 |-------|-------|
-| JDBC URL | `jdbc:h2:file:./data/mateclaw` |
+| JDBC URL | `jdbc:h2:file:./data/snsclaw` |
 | Username | `sa` |
 | Password | *(empty)* |
 
 ### Switching to MySQL
 
 ```sql
-CREATE DATABASE mateclaw CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE snsclaw CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 ```bash
@@ -350,7 +350,7 @@ Development: Vite's dev server handles CORS via its proxy. Production: frontend 
 If you deploy the frontend separately:
 
 ```yaml
-mateclaw:
+snsclaw:
   cors:
     allowed-origins:
       - http://localhost:5173

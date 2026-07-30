@@ -33,7 +33,7 @@ body:
       description: |
         Steps that someone with zero context can follow. **A symptom you can't reproduce is a guess, not a bug.**
       placeholder: |
-        1. Log in as admin / SnS3.14@W, create workspace ws-b
+        1. Log in as admin / admin123, create workspace ws-b
         2. Add user bob as ws-b member
         3. Log out, log back in as bob, switch UI to ws-b
         4. Go to Agents → "Create from template" → pick assistant → apply

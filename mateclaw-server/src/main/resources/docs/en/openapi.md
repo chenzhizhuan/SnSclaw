@@ -21,7 +21,7 @@ Local examples:
 open http://localhost:18088/swagger-ui.html
 
 # Download the YAML
-curl http://localhost:18088/v3/api-docs.yaml -o mateclaw-openapi.yaml
+curl http://localhost:18088/v3/api-docs.yaml -o snsclaw-openapi.yaml
 ```
 
 ## Authentication (Authorize)
@@ -46,10 +46,10 @@ SpringDoc auto-scans every `@RestController`. About 85% of controllers already c
 
 ## Configuration
 
-Global OpenAPI metadata (title, description, version, server URL) is driven by the `OpenApiConfig` bean and overridable via `mateclaw.openapi.*` in `application.yml`:
+Global OpenAPI metadata (title, description, version, server URL) is driven by the `OpenApiConfig` bean and overridable via `snsclaw.openapi.*` in `application.yml`:
 
 ```yaml
-mateclaw:
+snsclaw:
   openapi:
     title: ${MATECLAW_OPENAPI_TITLE:SnSclaw REST API}
     version: ${MATECLAW_OPENAPI_VERSION:1.0}
@@ -62,7 +62,7 @@ When `server-url` is empty, SpringDoc derives it from the request host so "Try i
 
 ## 🔒 Access control: Swagger is locked down by default in production
 
-Access to the Swagger UI / OpenAPI document paths (`/swagger-ui*`, `/v3/api-docs*`, `/webjars/**`) is controlled by the `mateclaw.openapi.expose-ui` flag and enforced explicitly in `SecurityConfig.filterChain` (no longer relying on the `.anyRequest().permitAll()` fallthrough):
+Access to the Swagger UI / OpenAPI document paths (`/swagger-ui*`, `/v3/api-docs*`, `/webjars/**`) is controlled by the `snsclaw.openapi.expose-ui` flag and enforced explicitly in `SecurityConfig.filterChain` (no longer relying on the `.anyRequest().permitAll()` fallthrough):
 
 | `expose-ui` | Behavior | Default profile |
 |---|---|---|

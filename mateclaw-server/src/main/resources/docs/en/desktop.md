@@ -105,7 +105,7 @@ If you're **building** the app:
 ## Module layout
 
 ```
-mateclaw-desktop/
+snsclaw-desktop/
 ├── electron/
 │   ├── main/index.ts           # Main process — backend lifecycle, auto-update, tray
 │   └── preload/index.ts        # IPC bridge
@@ -124,7 +124,7 @@ mateclaw-desktop/
 ## Development mode
 
 ```bash
-cd mateclaw-desktop
+cd snsclaw-desktop
 pnpm install
 pnpm dev
 ```
@@ -143,7 +143,7 @@ Frontend changes trigger HMR. Main-process changes restart Electron.
 ## Production build
 
 ```bash
-cd mateclaw-desktop
+cd snsclaw-desktop
 pnpm build && npx electron-builder --mac     # macOS
 pnpm build && npx electron-builder --win     # Windows
 pnpm build && npx electron-builder --linux   # Linux
@@ -161,19 +161,19 @@ Output lands in `release/`:
 
 ```bash
 # 1. Build frontend static assets
-cd mateclaw-ui
+cd snsclaw-ui
 pnpm install && pnpm build
 
 # 2. Build backend JAR (includes frontend assets in static/)
-cd ../mateclaw-server
+cd ../snsclaw-server
 mvn clean package -DskipTests
 
 # 3. Copy JAR to desktop resources
-JAR_FILE=$(ls -1 target/mateclaw-server-*.jar | grep -v sources | head -n 1)
-cp "$JAR_FILE" ../mateclaw-desktop/resources/app.jar
+JAR_FILE=$(ls -1 target/snsclaw-server-*.jar | grep -v sources | head -n 1)
+cp "$JAR_FILE" ../snsclaw-desktop/resources/app.jar
 
 # 4. Download platform-specific JRE
-cd ../mateclaw-desktop
+cd ../snsclaw-desktop
 bash scripts/download-jre.sh
 
 # 5. Build the installer
@@ -215,7 +215,7 @@ electron-updater integration with GitHub Releases.
     {
       "provider": "github",
       "owner": "matevip",
-      "repo": "mateclaw"
+      "repo": "snsclaw"
     }
   ]
 }
@@ -223,7 +223,7 @@ electron-updater integration with GitHub Releases.
 
 ### UI hot update (no repackage)
 
-Frontend assets can be **hot-updated independently** — a frontend-only fix doesn't require a new installer. See `mateclaw-desktop/scripts/` and `desktop-ui-hot-update.md` for the hot-update build flow.
+Frontend assets can be **hot-updated independently** — a frontend-only fix doesn't require a new installer. See `snsclaw-desktop/scripts/` and `desktop-ui-hot-update.md` for the hot-update build flow.
 
 ---
 
@@ -272,7 +272,7 @@ The desktop app reads env vars the same way the standalone backend does. But the
 
 ### Code signing warnings
 
-- **macOS** — right-click → **Open** to bypass Gatekeeper (first launch). Production: Apple Developer certificate + notarization. See `mateclaw-desktop/CODESIGNING.md`.
+- **macOS** — right-click → **Open** to bypass Gatekeeper (first launch). Production: Apple Developer certificate + notarization. See `snsclaw-desktop/CODESIGNING.md`.
 - **Windows** — SmartScreen warning → **More info → Run anyway**. Production: EV code signing certificate.
 
 ### Desktop app won't start

@@ -207,7 +207,7 @@ Same-named skills coexist independently across workspaces: install dedup filters
 
 Two items landed from issue #512:
 
-- **The default workspace storage root is configurable in the UI.** Each workspace's `base_path` could always be set individually in Security → Workspaces, but the global fallback sandbox root (`mateclaw.workspace.sandbox.root`, default `data/workspace`) used to require an env var or yml edit. It is now a **"default workspace storage path"** setting in the console: files for newly created conversations and workspaces live under it; changing it affects only future creations and **never migrates existing data**.
+- **The default workspace storage root is configurable in the UI.** Each workspace's `base_path` could always be set individually in Security → Workspaces, but the global fallback sandbox root (`snsclaw.workspace.sandbox.root`, default `data/workspace`) used to require an env var or yml edit. It is now a **"default workspace storage path"** setting in the console: files for newly created conversations and workspaces live under it; changing it affects only future creations and **never migrates existing data**.
 - **The desktop local-tools whitelist supports per-entry removal.** The whitelist of directories local tools may access on desktop used to be managed through a native dialog offering only "add" and "disable" — the delete API was dead code. Whitelisted directories are now **listed and individually removable** in the UI.
 
 ---

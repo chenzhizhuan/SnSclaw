@@ -154,7 +154,7 @@ Check the [Hunyuan 3D Console](https://console.cloud.tencent.com/ai3d) for quota
 → The worker times out at 15 min by default. Check backend logs:
 
 ```bash
-grep '\[Hunyuan3D\]\|\[Model3dGen\]' logs/mateclaw.log | tail -10
+grep '\[Hunyuan3D\]\|\[Model3dGen\]' logs/snsclaw.log | tail -10
 ```
 
 If polling is stuck on `RUN`/`WAIT`, restart the backend (in-flight tasks get marked failed on startup).

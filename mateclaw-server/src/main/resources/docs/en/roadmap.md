@@ -111,7 +111,7 @@ A **productionization pass**: once you put it into real collaboration, the place
 - **Long tasks are visible**: an always-on Run Overview rail (step progress + live delegated sub-agent tree) + a per-turn token breakdown (cache hit/miss/write + reasoning split) + sub-agent cost rolled up + one-click generated-file download
 - **Fits the real model window**: local-model context-window probing, a unified token budget for prefix injection, small-context degradation, and tool-schema budget gating — no more "guess 32K" pre-flight rejections or silent truncation
 - **Opens up**: a knowledge-base + Deep Research open API (API-key + rate limit + SSE), a pluggable search Provider SPI, and MCP identity forwarding (carry the authenticated user's identity into a STDIO MCP)
-- **Reaches further**: desktop local-embedded / remote-centralized dual mode + multi-server switching + the `mateclaw-desktop` source opened; a LAN deployment mode opens controlled intranet access
+- **Reaches further**: desktop local-embedded / remote-centralized dual mode + multi-server switching + the `snsclaw-desktop` source opened; a LAN deployment mode opens controlled intranet access
 - **One-click operational data export**: 9-sheet Excel from the Dashboard + a CLI for offline export
 - Wiki processing-failure visibility, per-employee model chains, OpenAPI / Swagger directly debuggable, chat back-to-bottom floating button
 
