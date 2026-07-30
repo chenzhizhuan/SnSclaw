@@ -1405,37 +1405,109 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
                 && ctx.frameReqId() != null && !ctx.frameReqId().isBlank();
 
         StringBuilder contentAccumulator = new StringBuilder();
+        StreamOutcome outcome;
         if (!progressEnabled || !bubbleUsable) {
-            // Degraded path — identical to the pre-streaming sync behavior:
-            // accumulate content only (persistOnly deltas included, matching
-            // the router's legacy collector) and send once at the end.
+            // Degraded path — accumulate content only and send once at the end.
+            // segmentOnly narration is excluded: gluing it into the reply is
+            // what makes the same paragraph reach the user two or three times.
             stream.doOnNext(delta -> {
-                        if (!delta.isEvent() && delta.content() != null) {
+                        if (StreamingChannelAdapter.contributesToFinalContent(delta)) {
                             contentAccumulator.append(delta.content());
                         }
                     })
                     .blockLast(Duration.ofMinutes(10));
+            outcome = new StreamOutcome(null, false);
         } else {
-            consumeWithProgress(stream, message, replyTarget, ctx, contentAccumulator);
+            outcome = consumeWithProgress(stream, message, replyTarget, ctx, contentAccumulator);
         }
 
         String finalContent = contentAccumulator.toString();
+
+        // The newest narration was held back until the answer was known: when
+        // a turn's closing narration and its final answer are the same text
+        // (routine once the answer is short — the model restates it before the
+        // last tool call), publishing both puts the identical bubble on screen
+        // twice. Same text → drop the narration, the final answer covers it.
+        String pendingNarration = outcome.pendingNarration();
         if (!finalContent.isBlank()) {
+            if (pendingNarration != null && !sameOutboundText(pendingNarration, finalContent)) {
+                publishNarrationBubble(replyTarget, pendingNarration);
+            }
             renderAndSend(replyTarget, finalContent);
+        } else if (pendingNarration != null) {
+            // No final answer at all — the held-back narration is everything
+            // the user gets, so it closes the live bubble in place instead of
+            // being dropped. Not returned: narration never becomes persisted
+            // content.
+            renderAndSend(replyTarget, pendingNarration);
+        } else {
+            // Nothing to render. Without this the live bubble would sit at
+            // "🤔 思考中…" with the tool trail under it forever, because only
+            // renderAndSend ever finishes it.
+            closeIdleProgressBubble(replyTarget, outcome.approvalPending());
         }
         return finalContent;
     }
 
+    /**
+     * What {@link #consumeWithProgress} learned while draining the stream, but
+     * which only {@link #processStream} can act on (it needs the final answer
+     * first).
+     *
+     * @param pendingNarration the last per-stage narration, still unpublished
+     * @param approvalPending  a tool call is parked on human approval
+     */
+    private record StreamOutcome(String pendingNarration, boolean approvalPending) {}
+
+    /** Compare two outbound texts the way the user sees them (post-filter, trimmed). */
+    private boolean sameOutboundText(String a, String b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        String left = filterOutboundContent(a).trim();
+        String right = filterOutboundContent(b).trim();
+        return !left.isEmpty() && left.equals(right);
+    }
+
+    /**
+     * Finish the live progress bubble when the turn produced no text at all
+     * (approval park, user stop, empty answer). Leaving it open strands a
+     * permanent "思考中…" bubble carrying the whole tool trail.
+     */
+    private void closeIdleProgressBubble(String replyTarget, boolean approvalPending) {
+        WeComReplyContext ctx = replyContexts.get(replyTarget);
+        if (ctx == null || ctx.processingStreamId() == null || ctx.processingStreamId().isBlank()) {
+            return;
+        }
+        renderAndSend(replyTarget, approvalPending
+                ? "⏸️ 已暂停，等待工具审批。"
+                : "（本轮没有产生回复内容）");
+    }
+
+    /**
+     * Finalize the live progress bubble with a narration, or send the
+     * narration as a plain message when no bubble is available (the keepalive
+     * force-finish at the 180s ceiling evicts the reply context).
+     */
+    private void publishNarrationBubble(String replyTarget, String narration) {
+        WeComReplyContext ctx = replyContexts.get(replyTarget);
+        if (ctx != null) {
+            rollProgressBubble(replyTarget, ctx, narration, null);
+        } else {
+            sendMessage(replyTarget, narration);
+        }
+    }
+
     /** Event-driven progress rendering into the processing-stream bubble, with per-stage bubble rolling. */
-    private void consumeWithProgress(Flux<StreamDelta> stream, ChannelMessage message,
-                                     String replyTarget, WeComReplyContext initialCtx,
-                                     StringBuilder contentAccumulator) {
+    private StreamOutcome consumeWithProgress(Flux<StreamDelta> stream, ChannelMessage message,
+                                              String replyTarget, WeComReplyContext initialCtx,
+                                              StringBuilder contentAccumulator) {
         boolean showThinking = !getConfigBoolean("filter_thinking", true);
         boolean standaloneToolMessages = !getConfigBoolean("filter_tool_messages", true);
         long minIntervalMs = getConfigLong("progress_interval_ms", PROGRESS_MIN_INTERVAL_MS);
 
         WeComProgressRenderer progress = new WeComProgressRenderer(
-                System.currentTimeMillis(), showThinking);
+                System.currentTimeMillis(), showThinking, standaloneToolMessages);
         if (keepaliveScheduler != null) {
             // Silent stretches (long LLM calls with no events) keep showing a
             // fresh elapsed-time snapshot instead of the static placeholder.
@@ -1448,6 +1520,7 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
         // as the new progress bubble, so chat chronology stays intact and
         // the final answer always lands in the newest bubble.
         AtomicReference<WeComReplyContext> liveCtx = new AtomicReference<>(initialCtx);
+        AtomicReference<String> pendingNarration = new AtomicReference<>();
         final long[] lastFlushAt = {0L};
         stream.doOnNext(delta -> {
             boolean flushNow = false;
@@ -1462,19 +1535,28 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
                 // excluded from the final answer: glued together they read as
                 // a wall of text, and persisted they pollute the next turn's
                 // LLM history with unanswered chain-of-thought.
+                //
+                // Publishing lags one narration behind: the newest one is only
+                // staged (visible live in the bubble, not yet finalized) so
+                // processStream can still drop it if the final answer turns out
+                // to be the same text. Without the lag the user reads the same
+                // paragraph in two adjacent bubbles.
                 String narration = delta.content() != null ? delta.content().trim() : "";
                 if (!narration.isEmpty()) {
-                    WeComReplyContext ctx = liveCtx.get();
-                    if (replyContexts.get(replyTarget) == ctx) {
-                        liveCtx.set(rollProgressBubble(replyTarget, ctx, narration, progress));
-                    } else {
-                        // Bubble already force-finished (180s ceiling) — the
-                        // narration still goes out as a plain message.
-                        sendMessage(replyTarget, narration);
+                    String previous = pendingNarration.getAndSet(narration);
+                    progress.onNarration(narration);
+                    if (previous != null) {
+                        WeComReplyContext ctx = liveCtx.get();
+                        if (replyContexts.get(replyTarget) == ctx) {
+                            liveCtx.set(rollProgressBubble(replyTarget, ctx, previous, progress));
+                        } else {
+                            // Bubble already force-finished (180s ceiling) — the
+                            // narration still goes out as a plain message.
+                            sendMessage(replyTarget, previous);
+                        }
                     }
-                    lastFlushAt[0] = System.currentTimeMillis();
+                    flushNow = true;
                 }
-                return;
             } else {
                 if (delta.thinking() != null) {
                     progress.onThinkingDelta(delta.thinking());
@@ -1506,6 +1588,8 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
                 log.debug("[wecom] progress overwrite failed: {}", e.getMessage());
             }
         }).blockLast(Duration.ofMinutes(10));
+
+        return new StreamOutcome(pendingNarration.get(), progress.isApprovalPending());
     }
 
     /**
@@ -1519,6 +1603,10 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
      * {@link #replyContexts} so {@code renderAndSend} / approval cards keep
      * working against the newest bubble, and keepalive restarts on the new
      * stream with the live progress snapshot.
+     *
+     * @param progress live progress renderer, or {@code null} when the stream
+     *                 has already finished (the replacement bubble is then a
+     *                 bare slot for {@code renderAndSend}, with no keepalive)
      */
     private WeComReplyContext rollProgressBubble(String replyTarget, WeComReplyContext ctx,
                                                  String narration, WeComProgressRenderer progress) {
@@ -1557,11 +1645,12 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
         WeComReplyContext next = new WeComReplyContext(ctx.frameReqId(), nextStreamId);
         replyContexts.put(replyTarget, next);
         try {
-            replyStream(ctx.frameReqId(), nextStreamId, progress.snapshot(), false);
+            replyStream(ctx.frameReqId(), nextStreamId,
+                    progress != null ? progress.snapshot() : "✍️ 正在整理…", false);
         } catch (Exception e) {
             log.debug("[wecom] next progress bubble open failed: {}", e.getMessage());
         }
-        if (keepaliveScheduler != null) {
+        if (progress != null && keepaliveScheduler != null) {
             try {
                 keepaliveScheduler.start(this, ctx.frameReqId(), nextStreamId, replyTarget);
                 keepaliveScheduler.attachTextSupplier(nextStreamId, progress::snapshot);

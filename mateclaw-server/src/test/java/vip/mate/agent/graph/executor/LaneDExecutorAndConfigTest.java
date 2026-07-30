@@ -177,18 +177,23 @@ class LaneDExecutorAndConfigTest {
         }
 
         @Test
-        @DisplayName("raw body > threshold but tool is on exclusion list → no spill, inline hard cap")
-        void rawOverThresholdExcludedToolTruncatesOnly() {
-            ToolResultStorage st = storage(1000, List.of("read_file"));
-            String raw = "x".repeat(20000);
+        @DisplayName("raw body > threshold but tool is on exclusion list → no spill AND no inline truncation (full body preserved)")
+        void rawOverThresholdExcludedToolReturnedWhole() {
+            ToolResultStorage st = storage(1000, List.of("load_skill"));
+            // A ~8261-char SKILL.md is the real-world case: over the 8000 hard
+            // cap but the model must see it whole, or it fabricates the gap.
+            String raw = "SKILL contract line\n".repeat(500); // ~10000 chars
 
             String out = ToolExecutionExecutor.spillRawOrTruncate(
-                    st, 8000, raw, "read_file", "call-1", "conv-x", tempDir.toString());
+                    st, 8000, raw, "load_skill", "call-1", "conv-x", tempDir.toString());
 
             assertFalse(out.startsWith(ToolResultStorage.SPILL_MARKER_PREFIX),
                     "excluded tool must not be spilled");
-            assertTrue(out.length() <= 8000,
-                    "excluded body still must fit the inline hard cap (was " + out.length() + ")");
+            assertEquals(raw, out,
+                    "excluded retrieval tool must be returned WHOLE — inline-truncating it "
+                            + "re-introduces the incompleteness the exclusion list exists to prevent");
+            assertFalse(out.contains("TRUNCATED"),
+                    "no fabrication-inducing truncation marker may be injected into an excluded tool result");
         }
 
         @Test

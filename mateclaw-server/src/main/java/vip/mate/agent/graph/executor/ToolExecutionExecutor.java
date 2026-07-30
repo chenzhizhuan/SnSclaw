@@ -99,9 +99,12 @@ public class ToolExecutionExecutor {
      *         │     when size &gt; perResultThresholdChars and tool is not
      *         │     in the spill exclusion list. Returns a SPILL_MARKER preview
      *         │     on success, or the original string otherwise.
-     *         └─ if no SPILL_MARKER on the return, truncateToolResult(...)
-     *               caps inline to MAX_TOOL_RESULT_CHARS so a multi-MB raw
-     *               body never enters the model prompt.
+     *         ├─ retrieval-excluded tool (load_skill / read_file / ...) →
+     *         │     returned RAW, never inline-truncated: a partial SKILL.md
+     *         │     invites the model to fabricate the omitted span.
+     *         └─ otherwise truncateToolResult(...) caps inline to
+     *               MAX_TOOL_RESULT_CHARS so a multi-MB raw body never
+     *               enters the model prompt.
      *     → enforceTurnBudget(..., perTurnBudgetChars=32000)   // per-turn aggregate
      * </pre>
      * Spill must see the RAW result so the full output is preserved on disk
@@ -132,8 +135,10 @@ public class ToolExecutionExecutor {
      * @param toolUseId        unique within the conversation; becomes the file name
      * @param conversationId   spill files are scoped per conversation; blank/null falls back to "unknown"
      * @param workspaceBasePath where the spill directory lives when set
-     * @return the SPILL_MARKER preview when spill succeeded, otherwise the
-     *         original string (when ≤ threshold) or the inline-truncated string.
+     * @return the SPILL_MARKER preview when spill succeeded; the original
+     *         string when ≤ threshold or when the tool is retrieval-excluded
+     *         (those must reach the model whole); otherwise the
+     *         inline-truncated string.
      */
     static String spillRawOrTruncate(ToolResultStorage storage, int maxTruncateChars,
                                      String result, String toolName, String toolUseId,
@@ -146,6 +151,20 @@ public class ToolExecutionExecutor {
                     result, toolName, toolUseId, safeConv, workspaceBasePath);
             if (candidate != null && candidate.startsWith(ToolResultStorage.SPILL_MARKER_PREFIX)) {
                 return candidate;
+            }
+            // Retrieval-style tools (load_skill, read_file, readSkillFile,
+            // memory reads) are on the spill-exclusion list precisely so their
+            // full output reaches the model. persistIfOversized returns them
+            // unchanged (no spill), so control reaches here — but inline
+            // hard-truncation would silently re-introduce exactly the
+            // incompleteness the exclusion prevents: a chopped SKILL.md makes
+            // the model act on partial instructions, and weak models fabricate
+            // the omitted middle instead of heeding the fidelity note. Return
+            // the raw body; enforceTurnBudget (Layer 3) already skips these
+            // tools and only compacts them as a last resort when the whole
+            // turn blows its aggregate budget and nothing else can be freed.
+            if (storage.isRetrievalExcluded(toolName)) {
+                return result;
             }
         }
         return truncateToolResult(result, maxTruncateChars);

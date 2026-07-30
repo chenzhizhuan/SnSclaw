@@ -320,6 +320,23 @@ public abstract class AbstractChannelAdapter implements ChannelAdapter {
     }
 
     /**
+     * 按渠道配置过滤外发文本（不做平台分割）
+     * <p>
+     * 卡片式流式渠道不经过 {@link #renderAndSend}（它们自己管理消息长度和
+     * 卡片更新节奏），如果不在流式收尾处调用本方法，
+     * {@code filter_thinking} / {@code filter_tool_messages} 两个开关
+     * 在这些路径上就完全不生效。
+     *
+     * @param content 原始文本
+     * @return 过滤后的文本（入参为空时返回空串）
+     */
+    protected String filterOutboundContent(String content) {
+        return ChannelMessageRenderer.applyFilters(content,
+                getConfigBoolean("filter_thinking", true),
+                getConfigBoolean("filter_tool_messages", true));
+    }
+
+    /**
      * Approval notice rendering — primary implementation position.
      *
      * <p>Subclasses that support a native card surface (WeCom

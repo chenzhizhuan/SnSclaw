@@ -397,10 +397,10 @@
                   </div>
                 </div>
 
-                <div class="form-group full-width section-divider">
+                <div v-if="supportsMessageFilter" class="form-group full-width section-divider">
                   <label class="section-label">{{ t('channels.messageFilter.title') }}</label>
                 </div>
-                <div class="form-grid">
+                <div v-if="supportsMessageFilter" class="form-grid">
                   <div class="form-group">
                     <label class="form-label">
                       {{ t('channels.messageFilter.filterThinking') }}
@@ -632,6 +632,15 @@ const needsWebhookUrl = computed(() => {
   if (type === 'telegram' && channelConfig.value.connection_mode !== 'webhook') return false
   return true
 })
+
+// Browser-rendered channels stream structured message parts over SSE and let
+// the client decide what to draw (thinking panel, tool cards). They never go
+// through the adapter's outbound text render path, which is the only place the
+// message-filter config is read — so the controls would be inert there.
+const BROWSER_RENDERED_TYPES = ['web', 'webchat']
+const supportsMessageFilter = computed(
+  () => !BROWSER_RENDERED_TYPES.includes(form.value.channelType || ''),
+)
 
 const isLocalhost = computed(() => {
   const host = window.location.hostname

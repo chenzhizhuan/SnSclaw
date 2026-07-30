@@ -251,6 +251,55 @@ class SkillFileToolTest {
         assertFalse(result.contains("is not available for this agent"));
     }
 
+    @Test
+    @DisplayName("SKILL.md just over the 8KB tool-result cap is still returned whole (no lossy cut)")
+    void readSkillFileReturnsFullSkillMdJustOverToolResultCap() {
+        // Regression: an 8261-char SKILL.md used to be hard-cut to 8000 chars
+        // downstream with a "[TRUNCATED: ... middle omitted]" marker, and the
+        // model fabricated the removed middle. Anything under the full-return
+        // ceiling must arrive intact so every mandatory section is visible.
+        SkillRuntimeService runtimeService = mock(SkillRuntimeService.class);
+        SkillFileAccessPolicy accessPolicy = mock(SkillFileAccessPolicy.class);
+        SkillUsageService usageService = mock(SkillUsageService.class);
+        AgentWorkspaceResolver workspaceResolver = mock(AgentWorkspaceResolver.class);
+        when(workspaceResolver.resolve(any())).thenReturn(1L);
+        SkillFileTool tool = new SkillFileTool(runtimeService, accessPolicy, usageService, workspaceResolver);
+        ResolvedSkill skill = skill("meeting-skill", "database", true);
+        String body = "# Contract\n" + "instruction line\n".repeat(500) + "\nFINAL_MANDATORY_SECTION";
+        skill.setContent(body);
+        when(runtimeService.findActiveSkill(eq("meeting-skill"), any())).thenReturn(skill);
+
+        String content = tool.readSkillFile("meeting-skill", "SKILL.md", null, null, null);
+
+        assertTrue(body.length() > 8_000, "fixture must exceed the 8KB cap to be a valid regression");
+        assertEquals(body, content, "SKILL.md under the ceiling must be returned byte-for-byte");
+        assertTrue(content.contains("FINAL_MANDATORY_SECTION"),
+                "the trailing mandatory section must survive — losing it is what caused fabrication");
+        assertFalse(content.contains("truncated"), "no truncation banner may be injected");
+    }
+
+    @Test
+    @DisplayName("SKILL.md past the full-return ceiling degrades to resumable pagination, never a middle-cut")
+    void readSkillFileOversizedSkillMdPaginatesResumably() {
+        SkillRuntimeService runtimeService = mock(SkillRuntimeService.class);
+        SkillFileAccessPolicy accessPolicy = mock(SkillFileAccessPolicy.class);
+        SkillUsageService usageService = mock(SkillUsageService.class);
+        AgentWorkspaceResolver workspaceResolver = mock(AgentWorkspaceResolver.class);
+        when(workspaceResolver.resolve(any())).thenReturn(1L);
+        SkillFileTool tool = new SkillFileTool(runtimeService, accessPolicy, usageService, workspaceResolver);
+        ResolvedSkill skill = skill("giant-skill", "database", true);
+        skill.setContent("instruction line\n".repeat(4000)); // ~68KB, past the 32KB ceiling
+        when(runtimeService.findActiveSkill(eq("giant-skill"), any())).thenReturn(skill);
+
+        String content = tool.readSkillFile("giant-skill", "SKILL.md", null, null, null);
+
+        assertTrue(content.startsWith("instruction line"), "page one must begin at the top of the contract");
+        assertTrue(content.contains("startLine="),
+                "must hand back a resumable continuation cursor so the model can finish the read");
+        assertFalse(content.contains("middle omitted"),
+                "degradation must stay resumable — never a lossy middle-cut");
+    }
+
     private static ResolvedSkill skill(String name, String source, boolean builtin) {
         return ResolvedSkill.builder()
                 .id((long) name.hashCode())

@@ -3618,7 +3618,7 @@ export default {
       filterThinking: 'Filter Thinking',
       filterThinkingTooltip: 'Yes: strip <think> content from the final answer only; No: show reasoning live (WeCom streams it in the progress bubble)',
       filterToolMessages: 'Filter Tool Messages',
-      filterToolMessagesTooltip: 'Yes: strip inline tool_call / Action tags from the final answer only; No: each tool call leaves a standalone trace message (supported on WeCom)',
+      filterToolMessagesTooltip: 'Yes: strip inline tool_call / Action tags from the final answer, and keep tool names and the execution list out of the progress bubble too; No: show tool execution, and each tool call leaves a standalone trace message (supported on WeCom)',
       messageFormat: 'Message Format',
       formatAuto: 'Auto',
       formatMarkdown: 'Markdown',

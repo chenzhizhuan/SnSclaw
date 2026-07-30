@@ -137,7 +137,8 @@ class ChannelMessageRouterNarrationTest {
             router = new ChannelMessageRouter(agentService, conversationService,
                     channelService, channelSessionStore, approvalService, approvalNotificationService,
                     completionPublisher, ttsService, new ObjectMapper(), streamTracker,
-                    chatOriginFactory, errorClassifier);
+                    chatOriginFactory, errorClassifier,
+                    new InboundMessageDeduplicator(new ChannelDedupProperties()));
             when(adapter.getChannelType()).thenReturn("telegram");
             when(chatOriginFactory.from(any(), any(), any(), any())).thenReturn(ChatOrigin.EMPTY);
             channel.setAgentId(100L);

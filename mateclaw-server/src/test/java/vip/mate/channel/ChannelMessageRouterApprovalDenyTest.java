@@ -37,7 +37,8 @@ class ChannelMessageRouterApprovalDenyTest {
         ChannelMessageRouter router = new ChannelMessageRouter(agentService, conversationService,
                 channelService, channelSessionStore, approvalService, approvalNotificationService,
                 completionPublisher, ttsService, new ObjectMapper(), streamTracker,
-                chatOriginFactory, errorClassifier);
+                chatOriginFactory, errorClassifier,
+                    new InboundMessageDeduplicator(new ChannelDedupProperties()));
 
         PendingApproval pending = new PendingApproval("abcdef123", "conv-1", "alice",
                 "dangerous_tool", "{}", "needs approval");

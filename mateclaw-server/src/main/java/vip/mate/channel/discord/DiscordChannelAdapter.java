@@ -60,14 +60,6 @@ public class DiscordChannelAdapter extends AbstractChannelAdapter {
     /** 媒体下载用 HttpClient（复用 http_proxy 配置） */
     private volatile HttpClient mediaHttpClient;
 
-    /** 已处理消息去重（LRU，最多保留 500 条） */
-    private final Set<String> processedMessageIds = Collections.newSetFromMap(new LinkedHashMap<>() {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
-            return size() > 500;
-        }
-    });
-
     public DiscordChannelAdapter(ChannelEntity channelEntity,
                                  ChannelMessageRouter messageRouter,
                                  ObjectMapper objectMapper) {
@@ -146,7 +138,6 @@ public class DiscordChannelAdapter extends AbstractChannelAdapter {
         }
         selfId = null;
         mediaHttpClient = null;
-        processedMessageIds.clear();
         log.info("[discord] Discord channel stopped");
     }
 
@@ -447,14 +438,10 @@ public class DiscordChannelAdapter extends AbstractChannelAdapter {
             return;
         }
 
-        // 去重
+        // Inbound dedup lives in ChannelMessageRouter.enqueue now — msgId is
+        // carried on the ChannelMessage below and claimed there, once, for
+        // every channel.
         String msgId = message.getId();
-        synchronized (processedMessageIds) {
-            if (processedMessageIds.contains(msgId)) {
-                return;
-            }
-            processedMessageIds.add(msgId);
-        }
 
         String channelId = message.getChannel().getId();
         String guildId = message.isFromGuild() ? message.getGuild().getId() : null;

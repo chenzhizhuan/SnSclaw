@@ -106,6 +106,21 @@ public class ToolResultStorage {
     }
 
     /**
+     * Public view of the exclusion list for callers outside this class (e.g.
+     * the executor's spill/truncate dispatcher). Retrieval-style tools on this
+     * list must have their full output preserved: they are never spilled here
+     * (Layer 2) and never inline-truncated by the executor — a partial
+     * {@code SKILL.md} / {@code read_file} body makes the model act on
+     * incomplete data, and weak models fabricate the omitted span instead of
+     * heeding the fidelity note. The aggregate turn budget (Layer 3) remains
+     * the only place an excluded result may be compacted, and only as a last
+     * resort when nothing else can free budget.
+     */
+    public boolean isRetrievalExcluded(String toolName) {
+        return isExcluded(toolName);
+    }
+
+    /**
      * Returns true when {@code toolName} is in the configured exclusion list.
      * Excluded tools (typically retrieval tools like {@code read_file}) are
      * never spilled — spilling their output would create a recursion where

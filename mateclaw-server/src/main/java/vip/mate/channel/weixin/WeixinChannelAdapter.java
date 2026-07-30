@@ -60,9 +60,6 @@ public class WeixinChannelAdapter extends AbstractChannelAdapter {
 
     public static final String CHANNEL_TYPE = "weixin";
 
-    /** 消息去重最大记录数 */
-    private static final int PROCESSED_IDS_MAX = 2000;
-
     // ==================== 运行时状态 ====================
 
     private ILinkClient client;
@@ -98,14 +95,6 @@ public class WeixinChannelAdapter extends AbstractChannelAdapter {
      */
     private static final long POLL_STUCK_THRESHOLD_MS = 90_000;
     private static final long WATCHDOG_INTERVAL_MS = 30_000;
-
-    /** 消息去重集合（LRU） */
-    private final LinkedHashMap<String, Boolean> processedIds = new LinkedHashMap<>(256, 0.75f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
-            return size() > PROCESSED_IDS_MAX;
-        }
-    };
 
     /** 用户最新 context_token 缓存（用于主动推送） */
     private final ConcurrentHashMap<String, String> userContextTokens = new ConcurrentHashMap<>();
@@ -422,15 +411,18 @@ public class WeixinChannelAdapter extends AbstractChannelAdapter {
             return;
         }
 
-        // 去重
+        // Stable inbound identity for this channel: context_token when the
+        // platform supplies one (it survives redelivery where msg_id does not),
+        // else sender + msg_id. Carried on the ChannelMessage as messageId so
+        // the router claims exactly this key — see inboundIdentity().
         String dedupKey = !contextToken.isBlank() ? contextToken
                 : fromUserId + "_" + getStr(msg, "msg_id");
-        synchronized (processedIds) {
-            if (processedIds.containsKey(dedupKey)) {
-                log.debug("[weixin] Duplicate message skipped: {}", dedupKey.substring(0, Math.min(40, dedupKey.length())));
-                return;
-            }
-            processedIds.put(dedupKey, Boolean.TRUE);
+        // Early duplicate gate: the authoritative claim happens once in
+        // ChannelMessageRouter.enqueue, but parsing below downloads media, so
+        // a known redelivery is dropped before paying for that.
+        if (messageRouter.isDuplicateInbound(channelEntity.getId(), dedupKey)) {
+            log.debug("[weixin] Duplicate message skipped: {}", dedupKey.substring(0, Math.min(40, dedupKey.length())));
+            return;
         }
 
         // 解析消息内容
@@ -644,7 +636,9 @@ public class WeixinChannelAdapter extends AbstractChannelAdapter {
         String replyToken = contextToken + "|" + fromUserId;
 
         ChannelMessage channelMessage = ChannelMessage.builder()
-                .messageId(getStr(msg, "msg_id"))
+                // dedupKey, not the raw msg_id: it is this channel's stable
+                // inbound identity and the router claims exactly this value.
+                .messageId(dedupKey)
                 .channelType(CHANNEL_TYPE)
                 .senderId(fromUserId)
                 .senderName(fromUserId) // iLink API 不提供昵称

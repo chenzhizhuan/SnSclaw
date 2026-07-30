@@ -33,6 +33,7 @@ final class WeComProgressRenderer {
 
     private final long startedAtMillis;
     private final boolean showThinking;
+    private final boolean showToolTrace;
 
     private final Deque<ToolLine> toolLines = new ArrayDeque<>();
     private int collapsedToolCount;
@@ -42,10 +43,24 @@ final class WeComProgressRenderer {
     private boolean contentSeen;
     private boolean approvalPending;
     private String planStepLine;
+    private String narration;
 
-    WeComProgressRenderer(long startedAtMillis, boolean showThinking) {
+    /**
+     * @param startedAtMillis turn start, for the elapsed-time counter
+     * @param showThinking    render the rolling reasoning window
+     *                        ({@code filter_thinking=false})
+     * @param showToolTrace   render tool names and per-tool completion lines
+     *                        ({@code filter_tool_messages=false}). When off,
+     *                        the bubble only says that a tool is running —
+     *                        the whole point of the toggle is that the tool
+     *                        trail stays out of the user's view, and the
+     *                        progress bubble is as user-visible as a
+     *                        standalone trace message.
+     */
+    WeComProgressRenderer(long startedAtMillis, boolean showThinking, boolean showToolTrace) {
         this.startedAtMillis = startedAtMillis;
         this.showThinking = showThinking;
+        this.showToolTrace = showToolTrace;
     }
 
     synchronized void onThinkingDelta(String delta) {
@@ -105,6 +120,20 @@ final class WeComProgressRenderer {
         }
     }
 
+    /**
+     * Stage the newest per-stage narration so it shows in the live bubble
+     * straight away. Only the newest one is kept — the previous narration has
+     * already been published as its own bubble by then.
+     */
+    synchronized void onNarration(String text) {
+        narration = (text == null || text.isBlank()) ? null : text.trim();
+    }
+
+    /** True once a tool call has asked for human approval this turn. */
+    synchronized boolean isApprovalPending() {
+        return approvalPending;
+    }
+
     /** Render the current progress text for the stream bubble. */
     synchronized String snapshot() {
         StringBuilder sb = new StringBuilder();
@@ -115,6 +144,9 @@ final class WeComProgressRenderer {
         appendToolLines(sb);
         if (showThinking && !contentSeen && thinkingTail.length() > 0) {
             sb.append("\n\n> 💭 ").append(thinkingTail.toString().replace("\n", "\n> "));
+        }
+        if (narration != null) {
+            sb.append("\n\n").append(narration);
         }
         if (answerTail.length() > 0) {
             sb.append("\n\n").append(answerTail);
@@ -131,7 +163,9 @@ final class WeComProgressRenderer {
         }
         ToolLine running = lastRunningTool();
         if (running != null) {
-            return "🔧 正在调用 " + displayName(running) + "…（" + elapsed() + "）";
+            return showToolTrace
+                    ? "🔧 正在调用 " + displayName(running) + "…（" + elapsed() + "）"
+                    : "🔧 正在执行工具…（" + elapsed() + "）";
         }
         if (thinkingSeen) {
             return "💭 思考中…（" + elapsed() + "）";
@@ -140,6 +174,11 @@ final class WeComProgressRenderer {
     }
 
     private void appendToolLines(StringBuilder sb) {
+        if (!showToolTrace) {
+            // filter_tool_messages=true — the tool trail is suppressed
+            // everywhere the user can see it, progress bubble included.
+            return;
+        }
         if (collapsedToolCount > 0) {
             sb.append("\n…等 ").append(collapsedToolCount).append(" 项已完成");
         }

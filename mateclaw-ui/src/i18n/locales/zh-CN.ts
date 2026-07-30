@@ -3718,7 +3718,7 @@ export default {
       filterThinking: '过滤思维链',
       filterThinkingTooltip: '是：仅过滤最终答案中的 <think> 内容；否：思考过程实时展示（企业微信在进度气泡中流式显示）',
       filterToolMessages: '过滤工具消息',
-      filterToolMessagesTooltip: '是：仅过滤最终答案中的 tool_call / Action 等内联标签；否：每次工具调用以独立消息留痕（企业微信已支持）',
+      filterToolMessagesTooltip: '是：过滤最终答案中的 tool_call / Action 等内联标签，进度气泡也不再显示工具名与执行清单；否：显示工具执行过程，并且每次工具调用以独立消息留痕（企业微信已支持）',
       messageFormat: '消息格式',
       formatAuto: '自动',
       formatMarkdown: 'Markdown',

@@ -36,4 +36,26 @@ public interface StreamingChannelAdapter extends ChannelAdapter {
      * @return 最终完整回复内容
      */
     String processStream(Flux<StreamDelta> stream, ChannelMessage message, String conversationId);
+
+    /**
+     * 判断一个 delta 的文本是否属于"最终回复内容"。
+     * <p>
+     * {@code segmentOnly} 的 delta 携带的是每轮 ReAct 的旁白（"我来查一下…"），
+     * 共享累加器刻意不把它写进 {@code mate_message.content}。适配器如果直接
+     * 累加 {@code delta.content()}，就会把每轮旁白拼进外发文本 —— 而旁白通常
+     * 是对答案的复述，用户就会把同一段内容读到两三遍。被污染的文本还会回写
+     * 持久化并在下一轮作为历史重放，重复量随轮次增长，而不是稳定在 2 倍。
+     * <p>
+     * 旁白要不要露出，由渠道的 {@code stream_progress} 开关决定：想露出就作为
+     * 独立的进度消息下发，而不是混进最终答案。
+     *
+     * @param delta 流式片段
+     * @return true 表示该片段的文本应计入最终回复
+     */
+    static boolean contributesToFinalContent(StreamDelta delta) {
+        return delta != null
+                && !delta.isEvent()
+                && !delta.segmentOnly()
+                && delta.content() != null;
+    }
 }

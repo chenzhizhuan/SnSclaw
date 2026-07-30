@@ -8,6 +8,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import vip.mate.channel.model.ChannelSessionEntity;
 import vip.mate.channel.repository.ChannelSessionMapper;
+import vip.mate.workspace.conversation.event.ConversationDeletedEvent;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -57,6 +58,30 @@ public class ChannelSessionStore {
     }
 
     /**
+     * Drop the cached session for a conversation the user just deleted.
+     *
+     * <p>{@code deleteConversation} removes the {@code mate_channel_session}
+     * row inside its DB cascade, but the cache is this class's private state
+     * and no DB delete can reach it. Without this listener the entry survives
+     * as a phantom: the next inbound message takes the "update existing" branch
+     * and calls {@code updateById} against a primary key that no longer exists,
+     * which affects 0 rows and never re-inserts — so the channel session stays
+     * missing and proactive push / cron channel resolution silently degrade
+     * after the next restart.
+     *
+     * <p>Runs after the DB cascade commits — see {@link ConversationDeletedEvent}.
+     *
+     * <p>会话被删除后清理内存缓存，避免留下指向已删除行的幽灵条目。
+     */
+    @EventListener
+    public void onConversationDeleted(ConversationDeletedEvent event) {
+        if (cache.remove(event.conversationId()) != null) {
+            log.info("[ChannelSession] Evicted cached session for deleted conversation {}",
+                    event.conversationId());
+        }
+    }
+
+    /**
      * 保存或更新会话标识（收到用户消息时调用）
      *
      * @param conversationId 会话ID（如 dingtalk:xxx）
@@ -78,40 +103,51 @@ public class ChannelSessionStore {
             existing.setSenderName(senderName);
             existing.setChannelId(channelId);
             existing.setLastActiveTime(now);
-            sessionMapper.updateById(existing);
-            log.debug("Updated channel session: conversationId={}, targetId={}", conversationId, targetId);
-        } else {
-            // 先查 DB（可能是上次启动后的新记录）
-            ChannelSessionEntity dbEntity = sessionMapper.selectOne(
-                    new LambdaQueryWrapper<ChannelSessionEntity>()
-                            .eq(ChannelSessionEntity::getConversationId, conversationId));
-
-            if (dbEntity != null) {
-                dbEntity.setTargetId(targetId);
-                dbEntity.setSenderId(senderId);
-                dbEntity.setSenderName(senderName);
-                dbEntity.setChannelId(channelId);
-                dbEntity.setLastActiveTime(now);
-                sessionMapper.updateById(dbEntity);
-                cache.put(conversationId, dbEntity);
-                log.debug("Updated channel session from DB: conversationId={}", conversationId);
-            } else {
-                // 新建
-                ChannelSessionEntity entity = new ChannelSessionEntity();
-                entity.setConversationId(conversationId);
-                entity.setChannelType(channelType);
-                entity.setTargetId(targetId);
-                entity.setSenderId(senderId);
-                entity.setSenderName(senderName);
-                entity.setChannelId(channelId);
-                entity.setLastActiveTime(now);
-                sessionMapper.insert(entity);
-                cache.put(conversationId, entity);
-                log.debug("Created channel session: conversationId={}, targetId={}", conversationId, targetId);
-
-                // 容量保护：超过上限时淘汰最久未活跃的会话
-                evictIfNeeded();
+            int updated = sessionMapper.updateById(existing);
+            if (updated > 0) {
+                log.debug("Updated channel session: conversationId={}, targetId={}", conversationId, targetId);
+                return;
             }
+            // The cached entity points at a row that no longer exists — the
+            // conversation was deleted out from under us (deletes are physical;
+            // no logical-delete column is honoured project-wide). Without this
+            // self-heal the update silently affects 0 rows on every subsequent
+            // message and the session is never re-created, so proactive push
+            // and cron channel resolution break after the next restart.
+            log.info("Channel session row for {} vanished; re-creating from cache miss", conversationId);
+            cache.remove(conversationId);
+        }
+
+        // 先查 DB（可能是上次启动后的新记录）
+        ChannelSessionEntity dbEntity = sessionMapper.selectOne(
+                new LambdaQueryWrapper<ChannelSessionEntity>()
+                        .eq(ChannelSessionEntity::getConversationId, conversationId));
+
+        if (dbEntity != null) {
+            dbEntity.setTargetId(targetId);
+            dbEntity.setSenderId(senderId);
+            dbEntity.setSenderName(senderName);
+            dbEntity.setChannelId(channelId);
+            dbEntity.setLastActiveTime(now);
+            sessionMapper.updateById(dbEntity);
+            cache.put(conversationId, dbEntity);
+            log.debug("Updated channel session from DB: conversationId={}", conversationId);
+        } else {
+            // 新建
+            ChannelSessionEntity entity = new ChannelSessionEntity();
+            entity.setConversationId(conversationId);
+            entity.setChannelType(channelType);
+            entity.setTargetId(targetId);
+            entity.setSenderId(senderId);
+            entity.setSenderName(senderName);
+            entity.setChannelId(channelId);
+            entity.setLastActiveTime(now);
+            sessionMapper.insert(entity);
+            cache.put(conversationId, entity);
+            log.debug("Created channel session: conversationId={}, targetId={}", conversationId, targetId);
+
+            // 容量保护：超过上限时淘汰最久未活跃的会话
+            evictIfNeeded();
         }
     }
 
@@ -189,13 +225,29 @@ public class ChannelSessionStore {
     }
 
     /**
-     * 删除会话
+     * Drop a channel session from both layers.
+     *
+     * <p>Use this rather than the mapper: this class owns the cache, so a
+     * caller that deletes the row directly leaves a phantom entry behind —
+     * every later {@code saveOrUpdate} then updates a primary key that no
+     * longer exists and the session is never re-created.
+     *
+     * <p>The conversation-delete cascade does not come through here: it removes
+     * the row inside its own transaction and lets
+     * {@link #onConversationDeleted} drop the cache after commit, so the cache
+     * is never cleared for a delete that later rolls back.
+     *
+     * <p>删除会话（内存 + DB 双层）。
+     *
+     * @return number of DB rows removed
      */
-    public void remove(String conversationId) {
-        ChannelSessionEntity removed = cache.remove(conversationId);
-        if (removed != null) {
-            sessionMapper.deleteById(removed.getId());
+    public int remove(String conversationId) {
+        cache.remove(conversationId);
+        int deleted = sessionMapper.delete(new LambdaQueryWrapper<ChannelSessionEntity>()
+                .eq(ChannelSessionEntity::getConversationId, conversationId));
+        if (deleted > 0) {
             log.debug("Removed channel session: conversationId={}", conversationId);
         }
+        return deleted;
     }
 }

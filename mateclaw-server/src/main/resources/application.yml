@@ -290,6 +290,14 @@ mateclaw:
 
 # SnSclaw Agent 配置
 mate:
+  channel:
+    # 入站消息去重：IM 平台在 ack 迟到 / 丢失 / 非 200 时会重投同一条消息，
+    # 不去重则每次重投都会跑一轮完整 Agent 回合，用户看到重复答复。
+    dedup:
+      enabled: true
+      # 需明显长于各平台重投窗口（秒级到分钟级）
+      ttl: 5m
+      max-size: 2000
   agent:
     # Deterministic Markdown cleanup of the final answer (heading spaces, glued
     # ---, table pipe alignment) before persistence / channel delivery. Set to

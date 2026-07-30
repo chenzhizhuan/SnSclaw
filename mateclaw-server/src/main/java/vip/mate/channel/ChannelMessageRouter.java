@@ -70,6 +70,7 @@ public class ChannelMessageRouter {
     private final ChatStreamTracker streamTracker;
     private final ChannelChatOriginFactory chatOriginFactory;
     private final ChannelErrorClassifier errorClassifier;
+    private final InboundMessageDeduplicator inboundDedup;
     /** Field-injected (rather than constructor) to avoid a signature
      *  change that would ripple through every test that constructs the
      *  router directly. Spring's stock publisher is always available. */
@@ -183,7 +184,8 @@ public class ChannelMessageRouter {
                                 ObjectMapper objectMapper,
                                 ChatStreamTracker streamTracker,
                                 ChannelChatOriginFactory chatOriginFactory,
-                                ChannelErrorClassifier errorClassifier) {
+                                ChannelErrorClassifier errorClassifier,
+                                InboundMessageDeduplicator inboundDedup) {
         this.agentService = agentService;
         this.conversationService = conversationService;
         this.channelService = channelService;
@@ -196,6 +198,7 @@ public class ChannelMessageRouter {
         this.streamTracker = streamTracker;
         this.chatOriginFactory = chatOriginFactory;
         this.errorClassifier = errorClassifier;
+        this.inboundDedup = inboundDedup;
     }
 
     // ==================== 防抖辅助类 ====================
@@ -267,6 +270,18 @@ public class ChannelMessageRouter {
             return;
         }
         channelEntity = fresh;
+
+        // Inbound idempotency, before ANY side effect (magic commands, trigger
+        // fan-out, agent turn). IM platforms redeliver a message whose ack was
+        // late, lost, or non-200; without this claim every redelivery runs its
+        // own agent turn and the user gets the same answer again. Claiming here
+        // rather than in each adapter means every channel — including the four
+        // that never had dedup — is covered by one code path.
+        if (!inboundDedup.claim(channelEntity.getId(), inboundIdentity(message))) {
+            log.info("[{}] Duplicate inbound message (id={}) on channel {}; dropping",
+                    adapter.getChannelType(), inboundIdentity(message), channelEntity.getId());
+            return;
+        }
 
         String conversationId = buildConversationId(message, channelEntity.getId());
         if (handleMagicCommand(message, adapter, channelEntity, conversationId)) {
@@ -373,15 +388,18 @@ public class ChannelMessageRouter {
         try {
             long ws = channelEntity.getWorkspaceId() == null ? 0L : channelEntity.getWorkspaceId();
             String channelType = adapter.getChannelType();
-            // messageId may be null for adapters that don't surface one;
-            // fall back to a sender+timestamp composite so the dedup key
-            // is at least deterministic-ish per webhook delivery.
-            String messageId = message.getMessageId();
-            if (messageId == null || messageId.isBlank()) {
-                messageId = channelType + ":" + message.getSenderId() + ":"
-                        + (message.getTimestamp() == null ? System.currentTimeMillis()
-                                                          : message.getTimestamp());
-            }
+            // Reuse the identity the inbound claim uses so both agree on what
+            // "the same message" is. Unlike the claim — which the deduplicator
+            // scopes by channel id — this key travels to the trigger pipeline
+            // unscoped, so anything we derive ourselves keeps the channelType
+            // prefix: two channels can otherwise produce the same
+            // sender+timestamp pair inside one workspace.
+            String platformId = message.getMessageId();
+            String messageId = (platformId != null && !platformId.isBlank())
+                    ? platformId
+                    : channelType + ":" + (inboundIdentity(message) != null
+                            ? inboundIdentity(message)
+                            : message.getSenderId() + "@" + System.currentTimeMillis());
             events.publishEvent(new ChannelMessageReceivedEvent(
                     ws,
                     channelType,
@@ -394,6 +412,53 @@ public class ChannelMessageRouter {
             log.warn("[ChannelMessageRouter] event publish failed for sender {}: {}",
                     message.getSenderId(), e.getMessage());
         }
+    }
+
+    /**
+     * The stable identity of an inbound message, used both for the inbound
+     * dedup claim and as the trigger pipeline's dedup key.
+     *
+     * <p>Prefers the platform message id — every adapter that has one puts it
+     * on {@link ChannelMessage#getMessageId()}, and a redelivery carries the
+     * same value. Adapters whose stable token is not the raw message id (WeCom
+     * uses its {@code context_token}) put that token there instead.
+     *
+     * <p>Falls back to {@code sender@timestamp} when there is no id but the
+     * platform stamped the message — still stable across redeliveries of the
+     * same payload. Returns {@code null} when neither exists: there is nothing
+     * to tell a redelivery apart from a fresh message, so the caller must fail
+     * open rather than guess.
+     *
+     * <p>Package-private for unit-test access.
+     */
+    static String inboundIdentity(ChannelMessage message) {
+        if (message == null) {
+            return null;
+        }
+        String messageId = message.getMessageId();
+        if (messageId != null && !messageId.isBlank()) {
+            return messageId;
+        }
+        if (message.getTimestamp() == null) {
+            return null;
+        }
+        return message.getSenderId() + "@" + message.getTimestamp();
+    }
+
+    /**
+     * Has this inbound message already been claimed? A peek, not a claim —
+     * the authoritative claim happens once, in {@link #enqueue}.
+     *
+     * <p>For adapters to call before expensive inbound work (media download,
+     * payload decryption) so a known redelivery costs nothing. Adapters reach
+     * it through the router they already hold, which keeps the deduplicator
+     * out of every adapter constructor.
+     *
+     * @param identity the same value the adapter will put on
+     *                 {@link ChannelMessage#getMessageId()}
+     */
+    public boolean isDuplicateInbound(Long channelId, String identity) {
+        return inboundDedup.contains(channelId, identity);
     }
 
     /**
@@ -416,6 +481,12 @@ public class ChannelMessageRouter {
         if (!offered) {
             log.error("[{}] Message queue full (capacity={}), dropping message from {}",
                     channelType, QUEUE_CAPACITY, pending.firstMessage.getSenderId());
+            // Never handed off — give the claim back so the platform's own
+            // retry can still get an answer. A turn that ran and *failed*
+            // keeps its claim: the user already got the error reply, and a
+            // retry would only produce a second one.
+            inboundDedup.release(pending.channelEntity != null ? pending.channelEntity.getId() : null,
+                    inboundIdentity(pending.firstMessage));
             try {
                 String replyTarget = resolveReplyTarget(pending.firstMessage);
                 pending.adapter.sendMessage(replyTarget, "系统繁忙，请稍后再试");

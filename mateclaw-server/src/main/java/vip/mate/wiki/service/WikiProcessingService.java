@@ -1173,7 +1173,7 @@ public class WikiProcessingService {
         int totalPlanned = createMetas.size() + updateSlugs.size();
 
         // Chunk fallback: if route returned nothing for a non-trivial chunk, inject an overview page
-        // so no content is silently dropped (mirrors llm_wiki source-summary guarantee).
+        // so no content is silently dropped: every source chunk is represented by at least one page.
         if (totalPlanned == 0 && textContent.length() >= properties.getChunkFallbackMinChars()) {
             String overviewSlug = WikiPageService.toSlug(rawTitle) + "-overview";
             ObjectNode fallbackMeta =

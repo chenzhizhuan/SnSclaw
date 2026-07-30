@@ -72,8 +72,32 @@ public final class ChannelMessageRenderer {
                                                  boolean filterToolMessages,
                                                  String messageFormat,
                                                  int maxLength) {
-        if (content == null || content.isBlank()) {
+        String rendered = applyFilters(content, filterThinking, filterToolMessages);
+
+        if (rendered.isEmpty()) {
             return List.of("");
+        }
+
+        // 按平台限制分割
+        return truncateForPlatform(rendered, maxLength);
+    }
+
+    /**
+     * 只做内容过滤，不做平台分割
+     * <p>
+     * 卡片式流式渠道（钉钉 AI Card、飞书 CardKit）自己管理长度限制，
+     * 但同样需要遵守渠道的消息过滤配置，因此把过滤部分单独暴露出来。
+     *
+     * @param content            原始内容
+     * @param filterThinking     是否过滤 thinking 标签
+     * @param filterToolMessages 是否过滤工具调用信息
+     * @return 过滤后的内容（入参为空时返回空串）
+     */
+    public static String applyFilters(String content,
+                                      boolean filterThinking,
+                                      boolean filterToolMessages) {
+        if (content == null || content.isBlank()) {
+            return "";
         }
 
         String rendered = content;
@@ -89,14 +113,7 @@ public final class ChannelMessageRenderer {
         }
 
         // 3. 清理多余空行
-        rendered = rendered.replaceAll("\n{3,}", "\n\n").trim();
-
-        if (rendered.isEmpty()) {
-            return List.of("");
-        }
-
-        // 4. 按平台限制分割
-        return truncateForPlatform(rendered, maxLength);
+        return rendered.replaceAll("\n{3,}", "\n\n").trim();
     }
 
     // ==================== 过滤方法 ====================

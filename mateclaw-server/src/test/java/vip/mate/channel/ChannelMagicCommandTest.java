@@ -362,7 +362,8 @@ class ChannelMagicCommandTest {
             router = new ChannelMessageRouter(agentService, conversationService,
                     channelService, channelSessionStore, approvalService, approvalNotificationService,
                     completionPublisher, ttsService, new ObjectMapper(), streamTracker,
-                    chatOriginFactory, errorClassifier);
+                    chatOriginFactory, errorClassifier,
+                    new InboundMessageDeduplicator(new ChannelDedupProperties()));
             when(adapter.getChannelType()).thenReturn("wecom");
             channel.setAgentId(100L);
             // modelConfigService is field-injected on the real router (optional

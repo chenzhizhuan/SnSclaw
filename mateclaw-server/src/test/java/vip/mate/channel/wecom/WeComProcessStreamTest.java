@@ -39,7 +39,8 @@ class WeComProcessStreamTest {
     @Test
     @DisplayName("progress path overwrites the bubble with tool progress, then finishes with the answer")
     void progressPathStreamsAndFinishes() throws Exception {
-        TestableAdapter adapter = newAdapter("{\"progress_interval_ms\": 0}");
+        TestableAdapter adapter = newAdapter(
+                "{\"progress_interval_ms\": 0, \"filter_tool_messages\": false}");
         seedReplyContext(adapter, "alice", "req-1", "stream-1");
 
         Flux<StreamDelta> stream = Flux.just(
@@ -66,6 +67,90 @@ class WeComProcessStreamTest {
         Map<String, Object> finalChunk = streamBodies.get(streamBodies.size() - 1);
         assertEquals(Boolean.TRUE, finalChunk.get("finish"), "last chunk must close the stream");
         assertTrue(String.valueOf(finalChunk.get("content")).contains("现在是下午三点。"));
+    }
+
+    @Test
+    @DisplayName("filter_tool_messages=true keeps the tool trail out of the progress bubble too")
+    void progressBubbleHonorsToolFilter() throws Exception {
+        TestableAdapter adapter = newAdapter("{\"progress_interval_ms\": 0}");
+        seedReplyContext(adapter, "alice", "req-1", "stream-1");
+
+        Flux<StreamDelta> stream = Flux.just(
+                StreamDelta.event("tool_call_started",
+                        Map.of("toolCallId", "c1", "toolName", "execute_code")),
+                StreamDelta.event("tool_call_completed",
+                        Map.of("toolCallId", "c1", "toolName", "execute_code", "success", true)),
+                new StreamDelta("好了。", null));
+
+        assertEquals("好了。", adapter.processStream(stream, inbound("alice"), "wecom:alice"));
+
+        List<Map<String, Object>> streamBodies = streamBodies(adapter.drainFrames());
+        assertFalse(streamBodies.isEmpty(), "expected reply_stream progress frames");
+        for (Map<String, Object> body : streamBodies) {
+            String content = String.valueOf(body.get("content"));
+            assertFalse(content.contains("execute_code"),
+                    "filtered run must never name the tool: " + content);
+            assertFalse(content.contains("✅ execute_code"), content);
+        }
+        boolean sawGenericToolStatus = streamBodies.stream()
+                .anyMatch(s -> String.valueOf(s.get("content")).contains("正在执行工具"));
+        assertTrue(sawGenericToolStatus, "still tells the user a tool is running, just not which");
+    }
+
+    @Test
+    @DisplayName("a closing narration equal to the final answer is dropped, not shown twice")
+    void narrationEqualToAnswerIsNotDuplicated() throws Exception {
+        TestableAdapter adapter = newAdapter("{\"progress_interval_ms\": 0}");
+        seedReplyContext(adapter, "alice", "req-1", "stream-1");
+
+        String answer = "中控测试会议室当前无人使用，电池还剩 1%。";
+        Flux<StreamDelta> stream = Flux.just(
+                StreamDelta.segmentOnly(answer, null),
+                new StreamDelta(answer, null));
+
+        assertEquals(answer, adapter.processStream(stream, inbound("alice"), "wecom:alice"));
+
+        List<Map<String, Object>> finished = streamBodies(adapter.drainFrames()).stream()
+                .filter(s -> Boolean.TRUE.equals(s.get("finish"))).toList();
+        assertEquals(1, finished.size(),
+                "narration restating the answer must not close a bubble of its own");
+        assertTrue(String.valueOf(finished.get(0).get("content")).contains("无人使用"));
+    }
+
+    @Test
+    @DisplayName("a turn with no answer closes the progress bubble instead of stranding 思考中")
+    void emptyAnswerClosesProgressBubble() throws Exception {
+        TestableAdapter adapter = newAdapter("{\"progress_interval_ms\": 0}");
+        seedReplyContext(adapter, "alice", "req-1", "stream-1");
+
+        Flux<StreamDelta> stream = Flux.just(
+                StreamDelta.event("tool_call_started",
+                        Map.of("toolCallId", "c1", "toolName", "execute_code")),
+                StreamDelta.event("tool_call_completed",
+                        Map.of("toolCallId", "c1", "toolName", "execute_code", "success", true)));
+
+        assertEquals("", adapter.processStream(stream, inbound("alice"), "wecom:alice"));
+
+        List<Map<String, Object>> streamBodies = streamBodies(adapter.drainFrames());
+        assertFalse(streamBodies.isEmpty(), "expected reply_stream frames");
+        Map<String, Object> last = streamBodies.get(streamBodies.size() - 1);
+        assertEquals(Boolean.TRUE, last.get("finish"),
+                "the bubble must be closed, otherwise it sits at 思考中 forever");
+        assertFalse(String.valueOf(last.get("content")).contains("思考中"), String.valueOf(last.get("content")));
+    }
+
+    @Test
+    @DisplayName("degraded path keeps stage narration out of the reply text")
+    void degradedPathExcludesNarration() throws Exception {
+        TestableAdapter adapter = newAdapter("{\"stream_progress\": false}");
+        seedReplyContext(adapter, "alice", "req-1", "stream-1");
+
+        Flux<StreamDelta> stream = Flux.just(
+                StreamDelta.segmentOnly("我先查一下：", null),
+                new StreamDelta("答案", null));
+
+        assertEquals("答案", adapter.processStream(stream, inbound("alice"), "wecom:alice"),
+                "narration glued into the reply is what makes the answer read as sent twice");
     }
 
     @Test
