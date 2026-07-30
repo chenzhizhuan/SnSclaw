@@ -57,6 +57,17 @@ const config = {
   files: ['dist-electron', 'dist'],
   afterPack: 'scripts/trim-playwright-driver.cjs',
 
+  // ⚠️ ws (WebSocket) 的 peer dependencies — bufferutil / utf-8-validate —
+  // 是 C++ 原生 addon (.node 文件)，必须从 asar 中解包才能由 Node 加载器
+  // 通过 LoadLibrary 装载。即便用户未安装它们，ws 也会 fallback 到纯 JS
+  // 实现，所以这里的解包声明对两种情况都是安全的。
+  // 参见 https://github.com/websockets/ws#opt-in-for-performance
+  asarUnpack: [
+    'node_modules/ws/**/*',
+    'node_modules/bufferutil/**/*',
+    'node_modules/utf-8-validate/**/*',
+  ],
+
   // extraResources: only bundle JRE + JAR in local mode.
   // In remote mode this array is empty — the packaged app contains only the
   // Electron + Vue shell, cutting ~530 MB from the installer.

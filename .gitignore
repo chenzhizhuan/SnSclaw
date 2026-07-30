@@ -130,3 +130,6 @@ yarn.lock
 __pycache__/
 *.pyc
 .tools/
+release/
+release_fresh/
+dist-publish/

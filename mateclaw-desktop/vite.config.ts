@@ -34,7 +34,22 @@ export default defineConfig(({ command }) => {
               minify: isBuild,
               outDir: 'dist-electron/main',
               rollupOptions: {
-                external: ['electron', 'electron-updater'],
+                // ⚠️ IMPORTANT — 以下模块必须标记为 external (从 node_modules require)，
+                // 绝对不能让 Vite/Rollup 进行 tree-shake / minify 重写：
+                //   - ws：内部 require('./buffer-util') 的 exports.mask 会被 Vite
+                //     破坏，导致 "l.mask is not a function"（在 WebSocket 发送数据帧
+                //     时由 Sender.frame 触发）
+                //   - electron / electron-updater：Electron 官方标准 external
+                //   - bufferutil / utf-8-validate：ws 的原生 peer dependencies，
+                //     即使未安装，ws 也会 fallback 到 JS 实现，打包它们会导致
+                //     .node native addon 查找路径出错
+                external: [
+                  'electron',
+                  'electron-updater',
+                  'ws',
+                  'bufferutil',
+                  'utf-8-validate',
+                ],
               },
             },
           },
