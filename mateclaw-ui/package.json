@@ -1,9 +1,16 @@
 {
-  "name": "mateclaw-ui",
+  "name": "snsclaw-ui",
   "version": "1.0.0-SNAPSHOT",
   "private": true,
   "type": "module",
   "description": "SnSclaw - Personal AI Assistant Web Console",
+  "author": "SnSclaw Team",
+  "license": "Apache-2.0",
+  "homepage": "https://www.sns.app",
+  "repository": {
+    "type": "git",
+    "url": "https://help.sns.app"
+  },
   "scripts": {
     "dev": "vite",
     "build": "bash ../scripts/check-snowflake-precision.sh && node --max-old-space-size=6144 ./node_modules/vue-tsc/bin/vue-tsc.js --noEmit && node --max-old-space-size=6144 ./node_modules/vite/bin/vite.js build",
