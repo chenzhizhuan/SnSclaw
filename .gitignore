@@ -131,5 +131,8 @@ __pycache__/
 *.pyc
 .tools/
 release/
+release_*/
 release_fresh/
 dist-publish/
+.build-logs/
+.cache/

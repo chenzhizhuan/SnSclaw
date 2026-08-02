@@ -115,9 +115,10 @@ const config = {
   win: {
     target: [
       { target: 'nsis', arch: 'x64' },
-      { target: 'nsis', arch: 'arm64' },
+      // { target: 'nsis', arch: 'arm64' },  // disabled: user needs only x64 for Win10
     ],
     icon: 'build/icon.ico',
+    forceCodeSigning: false,
     artifactName:
       mode === 'remote'
         ? `${brandSlug}_Remote_${'$'}{version}_${'$'}{arch}_Setup.${'$'}{ext}`
