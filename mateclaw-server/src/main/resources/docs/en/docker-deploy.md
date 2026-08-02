@@ -168,7 +168,7 @@ curl -s http://localhost:18080/api/v1/system/browser-health | jq .
 ## First deployment
 
 ```sh
-git clone https://github.com/chenzhizhuan/SnSclaw.git
+git clone https://github.com/sns/SnSclaw.git
 cd snsclaw
 
 # 1. Fill in required values

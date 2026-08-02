@@ -1,5 +1,5 @@
 -- RFC-083: workspace-isolate cron jobs
--- (issue: https://github.com/chenzhizhuan/SnSclaw/issues/37).
+-- (issue: https://github.com/sns/SnSclaw/issues/37).
 
 DO $$
 BEGIN

@@ -13,7 +13,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Regression test for <a href="https://github.com/chenzhizhuan/SnSclaw/issues/24">issue #24</a>.
+ * Regression test for <a href="https://github.com/sns/SnSclaw/issues/24">issue #24</a>.
  * <p>
  * Symptom: agent tool bindings persisted under the Java class name
  * (e.g. {@code BrowserUseTool}, which is what {@code mate_tool.name} stores) or the

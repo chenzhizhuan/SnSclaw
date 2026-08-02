@@ -1027,11 +1027,11 @@ function setupApplicationMenu(): void {
       ] : []),
       {
         label: 'GitHub Repository',
-        click: () => shell.openExternal('https://github.com/chenzhizhuan/SnSclaw'),
+        click: () => shell.openExternal('https://github.com/sns/SnSclaw'),
       },
       {
         label: 'Report Issue',
-        click: () => shell.openExternal('https://github.com/chenzhizhuan/SnSclaw/issues'),
+        click: () => shell.openExternal('https://github.com/sns/SnSclaw/issues'),
       },
       ...(!isMac ? [
         { type: 'separator' as const },

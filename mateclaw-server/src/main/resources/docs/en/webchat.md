@@ -274,4 +274,4 @@ curl -N -X POST https://mate.example.com/api/v1/channels/webchat/stream \
 
 ## Related
 
-- Upstream epic issue: https://github.com/chenzhizhuan/SnSclaw/issues/355
+- Upstream epic issue: https://github.com/sns/SnSclaw/issues/355

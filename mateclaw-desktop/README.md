@@ -83,7 +83,7 @@ mateclaw-desktop/
 
 ## 自动升级
 
-应用内置 `electron-updater` 自动升级，更新产物托管在 [GitHub Releases](https://github.com/chenzhizhuan/SnSclaw/releases)。
+应用内置 `electron-updater` 自动升级，更新产物托管在 [GitHub Releases](https://github.com/sns/SnSclaw/releases)。
 
 **升级流程**：启动时检查 → Splash Screen 底部通知 → 用户点击下载 → 下载完成点击重启 → 自动停止 Java 后端 → 安装新版本
 
@@ -140,7 +140,7 @@ bash scripts/build-all-platforms.sh --all --publish=always
 5. 生成 `latest.yml` 和 `latest-mac.yml`
 6. 创建 GitHub Draft Release 并上传所有产物
 
-完成后前往 https://github.com/chenzhizhuan/SnSclaw/releases ，找到 Draft Release：
+完成后前往 https://github.com/sns/SnSclaw/releases ，找到 Draft Release：
 - 填写 Release Notes（更新说明）
 - 点击 **Publish release** 正式发布
 

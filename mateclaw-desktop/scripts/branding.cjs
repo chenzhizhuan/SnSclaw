@@ -29,7 +29,7 @@ function loadBrandConfig(rootDir) {
     team:           env.BRAND_TEAM        || config.team        || 'SnSclaw Team',
     copyright:      env.BRAND_COPYRIGHT   || config.copyright   || 'Copyright © 2026 SnSclaw Team',
     appId:          env.BRAND_APP_ID      || config.appId       || 'app.sns.claw',
-    githubUrl:      env.BRAND_GITHUB_URL  || config.githubUrl   || 'https://github.com/chenzhizhuan/SnSclaw',
+    githubUrl:      env.BRAND_GITHUB_URL  || config.githubUrl   || 'https://github.com/sns/SnSclaw',
     logoFile:       env.BRAND_LOGO_FILE   || config.logoFile    || 'mateclaw_logo_s.png',
   }
 }
@@ -54,11 +54,11 @@ function buildReplacements(brand) {
 
   // 3. GitHub URLs
   replacements.push([
-    'https://github.com/chenzhizhuan/SnSclaw/issues',
+    'https://github.com/sns/SnSclaw/issues',
     brand.githubUrl + '/issues',
   ])
   replacements.push([
-    'https://github.com/chenzhizhuan/SnSclaw',
+    'https://github.com/sns/SnSclaw',
     brand.githubUrl,
   ])
 

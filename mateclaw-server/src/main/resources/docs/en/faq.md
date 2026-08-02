@@ -1,6 +1,6 @@
 # FAQ
 
-Common questions and real answers. If your question isn't here, check the relevant feature page or open a [GitHub issue](https://github.com/chenzhizhuan/SnSclaw/issues).
+Common questions and real answers. If your question isn't here, check the relevant feature page or open a [GitHub issue](https://github.com/sns/SnSclaw/issues).
 
 ---
 
@@ -322,7 +322,7 @@ Try launching from a terminal. On Windows, right-click → Unblock. On macOS, al
 
 ### How do I update the desktop app?
 
-**Auto-updates** via electron-updater. On startup, checks GitHub Releases and prompts you when a new version is available. Manual download also available from [Releases](https://github.com/chenzhizhuan/SnSclaw/releases).
+**Auto-updates** via electron-updater. On startup, checks GitHub Releases and prompts you when a new version is available. Manual download also available from [Releases](https://github.com/sns/SnSclaw/releases).
 
 ---
 
@@ -419,4 +419,4 @@ Stored in `localStorage`. Clearing browser data wipes it.
 - [Quick Start](./quickstart) — setup walkthrough
 - [Configuration](./config) — full configuration reference
 - [Contributing](./contributing) — how to report bugs and request features
-- [GitHub Issues](https://github.com/chenzhizhuan/SnSclaw/issues) — when the docs don't answer your question
+- [GitHub Issues](https://github.com/sns/SnSclaw/issues) — when the docs don't answer your question

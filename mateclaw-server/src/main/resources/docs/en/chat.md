@@ -117,7 +117,7 @@ Images, audio/video and 3D models always previewed inline — but a Word report 
 ### Primary model can't see images? "Multimodal sidecar" routing
 
 ::: tip Added in 1.3.0
-When the agent's primary model is text-only (e.g. `deepseek-chat`, `kimi-k2`), uploading an image no longer breaks. The runtime auto-routes through a sidecar. See [issue #87](https://github.com/chenzhizhuan/SnSclaw/issues/87).
+When the agent's primary model is text-only (e.g. `deepseek-chat`, `kimi-k2`), uploading an image no longer breaks. The runtime auto-routes through a sidecar. See [issue #87](https://github.com/sns/SnSclaw/issues/87).
 :::
 
 How it works:
@@ -211,7 +211,7 @@ The same semantics cover the admin console, the WebChat widget, and the API — 
 ### Per-conversation model selection
 
 ::: tip Added in 1.4.0
-The model selector in the chat header now binds a model **to the conversation**, not as a global switch. See [issue #150](https://github.com/chenzhizhuan/SnSclaw/issues/150).
+The model selector in the chat header now binds a model **to the conversation**, not as a global switch. See [issue #150](https://github.com/sns/SnSclaw/issues/150).
 :::
 
 Switching the model in the header affects **only this conversation**: the choice is stored on the conversation and takes effect starting with the **next message**. A conversation you never set explicitly falls back to the workspace default model. The runtime model indicator stays in sync with whatever is pinned on the conversation — what you see is what the next turn actually uses.
@@ -221,7 +221,7 @@ This isolation also makes model config more robust: **a single bad model id no l
 ### Conversation list management
 
 ::: tip Added in 1.4.0
-The conversation sidebar grew from a plain history list into an actionable operations panel. See [issue #144](https://github.com/chenzhizhuan/SnSclaw/issues/144).
+The conversation sidebar grew from a plain history list into an actionable operations panel. See [issue #144](https://github.com/sns/SnSclaw/issues/144).
 :::
 
 - **Pin / unpin** — from each row's `⋮` overflow menu. Important threads stay at the top in a "Pinned" group.

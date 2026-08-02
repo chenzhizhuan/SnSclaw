@@ -10,14 +10,14 @@
 
 <p align="center"><sub><b>Agent Harness · Spring Boot inside · One JAR to ship</b></sub></p>
 
-[![GitHub Repo](https://img.shields.io/badge/GitHub-Repo-black.svg?logo=github)](https://github.com/chenzhizhuan/SnSclaw)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repo-black.svg?logo=github)](https://github.com/sns/SnSclaw)
 [![Documentation](https://img.shields.io/badge/Docs-Website-green.svg?logo=readthedocs&label=Docs)](https://claw.sns.app/docs)
 [![Live Demo](https://img.shields.io/badge/Demo-Online-orange.svg?logo=vercel&label=Demo)](https://claw-demo.sns.app)
 [![Website](https://img.shields.io/badge/Website-claw.sns.app-blue.svg?logo=googlechrome&label=Site)](https://claw.sns.app)
 [![Java Version](https://img.shields.io/badge/Java-21+-blue.svg?logo=openjdk&label=Java)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen.svg?logo=springboot)](https://spring.io/projects/spring-boot)
 [![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg?logo=vuedotjs)](https://vuejs.org/)
-[![Last Commit](https://img.shields.io/github/last-commit/mateaix/mateclaw)](https://github.com/chenzhizhuan/SnSclaw)
+[![Last Commit](https://img.shields.io/github/last-commit/mateaix/mateclaw)](https://github.com/sns/SnSclaw)
 [![License](https://img.shields.io/badge/license-Apache--2.0-red.svg?logo=opensourceinitiative&label=License)](LICENSE)
 
 [[Website](https://claw.sns.app)] [[Live Demo](https://claw-demo.sns.app)] [[Documentation](https://claw.sns.app/docs)] [[中文](README_zh.md)]
@@ -167,7 +167,7 @@ docker compose up -d          # http://localhost:18080
 
 ### Desktop
 
-Download from [GitHub Releases](https://github.com/chenzhizhuan/SnSclaw/releases). Bundles JRE 21. No Java install needed.
+Download from [GitHub Releases](https://github.com/sns/SnSclaw/releases). Bundles JRE 21. No Java install needed.
 
 ---
 
@@ -199,7 +199,7 @@ mateclaw/
 └── .env.example
 ```
 
-Desktop binaries ship via [GitHub Releases](https://github.com/chenzhizhuan/SnSclaw/releases) with a bundled JRE 21 — no Java install needed.
+Desktop binaries ship via [GitHub Releases](https://github.com/sns/SnSclaw/releases) with a bundled JRE 21 — no Java install needed.
 
 ## Tech stack
 
@@ -271,7 +271,7 @@ Full story in the [v1.7.0 release notes](https://claw.sns.app/docs/en/releases/1
 ## Contributing
 
 ```bash
-git clone https://github.com/chenzhizhuan/SnSclaw.git
+git clone https://github.com/sns/SnSclaw.git
 cd mateclaw
 cd mateclaw-server && mvn clean compile
 cd ../mateclaw-ui && pnpm install && pnpm dev

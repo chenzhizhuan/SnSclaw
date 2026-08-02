@@ -8,7 +8,7 @@
 
 **Tech Stack:** Java 21 / Spring Boot 3.5 / Maven 多模块 reactor（`mateclaw-plugin-api` → `mateclaw-server` → samples）/ JUnit 5 + Mockito。
 
-**上游 issue:** https://github.com/chenzhizhuan/SnSclaw/issues/477（已获认可后动工）
+**上游 issue:** https://github.com/sns/SnSclaw/issues/477（已获认可后动工）
 **设计文档:** `docs/superpowers/specs/2026-07-03-plugin-search-provider-design.md`
 
 **背景速览（给零上下文的执行者）：**
