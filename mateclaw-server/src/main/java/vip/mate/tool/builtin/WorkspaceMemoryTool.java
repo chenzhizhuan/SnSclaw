@@ -11,6 +11,7 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 import vip.mate.agent.context.ChatOrigin;
 import vip.mate.memory.MemoryProperties;
+import vip.mate.memory.identity.MemoryScope;
 import vip.mate.memory.identity.MemoryOwnerResolver;
 import vip.mate.memory.service.MemoryRecallTracker;
 import vip.mate.workspace.document.MemorySearchHit;
@@ -134,6 +135,8 @@ public class WorkspaceMemoryTool {
             为避免覆盖有价值内容，通常应先调用 read_workspace_memory_file 再决定写入。
             注意：新建文件的 enabled 字段默认为 false，表示该文件不会自动纳入系统提示词——这是正常行为，不代表写入失败。
             PROFILE.md / MEMORY.md 等核心记忆文件在首次由种子数据创建时即为 enabled=true；daily note 文件按需读写即可。
+            返回值中的 scope 字段说明写入位置：PERSONAL 表示当前会话用户的私有记忆副本（仅对该用户后续会话生效，
+            不会出现在管理页的共享文件列表）；TEAM 表示所有使用该 Agent 的用户共享的文件。向用户说明写入结果时请如实区分。
             """)
     public String write_workspace_memory_file(
             @ToolParam(description = "当前 Agent 的 ID") Long agentId,
@@ -157,7 +160,10 @@ public class WorkspaceMemoryTool {
         result.set("overwritten", before != null);
         result.set("enabled", Boolean.TRUE.equals(saved.getEnabled()));
         result.set("bytesWritten", (content != null ? content : "").getBytes(StandardCharsets.UTF_8).length);
-        result.set("message", before == null ? "工作区记忆文件已创建" : "工作区记忆文件已覆写");
+        result.set("scope", saved.getScope());
+        result.set("ownerKey", saved.getOwnerKey());
+        result.set("message", (before == null ? "工作区记忆文件已创建" : "工作区记忆文件已覆写")
+                + scopeHint(saved.getScope()));
         log.info("[WorkspaceMemoryTool] Saved workspace memory file: agentId={}, filename={}", agentId, filename);
         return JSONUtil.toJsonPrettyStr(result);
     }
@@ -213,7 +219,7 @@ public class WorkspaceMemoryTool {
             replacements = 1;
         }
 
-        workspaceFileService.saveVisibleFile(agentId, filename, updated, ownerKey);
+        WorkspaceFileEntity saved = workspaceFileService.saveVisibleFile(agentId, filename, updated, ownerKey);
 
         JSONObject result = new JSONObject();
         result.set("agentId", agentId);
@@ -221,7 +227,9 @@ public class WorkspaceMemoryTool {
         result.set("replacements", replacements);
         result.set("replaceAll", replaceAllFlag);
         result.set("fileSizeAfter", updated.getBytes(StandardCharsets.UTF_8).length);
-        result.set("message", "工作区记忆文件编辑成功");
+        result.set("scope", saved.getScope());
+        result.set("ownerKey", saved.getOwnerKey());
+        result.set("message", "工作区记忆文件编辑成功" + scopeHint(saved.getScope()));
         log.info("[WorkspaceMemoryTool] Edited workspace memory file: agentId={}, filename={}, replacements={}",
                 agentId, filename, replacements);
         return JSONUtil.toJsonPrettyStr(result);
@@ -313,6 +321,18 @@ public class WorkspaceMemoryTool {
             case "persona" -> new LinkedHashSet<>(List.of("AGENTS.md"));
             default -> new LinkedHashSet<>(List.of("memory/", "MEMORY.md", "PROFILE.md", "AGENTS.md"));
         };
+    }
+
+    /**
+     * Human-readable suffix explaining where a write landed, so the agent can
+     * relay accurately whether the memory is a per-user private copy or the
+     * shared file every user of the agent sees.
+     */
+    private static String scopeHint(String scope) {
+        if (MemoryScope.PERSONAL.equals(scope)) {
+            return "（写入的是当前会话用户的私有记忆副本，仅对该用户生效，不会出现在管理页的共享文件列表中）";
+        }
+        return "（写入的是共享文件，对所有使用该 Agent 的用户可见）";
     }
 
     private String validate(Long agentId, String filename) {

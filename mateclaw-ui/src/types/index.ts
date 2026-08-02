@@ -774,6 +774,10 @@ export interface WorkspaceFile {
   fileSize: number
   enabled: boolean
   sortOrder: number
+  /** Memory subject for PERSONAL rows ("user:42", "feishu:ou_xxx"); empty/null for shared rows */
+  ownerKey?: string | null
+  /** Visibility scope: PERSONAL / TEAM / GLOBAL */
+  scope?: string
   createTime: string
   updateTime: string
 }

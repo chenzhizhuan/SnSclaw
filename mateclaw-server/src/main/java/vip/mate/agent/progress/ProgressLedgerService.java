@@ -203,6 +203,39 @@ public class ProgressLedgerService {
     }
 
     /**
+     * Remove every auto-recorded entry ({@code auto_} key prefix) from the
+     * conversation's ledger. Called at the start of each new user turn.
+     *
+     * <p>Auto-recorded entries are a safety net against context trimming
+     * <b>within</b> one turn's tool loop. Letting them survive into the next
+     * user turn is harmful: the snapshot renders them as DONE alongside the
+     * "已完成的步骤不要重复执行" instruction, which stops the agent from
+     * re-running read-only / status-query tools when the user repeats a
+     * question that needs fresh data (e.g. "看下会议室有没有人"), and the
+     * frozen 120-char result note tempts it to answer from stale output.
+     *
+     * <p>LLM-authored regular entries and pinned skill constraints are
+     * untouched — multi-turn task tracking keeps working.
+     */
+    public void clearAutoRecorded(String conversationId) {
+        if (conversationId == null || conversationId.isBlank()) {
+            return;
+        }
+        ReentrantLock lock = upsertLocks.computeIfAbsent(conversationId, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            LedgerWrapper wrapper = loadWrapper(conversationId);
+            boolean removed = wrapper.entries.keySet().removeIf(
+                    k -> k != null && k.startsWith(ProgressLedger.AUTO_RECORDED_PREFIX));
+            if (removed) {
+                persistWrapper(conversationId, wrapper);
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
      * Auto-record a completed tool call as a ledger entry (B5). Uses the
      * {@link ProgressLedger#AUTO_RECORDED_PREFIX} on the key so the renderer
      * groups it separately. Bounds the total auto-recorded entries to

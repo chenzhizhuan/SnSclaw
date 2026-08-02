@@ -250,6 +250,34 @@ class WorkspaceMemorySearchTest {
     }
 
     @Test
+    @DisplayName("listPersonalFiles restricts to PERSONAL rows and strips content")
+    void listPersonalFilesScopesToPersonalAndStripsContent() {
+        WorkspaceFileEntity row = new WorkspaceFileEntity();
+        row.setFilename("MEMORY.md");
+        row.setOwnerKey("user:admin");
+        row.setScope("PERSONAL");
+        row.setContent("private notes");
+        when(fileMapper.selectList(any())).thenReturn(new ArrayList<>(List.of(row)));
+
+        List<WorkspaceFileEntity> files = service.listPersonalFiles(42L);
+
+        assertThat(files).hasSize(1);
+        assertThat(files.get(0).getContent()).as("listing must not leak content").isNull();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<LambdaQueryWrapper<WorkspaceFileEntity>> captor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        org.mockito.Mockito.verify(fileMapper).selectList(captor.capture());
+        LambdaQueryWrapper<WorkspaceFileEntity> wrapper = captor.getValue();
+        wrapper.getTargetSql();
+
+        List<Object> values = new ArrayList<>(wrapper.getParamNameValuePairs().values());
+        assertThat(values).contains(42L, "PERSONAL");
+        assertThat(values).as("shared scopes must not appear in the filter")
+                .doesNotContain("TEAM", "GLOBAL");
+    }
+
+    @Test
     @DisplayName("Wrapper carries one content-LIKE per token plus the prefix group and LIMIT 50")
     void wrapperContainsTermsAndPrefixes() {
         when(fileMapper.selectList(any())).thenReturn(List.of());

@@ -1913,11 +1913,11 @@ public class ChannelMessageRouter {
      */
     private Path resolveVoiceReplyAudio(String conversationId, String fileName) {
         if (chatUploadLocationResolver != null) {
-            for (Path dir : chatUploadLocationResolver.resolveCandidateConversationDirs(conversationId)) {
-                Path candidate = dir.resolve(fileName);
-                if (Files.exists(candidate)) {
-                    return candidate;
-                }
+            // Probes every candidate root and both layouts (flat + date
+            // sub-directories), so TTS files written under a per-day dir resolve.
+            Path found = chatUploadLocationResolver.resolveExistingFile(conversationId, fileName);
+            if (found != null) {
+                return found;
             }
         }
         // Fallback to the legacy default dir when the resolver is absent

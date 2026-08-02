@@ -1432,6 +1432,9 @@ export default {
     importPreviewSkipReason: 'reason: {reason}',
     importConfirmHint: 'Confirming will overwrite existing files with the same name.',
     importApply: 'Confirm import',
+    personalMemory: 'Per-user private memory',
+    personalMemoryDesc: 'Memory copies the agent wrote for individual users during conversations; injected only into that user\'s sessions. Read-only here.',
+    personalReadonly: 'Private memory · {owner} · read-only',
   },
   agents: {
     kicker: 'Employee Studio',

@@ -76,7 +76,7 @@
               v-for="file in sortedFiles"
               :key="file.filename"
               class="file-item"
-              :class="{ selected: selectedFile?.filename === file.filename }"
+              :class="{ selected: !isPersonalSelected && selectedFile?.filename === file.filename }"
               @click="onFileClick(file)"
             >
               <div class="file-item-main">
@@ -93,6 +93,33 @@
                 </div>
               </div>
             </div>
+
+            <!-- Per-user PERSONAL memory copies (agent-written, admin read-only) -->
+            <template v-if="personalGroups.length > 0">
+              <div class="divider"></div>
+              <h3 class="section-title">{{ t('agentContext.personalMemory') }}</h3>
+              <p class="info-text">{{ t('agentContext.personalMemoryDesc') }}</p>
+              <div v-for="group in personalGroups" :key="group.ownerKey" class="personal-group">
+                <div class="personal-owner" :title="group.ownerKey">{{ group.ownerKey }}</div>
+                <div
+                  v-for="file in group.files"
+                  :key="group.ownerKey + '|' + file.filename"
+                  class="file-item"
+                  :class="{ selected: isSelectedPersonal(file) }"
+                  @click="onPersonalFileClick(file)"
+                >
+                  <div class="file-item-main">
+                    <div class="file-item-info">
+                      <span class="file-icon">🔒</span>
+                      <span class="file-name">{{ file.filename }}</span>
+                    </div>
+                    <div class="file-item-meta">
+                      <span class="file-size">{{ formatSize(file.fileSize) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -104,9 +131,14 @@
             <div class="editor-header">
               <div class="editor-file-info">
                 <div class="editor-filename">{{ selectedFile.filename }}</div>
-                <div class="editor-meta">{{ formatSize(selectedFile.fileSize) }} · {{ formatTime(selectedFile.updateTime) }}</div>
+                <div class="editor-meta">
+                  {{ formatSize(selectedFile.fileSize) }} · {{ formatTime(selectedFile.updateTime) }}
+                  <span v-if="isPersonalSelected" class="personal-badge">
+                    {{ t('agentContext.personalReadonly', { owner: selectedFile.ownerKey }) }}
+                  </span>
+                </div>
               </div>
-              <div class="editor-actions">
+              <div v-if="!isPersonalSelected" class="editor-actions">
                 <button class="btn-sm" @click="resetContent" :disabled="!hasChanges">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
@@ -173,6 +205,7 @@
                 v-model="fileContent"
                 class="editor-textarea"
                 :placeholder="t('agentContext.fileContent')"
+                :readonly="isPersonalSelected"
                 spellcheck="false"
               ></textarea>
               <div
@@ -342,6 +375,8 @@ const selectedAgentId = ref<string | number>('')
 // 文件列表
 const files = ref<WorkspaceFile[]>([])
 const enabledFiles = ref<string[]>([])
+// Per-user PERSONAL memory rows (admin-only endpoint; empty when forbidden)
+const personalFiles = ref<WorkspaceFile[]>([])
 
 // 编辑器状态
 const selectedFile = ref<WorkspaceFile | null>(null)
@@ -413,6 +448,24 @@ const sortedFiles = computed(() => {
 
 const renderedMarkdown = computed(() => renderMarkdown(fileContent.value || ''))
 
+const isPersonalSelected = computed(() => selectedFile.value?.scope === 'PERSONAL')
+
+const personalGroups = computed(() => {
+  const groups = new Map<string, WorkspaceFile[]>()
+  for (const file of personalFiles.value) {
+    const owner = file.ownerKey || ''
+    if (!groups.has(owner)) groups.set(owner, [])
+    groups.get(owner)!.push(file)
+  }
+  return [...groups.entries()].map(([ownerKey, groupFiles]) => ({ ownerKey, files: groupFiles }))
+})
+
+function isSelectedPersonal(file: WorkspaceFile) {
+  return isPersonalSelected.value
+    && selectedFile.value?.filename === file.filename
+    && selectedFile.value?.ownerKey === file.ownerKey
+}
+
 const route = useRoute()
 
 onMounted(async () => {
@@ -431,6 +484,7 @@ watch(selectedAgentId, () => {
     originalContent.value = ''
     fetchFiles()
     fetchPromptFiles()
+    fetchPersonalFiles()
   }
 })
 
@@ -454,6 +508,17 @@ async function fetchFiles() {
     files.value = res.data || []
   } catch {
     mcToast.error(t('agentContext.loadFailed'))
+  }
+}
+
+async function fetchPersonalFiles() {
+  if (!selectedAgentId.value) return
+  try {
+    const res: any = await agentContextApi.listPersonalFiles(selectedAgentId.value)
+    personalFiles.value = res.data || []
+  } catch {
+    // 403 (not admin) or older backend — just hide the section
+    personalFiles.value = []
   }
 }
 
@@ -496,6 +561,20 @@ async function onFileClick(file: WorkspaceFile) {
     const res: any = await agentContextApi.getFile(selectedAgentId.value, file.filename)
     const data = res.data
     fileContent.value = data?.content || ''
+    originalContent.value = fileContent.value
+  } catch {
+    mcToast.error(t('agentContext.loadFileFailed'))
+  }
+}
+
+async function onPersonalFileClick(file: WorkspaceFile) {
+  selectedFile.value = file
+  // Read-only view — markdown preview is the most useful default
+  previewMode.value = 'preview'
+  try {
+    const res: any = await agentContextApi.getPersonalFile(
+      selectedAgentId.value, file.filename, file.ownerKey || '')
+    fileContent.value = res.data?.content || ''
     originalContent.value = fileContent.value
   } catch {
     mcToast.error(t('agentContext.loadFileFailed'))
@@ -748,6 +827,10 @@ function formatTime(time?: string): string {
 .icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .info-text { font-size: 12px; color: var(--mc-text-tertiary); padding: 6px 16px 0; margin: 0; line-height: 1.4; }
 .divider { height: 1px; background: var(--mc-border-light); margin: 10px 16px; }
+.file-scroll .section-title { padding: 6px 16px 0; }
+.personal-group { margin-top: 6px; }
+.personal-owner { font-size: 11px; color: var(--mc-text-tertiary); padding: 4px 16px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.personal-badge { font-size: 11px; background: rgba(99, 102, 241, 0.12); color: #6366f1; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
 
 .file-scroll { flex: 1; overflow-y: auto; padding: 0 8px 8px; }
 .file-scroll::-webkit-scrollbar { width: 4px; }

@@ -198,6 +198,12 @@ mateclaw:
       # instead; reads and cleanup still check this default dir so legacy uploads
       # remain resolvable. Defaults to the legacy location for zero-config parity.
       base-dir: ${MATECLAW_CHAT_UPLOAD_BASE_DIR:data/chat-uploads}
+      # Organize new attachments/generated media into per-day sub-directories:
+      # {convDir}/yyyy-MM-dd/{storedName}. Serving URLs stay flat and reads
+      # probe both layouts, so this can be toggled at any time; files written
+      # under the previous layout remain resolvable either way. The day is the
+      # server's local date (a UTC container groups by UTC days).
+      date-folders: ${MATECLAW_CHAT_UPLOAD_DATE_FOLDERS:true}
   skill:
     upload:
       # Size caps for skill bundle ZIPs (upload endpoint and marketplace

@@ -3403,7 +3403,7 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
         // dedup-named write; the WeCom-specific AES-256-CBC decrypt stays here
         // inside the byte source so a fetch + decrypt is retried as one unit.
         Path uploadDir = (chatUploadLocationResolver != null)
-                ? chatUploadLocationResolver.resolveConversationDir(conversationId)
+                ? chatUploadLocationResolver.resolveWriteDir(conversationId)
                 : Path.of("data", "chat-uploads", ChatUploadLocationResolver.sanitizeSegment(conversationId));
         String hint = (fileNameHint == null || fileNameHint.isBlank()) ? null : fileNameHint;
         return InboundMediaDownloader.download(

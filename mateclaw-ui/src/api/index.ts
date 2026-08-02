@@ -571,6 +571,10 @@ export const planApi = {
 // ==================== Model ====================
 export const modelApi = {
   listProviders: () => http.get('/models'),
+  // Provider id + name only. /models carries connection settings and is
+  // admin-only, so anything a workspace member can reach (the agent's
+  // preferred-provider picker) has to read the choices from here.
+  listProviderOptions: () => http.get('/models/options'),
   listEnabled: () => http.get('/models/enabled'),
   get: (id: string | number) => http.get(`/models/${id}`),
   getDefault: () => http.get('/models/default'),
@@ -722,6 +726,12 @@ export const agentContextApi = {
     http.put(`/agents/${agentId}/workspace/files/${encodeFilePath(filename)}`, { content }),
   deleteFile: (agentId: string | number, filename: string) =>
     http.delete(`/agents/${agentId}/workspace/files/${encodeFilePath(filename)}`),
+  // Per-owner PERSONAL memory copies written by agents during conversations.
+  // Admin-only on the backend; callers should treat a 403 as "hide the section".
+  listPersonalFiles: (agentId: string | number) =>
+    http.get(`/agents/${agentId}/workspace/memory/personal-files`),
+  getPersonalFile: (agentId: string | number, filename: string, ownerKey: string) =>
+    http.get(`/agents/${agentId}/workspace/memory/personal-file`, { params: { filename, ownerKey } }),
   getPromptFiles: (agentId: string | number) =>
     http.get(`/agents/${agentId}/workspace/prompt-files`),
   setPromptFiles: (agentId: string | number, files: string[]) =>

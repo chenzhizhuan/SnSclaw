@@ -101,6 +101,21 @@ public class ModelProviderService {
         return listProvidersInternal(false);
     }
 
+    /**
+     * Enabled providers that are actually usable, reduced to id + display name.
+     * <p>
+     * Feeds the agent's preferred-provider picker, which workspace members may
+     * edit. They cannot read the full provider list (it carries connection
+     * settings), so this projection is what makes the choices visible without
+     * widening that exposure.
+     */
+    public List<ProviderOptionDTO> listProviderOptions() {
+        return listProviders().stream()
+                .filter(p -> Boolean.TRUE.equals(p.getConfigured()))
+                .map(p -> new ProviderOptionDTO(p.getId(), p.getName()))
+                .toList();
+    }
+
     private List<ProviderInfoDTO> listProvidersInternal(boolean enabledOnly) {
         LambdaQueryWrapper<ModelProviderEntity> qw = new LambdaQueryWrapper<>();
         if (enabledOnly) {

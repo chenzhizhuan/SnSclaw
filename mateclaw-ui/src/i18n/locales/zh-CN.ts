@@ -1306,6 +1306,9 @@ export default {
     importPreviewSkipReason: '原因：{reason}',
     importConfirmHint: '确认导入会覆盖现有同名文件。',
     importApply: '确认导入',
+    personalMemory: '用户私有记忆',
+    personalMemoryDesc: 'Agent 在对话中为各用户单独写入的记忆副本，仅注入对应用户的会话，此处只读',
+    personalReadonly: '私有记忆 · {owner} · 只读',
   },
   agents: {
     kicker: '员工工作室',

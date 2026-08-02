@@ -241,19 +241,6 @@ public class FeishuChannelAdapter extends AbstractChannelAdapter implements Stre
     vip.mate.workspace.core.service.ChatUploadLocationResolver chatUploadLocationResolver;
 
     /**
-     * Resolve the upload root for a conversation, preferring the wired resolver
-     * (workspace/agent-aware) and falling back to the legacy field. Read paths
-     * should use {@link #candidateChatUploadRoots(String)} to probe both the
-     * workspace-scoped root and the legacy root.
-     */
-    private java.nio.file.Path chatUploadRootFor(String conversationId) {
-        if (chatUploadLocationResolver != null) {
-            return chatUploadLocationResolver.resolveUploadRoot(conversationId);
-        }
-        return chatUploadsRoot;
-    }
-
-    /**
      * Ordered candidate upload roots for a conversation: workspace-scoped first
      * (when the resolver is wired), then the legacy field. Used by read/scan
      * paths so attachments written before the workspace-aware relocation are
@@ -1791,11 +1778,13 @@ public class FeishuChannelAdapter extends AbstractChannelAdapter implements Stre
                     : maybeDownloadResource(messageId, fileKey, type, fileName);
             if (dl == null) return null;
 
-            // Save under the workspace/agent-aware upload root ({convId}/ subdir).
-            // Sanitize the id for the path segment — IM ids like "feishu:xxx"
+            // Save under the workspace/agent-aware upload root ({convId}/ subdir,
+            // plus the per-day sub-directory when date folders are enabled).
+            // The id is sanitized for the path segment — IM ids like "feishu:xxx"
             // carry a ':' that is illegal in a Windows filename.
-            Path uploadDir = chatUploadRootFor(conversationId)
-                    .resolve(ChatUploadLocationResolver.sanitizeSegment(conversationId));
+            Path uploadDir = (chatUploadLocationResolver != null)
+                    ? chatUploadLocationResolver.resolveWriteDir(conversationId)
+                    : chatUploadsRoot.resolve(ChatUploadLocationResolver.sanitizeSegment(conversationId));
             Files.createDirectories(uploadDir);
             String rawName = (dl.fileName() != null && !dl.fileName().isBlank())
                     ? dl.fileName() : fileKey;
@@ -1889,7 +1878,11 @@ public class FeishuChannelAdapter extends AbstractChannelAdapter implements Stre
         long cutoff = System.currentTimeMillis() - RECENT_FILE_TTL_MINUTES * 60_000L;
         List<RecentFileEntry> merged = new java.util.ArrayList<>();
         for (Path dir : candidateChatUploadDirs(conversationId)) {
-            merged.addAll(loadRecentFilesFromDisk(dir, cutoff));
+            // Scan the flat conversation dir plus each yyyy-MM-dd sub-directory
+            // so staged copies written under either layout are recovered.
+            for (Path scanDir : ChatUploadLocationResolver.dateScanDirs(dir)) {
+                merged.addAll(loadRecentFilesFromDisk(scanDir, cutoff));
+            }
         }
         return merged;
     }

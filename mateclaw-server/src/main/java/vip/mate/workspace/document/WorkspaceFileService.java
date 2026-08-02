@@ -176,6 +176,24 @@ public class WorkspaceFileService {
     }
 
     /**
+     * List every owner's PERSONAL memory rows for an agent (metadata only,
+     * content stripped). Admin-surface listing so operators can see that
+     * per-user memory copies exist alongside the shared config files —
+     * reading a row's content goes through
+     * {@link #getMemoryFile(Long, String, String)}.
+     */
+    public List<WorkspaceFileEntity> listPersonalFiles(Long agentId) {
+        List<WorkspaceFileEntity> files = fileMapper.selectList(
+                new LambdaQueryWrapper<WorkspaceFileEntity>()
+                        .eq(WorkspaceFileEntity::getAgentId, agentId)
+                        .eq(WorkspaceFileEntity::getScope, MemoryScope.PERSONAL)
+                        .orderByAsc(WorkspaceFileEntity::getOwnerKey)
+                        .orderByAsc(WorkspaceFileEntity::getFilename));
+        files.forEach(f -> f.setContent(null));
+        return files;
+    }
+
+    /**
      * Read a file visible to {@code ownerKey}: the owner's PERSONAL row when it
      * exists, otherwise the shared row. Null when neither exists.
      */

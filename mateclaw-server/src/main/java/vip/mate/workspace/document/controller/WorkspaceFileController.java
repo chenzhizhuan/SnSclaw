@@ -118,6 +118,40 @@ public class WorkspaceFileController {
         return R.ok();
     }
 
+    // ==================== Per-owner PERSONAL memory (admin read-only) ====================
+
+    /**
+     * List every owner's PERSONAL memory rows (metadata only). These rows are
+     * written by agents during conversations and are scoped to a single end
+     * user, so they never appear in the shared file list above. Admin-gated:
+     * the listing exposes which subjects (owner keys) hold private memory.
+     */
+    @Operation(summary = "列出各用户的私有记忆文件（仅元数据）")
+    @RequireWorkspaceRole("admin")
+    @GetMapping("/memory/personal-files")
+    public R<List<WorkspaceFileEntity>> listPersonalFiles(@PathVariable Long agentId) {
+        return R.ok(workspaceFileService.listPersonalFiles(agentId));
+    }
+
+    /**
+     * Read one owner's PERSONAL memory file content. Query params (not path
+     * segments) because both the filename ({@code memory/2026-06-02.md}) and
+     * the owner key ({@code feishu:ou_xxx}) contain characters that clash with
+     * path mapping.
+     */
+    @Operation(summary = "读取单个用户私有记忆文件内容")
+    @RequireWorkspaceRole("admin")
+    @GetMapping("/memory/personal-file")
+    public R<WorkspaceFileEntity> getPersonalFile(@PathVariable Long agentId,
+                                                  @RequestParam String filename,
+                                                  @RequestParam String ownerKey) {
+        WorkspaceFileEntity file = workspaceFileService.getMemoryFile(agentId, filename, ownerKey);
+        if (file == null) {
+            return R.fail("文件不存在: " + filename);
+        }
+        return R.ok(file);
+    }
+
     // ==================== Memory snapshot export / import ====================
 
     /**
