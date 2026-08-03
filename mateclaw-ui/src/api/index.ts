@@ -598,6 +598,9 @@ export const modelApi = {
     http.post(`/models/${providerId}/models`, data),
   removeProviderModel: (providerId: string, modelId: string) =>
     http.delete(`/models/${providerId}/models`, { params: { modelId } }),
+  /** Per-model input context window. Pass null to clear the override. */
+  updateModelContextWindow: (providerId: string, modelId: string, maxInputTokens: number | null) =>
+    http.put(`/models/${providerId}/models/context-window`, { modelId, maxInputTokens }),
   getActive: () => http.get('/models/active'),
   setActive: (data: { providerId: string; model: string }) =>
     http.put('/models/active', data),

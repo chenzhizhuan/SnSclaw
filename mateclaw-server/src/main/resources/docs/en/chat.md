@@ -276,7 +276,9 @@ Every turn, SnSclaw builds the prompt that actually goes to the LLM. Roughly:
 4. **Recent turns** — as many as fit in the token budget
 5. **Current user message** — always last
 
-When the total exceeds `defaultMaxInputTokens × compactTriggerRatio` (default 128000 × 0.75 = 96000), the system calls the LLM to summarize earlier turns, caches the result for 30 minutes, and sends a compact version. If the LLM still returns a `context_length_exceeded` error, emergency trimming kicks in: discard older messages without calling the LLM, keep the last two turns.
+The window comes from the model itself: the model config's `maxInputTokens` first, then a window probed from a local inference server, then the built-in table of known model windows (DeepSeek V4, Gemini, Claude, Kimi K2, …). Only when all three come up empty does it fall back to the global `defaultMaxInputTokens`.
+
+When the total exceeds `window × compactTriggerRatio` (global default 128000 × 0.75 = 96000), the system calls the LLM to summarize earlier turns, caches the result for 30 minutes, and sends a compact version. If the LLM still returns a `context_length_exceeded` error, emergency trimming kicks in: discard older messages without calling the LLM, keep the last two turns.
 
 More detail, plus the security rationale for injecting summaries as `UserMessage` rather than `SystemMessage`, is in [Memory](./memory).
 

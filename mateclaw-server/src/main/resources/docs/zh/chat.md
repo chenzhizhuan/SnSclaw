@@ -276,7 +276,9 @@ Segment 的结构是渐进展示的底层。它也让**数据库成为单一事�
 4. **最近的若干轮**——尽可能装进 token 预算
 5. **当前用户消息**——永远在最后
 
-当总量超过 `defaultMaxInputTokens × compactTriggerRatio`（默认 128000 × 0.75 = 96000），系统会让 LLM 把早期轮次总结一下，把结果缓存 30 分钟，送出去的是压缩版。如果 LLM 依然报 `context_length_exceeded`，会触发紧急截断：不调 LLM，直接丢掉更早的消息，保留最近两轮。
+这里的窗口取自模型自身的上下文长度：优先用模型配置里的 `maxInputTokens`，其次是本地推理服务探测到的窗口，再次是内置的常见模型窗口表（DeepSeek V4、Gemini、Claude、Kimi K2 等），都拿不到才回落全局默认 `defaultMaxInputTokens`。
+
+当总量超过 `窗口 × compactTriggerRatio`（全局默认 128000 × 0.75 = 96000），系统会让 LLM 把早期轮次总结一下，把结果缓存 30 分钟，送出去的是压缩版。如果 LLM 依然报 `context_length_exceeded`，会触发紧急截断：不调 LLM，直接丢掉更早的消息，保留最近两轮。
 
 更多细节，以及"为什么把摘要注入成 `UserMessage` 而不是 `SystemMessage`"的安全设计理由，在 [记忆系统](./memory) 里。
 

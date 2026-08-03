@@ -14,6 +14,9 @@ import vip.mate.llm.failover.ProviderInitProbe;
 import vip.mate.llm.model.ModelConfigEntity;
 import vip.mate.llm.model.ModelProviderEntity;
 import vip.mate.llm.model.ProviderOptionDTO;
+import vip.mate.config.ConversationWindowProperties;
+import vip.mate.llm.probe.ContextProbeProperties;
+import vip.mate.llm.probe.ModelContextWindowResolver;
 import vip.mate.llm.repository.ModelProviderMapper;
 
 import java.lang.reflect.RecordComponent;
@@ -59,7 +62,9 @@ class ModelProviderServiceOptionsTest {
         when(initProbe.hasBeenProbed(any())).thenReturn(true);
 
         service = new ModelProviderService(providerMapper, modelConfigService, eventPublisher,
-                claudeCodeOAuthProvider, pool, healthTracker, initProbeProvider);
+                claudeCodeOAuthProvider, pool, healthTracker, initProbeProvider,
+                new ModelContextWindowResolver(List.of(), new ContextProbeProperties()),
+                new ConversationWindowProperties());
     }
 
     @Test

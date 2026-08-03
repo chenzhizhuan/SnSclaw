@@ -164,6 +164,7 @@
       @set-active="onSetActiveModel"
       @remove-model="onRemoveProviderModel"
       @add-model="onAddProviderModel"
+      @update-context-window="onUpdateModelContextWindow"
     />
 
     <!-- RFC-074 PR-2: Add Provider Drawer (catalog of opt-in built-ins). -->
@@ -253,6 +254,7 @@ const {
   isExtraModel,
   addProviderModel,
   removeProviderModel,
+  updateModelContextWindow,
   isProviderActive,
   isActiveModel,
   setActiveModel,
@@ -377,6 +379,15 @@ async function onRemoveProviderModel(model: ProviderModelInfo) {
     showSavedTip(t('settings.model.modelRemoved'))
   } catch (error) {
     mcToast.error(error instanceof Error ? error.message : t('settings.model.modelRemoveFailed'))
+  }
+}
+
+async function onUpdateModelContextWindow(model: ProviderModelInfo, maxInputTokens: number | null) {
+  try {
+    await updateModelContextWindow(model, maxInputTokens)
+    showSavedTip(t('settings.model.contextWindow.updated'))
+  } catch (error) {
+    mcToast.error(error instanceof Error ? error.message : t('settings.model.contextWindow.updateFailed'))
   }
 }
 

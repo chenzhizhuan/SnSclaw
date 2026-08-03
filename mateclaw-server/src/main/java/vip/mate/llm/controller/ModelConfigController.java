@@ -176,6 +176,15 @@ public class ModelConfigController {
         return R.ok(modelProviderService.removeModel(providerId, modelId));
     }
 
+    @Operation(summary = "设置模型上下文窗口")
+    @PutMapping("/{providerId}/models/context-window")
+    @RequireGlobalAdmin
+    public R<ProviderInfoDTO> updateModelContextWindow(@PathVariable String providerId,
+                                                       @RequestBody UpdateModelContextWindowRequest request) {
+        return R.ok(modelProviderService.updateModelContextWindow(
+                providerId, request.getModelId(), request.getMaxInputTokens()));
+    }
+
     @Operation(summary = "获取模型详情")
     @GetMapping("/{id}")
     @RequireGlobalAdmin

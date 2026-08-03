@@ -879,6 +879,12 @@ export interface ProviderModelInfo {
    * toggle should gate on.
    */
   supportsThinking?: boolean
+  /** Explicit input window in tokens; null/undefined when the operator set none. */
+  maxInputTokens?: number | null
+  /** Window budgeting would use right now: configured, built-in table, or global default. */
+  effectiveMaxInputTokens?: number | null
+  /** Where `effectiveMaxInputTokens` comes from. */
+  maxInputTokensSource?: 'configured' | 'catalog' | 'default'
 }
 
 /**
