@@ -1,10 +1,10 @@
 ---
 title: SnSclaw 项目介绍 — 自部署多智能体 AI 操作系统
-description: SnSclaw 是基于 Spring AI Alibaba 的开源多智能体 AI 操作系统。ReAct + Plan-and-Execute 双引擎、LLM Wiki 知识库、四层记忆系统、MCP 工具协议、8 渠道统一接入。一个 JAR 包自部署，数据不出门。
+description: SnSclaw 是基于 Spring AI Alibaba 的企业级多智能体 AI 操作系统。ReAct + Plan-and-Execute 双引擎、LLM Wiki 知识库、四层记忆系统、MCP 工具协议、8 渠道统一接入。一个 JAR 包自部署，数据不出门。
 head:
   - - meta
     - name: keywords
-      content: SnSclaw,多智能体,AI操作系统,自部署AI,Spring AI Alibaba,ReAct,Plan-and-Execute,MCP,LLM Wiki,记忆系统,Tool Guard,开源
+      content: SnSclaw,多智能体,AI操作系统,自部署AI,Spring AI Alibaba,ReAct,Plan-and-Execute,MCP,LLM Wiki,记忆系统,Tool Guard,企业级
 ---
 
 # SnSclaw — 自部署多智能体 AI 操作系统
