@@ -674,79 +674,79 @@ ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), tran
 -- be removed in the next release. New skills should NOT be added here — drop a
 -- SKILL.md under skills/<name>/ and the seed service will register it.
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000001, 'cron', '定时任务管理。通过命令或控制台创建、查询、暂停、恢复、删除任务，按时间表执行并把结果发到频道。', 'builtin', '⏰', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'cron,schedule,automation', NOW(), NOW(), 0)
+VALUES (1000000001, 'cron', '定时任务管理。通过命令或控制台创建、查询、暂停、恢复、删除任务，按时间表执行并把结果发到频道。', 'builtin', '⏰', '1.0.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'cron,schedule,automation', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000002, 'file_reader', '读取与摘要文本类文件，如 txt、md、json、csv、log、代码文件等。PDF 与 Office 文件由专用技能处理。', 'builtin', '📄', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'file,reader,text,summary', NOW(), NOW(), 0)
+VALUES (1000000002, 'file_reader', '读取与摘要文本类文件，如 txt、md、json、csv、log、代码文件等。PDF 与 Office 文件由专用技能处理。', 'builtin', '📄', '1.0.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'file,reader,text,summary', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000003, 'dingtalk_channel_connect', '辅助完成钉钉频道接入流程，支持可视浏览器、登录暂停和发布前检查。', 'builtin', '🤖', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'dingtalk,channel,browser,automation', NOW(), NOW(), 0)
+VALUES (1000000003, 'dingtalk_channel_connect', '辅助完成钉钉频道接入流程，支持可视浏览器、登录暂停和发布前检查。', 'builtin', '🤖', '1.0.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'dingtalk,channel,browser,automation', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000004, 'himalaya', '通过 CLI 管理邮件，支持多账户 IMAP/SMTP、搜索、阅读、回复和附件处理。', 'builtin', '📧', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md","homepage":"https://github.com/pimalaya/himalaya"}', TRUE, TRUE, 'email,imap,smtp,cli', NOW(), NOW(), 0)
+VALUES (1000000004, 'himalaya', '通过 CLI 管理邮件，支持多账户 IMAP/SMTP、搜索、阅读、回复和附件处理。', 'builtin', '📧', '1.0.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md","homepage":"https://github.com/pimalaya/himalaya"}', TRUE, TRUE, 'email,imap,smtp,cli', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000005, 'news', '从互联网查询最新新闻。支持政治、财经、社会、国际、科技、体育、娱乐等分类。自动适配内置搜索和工具搜索。', 'builtin', '📰', '2.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'news,web,search,summary', NOW(), NOW(), 0)
+VALUES (1000000005, 'news', '从互联网查询最新新闻。支持政治、财经、社会、国际、科技、体育、娱乐等分类。自动适配内置搜索和工具搜索。', 'builtin', '📰', '2.0.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'news,web,search,summary', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000006, 'pdf', 'PDF 相关操作：阅读、提取文字和表格、合并拆分、旋转、水印、填表、加密解密、OCR 等。内含表单字段提取、填充、边界框校验和 PDF 转图片等脚本。', 'builtin', '📕', '1.0.0', 'Anthropic Skills', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'pdf,ocr,forms,document', NOW(), NOW(), 0)
+VALUES (1000000006, 'pdf', 'PDF 相关操作：阅读、提取文字和表格、合并拆分、旋转、水印、填表、加密解密、OCR 等。内含表单字段提取、填充、边界框校验和 PDF 转图片等脚本。', 'builtin', '📕', '1.0.0', 'Anthropic Skills', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'pdf,ocr,forms,document', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000007, 'docx', 'Word 文档的创建、阅读、编辑，支持目录、页眉页脚、表格、图片、修订与批注。内含 XML 解包/打包、Schema 校验、修订处理和 LibreOffice 集成等脚本。', 'builtin', '📝', '1.0.0', 'Anthropic Skills', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'docx,word,document,office', NOW(), NOW(), 0)
+VALUES (1000000007, 'docx', 'Word 文档的创建、阅读、编辑，支持目录、页眉页脚、表格、图片、修订与批注。内含 XML 解包/打包、Schema 校验、修订处理和 LibreOffice 集成等脚本。', 'builtin', '📝', '1.0.0', 'Anthropic Skills', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'docx,word,document,office', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000008, 'pptx', 'PPT 的创建、阅读、编辑，支持模板、版式、备注与批注。内含幻灯片操作、缩略图生成、XML 校验和 LibreOffice 集成等脚本。', 'builtin', '📊', '1.0.0', 'Anthropic Skills', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'pptx,presentation,slides,office', NOW(), NOW(), 0)
+VALUES (1000000008, 'pptx', 'PPT 的创建、阅读、编辑，支持模板、版式、备注与批注。内含幻灯片操作、缩略图生成、XML 校验和 LibreOffice 集成等脚本。', 'builtin', '📊', '1.0.0', 'Anthropic Skills', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'pptx,presentation,slides,office', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000009, 'xlsx', '表格文件的读取、编辑、创建与格式整理，支持公式、数据清洗和分析。内含公式重算、XML 解包/打包、Schema 校验和 LibreOffice 集成等脚本。', 'builtin', '📈', '1.0.0', 'Anthropic Skills', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'xlsx,excel,csv,spreadsheet,data', NOW(), NOW(), 0)
+VALUES (1000000009, 'xlsx', '表格文件的读取、编辑、创建与格式整理，支持公式、数据清洗和分析。内含公式重算、XML 解包/打包、Schema 校验和 LibreOffice 集成等脚本。', 'builtin', '📈', '1.0.0', 'Anthropic Skills', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'xlsx,excel,csv,spreadsheet,data', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000010, 'browser_visible', '以可见模式启动真实浏览器窗口，适用于演示、调试或需要人工参与的场景。', 'builtin', '🖥️', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'browser,visible,headed,automation', NOW(), NOW(), 0)
+VALUES (1000000010, 'browser_visible', '以可见模式启动真实浏览器窗口，适用于演示、调试或需要人工参与的场景。', 'builtin', '🖥️', '1.0.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'browser,visible,headed,automation', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000012, 'browser_cdp', '通过 Chrome DevTools Protocol (CDP) 连接或启动 Chrome，用于远程调试、共享浏览器或与外部工具协作。', 'builtin', '🔌', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'browser,cdp,chrome,debugging,automation', NOW(), NOW(), 0)
+VALUES (1000000012, 'browser_cdp', '通过 Chrome DevTools Protocol (CDP) 连接或启动 Chrome，用于远程调试、共享浏览器或与外部工具协作。', 'builtin', '🔌', '1.0.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'browser,cdp,chrome,debugging,automation', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000011, 'guidance', '回答用户关于 SnSclaw 安装与配置的问题，优先定位并阅读本地文档，再提炼答案。', 'builtin', '🧭', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'docs,guidance,configuration,qa', NOW(), NOW(), 0)
+VALUES (1000000011, 'guidance', '回答用户关于 SnSclaw 安装与配置的问题，优先定位并阅读本地文档，再提炼答案。', 'builtin', '🧭', '1.0.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'docs,guidance,configuration,qa', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000013, 'mateclaw_source_index', '将用户问题映射到 SnSclaw 文档路径与源码入口，减少盲目搜索。', 'builtin', '🗂️', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'docs,index,source,qa', NOW(), NOW(), 0)
+VALUES (1000000013, 'mateclaw_source_index', '将用户问题映射到 SnSclaw 文档路径与源码入口，减少盲目搜索。', 'builtin', '🗂️', '1.0.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'docs,index,source,qa', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000014, 'sql_query', '使用自然语言查询数据库。发现表结构、生成 SQL、在已配置的外部数据源上执行只读查询。', 'builtin', '📊', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'sql,database,query,data', NOW(), NOW(), 0)
+VALUES (1000000014, 'sql_query', '使用自然语言查询数据库。发现表结构、生成 SQL、在已配置的外部数据源上执行只读查询。', 'builtin', '📊', '1.0.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'sql,database,query,data', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000015, 'steve_jobs_perspective', '史蒂夫·乔布斯思维操作系统。以乔布斯视角审视产品、评估决策、提供反馈，运用其六大心智模型和独特表达风格。', 'builtin', '🍎', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'persona,jobs,product,strategy,thinking', NOW(), NOW(), 0)
+VALUES (1000000015, 'steve_jobs_perspective', '史蒂夫·乔布斯思维操作系统。以乔布斯视角审视产品、评估决策、提供反馈，运用其六大心智模型和独特表达风格。', 'builtin', '🍎', '1.0.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'persona,jobs,product,strategy,thinking', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000016, 'make_plan', '当任务需要多步拆解或不确定执行路径时，向更强 Agent 请求一份分步可落地的执行计划，由当前 Agent 自己执行。', 'builtin', '🗺️', '1.3.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'plan,delegate,agent,collaboration', NOW(), NOW(), 0)
+VALUES (1000000016, 'make_plan', '当任务需要多步拆解或不确定执行路径时，向更强 Agent 请求一份分步可落地的执行计划，由当前 Agent 自己执行。', 'builtin', '🗺️', '1.3.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'plan,delegate,agent,collaboration', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000017, 'chat_with_agent', '当需要咨询其他 Agent、寻求帮助或用户明确要求某个 Agent 参与时，使用本技能进行单次或并行委托。', 'builtin', '💬', '1.2.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'agent,chat,collaborate,delegate', NOW(), NOW(), 0)
+VALUES (1000000017, 'chat_with_agent', '当需要咨询其他 Agent、寻求帮助或用户明确要求某个 Agent 参与时，使用本技能进行单次或并行委托。', 'builtin', '💬', '1.2.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'agent,chat,collaborate,delegate', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000018, 'channel_message', '当需要主动向用户、会话或渠道单向推送消息时使用。任务完成通知、定时提醒、异步结果回推等场景。', 'builtin', '📤', '1.3.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'channel,message,push,notify,dingtalk,feishu', NOW(), NOW(), 0)
+VALUES (1000000018, 'channel_message', '当需要主动向用户、会话或渠道单向推送消息时使用。任务完成通知、定时提醒、异步结果回推等场景。', 'builtin', '📤', '1.3.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'channel,message,push,notify,dingtalk,feishu', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000019, 'multi_agent_collaboration', '当任务需要多个 Agent 的专业能力协同完成时，编排多 Agent 并行或串行协作，整合各方结果。', 'builtin', '🤝', '1.4.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'multi-agent,collaboration,orchestration,parallel', NOW(), NOW(), 0)
+VALUES (1000000019, 'multi_agent_collaboration', '当任务需要多个 Agent 的专业能力协同完成时，编排多 Agent 并行或串行协作，整合各方结果。', 'builtin', '🤝', '1.4.0', 'SnSclaw', '{"upstream":"snsclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'multi-agent,collaboration,orchestration,parallel', NOW(), NOW(), 0)
 ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), skill_type=VALUES(skill_type), icon=VALUES(icon), version=VALUES(version), author=VALUES(author), config_json=VALUES(config_json), enabled=VALUES(enabled), builtin=VALUES(builtin), tags=VALUES(tags), update_time=VALUES(update_time), deleted=VALUES(deleted);
 
 -- RFC-042 §2.2 — bilingual display names for the 19 builtin skills.

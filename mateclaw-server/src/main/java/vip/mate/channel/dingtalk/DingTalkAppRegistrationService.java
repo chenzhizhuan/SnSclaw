@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DingTalkAppRegistrationService {
 
     private static final String API_BASE = "https://oapi.dingtalk.com";
-    private static final String SOURCE = "MATECLAW";
+    private static final String SOURCE = "SNSCLAW";
     private static final long POLL_INTERVAL_MS = 5000L;
     private static final long POLL_REQUEST_TIMEOUT_MS = 10_000L;
     private static final long INIT_REQUEST_TIMEOUT_MS = 15_000L;

@@ -56,7 +56,7 @@ class McpIdentityForwardServiceTest {
     private static McpIdentityForwardProperties tokenProps(KeyPair kp) {
         var p = new McpIdentityForwardProperties();
         p.getToken().setEnabled(true);
-        p.getToken().setIssuer("mateclaw");
+        p.getToken().setIssuer("snsclaw");
         p.getToken().setTtlSeconds(60);
         p.getToken().setPrivateKeyPem(Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded()));
         return p;
@@ -224,7 +224,7 @@ class McpIdentityForwardServiceTest {
 
         var p = new McpIdentityForwardProperties();
         p.getToken().setEnabled(true);
-        p.getToken().setIssuer("mateclaw");
+        p.getToken().setIssuer("snsclaw");
         p.getToken().setTtlSeconds(60);
 
         // 1. Malformed key → fail-closed.
@@ -242,7 +242,7 @@ class McpIdentityForwardServiceTest {
         // The minted token verifies against the matching public key.
         Claims claims = Jwts.parser()
                 .verifyWith(kp.getPublic())
-                .requireIssuer("mateclaw")
+                .requireIssuer("snsclaw")
                 .requireAudience("my-api")
                 .build()
                 .parseSignedClaims(inj.get().value())
@@ -264,7 +264,7 @@ class McpIdentityForwardServiceTest {
         // The REST backend verifies with the public key and reads the typed claims.
         Claims claims = Jwts.parser()
                 .verifyWith(kp.getPublic())
-                .requireIssuer("mateclaw")
+                .requireIssuer("snsclaw")
                 .requireAudience("my-api")
                 .build()
                 .parseSignedClaims(inj.get().value())

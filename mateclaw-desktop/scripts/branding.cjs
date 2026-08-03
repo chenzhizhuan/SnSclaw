@@ -88,7 +88,7 @@ function buildReplacements(brand) {
   ])
 
   // 7. Brand name (catch-all, must come last)
-  //    Only replace the exact word "SnSclaw", not "mateclaw" (lowercase,
+  //    Only replace the exact word "SnSclaw", not "snsclaw" (lowercase,
   //    which is used in H2 database paths and Spring Boot properties that
   //    are coupled with the server and must NOT change).
   replacements.push(['SnSclaw', brand.name])

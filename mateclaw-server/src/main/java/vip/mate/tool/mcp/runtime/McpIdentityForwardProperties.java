@@ -126,7 +126,7 @@ public class McpIdentityForwardProperties {
     /** Signed-token (JWT) settings for the token trust model. */
     public static class Token {
         private boolean enabled = false;
-        private String issuer = "mateclaw";
+        private String issuer = "snsclaw";
         private long ttlSeconds = 60;
         private String keyId = "mateclaw-mcp-1";
         /** PKCS#8 PEM of the RS256 private key. Required when {@link #enabled}. */

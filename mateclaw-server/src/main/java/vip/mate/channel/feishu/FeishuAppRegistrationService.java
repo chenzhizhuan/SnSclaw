@@ -59,7 +59,7 @@ public class FeishuAppRegistrationService {
         // 不传 .domain()/.larkDomain()：SDK 默认用 accounts.feishu.cn 和 accounts.larksuite.com
         // 这两个是注册账号端点，open.feishu.cn 是开放 API 端点 —— 完全不是一个东西
         RegisterAppOptions options = RegisterAppOptions.newBuilder()
-                .source("mateclaw")
+                .source("snsclaw")
                 .onQRCode(qr -> session.onQRCode(qr))
                 .onStatusChange(status -> session.onStatusChange(status))
                 .build();

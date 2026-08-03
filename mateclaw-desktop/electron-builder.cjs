@@ -33,8 +33,8 @@ const brand = loadBrandConfig(__dirname)
 const brandSlug = brand.name.replace(/\s+/g, '_')
 
 // Parse GitHub URL for publish config (owner/repo)
-let githubOwner = 'matevip'
-let githubRepo = 'mateclaw'
+let githubOwner = 'sns'
+let githubRepo = 'SnSclaw'
 const ghMatch = brand.githubUrl.match(/github\.com\/([^/]+)\/([^/]+)/)
 if (ghMatch) {
   githubOwner = ghMatch[1]

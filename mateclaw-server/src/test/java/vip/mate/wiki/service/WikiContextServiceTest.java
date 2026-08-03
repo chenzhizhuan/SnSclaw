@@ -164,7 +164,7 @@ class WikiContextServiceTest {
                 "A KB created via UI E2E test to surface wiki bugs", null);
         when(kbService.listByAgentId(1L)).thenReturn(List.of(kb));
         when(pageService.listSummaries(100L)).thenReturn(List.of(
-                simplePage("mateclaw", "SnSclaw", "Entry page")));
+                simplePage("snsclaw", "SnSclaw", "Entry page")));
 
         String out = service.buildWikiContext(1L);
 

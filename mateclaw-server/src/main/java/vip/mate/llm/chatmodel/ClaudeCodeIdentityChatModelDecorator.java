@@ -44,7 +44,7 @@ import java.util.Set;
  *   <li><b>System prompt prefix</b>: prepend
  *       {@code "You are Claude Code, Anthropic's official CLI for Claude."}.
  *       Insert a new SystemMessage if none exists.</li>
- *   <li><b>Brand scrub</b>: replace {@code "SnSclaw"}/{@code "mateclaw"}
+ *   <li><b>Brand scrub</b>: replace {@code "SnSclaw"}/{@code "snsclaw"}
  *       in system text with their Claude Code equivalents — Anthropic's
  *       content filter flags identity contradictions.</li>
  *   <li><b>Tool {@code mcp_} prefix (outgoing)</b>: every tool definition
@@ -261,7 +261,7 @@ public class ClaudeCodeIdentityChatModelDecorator implements ChatModel {
         }
         return text
                 .replace("SnSclaw", "Claude Code")
-                .replace("mateclaw", "claude-code")
+                .replace("snsclaw", "claude-code")
                 .replace("Mate Claw", "Claude Code");
     }
 

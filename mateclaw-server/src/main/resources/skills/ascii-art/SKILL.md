@@ -158,7 +158,7 @@ boxes -l                                       # List all 70+ designs
 ### Combine with pyfiglet or asciified
 
 ```bash
-python3 -m pyfiglet "MATECLAW" -f slant | boxes -d stone
+python3 -m pyfiglet "SNSCLAW" -f slant | boxes -d stone
 # Or without pyfiglet installed:
 curl -s "https://asciified.thelicato.io/api/v2/ascii?text=MATECLAW&font=Slant" | boxes -d stone
 ```

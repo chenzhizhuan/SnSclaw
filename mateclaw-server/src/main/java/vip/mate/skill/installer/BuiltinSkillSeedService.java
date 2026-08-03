@@ -482,7 +482,7 @@ public class BuiltinSkillSeedService implements ApplicationRunner {
     private String buildConfigJson(SkillFrontmatterParser.ParsedSkillMd parsed) {
         // LinkedHashMap → stable key ordering → stable diff against existing.
         Map<String, Object> config = new LinkedHashMap<>();
-        config.put("upstream", "mateclaw");
+        config.put("upstream", "snsclaw");
         config.put("entryFile", "SKILL.md");
 
         SkillFrontmatterParser.SkillDependencies deps = parsed.getDependencies();

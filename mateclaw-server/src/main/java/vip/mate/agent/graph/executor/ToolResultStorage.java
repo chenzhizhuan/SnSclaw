@@ -96,7 +96,7 @@ public class ToolResultStorage {
         }
         String tmp = System.getProperty("java.io.tmpdir");
         if (tmp != null && !tmp.isEmpty()) {
-            WorkspacePathGuard.addTrustedRoot(Paths.get(tmp, "mateclaw", "tool-results").toString());
+            WorkspacePathGuard.addTrustedRoot(Paths.get(tmp, "snsclaw", "tool-results").toString());
         }
     }
 
@@ -337,7 +337,7 @@ public class ToolResultStorage {
         } else {
             String tmp = System.getProperty("java.io.tmpdir");
             if (tmp == null || tmp.isEmpty()) return null;
-            base = Paths.get(tmp, "mateclaw", "tool-results");
+            base = Paths.get(tmp, "snsclaw", "tool-results");
             outsideWorkspace = true;
         }
         // Register so the retention sweep and conversation-delete hook can
@@ -386,7 +386,7 @@ public class ToolResultStorage {
         }
         String tmp = System.getProperty("java.io.tmpdir");
         if (tmp != null && !tmp.isEmpty()) {
-            roots.add(Paths.get(tmp, "mateclaw", "tool-results"));
+            roots.add(Paths.get(tmp, "snsclaw", "tool-results"));
         }
 
         int deleted = 0;
@@ -462,7 +462,7 @@ public class ToolResultStorage {
         }
         String tmp = System.getProperty("java.io.tmpdir");
         if (tmp != null && !tmp.isEmpty()) {
-            roots.add(Paths.get(tmp, "mateclaw", "tool-results"));
+            roots.add(Paths.get(tmp, "snsclaw", "tool-results"));
         }
         int deleted = 0;
         for (Path root : roots) {

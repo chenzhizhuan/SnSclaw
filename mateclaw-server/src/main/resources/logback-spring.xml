@@ -3,7 +3,7 @@
 
     <!-- ======================== 属性定义 ======================== -->
     <property name="LOG_HOME" value="./logs"/>
-    <property name="APP_NAME" value="mateclaw"/>
+    <property name="APP_NAME" value="snsclaw"/>
     <!-- 保留天数 -->
     <property name="MAX_HISTORY" value="30"/>
     <!-- 单个日志文件最大体积 -->

@@ -48,7 +48,7 @@ public class QQAppRegistrationService {
     private static final String PORTAL_HOST =
             System.getenv().getOrDefault("QQ_BIND_PORTAL_HOST", "q.qq.com");
     /** Vendor source tag forwarded to the portal in the QR URL. */
-    private static final String PORTAL_SOURCE = "mateclaw";
+    private static final String PORTAL_SOURCE = "snsclaw";
     /** Portal path that hosts the user-facing scan landing page. */
     private static final String PORTAL_CONNECT_PATH = "/qqbot/openclaw/connect.html";
 

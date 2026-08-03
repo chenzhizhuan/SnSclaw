@@ -30,7 +30,7 @@ const mergedPopperClass = computed(
     :show-after="80"
     :offset="8"
     v-bind="$attrs"
-    effect="mateclaw"
+    effect="snsclaw"
     :show-arrow="false"
     :popper-class="mergedPopperClass"
   >

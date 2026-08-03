@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { mcToast } from '@/composables/useMcToast'
 
 const SDK_URL = 'https://wwcdn.weixin.qq.com/node/wework/js/wecom-aibot-sdk@0.1.0.min.js'
-const SOURCE = 'mateclaw'
+const SOURCE = 'snsclaw'
 
 // Module-level guard: the SDK script tag is appended to <body> exactly once
 // across all component instances and re-renders.
