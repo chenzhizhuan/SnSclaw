@@ -84,6 +84,9 @@ final class ModelContextWindowCatalog {
 
         // ===== Moonshot Kimi =====
         m.put("kimi-k2", 262_144);
+        // Coding-plan alias (plus its -highspeed variant) for the K2.7 code
+        // model, which serves the same 256k window.
+        m.put("kimi-for-coding", 262_144);
 
         // ===== Zhipu GLM =====
         m.put("glm-4.7", 204_800);
@@ -91,6 +94,9 @@ final class ModelContextWindowCatalog {
         // 200k across the GLM-5 line (5 / 5.1 / turbo variants); 5.2 lifted it to 1M.
         m.put("glm-5", 204_800);
         m.put("glm-5.2", 1_000_000);
+        // Multimodal sibling, stated separately rather than inherited from the
+        // glm-5 prefix: its 200k window is documented in its own model page.
+        m.put("glm-5v", 204_800);
         // The 9B open weights ship at 128k (the separate -1m build is its own id).
         m.put("glm-4-9b", 131_072);
 

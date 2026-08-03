@@ -41,6 +41,10 @@ class ModelContextWindowCatalogTest {
         assertEquals(204_800, ModelContextWindowCatalog.lookup("glm-5.1"));
         assertEquals(204_800, ModelContextWindowCatalog.lookup("glm-5-turbo"));
         assertEquals(1_000_000, ModelContextWindowCatalog.lookup("glm-5.2"));
+        assertEquals(204_800, ModelContextWindowCatalog.lookup("glm-5v-turbo"));
+        // Vendor alias for the K2.7 code model, including its -highspeed tier.
+        assertEquals(262_144, ModelContextWindowCatalog.lookup("kimi-for-coding"));
+        assertEquals(262_144, ModelContextWindowCatalog.lookup("kimi-for-coding-highspeed"));
         // Max line stays at 256k while plus/flash run 1M.
         assertEquals(262_144, ModelContextWindowCatalog.lookup("qwen3-max-2026-01-23"));
         assertEquals(1_000_000, ModelContextWindowCatalog.lookup("qwen3.6-plus-2026-04-02"));
