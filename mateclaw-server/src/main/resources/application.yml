@@ -217,7 +217,7 @@ mateclaw:
       # relocate it onto a persistent volume — in Docker this is pointed at
       # /app/data/skills so the existing server_data volume persists installed
       # skills, accumulated LESSONS.md, and skill runtime files across restarts.
-      root: ${MATECLAW_SKILL_WORKSPACE_ROOT:${user.home}/.mateclaw/skills}
+      root: ${MATECLAW_SKILL_WORKSPACE_ROOT:${user.home}/.snsclaw/skills}
       auto-init: true
       delete-policy: archive
     disclosure:
@@ -244,7 +244,7 @@ mateclaw:
       http-retries: 3
   plugin:
     enabled: true
-    user-dir: ${user.home}/.mateclaw/plugins
+    user-dir: ${user.home}/.snsclaw/plugins
   # RFC-017: 声明式 Hook 系统
   hooks:
     enabled: true

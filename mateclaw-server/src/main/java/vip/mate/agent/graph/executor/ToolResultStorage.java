@@ -36,7 +36,7 @@ import java.util.List;
  * <p>Spill files live under one of, in order:</p>
  * <ol>
  *   <li>{@code ToolResultProperties.storageBaseDir} when explicitly set</li>
- *   <li>{@code <workspaceBasePath>/.mateclaw/tool-results/<conversationId>/} when a workspace is bound</li>
+ *   <li>{@code <workspaceBasePath>/.snsclaw/tool-results/<conversationId>/} when a workspace is bound</li>
  *   <li>{@code ${java.io.tmpdir}/mateclaw/tool-results/<conversationId>/} as the universal fallback</li>
  * </ol>
  *
@@ -82,7 +82,7 @@ public class ToolResultStorage {
      * conversation that spilled in a previous run and is then resumed after a
      * restart would have its {@code read_file} of the still-on-disk spill path
      * rejected as a boundary escape until the next spill re-registers the root.
-     * The per-workspace branch ({@code <workspace>/.mateclaw/tool-results}) is
+     * The per-workspace branch ({@code <workspace>/.snsclaw/tool-results}) is
      * intentionally not registered here — it already sits inside its own
      * workspace boundary.
      */
@@ -332,7 +332,7 @@ public class ToolResultStorage {
         } else if (workspaceBasePath != null && !workspaceBasePath.isBlank()) {
             // Inside the workspace boundary already — read_file of these spill
             // files is permitted without an extra trusted-root registration.
-            base = Paths.get(workspaceBasePath, ".mateclaw", "tool-results");
+            base = Paths.get(workspaceBasePath, ".snsclaw", "tool-results");
             outsideWorkspace = false;
         } else {
             String tmp = System.getProperty("java.io.tmpdir");

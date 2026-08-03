@@ -16,10 +16,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class SkillWorkspaceProperties {
 
     /**
-     * 工作区根目录，默认 ${user.home}/.mateclaw/skills
+     * 工作区根目录，默认 ${user.home}/.snsclaw/skills
      * 每个 skill 按名称在此目录下创建子目录：{root}/{skillName}/
      */
-    private String root = System.getProperty("user.home") + "/.mateclaw/skills";
+    private String root = System.getProperty("user.home") + "/.snsclaw/skills";
 
     /**
      * 创建 skill 时是否自动初始化目录结构（SKILL.md + references/ + scripts/）

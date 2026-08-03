@@ -10,7 +10,7 @@
 
 当前 `SearchProviderRegistry` 通过 Spring 构造器注入 `List<SearchProvider>` 收集 provider，只认同一 `ApplicationContext` 里的 bean。要新增一个搜索源，唯一办法是**在 `vip.mate.tool.search` 源码树里加 `@Component` 类并重新编译部署整个 server**。
 
-而项目已有一套真正的运行时插件系统（`mateclaw-plugin-api` + `PluginManager`）：独立 jar 丢进 `~/.mateclaw/plugins/` 或工作区 `plugins/`，`URLClassLoader` 隔离加载，支持运行时 enable/disable，配置走 manifest 声明的 schema（`mateclaw-plugin.json` 的 `config` 字段）+ `plugin` 表 `config_json` 持久化 + `PUT /api/v1/plugins/{name}/config` 接口。但 `PluginType` 只有 `TOOL / PROVIDER(LLM) / CHANNEL / MEMORY` 四类，**没有 SEARCH**，`PluginContext` 也没有对应注册方法。
+而项目已有一套真正的运行时插件系统（`mateclaw-plugin-api` + `PluginManager`）：独立 jar 丢进 `~/.snsclaw/plugins/` 或工作区 `plugins/`，`URLClassLoader` 隔离加载，支持运行时 enable/disable，配置走 manifest 声明的 schema（`mateclaw-plugin.json` 的 `config` 字段）+ `plugin` 表 `config_json` 持久化 + `PUT /api/v1/plugins/{name}/config` 接口。但 `PluginType` 只有 `TOOL / PROVIDER(LLM) / CHANNEL / MEMORY` 四类，**没有 SEARCH**，`PluginContext` 也没有对应注册方法。
 
 LLM provider 已有"内置 `@Component` 链 + 插件注册表"双轨并存的先例（`ModelProviderService.pluginChatModels`），搜索 provider 缺的就是同构的第二轨。
 

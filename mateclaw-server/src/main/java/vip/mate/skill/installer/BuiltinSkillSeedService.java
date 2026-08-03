@@ -76,7 +76,7 @@ public class BuiltinSkillSeedService implements ApplicationRunner {
     /** Workspace root, used as the parent of the snapshot file. Mirrors
      *  {@code SkillWorkspaceProperties#root} so we don't drag the whole
      *  properties bean in for one path lookup. */
-    @Value("${mateclaw.skill.workspace.root:#{systemProperties['user.home'] + '/.mateclaw/skills'}}")
+    @Value("${mateclaw.skill.workspace.root:#{systemProperties['user.home'] + '/.snsclaw/skills'}}")
     private String workspaceRoot;
 
     @Override

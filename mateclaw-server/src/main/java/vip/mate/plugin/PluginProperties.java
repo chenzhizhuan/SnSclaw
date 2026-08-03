@@ -18,5 +18,5 @@ public class PluginProperties {
     private boolean enabled = true;
 
     /** User-global plugin directory */
-    private String userDir = System.getProperty("user.home") + "/.mateclaw/plugins";
+    private String userDir = System.getProperty("user.home") + "/.snsclaw/plugins";
 }

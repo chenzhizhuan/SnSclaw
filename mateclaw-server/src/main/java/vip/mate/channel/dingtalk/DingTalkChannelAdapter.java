@@ -957,7 +957,7 @@ public class DingTalkChannelAdapter extends AbstractChannelAdapter implements St
      * 要让 vision 模型读图、或落盘存档给用户回看，必须先调
      * {@code /v1.0/robot/messageFiles/download} 拿一个短期 downloadUrl，再 GET 拉字节。
      * <p>
-     * 字节落两份：磁盘 (~/.mateclaw/media/dingtalk/) 给 vision 读 path，
+     * 字节落两份：磁盘 (~/.snsclaw/media/dingtalk/) 给 vision 读 path，
      * GeneratedFileCache 给 UI 通过 /api/v1/files/generated/{id} 渲染（10 min TTL）。
      * <p>
      * 失败 / 没配 robot_code / token 拿不到 → 返回 null，调用方继续把 downloadCode 当占位用。
@@ -1020,7 +1020,7 @@ public class DingTalkChannelAdapter extends AbstractChannelAdapter implements St
             }
             byte[] bytes = dlResp.body();
 
-            // Step 3: persist to ~/.mateclaw/media/dingtalk/. Filename derived from
+            // Step 3: persist to ~/.snsclaw/media/dingtalk/. Filename derived from
             // downloadCode (sanitised) + extension inferred from Content-Type so vision
             // pipelines that key on extension still work.
             String contentType = dlResp.headers().firstValue("Content-Type").orElse("image/jpeg");
@@ -1031,7 +1031,7 @@ public class DingTalkChannelAdapter extends AbstractChannelAdapter implements St
             else if (contentType.contains("pdf")) ext = "pdf";
 
             java.nio.file.Path mediaDir = java.nio.file.Paths.get(
-                    System.getProperty("user.home"), ".mateclaw", "media", "dingtalk");
+                    System.getProperty("user.home"), ".snsclaw", "media", "dingtalk");
             java.nio.file.Files.createDirectories(mediaDir);
             String safeCode = downloadCode.replaceAll("[^a-zA-Z0-9_-]", "_");
             if (safeCode.length() > 32) safeCode = safeCode.substring(safeCode.length() - 32);

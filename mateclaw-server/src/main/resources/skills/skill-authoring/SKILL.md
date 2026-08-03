@@ -17,7 +17,7 @@ author: ported
 A skill is a `SKILL.md` file — YAML frontmatter plus a markdown body of reusable instructions. There are two places a SKILL.md can live, and they have different creation paths:
 
 1. **Builtin (in-repo):** `mateclaw-server/src/main/resources/skills/<name>/SKILL.md` — committed, shipped inside the server JAR. On every startup `BuiltinSkillSeedService` scans `classpath*:skills/*/SKILL.md`, parses each frontmatter, and upserts a row into `mate_skill` keyed by `name`. The SKILL.md is the single source of truth — no SQL seed entry is required.
-2. **Custom (runtime):** created by an agent or user through the `skill_manage` tool. Stored as a `mate_skill` row with `skill_type=custom` and exported to the workspace at `~/.mateclaw/skills/<name>/`. Not committed; lives per-installation.
+2. **Custom (runtime):** created by an agent or user through the `skill_manage` tool. Stored as a `mate_skill` row with `skill_type=custom` and exported to the workspace at `~/.snsclaw/skills/<name>/`. Not committed; lives per-installation.
 
 This skill covers both. Note that `skill_manage` does NOT write into the in-repo `skills/` tree — builtin skills are authored by writing the file directly and restarting.
 

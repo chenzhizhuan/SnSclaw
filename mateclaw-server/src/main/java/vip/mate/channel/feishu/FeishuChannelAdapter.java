@@ -1974,7 +1974,7 @@ public class FeishuChannelAdapter extends AbstractChannelAdapter implements Stre
      * @param stagedUploadPath {@code cacheRecentFile} 复制到 {@code data/chat-uploads/}
      *                         的绝对路径（可空）。非空时覆盖各附件 part 的 path，使其指向
      *                         沙箱可达（经 {@code ChatUploadResolver}）的那一份，而不是
-     *                         沙箱外的 {@code ~/.mateclaw/media/} 路径。
+     *                         沙箱外的 {@code ~/.snsclaw/media/} 路径。
      * @return 纯文本摘要
      */
     @SuppressWarnings("unchecked")
@@ -2221,7 +2221,7 @@ public class FeishuChannelAdapter extends AbstractChannelAdapter implements Stre
      * Result of a successful inbound-resource download.
      *
      * @param path        absolute path on disk under
-     *                    {@code ~/.mateclaw/media/feishu/} — fed to
+     *                    {@code ~/.snsclaw/media/feishu/} — fed to
      *                    {@link MessageContentPart#setPath(String)} so
      *                    vision / file-reading tools can consume bytes
      * @param fileUrl     {@code /api/v1/files/generated/{id}} URL backed
@@ -2440,7 +2440,7 @@ public class FeishuChannelAdapter extends AbstractChannelAdapter implements Stre
     }
 
     /**
-     * Write {@code bytes} to {@code ~/.mateclaw/media/feishu/} and,
+     * Write {@code bytes} to {@code ~/.snsclaw/media/feishu/} and,
      * if {@link #generatedFileCache} is wired, also push them into the
      * cache so the UI gets a {@code /api/v1/files/generated/{id}} URL.
      * Disk persist is always attempted; cache push is best-effort.
@@ -2448,7 +2448,7 @@ public class FeishuChannelAdapter extends AbstractChannelAdapter implements Stre
     private DownloadedResource persistAndCache(String messageId, String fileKey,
                                                byte[] bytes, String fileNameHint,
                                                String contentType) throws java.io.IOException {
-        Path mediaDir = Path.of(System.getProperty("user.home"), ".mateclaw", "media", "feishu");
+        Path mediaDir = Path.of(System.getProperty("user.home"), ".snsclaw", "media", "feishu");
         Files.createDirectories(mediaDir);
 
         String safeKey = fileKey.replaceAll("[^a-zA-Z0-9_]", "");

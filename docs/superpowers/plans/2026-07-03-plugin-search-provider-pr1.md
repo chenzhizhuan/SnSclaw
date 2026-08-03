@@ -1222,8 +1222,8 @@ mvn test
 - [ ] **Step 2: 手工端到端（jar 落盘加载）**
 
 ```bash
-mkdir -p ~/.mateclaw/plugins
-cp /Users/connor/workspace/ai-lab/mateclaw/mateclaw-plugin-search-sample/target/mateclaw-plugin-search-sample-*.jar ~/.mateclaw/plugins/
+mkdir -p ~/.snsclaw/plugins
+cp /Users/connor/workspace/ai-lab/mateclaw/mateclaw-plugin-search-sample/target/mateclaw-plugin-search-sample-*.jar ~/.snsclaw/plugins/
 cd /Users/connor/workspace/ai-lab/mateclaw/mateclaw-server
 mvn spring-boot:run
 ```
@@ -1238,7 +1238,7 @@ mvn spring-boot:run
 验证完清理：
 
 ```bash
-rm ~/.mateclaw/plugins/mateclaw-plugin-search-sample-*.jar
+rm ~/.snsclaw/plugins/mateclaw-plugin-search-sample-*.jar
 ```
 
 - [ ] **Step 3: 若有问题修复后补 commit；全部通过则进入 Task 8**
