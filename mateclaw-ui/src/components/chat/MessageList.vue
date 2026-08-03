@@ -64,6 +64,10 @@
             <span class="cron-divider__label">{{ msg.content }}</span>
             <div class="cron-divider__line"></div>
           </div>
+          <!-- Team task settlement note — user-role for the context pipeline,
+               but rendered as a collapsed system strip instead of a user
+               bubble so orchestration bookkeeping doesn't flood the chat. -->
+          <TeamAnnouncePanel v-else-if="isTeamAnnounce(msg)" :message="msg" />
           <!-- 普通消息气泡 -->
           <MessageBubble
             v-else
@@ -121,6 +125,7 @@ import { ArrowDown, ChatDotRound, DataLine, EditPen, Monitor, Right } from '@ele
 const { t } = useI18n()
 import MessageBubble from './MessageBubble.vue'
 import CompressionSummary from './CompressionSummary.vue'
+import TeamAnnouncePanel from './TeamAnnouncePanel.vue'
 import { useStickToBottom } from '@/composables/chat/useStickToBottom'
 import type { Message } from '@/types'
 
@@ -186,6 +191,17 @@ const isCompressionSummary = (msg: Message) => {
 // labeled divider so users browsing tasks_<wsId> can distinguish runs.
 const isCronHeader = (msg: Message) => {
   return msg.role === 'system' && typeof msg.content === 'string' && msg.content.startsWith('📋 ')
+}
+
+// Team task settlement note. New rows carry metadata.type = 'team_announce';
+// the content-prefix fallback catches rows persisted before that marker existed.
+const isTeamAnnounce = (msg: Message) => {
+  if (msg.role !== 'user') return false
+  try {
+    const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
+    if (metadata?.type === 'team_announce') return true
+  } catch { /* fall through to prefix check */ }
+  return typeof msg.content === 'string' && msg.content.startsWith('[System Message] ')
 }
 
 // 智能滚动

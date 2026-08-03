@@ -343,6 +343,7 @@ public final class AgentStreamAccumulator {
                             && toolName.equals(seg.get("toolName")));
                 if (matches) {
                     seg.put("status", "completed");
+                    seg.put("endTimestamp", System.currentTimeMillis());
                     seg.put("toolResult", data.getOrDefault("result", ""));
                     seg.put("toolSuccess", data.getOrDefault("success", true));
                     break;
@@ -388,6 +389,9 @@ public final class AgentStreamAccumulator {
         seg.put("id", type.substring(0, 2) + "-" + segCounter++);
         seg.put("type", type);
         seg.put("status", "running");
+        // Wall-clock bounds let history replays show the real per-segment
+        // duration (e.g. "thought for 12s") instead of estimating from length.
+        seg.put("timestamp", System.currentTimeMillis());
         return seg;
     }
 
@@ -404,6 +408,7 @@ public final class AgentStreamAccumulator {
         for (var seg : segments) {
             if ("running".equals(seg.get("status")) && typeSet.contains(seg.get("type"))) {
                 seg.put("status", "completed");
+                seg.put("endTimestamp", System.currentTimeMillis());
             }
         }
     }

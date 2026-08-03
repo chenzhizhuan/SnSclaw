@@ -731,6 +731,17 @@ export function useChat(options: UseChatOptions): UseChatReturn {
                 if (remote.supersededReason !== undefined) {
                   next.supersededReason = remote.supersededReason
                 }
+                // Server wall-clock bounds are authoritative for durations
+                // ("thought for Ns"). Local segments often miss endTimestamp:
+                // round-boundary closes flip status without stamping an end,
+                // and a re-grouped segment list remounts the component so its
+                // local freeze is lost. Fill whichever side is missing.
+                if (next.timestamp == null && remote.timestamp != null) {
+                  next.timestamp = remote.timestamp
+                }
+                if (next.endTimestamp == null && remote.endTimestamp != null) {
+                  next.endTimestamp = remote.endTimestamp
+                }
                 return next
               })
               ;(msg as any).metadata = { ...(metadata || {}), segments: merged }
@@ -2192,14 +2203,14 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     try {
       // reconnectStream always rebuilds from an EMPTY placeholder (above), so it
       // needs the server to replay the WHOLE buffer — not just events newer than
-      // a previously-acked lastEventId. Clearing it forces connect() to omit
-      // lastEventId so the backend full-replays and the placeholder repaints.
-      // Without this, a reconnect into the same conversation (poll-detected
-      // running stream after a switch-away, window refocus) dedup-skips the
-      // buffer and the bubble stays blank until a hard refresh resets this ref —
-      // the "switch conversations mid-stream → blank, refresh fixes it" bug.
-      // Setting null (not a foreign id) right before connect can't leak or race.
-      stream.lastEventId.value = null
+      // a previously-acked lastEventId — AND the client to accept that replay.
+      // resetDedup() clears both halves atomically: lastEventId (so connect()
+      // omits it and the backend full-replays) and seenEventIds (so emit()
+      // doesn't silently drop the replayed ids it already saw before the
+      // switch-away). Clearing only lastEventId reintroduces the "switch
+      // conversations mid-stream → blank bubble, refresh fixes it" bug: the
+      // server replays everything and the client discards everything.
+      stream.resetDedup()
       await stream.connect({
         conversationId,
         reconnect: true,

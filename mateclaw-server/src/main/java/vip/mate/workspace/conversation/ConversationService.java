@@ -659,8 +659,12 @@ public class ConversationService {
             String summary = summarizeMessage(content, parts);
             // Derive the conversation title from the first user message
             // (only when the title is still the default "新对话").
+            // Internal orchestration notes (e.g. team task settlement rows,
+            // metadata type team_announce) are user-role for context-pipeline
+            // reasons but must never become the visible conversation title.
             // 用第一条用户消息作为会话标题。
-            if ("user".equals(role) && "新对话".equals(conv.getTitle())) {
+            if ("user".equals(role) && "新对话".equals(conv.getTitle())
+                    && (metadata == null || !metadata.contains("\"team_announce\""))) {
                 conv.setTitle(summary.length() > 20 ? summary.substring(0, 20) + "..." : summary);
             }
             // Keep a short preview of the latest assistant reply for the

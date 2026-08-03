@@ -19,7 +19,9 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 /**
@@ -142,11 +144,15 @@ class TeamAnnounceServiceTest {
         verify(streamTracker, timeout(3000))
                 .broadcastObject(eq(LEAD_CONV), eq("team_announce_reply"), any());
         // The announce turn persists, so the lead's reply survives a reload and
-        // stays in the lead's conversation window for later turns.
+        // stays in the lead's conversation window for later turns. Both rows
+        // carry an internal-note metadata type so the chat UI renders them as
+        // a collapsed system strip instead of a user bubble.
         verify(conversationService, timeout(3000))
-                .saveMessage(eq(LEAD_CONV), eq("user"), anyString());
+                .saveMessage(eq(LEAD_CONV), eq("user"), anyString(), isNull(), eq("completed"),
+                        eq(0), eq(0), isNull(), isNull(), contains("\"team_announce\""));
         verify(conversationService, timeout(3000))
-                .saveMessage(eq(LEAD_CONV), eq("assistant"), eq("综合汇报"));
+                .saveMessage(eq(LEAD_CONV), eq("assistant"), eq("综合汇报"), isNull(), eq("completed"),
+                        eq(0), eq(0), isNull(), isNull(), contains("\"team_announce_reply\""));
     }
 
     @Test

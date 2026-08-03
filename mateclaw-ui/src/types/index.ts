@@ -250,6 +250,9 @@ export interface MessageSegment {
   delegationAsync?: boolean
   /** 时间戳 */
   timestamp?: number
+  /** Wall-clock end of the segment (set when status flips to completed); with
+   *  timestamp it yields the real duration for history replays. */
+  endTimestamp?: number
   /**
    * Iteration index this segment belongs to (0-based). Set by iteration_start —
    * lets MessageBubble group thinking/tool/content segments per iteration so
@@ -284,6 +287,10 @@ export interface GeneratedFile {
 }
 
 export interface MessageMetadata {
+  /** Internal note discriminator, e.g. 'compression_summary' | 'team_announce' | 'team_announce_reply' */
+  type?: string
+  /** type=team_announce: number of settled team tasks carried by this note */
+  taskCount?: number
   currentPhase?: string
   toolCalls?: ToolCallMeta[]
   plan?: PlanMeta
@@ -812,6 +819,8 @@ export interface SystemSettings {
   language: 'zh-CN' | 'en-US'
   streamEnabled: boolean
   debugMode: boolean
+  // Whether chat renders the model's reasoning ("thinking") blocks; default true
+  showThinking: boolean
   // Default workspace storage root; '' = use the server-side default
   workspaceStorageRoot?: string
   // 搜索服务配置

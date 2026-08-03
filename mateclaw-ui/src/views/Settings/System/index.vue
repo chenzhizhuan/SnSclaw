@@ -45,6 +45,19 @@
         </div>
       </div>
 
+      <div class="setting-item">
+        <div class="setting-info">
+          <div class="setting-label">{{ t('settings.fields.showThinking') }}</div>
+          <div class="setting-hint">{{ t('settings.hints.showThinking') }}</div>
+        </div>
+        <div class="setting-control">
+          <label class="toggle-switch">
+            <input v-model="settings.showThinking" type="checkbox" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
       <div class="setting-item setting-item-vertical">
         <div class="setting-info">
           <div class="setting-label">{{ t('settings.fields.workspaceStorageRoot') }}</div>
@@ -345,6 +358,7 @@ const settings = reactive<SystemSettings>({
   language: 'zh-CN',
   streamEnabled: true,
   debugMode: false,
+  showThinking: true,
   workspaceStorageRoot: '',
   searchEnabled: true,
   searchProvider: 'serper',

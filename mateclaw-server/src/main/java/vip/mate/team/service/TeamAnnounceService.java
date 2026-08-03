@@ -172,12 +172,20 @@ public class TeamAnnounceService {
             // Persist the announce turn: message persistence is the caller's
             // contract, and without it the lead's synthesized reply would
             // vanish from the conversation history on the next reload.
-            conversationService.saveMessage(leadConversationId, "user", message);
+            // Role stays "user" (the agent context pipeline resolves the
+            // current turn's input from the last user row); the metadata type
+            // marks it as an internal orchestration note so the chat UI can
+            // render a compact system strip instead of a user bubble.
+            conversationService.saveMessage(leadConversationId, "user", message, null, "completed",
+                    0, 0, null, null,
+                    "{\"type\":\"team_announce\",\"taskCount\":" + taskCount + "}");
             AgentService.ChatResult result = agentService.chatWithUsage(
                     team.getLeadAgentId(), message, leadConversationId);
             String reply = result == null ? null : result.content();
             if (reply != null && !reply.isBlank()) {
-                conversationService.saveMessage(leadConversationId, "assistant", reply);
+                conversationService.saveMessage(leadConversationId, "assistant", reply, null, "completed",
+                        0, 0, null, null,
+                        "{\"type\":\"team_announce_reply\"}");
             }
             streamTracker.broadcastObject(leadConversationId, "team_announce_reply",
                     Map.of("teamId", String.valueOf(team.getId()),

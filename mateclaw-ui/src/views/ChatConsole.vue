@@ -1175,6 +1175,9 @@ async function pollActivity() {
           // 2. 再接入流，让后续 content_delta 实时累积到 assistant 气泡。
           await refreshCurrentConversationMessages(cid)
           if (currentConversationId.value !== cid || isGenerating.value) return
+          // Match selectConversation's behavior: a stale scroll-escape from an
+          // earlier upward scroll must not suppress follow-scroll on reconnect.
+          messageListRef.value?.resetScrollLock()
           await reconnectStream(cid)
         } else if (!hasLocalOnlyFailedTail()) {
           // 不在跑：从 DB 对齐消息（新 user 消息 / 刚落库 assistant 会合并进来）。

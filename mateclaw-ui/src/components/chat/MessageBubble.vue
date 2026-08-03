@@ -51,7 +51,7 @@
                    the model produced them) so tool boxes never reorder. -->
               <template v-else>
                 <template v-for="seg in iter.items" :key="seg.id">
-                <ThinkingSegment v-if="seg.type === 'thinking' && debugMode" :segment="seg" />
+                <ThinkingSegment v-if="seg.type === 'thinking' && showThinking" :segment="seg" />
                 <ToolCallSegment v-else-if="seg.type === 'tool_call'" :segment="seg" />
                 <template v-else-if="seg.type === 'content'">
                   <button
@@ -115,9 +115,11 @@
         <div v-if="showExecutionPanel" class="execution-section">
           <button class="execution-toggle" type="button" @click="executionExpanded = !executionExpanded">
             <span class="execution-toggle__indicator" :class="{ active: isGenerating }">
-              <el-icon><Tools /></el-icon>
+              <el-icon v-if="isGenerating && !toolCallsMeta.length" class="spin"><Loading /></el-icon>
+              <el-icon v-else><Tools /></el-icon>
             </span>
             <span class="execution-toggle__label">{{ executionPhaseLabel }}</span>
+            <span class="execution-toggle__count" v-if="phaseElapsed">{{ phaseElapsed }}</span>
             <span class="execution-toggle__count" v-if="toolCallsMeta.length">{{ toolCallsMeta.length }} calls</span>
             <span class="execution-toggle__arrow" :class="{ expanded: executionExpanded }">
               <el-icon><ArrowDown /></el-icon>
@@ -713,13 +715,13 @@ const hasContent = computed(() => {
   return !!(textPart?.text || props.message.content)
 })
 
-// Debug mode gates whether the model's reasoning ("thinking") is surfaced.
-// Off (default) keeps the transcript focused on tool activity + the answer,
-// directly addressing the "thinking piles up" complaint. Tool-call boxes stay
-// visible (they auto-collapse) so the user still sees what the agent did.
-const { debugMode } = storeToRefs(useSystemSettingsStore())
+// showThinking (default on) gates whether the model's reasoning is rendered.
+// The segments auto-collapse when a thinking phase completes, so the final
+// answer stays the focal point even with reasoning visible. debugMode remains
+// a separate switch for tool-call internals and other diagnostics.
+const { showThinking } = storeToRefs(useSystemSettingsStore())
 
-const showThinkingPanel = computed(() => debugMode.value && !!thinkingContent.value)
+const showThinkingPanel = computed(() => showThinking.value && !!thinkingContent.value)
 
 // 思考耗时（生成结束后显示）
 const thinkingDuration = computed(() => {
@@ -729,6 +731,14 @@ const thinkingDuration = computed(() => {
   const segs = (props.message as any).segments || []
   const thinkSeg = segs.find((s: any) => s.type === 'thinking')
   const contentSeg = segs.find((s: any) => s.type === 'content')
+  // Best signal: the thinking segment's own persisted bounds. Persisted
+  // metadata serializes longs as strings, so coerce before comparing.
+  const thinkStart = Number(thinkSeg?.timestamp) || 0
+  const thinkEnd = Number(thinkSeg?.endTimestamp) || 0
+  if (thinkStart && thinkEnd && thinkEnd >= thinkStart) {
+    const sec = Math.max(1, Math.round((thinkEnd - thinkStart) / 1000))
+    return sec >= 60 ? `${Math.floor(sec / 60)}m ${sec % 60}s` : `${sec}s`
+  }
   if (thinkSeg?.timestamp && contentSeg?.timestamp) {
     const sec = Math.max(1, Math.round((contentSeg.timestamp - thinkSeg.timestamp) / 1000))
     return sec >= 60 ? `${Math.floor(sec / 60)}m ${sec % 60}s` : `${sec}s`
@@ -1376,19 +1386,59 @@ const planMeta = computed<PlanMeta | undefined>(() => {
   return parsedMetadata.value?.plan
 })
 
+const PHASE_NAME_KEYS: Record<string, string> = {
+  reasoning: 'chat.phaseNames.reasoning',
+  action: 'chat.phaseNames.action',
+  planning: 'chat.phaseNames.planning',
+  summarizing: 'chat.phaseNames.summarizing',
+  awaiting_approval: 'chat.phaseNames.awaitingApproval',
+  executing: 'chat.phaseNames.executing',
+  replaying: 'chat.phaseNames.replaying',
+  resumed_execution: 'chat.phaseNames.resumed',
+}
+
 const currentPhaseName = computed(() => {
   const phase = parsedMetadata.value?.currentPhase
-  switch (phase) {
-    case 'reasoning': return 'Reasoning'
-    case 'action': return 'Executing tools'
-    case 'planning': return 'Planning'
-    case 'summarizing': return 'Summarizing'
-    case 'awaiting_approval': return 'Waiting for approval'
-    case 'executing': return 'Executing'
-    case 'replaying': return 'Resuming execution'
-    case 'resumed_execution': return 'Resumed'
-    default: return 'Processing'
+  return t(PHASE_NAME_KEYS[phase as string] || 'chat.phaseNames.processing')
+})
+
+// Live elapsed indicator for the phase-only window (LLM prefill / long
+// reasoning before any tool call or content lands). A frozen "Reasoning"
+// label with zero movement reads as a hang; a ticking clock + spinner shows
+// the turn is alive. Resets whenever the backend reports a phase change.
+const phaseSince = ref(Date.now())
+const phaseNow = ref(Date.now())
+let phaseTimer: ReturnType<typeof setInterval> | null = null
+
+watch(() => parsedMetadata.value?.currentPhase, (p, old) => {
+  if (p !== old) {
+    phaseSince.value = Date.now()
+    phaseNow.value = Date.now()
   }
+})
+
+watch(isGenerating, (gen) => {
+  if (gen) {
+    if (phaseTimer == null) phaseTimer = setInterval(() => { phaseNow.value = Date.now() }, 1000)
+  } else if (phaseTimer != null) {
+    clearInterval(phaseTimer)
+    phaseTimer = null
+  }
+}, { immediate: true })
+
+onBeforeUnmount(() => {
+  if (phaseTimer != null) {
+    clearInterval(phaseTimer)
+    phaseTimer = null
+  }
+})
+
+const phaseElapsed = computed(() => {
+  // Only meaningful while waiting on the model with nothing else to show.
+  if (!isGenerating.value || toolCallsMeta.value.length) return ''
+  const sec = Math.floor((phaseNow.value - phaseSince.value) / 1000)
+  if (sec < 3) return ''
+  return sec >= 60 ? `${Math.floor(sec / 60)}m ${sec % 60}s` : `${sec}s`
 })
 
 const truncateArgs = (args: string) => {

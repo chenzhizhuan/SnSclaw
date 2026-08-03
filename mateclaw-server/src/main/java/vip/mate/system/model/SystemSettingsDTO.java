@@ -8,6 +8,13 @@ public class SystemSettingsDTO {
     private String language;
     private Boolean streamEnabled;
     private Boolean debugMode;
+    /**
+     * Whether the chat UI renders the model's reasoning ("thinking") blocks.
+     * Default true. Independent from debugMode (which gates tool-call
+     * internals and other diagnostics) and from the per-request thinking
+     * level (which controls whether the model thinks at all).
+     */
+    private Boolean showThinking;
     private Boolean stateGraphEnabled;
 
     /**

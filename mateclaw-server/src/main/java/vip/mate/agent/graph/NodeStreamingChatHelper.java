@@ -14,6 +14,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import vip.mate.channel.web.ChatStreamTracker;
 import vip.mate.llm.chatmodel.AssistantThinkingRelay;
 import vip.mate.llm.chatmodel.ReasoningContentCache;
+import vip.mate.llm.chatmodel.ThinkingLevelHolder;
 
 import reactor.core.Disposable;
 
@@ -1182,6 +1183,41 @@ public class NodeStreamingChatHelper {
             ));
         }
 
+        // Inline <think> tag extraction: models without structured reasoning
+        // stream their reasoning inside <think>...</think> in the content
+        // channel. Split those spans off live so the stream the user watches
+        // matches what persistence later stores (raw tags used to leak into
+        // content_delta and only disappear after a reload).
+        ThinkTagStreamExtractor thinkExtractor = new ThinkTagStreamExtractor();
+
+        // Shared handling for a thinking delta, regardless of origin
+        // (structured reasoningContent metadata or inline-tag extraction).
+        Consumer<String> onThinkingDelta = thinkingDelta -> {
+            // First-token signaling fires for thinking too — UI
+            // shows "thinking" activity before any content streams.
+            if (broadcast && streamTracker != null
+                    && firstTokenSignaled.compareAndSet(false, true)) {
+                streamTracker.markFirstTokenReceived(conversationId);
+            }
+            // First thinking delta opens the thinking phase. We
+            // emit the start lazily (on first delta) rather than
+            // before subscription so models that never produce
+            // thinking don't ghost-pair an empty segment.
+            if (broadcast && thinkingAccum.length() == 0
+                    && thinkingStartEmitted.compareAndSet(false, true)) {
+                streamTracker.broadcastObject(conversationId, "thinking_start", Map.of(
+                        "phase", phase != null ? phase : "",
+                        "timestamp", System.currentTimeMillis()
+                ));
+            }
+            thinkingAccum.append(thinkingDelta);
+            // thinkingLevel=off 时不广播 thinking（模型仍可能产生，但前端不展示）
+            boolean suppressThinking = "off".equalsIgnoreCase(ThinkingLevelHolder.get());
+            if (broadcast && !suppressThinking) {
+                broadcastDelta(conversationId, "thinking_delta", thinkingDelta);
+            }
+        };
+
         CountDownLatch latch = new CountDownLatch(1);
 
         Disposable subscription = chatModel.stream(prompt)
@@ -1198,8 +1234,29 @@ public class NodeStreamingChatHelper {
                         return;
                     }
 
-                    // 1. 提取 content delta
-                    String contentDelta = msg.getText();
+                    // 1. 拆分本 chunk 的通道：出现结构化 reasoningContent 即关闭
+                    //    内联标签提取（此类模型不会再用 <think> 包裹思考，正文里的
+                    //    字面标签是真实内容）。
+                    String nativeThinking = extractReasoningContent(msg);
+                    if (nativeThinking != null && !nativeThinking.isEmpty()) {
+                        thinkExtractor.disable();
+                    }
+                    String rawContent = msg.getText();
+                    String contentDelta = rawContent;
+                    String tagThinking = null;
+                    if (rawContent != null && !rawContent.isEmpty()) {
+                        var split = thinkExtractor.feed(rawContent);
+                        contentDelta = split.content();
+                        tagThinking = split.thinking();
+                    }
+
+                    // 2. 标签提取的 thinking 先处理：形如 "…</think>answer" 的
+                    //    chunk 里思考先于正文出现。
+                    if (tagThinking != null && !tagThinking.isEmpty()) {
+                        onThinkingDelta.accept(tagThinking);
+                    }
+
+                    // 3. content delta（已剥离 <think> 内文本）
                     if (contentDelta != null && !contentDelta.isEmpty()) {
                         // First content delta closes the thinking phase if one
                         // was open, and arms first-token heartbeat relaxation.
@@ -1220,43 +1277,19 @@ public class NodeStreamingChatHelper {
                         }
                     }
 
-                    // 2. 提取 thinking delta. Do not cancel the stream for
+                    // 4. 结构化 thinking delta. Do not cancel the stream for
                     // repeated thinking phrases: some models emit repetitive
                     // internal planning while still making valid tool progress.
-                    String thinkingDelta = extractReasoningContent(msg);
-                    if (thinkingDelta != null && !thinkingDelta.isEmpty()) {
-                        // First-token signaling fires for thinking too — UI
-                        // shows "thinking" activity before any content streams.
-                        if (broadcast && streamTracker != null
-                                && firstTokenSignaled.compareAndSet(false, true)) {
-                            streamTracker.markFirstTokenReceived(conversationId);
-                        }
-                        // First thinking delta opens the thinking phase. We
-                        // emit the start lazily (on first delta) rather than
-                        // before subscription so models that never produce
-                        // thinking don't ghost-pair an empty segment.
-                        if (broadcast && thinkingAccum.length() == 0
-                                && thinkingStartEmitted.compareAndSet(false, true)) {
-                            streamTracker.broadcastObject(conversationId, "thinking_start", Map.of(
-                                    "phase", phase != null ? phase : "",
-                                    "timestamp", System.currentTimeMillis()
-                            ));
-                        }
-                        thinkingAccum.append(thinkingDelta);
-                        // thinkingLevel=off 时不广播 thinking（模型仍可能产生，但前端不展示）
-                        boolean suppressThinking = "off".equalsIgnoreCase(
-                                vip.mate.llm.chatmodel.ThinkingLevelHolder.get());
-                        if (broadcast && !suppressThinking) {
-                            broadcastDelta(conversationId, "thinking_delta", thinkingDelta);
-                        }
+                    if (nativeThinking != null && !nativeThinking.isEmpty()) {
+                        onThinkingDelta.accept(nativeThinking);
                     }
 
-                    // 3. 累积 tool calls（处理分片）
+                    // 5. 累积 tool calls（处理分片）
                     if (msg.hasToolCalls()) {
                         accumulateToolCalls(msg.getToolCalls(), toolCallAccumulators);
                     }
 
-                    // 4. Thinking-only no-progress guard. MUST run after both
+                    // 6. Thinking-only no-progress guard. MUST run after both
                     // content delta and tool call accumulation, otherwise a
                     // chunk that carries thinking AND a tool_call together
                     // (some Anthropic / DeepSeek-thinking responses do this)
@@ -1281,7 +1314,7 @@ public class NodeStreamingChatHelper {
                         return;
                     }
 
-                    // 5. Content-repetition guard. Some reasoning-mode models
+                    // 7. Content-repetition guard. Some reasoning-mode models
                     // (qwen3.6, deepseek-r1) get stuck in a "Wait, I should X
                     // → 写答案 → Wait, I should Y → 写同一份答案 → ..." loop
                     // and emit the same final-answer paragraph dozens of times
@@ -1311,7 +1344,7 @@ public class NodeStreamingChatHelper {
                         }
                     }
 
-                    // 4. 提取 token usage（通常最后一个 chunk 携带完整 usage）
+                    // 8. 提取 token usage（通常最后一个 chunk 携带完整 usage）
                     if (chatResponse.getMetadata() != null && chatResponse.getMetadata().getUsage() != null) {
                         var usage = chatResponse.getMetadata().getUsage();
                         if (usage.getPromptTokens() != null && usage.getPromptTokens() > 0) {
@@ -1375,6 +1408,7 @@ public class NodeStreamingChatHelper {
                                         "returning stopped partial result: conversationId={}",
                                 phase, contentAccum.length(), thinkingAccum.length(),
                                 toolCallAccumulators.size(), conversationId);
+                        drainThinkExtractor(thinkExtractor, contentAccum, thinkingAccum);
                         return assembleStoppedResult(contentAccum, thinkingAccum, toolCallAccumulators,
                                 promptTokens.get(), completionTokens.get(),
                                 cacheReadTokens.get(), cacheWriteTokens.get(),
@@ -1395,6 +1429,11 @@ public class NodeStreamingChatHelper {
             Thread.currentThread().interrupt();
             return buildErrorResult("LLM 调用被中断", conversationId, phase);
         }
+
+        // Stream is over (complete, error, or disposed by a guard) — drain the
+        // extractor's held-back tail so the accumulators are complete before
+        // any assembly or emptiness check below.
+        drainThinkExtractor(thinkExtractor, contentAccum, thinkingAccum);
 
         Throwable error = errorRef.get();
         if (error != null) {
@@ -2454,6 +2493,19 @@ public class NodeStreamingChatHelper {
     }
 
     // ==================== <think> 标签 fallback 解析 ====================
+
+    /** Flush the streaming extractor's held-back tail into the accumulators. */
+    private static void drainThinkExtractor(ThinkTagStreamExtractor extractor,
+                                            StringBuilder contentAccum,
+                                            StringBuilder thinkingAccum) {
+        var rest = extractor.flush();
+        if (!rest.content().isEmpty()) {
+            contentAccum.append(rest.content());
+        }
+        if (!rest.thinking().isEmpty()) {
+            thinkingAccum.append(rest.thinking());
+        }
+    }
 
     private record ThinkExtracted(String thinking, String content) {}
 
