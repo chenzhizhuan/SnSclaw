@@ -228,7 +228,7 @@ async function startJavaBackend(): Promise<void> {
   const env = {
     ...process.env,
     // Ensure H2 database is stored in userData
-    SPRING_DATASOURCE_URL: `jdbc:h2:file:${join(workingDir, 'data', 'mateclaw')};MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE`,
+    SPRING_DATASOURCE_URL: `jdbc:h2:file:${join(workingDir, 'data', 'snsclaw')};MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE`,
   }
 
   // Spawn Java process
