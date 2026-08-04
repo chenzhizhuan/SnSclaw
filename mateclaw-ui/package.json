@@ -9,7 +9,7 @@
   "homepage": "https://www.sns.app",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sns/SnSclaw"
+    "url": "https://lab.sns.app/SnSclaw"
   },
   "scripts": {
     "dev": "vite",

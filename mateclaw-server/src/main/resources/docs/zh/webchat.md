@@ -279,4 +279,4 @@ curl -N -X POST https://mate.example.com/api/v1/channels/webchat/stream \
 
 ## 关联
 
-- 上游 epic issue:https://github.com/sns/SnSclaw/issues/355
+- 上游 epic issue:https://lab.sns.app/SnSclaw/issues/355

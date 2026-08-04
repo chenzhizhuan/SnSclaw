@@ -17,7 +17,7 @@ hero:
       link: /en/intro
     - theme: alt
       text: GitHub
-      link: https://github.com/sns/SnSclaw
+      link: https://lab.sns.app/SnSclaw
 
 features:
   - icon: 🧑‍💼

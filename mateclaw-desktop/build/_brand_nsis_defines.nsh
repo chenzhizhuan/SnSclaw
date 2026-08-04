@@ -2,7 +2,7 @@
 !define BRAND_APP_ID         "app.sns.claw"
 !define BRAND_PUBLISHER      "SnSclaw"
 !define BRAND_COMMENTS       "SnSclaw AI 助手 — 面向企业级场景的私有化智能体平台，集成多模态模型、知识库检索、语音交互与自动化工具链（HTTP/SSE 运行时）"
-!define BRAND_SUPPORT_URL    "https://github.com/sns/SnSclaw/issues"
+!define BRAND_SUPPORT_URL    "https://lab.sns.app/SnSclaw/issues"
 !define BRAND_ABOUT_URL      "https://www.sns.app/docs/intro"
 !define BRAND_UPDATE_URL     "https://www.sns.app/releases"
 !define BRAND_README_URL     "https://www.sns.app/docs/desktop"
