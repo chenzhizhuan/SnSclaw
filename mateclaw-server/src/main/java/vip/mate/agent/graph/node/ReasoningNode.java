@@ -273,6 +273,24 @@ public class ReasoningNode implements NodeAction {
             + "  · ledger snapshot 永远显示初始状态，对你毫无帮助\n\n"
             + "**例外**：单一问题、简单问答、不可拆解的请求 — 不需要用。\n";
 
+    /**
+     * Staleness guard appended to every ReasoningNode system prompt. Conversation
+     * history can carry earlier rounds of the same status query verbatim (people
+     * count, device state, quotes, timestamps); models pattern-match those rounds
+     * and answer from the stale snapshot before this turn's tools have run —
+     * sometimes while claiming they already re-queried. Static text so the
+     * prompt-cache prefix stays stable; the current time it refers to is injected
+     * per turn by the runtime context block.
+     */
+    private static final String STALE_CONTEXT_GUARD = "\n\n"
+            + "## 历史状态数据过期规则（强制）\n\n"
+            + "- 会话历史中出现的一切状态类数据（在线人数、设备/传感器状态、电量、温度、库存、行情、"
+            + "查询时间戳等）都只是当时的快照，一律视为已过期，禁止在本轮回答中直接引用或改写后引用。\n"
+            + "- 状态类问题必须先在本轮调用工具取得最新观察结果，等结果返回后再输出结论；"
+            + "工具结果返回之前，不得输出含具体数值或结论的正文，只允许一句简短的过程说明（如\"正在查询…\"）。\n"
+            + "- 最终回答中引用的状态数值与查询时间必须来自本轮工具返回，时间基准以运行时上下文注入的当前时间为准。\n"
+            + "- 注意：\"历史里查过\"不等于\"本轮已查\"。宣称已重新查询但未在本轮实际发出对应 tool_call，视为违规。\n";
+
     private static final String GROUNDED_CONTRACT = "\n\n"
             + "## 回答来源约束（强制规则）\n\n"
             + "**核心原则**：你的回答必须完全基于工具返回的信息（证据），不得使用内部知识编造内容。\n\n"
@@ -287,7 +305,7 @@ public class ReasoningNode implements NodeAction {
             + "**违规后果**：未按规则引用来源或使用未验证的信息将导致回答被拒绝。\n";
 
     private static String buildGroundedSystemPrompt(String basePrompt, boolean groundingEnforced) {
-        String prompt = basePrompt + TOOL_USE_ENFORCEMENT;
+        String prompt = basePrompt + TOOL_USE_ENFORCEMENT + STALE_CONTEXT_GUARD;
         return groundingEnforced ? prompt + GROUNDED_CONTRACT : prompt;
     }
 
