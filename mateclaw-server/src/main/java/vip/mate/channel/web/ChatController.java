@@ -65,6 +65,7 @@ public class ChatController {
     private final vip.mate.memory.identity.MemoryOwnerResolver memoryOwnerResolver;
     private final vip.mate.workspace.core.service.ChatUploadLocationResolver uploadLocationResolver;
     private final vip.mate.tool.document.preview.OfficePreviewService officePreviewService;
+    private final vip.mate.tts.TtsService ttsService;
 
     // Virtual thread per SSE task: matches the app-wide virtual-thread model
     // (spring.threads.virtual.enabled=true) and, unlike a cached platform-thread
@@ -384,6 +385,7 @@ public class ChatController {
                                     broadcastEvent(conversationId, "done", buildDonePayload(
                                             conversationId, persistStatus, savedAssistant, 0, 0,
                                             isAssistantPersisted(savedAssistant), msgCount));
+                                    maybeAutoSynthesizeTts(conversationId, persistStatus, text);
                                 } catch (Exception e) {
                                     log.warn("SSE replay complete error: {}", e.getMessage());
                                 } finally {
@@ -720,6 +722,7 @@ public class ChatController {
                                             conversationId, persistStatus, savedAssistant,
                                             accumulator.getPromptTokens(), accumulator.getCompletionTokens(),
                                             isAssistantPersisted(savedAssistant), msgCount));
+                                    maybeAutoSynthesizeTts(conversationId, persistStatus, assistantText);
                                 }
                             } catch (Exception e) {
                                 log.warn("SSE complete error: {}", e.getMessage());
@@ -1499,6 +1502,7 @@ public class ChatController {
                                 accumulator.getPromptTokens(), accumulator.getCompletionTokens(),
                                 isAssistantPersisted(savedAssistant),
                                 conversationService.getMessageCount(conversationId)));
+                        maybeAutoSynthesizeTts(conversationId, persistStatus, text);
                     } catch (Exception e) {
                         log.warn("SSE queued complete error: {}", e.getMessage());
                     } finally {
@@ -1598,6 +1602,34 @@ public class ChatController {
             payload = "{\"message\":\"serialization_error\"}";
         }
         streamTracker.broadcast(conversationId, name, payload);
+    }
+
+    /**
+     * 自动朗读：助手消息正常完成后合成语音，经 SSE 的 {@code tts_ready} 下发。
+     * <p>
+     * 判断放在后端而不是前端：{@code /api/v1/settings} 带
+     * {@code @RequireWorkspaceRole("admin")}，非 admin 用户拉不到 {@code ttsAutoMode}，
+     * 前端自行判断会让该功能对普通用户静默失效。
+     * <p>
+     * 调用点必须在 {@code done} 广播之后、{@code finally} 关闭 emitter 之前 ——
+     * 时机上的讲究见 {@link vip.mate.tts.TtsService#autoSynthesize}。
+     * <p>
+     * 只朗读 {@code completed}：{@code stopped} / {@code interrupted} 的正文可能是
+     * {@code [已停止生成]} 这类占位串或半截句子，{@code awaiting_approval} 还没说完，
+     * {@code error} 没有正文。状态判断集中在这里，三个调用点无需各自把关。
+     * <p>
+     * 合成失败不影响会话：{@code autoSynthesize} 内部吞掉异常。
+     */
+    private void maybeAutoSynthesizeTts(String conversationId, String persistStatus, String text) {
+        if (text == null || text.isBlank()) return;
+        if (!"completed".equals(persistStatus)) return;
+        try {
+            if (ttsService.isAutoModeEnabled()) {
+                ttsService.autoSynthesize(conversationId, text);
+            }
+        } catch (Exception e) {
+            log.warn("[TTS] auto-synthesize dispatch failed for {}: {}", conversationId, e.getMessage());
+        }
     }
 
     /**
