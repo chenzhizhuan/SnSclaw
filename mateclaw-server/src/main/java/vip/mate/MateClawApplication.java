@@ -21,7 +21,7 @@ import java.sql.Connection;
  * SnSclaw - Personal AI Assistant
  * Powered by Spring AI Alibaba
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @SpringBootApplication(exclude = {

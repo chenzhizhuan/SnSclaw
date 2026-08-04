@@ -13,7 +13,7 @@ import java.util.Set;
  * {@link ImageVisionService} according to {@link #autoDetectOrder()}
  * (lower wins) — typically: regional default first, premium fallbacks last.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface ImageVisionProvider {
 

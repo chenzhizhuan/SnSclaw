@@ -15,7 +15,7 @@ import vip.mate.wiki.model.WikiImageCaptionCacheEntity;
  * {@link #bumpHitCount(String)} to increment the hit counter without
  * round-tripping the row through Java memory.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface WikiImageCaptionCacheMapper extends BaseMapper<WikiImageCaptionCacheEntity> {

@@ -3,7 +3,7 @@ package vip.mate.tool.image;
 /**
  * 图片相关能力枚举（生成方向 + 解析方向）。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public enum ImageCapability {
 

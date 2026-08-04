@@ -9,7 +9,7 @@ import java.util.Set;
 /**
  * 记忆自动更新配置
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @ConfigurationProperties(prefix = "mate.memory")

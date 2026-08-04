@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 工作区文件实体（Agent 级 Markdown 文档）
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_workspace_file")

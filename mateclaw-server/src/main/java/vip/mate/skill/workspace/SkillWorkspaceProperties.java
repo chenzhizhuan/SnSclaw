@@ -9,7 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * 统一管理 skill 工作区根目录、自动初始化策略、删除策略等。
  * 遵循 Maven Local Repository 模式：单一根目录 + 约定子目录结构。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @ConfigurationProperties(prefix = "mateclaw.skill.workspace")

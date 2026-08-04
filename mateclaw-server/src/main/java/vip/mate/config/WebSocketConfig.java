@@ -17,7 +17,7 @@ import vip.mate.tool.local.DesktopBridgeWebSocketHandler;
  * <p>
  * 注册 Talk Mode WebSocket 端点。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Configuration
 @EnableWebSocket

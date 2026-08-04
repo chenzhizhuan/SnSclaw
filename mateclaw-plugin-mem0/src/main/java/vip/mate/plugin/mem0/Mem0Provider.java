@@ -37,7 +37,7 @@ import java.util.concurrent.Executors;
  * <p>Asynchronous sync: a single-thread daemon executor is used
  * so that bursts of turns don't pile up on the platform's request thread.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 class Mem0Provider implements PluginMemoryProvider {
 

@@ -14,7 +14,7 @@ import java.util.List;
  *   <li>Agent tools (Spring AI @Tool beans)</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface MemoryProvider {
 

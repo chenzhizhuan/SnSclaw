@@ -17,7 +17,7 @@ import java.util.Set;
  * </ul>
  * 非 shell 工具仍使用原 BLOCK 策略。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

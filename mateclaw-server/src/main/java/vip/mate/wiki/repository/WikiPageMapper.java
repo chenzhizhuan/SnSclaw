@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Wiki page mapper
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface WikiPageMapper extends BaseMapper<WikiPageEntity> {

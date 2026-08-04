@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * key 为 conversationId（如 dingtalk:sw:xxx），
  * value 为平台推送所需的标识（sessionWebhook / chat_id / channel_id）。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_channel_session")

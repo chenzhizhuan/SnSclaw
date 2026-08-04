@@ -24,7 +24,7 @@ import java.util.Map;
  * run table's unique key and is skipped, so concurrent instances cannot spawn
  * parallel runs for the same trigger.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

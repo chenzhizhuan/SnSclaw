@@ -19,7 +19,7 @@ import java.util.List;
 /**
  * Agent 模板接口
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "Agent Templates")
 @RestController

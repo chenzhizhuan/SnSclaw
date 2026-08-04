@@ -24,7 +24,7 @@ import java.util.Map;
  * <p>
  * 使用 {@link NodeStreamingChatHelper} 进行流式调用，实时推送 content/thinking 增量。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class PlanSummaryNode implements NodeAction {

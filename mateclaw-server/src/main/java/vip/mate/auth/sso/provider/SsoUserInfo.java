@@ -10,7 +10,7 @@ package vip.mate.auth.sso.provider;
  * @param email       邮箱（nullable）
  * @param mobile      手机（nullable）
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record SsoUserInfo(
         String externalId,

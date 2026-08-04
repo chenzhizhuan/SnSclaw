@@ -52,7 +52,7 @@ import java.util.Set;
  *           my-internal-api: my-internal-api
  * </pre>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Component
 @ConfigurationProperties(prefix = "mateclaw.mcp.identity-forward")

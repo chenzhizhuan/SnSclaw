@@ -13,7 +13,7 @@ import java.util.List;
  * own config declared in {@code mateclaw-plugin.json} via
  * {@code PluginContext#getConfig(String, Class)}.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface PluginSearchProvider {
 

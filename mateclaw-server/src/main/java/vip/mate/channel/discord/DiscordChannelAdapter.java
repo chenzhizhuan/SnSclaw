@@ -47,7 +47,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
  * - bot_token: Discord Bot Token（必填）
  * - accept_bot_messages: 是否接收其他 Bot 消息，默认 false
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class DiscordChannelAdapter extends AbstractChannelAdapter {

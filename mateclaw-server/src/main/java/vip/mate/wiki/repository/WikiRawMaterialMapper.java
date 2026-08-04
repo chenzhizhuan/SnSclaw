@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * Wiki raw material mapper
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface WikiRawMaterialMapper extends BaseMapper<WikiRawMaterialEntity> {

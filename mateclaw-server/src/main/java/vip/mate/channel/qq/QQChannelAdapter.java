@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * - markdown_enabled: 是否启用 Markdown 消息格式，默认 true
  * - max_reconnect_attempts: 最大重连次数，默认 100
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class QQChannelAdapter extends AbstractChannelAdapter {

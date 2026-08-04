@@ -26,7 +26,7 @@ import java.nio.charset.StandardCharsets;
  * <p>Drop-in replacement: every {@code new SseEmitter(timeout)} should become
  * {@code new Utf8SseEmitter(timeout)}.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public class Utf8SseEmitter extends SseEmitter {
 

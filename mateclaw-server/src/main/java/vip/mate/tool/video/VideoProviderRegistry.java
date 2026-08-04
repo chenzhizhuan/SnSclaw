@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  * <p>
  * 借鉴 {@link vip.mate.tool.search.SearchProviderRegistry} 的设计模式。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

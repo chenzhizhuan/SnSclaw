@@ -26,7 +26,7 @@ import java.util.Set;
  * Gated behind {@code mate.memory.fact.contradiction-check-enabled=false} (default off).
  * Full LLM batch judgment (using contradiction-batch.txt prompt) deferred to Phase 3 L4+.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

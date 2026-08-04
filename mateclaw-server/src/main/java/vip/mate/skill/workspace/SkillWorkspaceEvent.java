@@ -7,7 +7,7 @@ import java.nio.file.Path;
  * <p>
  * 由 SkillWorkspaceManager 发布，SkillRuntimeService 监听以刷新缓存。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record SkillWorkspaceEvent(String skillName, Type type, Path workspacePath) {
 

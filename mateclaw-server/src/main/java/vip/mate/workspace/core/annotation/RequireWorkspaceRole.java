@@ -10,7 +10,7 @@ import java.lang.annotation.*;
  * <p>
  * 角色等级: owner(4) > admin(3) > member(2) > viewer(1)
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

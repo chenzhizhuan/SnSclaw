@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 渠道实体
  * 渠道实体：支持多种 IM 渠道接入
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_channel")

@@ -7,7 +7,7 @@ import vip.mate.wiki.model.WikiKnowledgeBaseEntity;
 /**
  * Wiki 知识库 Mapper
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface WikiKnowledgeBaseMapper extends BaseMapper<WikiKnowledgeBaseEntity> {

@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * 记忆模块自动配置
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Configuration
 @EnableConfigurationProperties(MemoryProperties.class)

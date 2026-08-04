@@ -5,7 +5,7 @@ import lombok.Getter;
 /**
  * 响应状态码枚举
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Getter
 public enum ResultCode {

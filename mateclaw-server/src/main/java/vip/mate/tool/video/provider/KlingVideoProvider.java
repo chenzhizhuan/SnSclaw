@@ -27,7 +27,7 @@ import java.util.Set;
  * API 文档: https://docs.qingque.cn/d/home/eZQBXy5cfgN4H-YSZjCE1c_5w
  * 鉴权方式: JWT (access_key + secret_key 签发短时 token)
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

@@ -5,6 +5,6 @@ package vip.mate.memory.lifecycle;
  *
  * @param context        the turn context
  * @param assistantReply the LLM response text
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record TurnCompletedEvent(TurnContext context, String assistantReply) {}

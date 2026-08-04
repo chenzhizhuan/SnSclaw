@@ -22,7 +22,7 @@ import java.util.UUID;
  * <p>All factories return mutable entities; tests are free to override
  * any field after construction.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public final class WikiTestSupport {
 

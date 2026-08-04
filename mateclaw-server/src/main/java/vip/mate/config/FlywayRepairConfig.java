@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
  * during version upgrades — especially important for Desktop app users
  * who cannot manually run CLI commands.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Configuration

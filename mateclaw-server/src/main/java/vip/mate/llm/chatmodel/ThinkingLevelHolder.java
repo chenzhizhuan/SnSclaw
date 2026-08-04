@@ -10,7 +10,7 @@ package vip.mate.llm.chatmodel;
  * <p>Supported values: off / low / medium / high / max; {@code null} means
  * "follow the model default".
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public final class ThinkingLevelHolder {
 

@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * Agent 配置实体
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_agent")

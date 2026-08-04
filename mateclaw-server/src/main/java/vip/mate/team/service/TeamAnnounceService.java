@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
  * fresh lead turn in the originating conversation; the lead's synthesized
  * reply is persisted there and pushed over SSE.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

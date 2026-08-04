@@ -12,7 +12,7 @@ import java.util.Map;
  * or supplied as the built-in default by
  * {@link WikiPageTypeProfileService}.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)

@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  * </ol>
  * 事件通过 {@link ChatStreamTracker#broadcast} 推送，前端用 SSE 订阅。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

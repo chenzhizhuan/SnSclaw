@@ -11,7 +11,7 @@ import lombok.Data;
  * to flag images that look unrelated to the surrounding text (so callers
  * can mark them off-topic in downstream pipelines).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @Builder

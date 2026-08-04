@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 子计划步骤实体
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_sub_plan")

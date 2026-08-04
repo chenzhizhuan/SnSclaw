@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
  * no-op (the row's {@code revokedAt} is updated for record-keeping);
  * un-revoking an un-revoked one is also a no-op.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

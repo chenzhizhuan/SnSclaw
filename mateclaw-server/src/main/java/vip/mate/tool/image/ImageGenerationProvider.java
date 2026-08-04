@@ -11,7 +11,7 @@ import java.util.Set;
  * 设计参考 {@link vip.mate.tool.video.VideoGenerationProvider}。
  * 与视频不同，图片 Provider 分同步和异步两种模式。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface ImageGenerationProvider {
 

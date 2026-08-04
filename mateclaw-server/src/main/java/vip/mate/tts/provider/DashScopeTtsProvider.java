@@ -22,7 +22,7 @@ import java.util.List;
  * 复用已有的 DashScope LLM provider 的 API Key。
  * API 文档: https://help.aliyun.com/zh/model-studio/developer-reference/cosyvoice-openai-compatible
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

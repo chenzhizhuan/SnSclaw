@@ -15,7 +15,7 @@ package vip.mate.tool.image;
  *                 {@code msg:<msgId>:<idx>}). Used for logging / audit, not
  *                 forwarded to providers.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record ImageReference(byte[] data, String mimeType, String fileName, String origin) {
 }

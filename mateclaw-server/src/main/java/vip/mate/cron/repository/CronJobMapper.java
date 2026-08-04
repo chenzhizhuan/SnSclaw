@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * 定时任务 Mapper
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface CronJobMapper extends BaseMapper<CronJobEntity> {

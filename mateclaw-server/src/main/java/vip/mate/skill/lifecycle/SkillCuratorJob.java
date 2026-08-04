@@ -28,7 +28,7 @@ import java.util.Set;
  * first-run throttle that keeps the pre-activation dry-run from flooding the
  * report directory.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

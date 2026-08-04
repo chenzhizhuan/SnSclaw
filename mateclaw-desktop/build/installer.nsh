@@ -78,6 +78,18 @@
 !define WriteTier2 '!insertmacro _WriteTier2'
 
 ; ---------------------------------------------------------------------------
+; Hook — runs BEFORE the install directory page is displayed.
+; Forces the install directory to %LOCALAPPDATA%\Programs\SnSclaw (per-user).
+; No admin rights required.  Each Windows user gets their own independent
+; copy; even if the user previously chose a custom path, this override wins.
+; ---------------------------------------------------------------------------
+!macro customInit
+  ; $LOCALAPPDATA = C:\Users\<username>\AppData\Local (always writable by the
+  ; current user; no UAC prompt needed because perMachine=false).
+  StrCpy $INSTDIR "$LOCALAPPDATA\Programs\SnSclaw"
+!macroend
+
+; ---------------------------------------------------------------------------
 ; Hook — runs AFTER the default install section has already written its
 ; own Uninstall values.  Override the fields we want.
 ; ---------------------------------------------------------------------------

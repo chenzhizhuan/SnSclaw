@@ -19,7 +19,7 @@ import org.springframework.ai.tool.metadata.ToolMetadata;
  * <p>Everything else (definition, invocation, exceptions) is delegated verbatim
  * — guard, approval, observability, audit all see the original callback.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public final class ReturnDirectMcpToolCallback implements ToolCallback {
 

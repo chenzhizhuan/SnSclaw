@@ -13,7 +13,7 @@ import vip.mate.plugin.api.PluginContext;
  * <p>
  * Registers a simple "hello_world" tool that agents can call.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public class HelloPlugin implements MateClawPlugin {
 

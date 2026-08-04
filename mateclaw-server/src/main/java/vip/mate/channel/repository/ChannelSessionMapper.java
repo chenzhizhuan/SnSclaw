@@ -7,7 +7,7 @@ import vip.mate.channel.model.ChannelSessionEntity;
 /**
  * 渠道会话 Mapper
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface ChannelSessionMapper extends BaseMapper<ChannelSessionEntity> {

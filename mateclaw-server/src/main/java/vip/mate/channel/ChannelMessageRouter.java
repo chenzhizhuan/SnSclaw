@@ -52,7 +52,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * - 500ms 防抖：同一会话的连续消息合并为一条
  * - Web 渠道不走队列（有自己的 SSE 流程）
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

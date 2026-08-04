@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 /**
  * Startup security validator — warns about insecure default configurations.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

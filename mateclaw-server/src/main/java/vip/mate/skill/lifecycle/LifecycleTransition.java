@@ -3,7 +3,7 @@ package vip.mate.skill.lifecycle;
 /**
  * The transition a skill should undergo on a lifecycle sweep.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public enum LifecycleTransition {
     /** No change needed. */

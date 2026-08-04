@@ -8,7 +8,7 @@ package vip.mate.agent.graph.state;
  * <p>
  * 所有节点和路由统一引用此类，避免字符串散落。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public final class MateClawStateKeys {
 

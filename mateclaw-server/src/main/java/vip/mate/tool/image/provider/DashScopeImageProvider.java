@@ -45,7 +45,7 @@ import java.util.Set;
  * payload shape, and the {@code supports} whitelist — adding a new model is a
  * one-line spec entry.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

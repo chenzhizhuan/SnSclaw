@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  * 负责工具调用结果的标准化、截断、压缩，以及 shouldSummarize 判断。
  * 防止 observation 无限膨胀，保证传给 LLM 的上下文可控。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class ObservationProcessor {

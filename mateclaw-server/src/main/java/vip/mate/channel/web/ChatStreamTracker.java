@@ -50,7 +50,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * from {@link #attach(String, SseEmitter)} but mean very different things to
  * the user.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

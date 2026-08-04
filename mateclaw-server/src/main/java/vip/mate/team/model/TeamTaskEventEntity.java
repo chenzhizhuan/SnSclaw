@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * channel rendered as the task's collaboration timeline; recording failures
  * never affect the task itself.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_team_task_event")

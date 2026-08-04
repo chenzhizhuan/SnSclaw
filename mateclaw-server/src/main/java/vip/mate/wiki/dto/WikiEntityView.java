@@ -9,7 +9,7 @@ import java.util.List;
  * API-facing projection of a canonical entity node. Excludes the raw
  * embedding vector and other internal columns.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 public class WikiEntityView {

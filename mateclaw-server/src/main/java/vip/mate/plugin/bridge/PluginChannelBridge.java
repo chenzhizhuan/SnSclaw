@@ -8,7 +8,7 @@ import vip.mate.plugin.api.channel.PluginChannelAdapter;
  * Bridge that wraps a plugin's {@link PluginChannelAdapter} into the platform's
  * internal {@link ChannelAdapter} interface.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public class PluginChannelBridge implements ChannelAdapter {
 

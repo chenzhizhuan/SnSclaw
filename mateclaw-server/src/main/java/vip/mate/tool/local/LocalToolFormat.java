@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * payload through verbatim; failures become a uniform error object the LLM can
  * reason about ({@code error}, {@code code}, {@code message}).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 final class LocalToolFormat {
 

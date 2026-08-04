@@ -84,7 +84,7 @@ package vip.mate.plugin.api.search;
  * @param language  language preference, e.g. zh-CN / en (nullable)
  * @param count     max results 1-10, already clamped by the platform (never null)
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record PluginSearchQuery(
         String query,
@@ -112,7 +112,7 @@ package vip.mate.plugin.api.search;
  * @param source  source domain, e.g. "reuters.com" (nullable)
  * @param date    published date as raw string (nullable)
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record PluginSearchResult(
         String title,
@@ -142,7 +142,7 @@ import java.util.List;
  * own config declared in {@code mateclaw-plugin.json} via
  * {@code PluginContext#getConfig(String, Class)}.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface PluginSearchProvider {
 
@@ -612,7 +612,7 @@ import java.util.List;
  * providers read their own config via {@code PluginContext#getConfig}, keeping
  * the SDK free of server types.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public class PluginSearchBridge implements SearchProvider {
 
@@ -1045,7 +1045,7 @@ git commit -m "feat(plugin): registerSearchProvider lifecycle — register, disa
   "description": "Registers a custom web-search provider backed by a configurable JSON search endpoint.",
   "entrypoint": "vip.mate.plugin.sample.search.SimpleSearchPlugin",
   "minPlatformVersion": "1.1.0",
-  "author": "SnSclaw Team",
+  "author": "SnSclaw",
   "config": {
     "baseUrl": {
       "type": "string",
@@ -1092,7 +1092,7 @@ import java.util.List;
  * provider that queries a configurable JSON endpoint. Expected response shape:
  * {@code {"results":[{"title":"...","url":"...","snippet":"..."}]}}
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public class SimpleSearchPlugin implements MateClawPlugin {
 

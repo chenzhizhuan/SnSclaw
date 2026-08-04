@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 表示一个外部 MCP 服务器的连接配置，一个 server 可暴露多个 tools。
  * 独立于 mate_tool 表，因为 server 是工具来源配置，tool 是工具展示元数据。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_mcp_server")

@@ -26,7 +26,7 @@ import vip.mate.workspace.core.annotation.RequireWorkspaceRole;
  * inside the standard admin-role guard. Edit access should be restricted
  * to operators; everyday users have no business toggling these.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @RestController
 @RequestMapping("/api/v1/feature-flags")

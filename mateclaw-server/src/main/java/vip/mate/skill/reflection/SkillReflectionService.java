@@ -42,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * workspace export as the in-band agent path — this service only decides
  * <em>what</em> to write, never <em>how</em>.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

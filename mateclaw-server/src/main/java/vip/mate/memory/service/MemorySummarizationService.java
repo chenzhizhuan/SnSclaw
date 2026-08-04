@@ -33,7 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p>
  * 分析对话内容，提取值得记忆的信息，写入对应的工作区文件。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

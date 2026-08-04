@@ -14,7 +14,7 @@ import vip.mate.memory.spi.MemoryProvider;
  * - memory.sync.failures (Counter)
  * - memory.session_end.duration (Timer)
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public class MetricsMemoryProvider extends MemoryProviderDecorator {
 

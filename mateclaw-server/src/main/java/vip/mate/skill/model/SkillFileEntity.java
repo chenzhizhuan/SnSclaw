@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
  * other directory-aware consumers see the file on disk regardless of
  * which node accepted the original upload.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_skill_file")

@@ -22,7 +22,7 @@ import java.util.Map;
  * <p>
  * 提供记忆整合的手动触发和状态查询。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "记忆管理")
 @Slf4j

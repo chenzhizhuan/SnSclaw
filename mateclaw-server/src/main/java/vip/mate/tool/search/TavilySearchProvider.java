@@ -15,7 +15,7 @@ import java.util.List;
 /**
  * Tavily 搜索提供商 — 需要 API Key
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

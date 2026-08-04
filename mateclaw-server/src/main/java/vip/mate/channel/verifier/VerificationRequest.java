@@ -7,7 +7,7 @@ import java.util.Map;
  * what a verifier needs — no entity ID, no audit context — because preflight
  * runs before the row exists in {@code mate_channel}.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record VerificationRequest(
         String channelType,

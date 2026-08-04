@@ -15,7 +15,7 @@ import java.util.List;
  * Tool beans (StructuredMemoryTool) are auto-discovered by ToolRegistry's
  * component scan, so getToolBeans() returns empty.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

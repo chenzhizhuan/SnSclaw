@@ -8,7 +8,7 @@ package vip.mate.memory.event;
  * @param target  which file was written (e.g. "MEMORY.md", "structured/user.md")
  * @param action  what happened ("remember", "consolidate", "update")
  * @param content the written content (may be truncated for large writes)
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record MemoryWriteEvent(
         Long agentId,

@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
  * skill_manage so you can reuse it next time."
  * </blockquote>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

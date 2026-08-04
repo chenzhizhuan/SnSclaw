@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
  * {@link #wiki_list_kbs} and {@code WikiKnowledgeBaseService.findVisibleById}
  * for the visibility gate.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

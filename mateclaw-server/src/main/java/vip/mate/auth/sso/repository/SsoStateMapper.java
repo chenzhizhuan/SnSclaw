@@ -7,7 +7,7 @@ import vip.mate.auth.sso.model.SsoStateEntity;
 /**
  * OAuth2 state / bind-token 存储 Mapper。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface SsoStateMapper extends BaseMapper<SsoStateEntity> {

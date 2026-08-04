@@ -12,7 +12,7 @@ import lombok.Data;
  * decide whether the image is on-topic and produce a context-aware
  * caption.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @Builder

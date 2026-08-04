@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
  * can still start a fresh {@code /stream}, which mints a new token; the
  * revocation applies to the old token presented on management endpoints.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("webchat_revoked_visitor")

@@ -8,7 +8,7 @@ import java.util.Map;
 /**
  * 视频生成统一请求
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @Builder

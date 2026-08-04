@@ -33,7 +33,7 @@ import java.util.Objects;
  * count), so concurrent agents cannot double-claim or double-complete a task —
  * the database is the arbiter, no in-process locking involved.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

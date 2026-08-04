@@ -17,7 +17,7 @@ import java.util.Map;
  * a human label, optional description, the metadata field schema, the
  * per-stage LLM instructions and an optional Markdown template.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)

@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * SDK 的 register() 是阻塞的（内部轮询直到扫码确认或超时），所以这里用一个工作线程执行，
  * QR URL 通过 onQRCode 回调写到 session，前端按 token 轮询 status 端点查最终结果。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

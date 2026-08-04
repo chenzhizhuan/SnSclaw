@@ -14,7 +14,7 @@ import vip.mate.channel.model.ChannelEntity;
  * 不同于 IM 渠道，Web 渠道不需要长连接，消息通过 ChatController 直接处理。
  * 此适配器主要提供统一的生命周期管理和消息格式兼容。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class WebChannelAdapter extends AbstractChannelAdapter {

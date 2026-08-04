@@ -17,7 +17,7 @@ import java.util.Map;
  * Morning card service — determines whether to show a dream summary card
  * when a user enters an agent view. Scope is per (userId, agentId).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

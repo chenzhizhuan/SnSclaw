@@ -26,7 +26,7 @@ import java.util.Map;
  * {@link AuditEventService}; actor is the JWT-authenticated admin username,
  * not the visitor.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "WebChat 管理(管理员)")
 @Slf4j

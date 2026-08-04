@@ -31,7 +31,7 @@ import java.util.Map;
  * <p>apiBase 按 {@code domain} 切换: {@code feishu} → {@code https://open.feishu.cn};
  * {@code lark} → {@code https://open.larksuite.com}。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public class FeishuSsoProvider implements SsoProvider {
 

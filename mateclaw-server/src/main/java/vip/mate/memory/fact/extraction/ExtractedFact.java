@@ -5,7 +5,7 @@ package vip.mate.memory.fact.extraction;
  *
  * @param trust derived from UserFeedback metadata in the canonical section
  *              (0.5 base + helpful*0.1 - unhelpful*0.2, clamped [0,1])
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record ExtractedFact(
         String sourceRef,

@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * 会话历史上下文窗口管理配置
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @ConfigurationProperties(prefix = "mate.agent.conversation.window")

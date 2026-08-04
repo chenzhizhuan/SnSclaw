@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 操作审计事件实体
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_audit_event")

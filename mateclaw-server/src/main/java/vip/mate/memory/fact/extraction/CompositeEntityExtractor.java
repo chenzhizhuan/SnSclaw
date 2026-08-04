@@ -10,7 +10,7 @@ import java.util.List;
  * Composite extractor — combines pattern + LLM extractors.
  * Deduplicates by sourceRef.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Component
 @RequiredArgsConstructor

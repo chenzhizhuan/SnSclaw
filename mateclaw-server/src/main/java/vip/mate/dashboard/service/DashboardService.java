@@ -21,7 +21,7 @@ import java.util.*;
  * <p>
  * 直接实时查询 mate_message / mate_conversation 表，不依赖预聚合。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

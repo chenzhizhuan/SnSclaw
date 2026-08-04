@@ -21,7 +21,7 @@ import java.util.Set;
  * <p>
  * API 文档: https://fal.ai/docs
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

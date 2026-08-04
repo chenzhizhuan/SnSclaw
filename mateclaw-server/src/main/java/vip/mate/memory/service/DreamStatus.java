@@ -3,7 +3,7 @@ package vip.mate.memory.service;
 /**
  * Dream consolidation result status.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public enum DreamStatus {
     SUCCESS,

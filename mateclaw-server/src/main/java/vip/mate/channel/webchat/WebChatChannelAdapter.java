@@ -12,7 +12,7 @@ import vip.mate.channel.model.ChannelEntity;
  * WebChat 是无状态的 HTTP/SSE 渠道，消息由 WebChatController 直接处理。
  * 此适配器仅用于 ChannelManager 的渠道注册和状态管理，不负责消息收发。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class WebChatChannelAdapter extends AbstractChannelAdapter {

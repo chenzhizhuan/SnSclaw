@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 /**
  * 审计事件查询接口
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "审计事件")
 @RestController

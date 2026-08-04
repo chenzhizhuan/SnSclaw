@@ -20,7 +20,7 @@ import java.util.Map;
  * - "recent": list recent conversations (metadata only, no LLM cost)
  * - "search": keyword-based full-text search over message content
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

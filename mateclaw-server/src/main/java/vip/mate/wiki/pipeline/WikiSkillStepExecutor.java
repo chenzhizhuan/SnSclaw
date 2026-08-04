@@ -18,7 +18,7 @@ import java.util.Set;
  * system-triggered pipeline requires a real sandbox and a separate security
  * review (the same constraint that keeps a Python executor out of the MVP).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

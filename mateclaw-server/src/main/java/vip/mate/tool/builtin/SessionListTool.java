@@ -34,7 +34,7 @@ import java.util.Map;
  * caller conversation the same way the delegation relay does. Read-only, so it
  * is safe for children to call.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

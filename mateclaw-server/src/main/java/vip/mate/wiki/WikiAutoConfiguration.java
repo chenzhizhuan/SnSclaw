@@ -12,7 +12,7 @@ import vip.mate.wiki.service.WikiRawMaterialService;
 /**
  * Wiki module auto-configuration
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Configuration

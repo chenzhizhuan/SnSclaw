@@ -51,7 +51,7 @@ import java.util.UUID;
  * unparseable, nothing is injected (the call goes out without identity and the
  * backend rejects it) rather than silently downgrading to plaintext.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

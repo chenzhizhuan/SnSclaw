@@ -33,7 +33,7 @@ import static vip.mate.agent.graph.state.MateClawStateKeys.*;
  * actually consumes. A sibling sink that called {@code streamTracker.broadcastObject}
  * here would only reach the browser SSE bus and bypass the accumulator entirely.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class ReActLifecycleListener implements GraphLifecycleListener {

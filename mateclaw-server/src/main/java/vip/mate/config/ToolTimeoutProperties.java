@@ -12,7 +12,7 @@ import java.util.Map;
  * 支持三级配置：per-tool → per-category → default。
  * 查找优先级：先精确匹配工具名，再匹配类别，最后用默认值。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @ConfigurationProperties(prefix = "mate.agent.tool.timeout")

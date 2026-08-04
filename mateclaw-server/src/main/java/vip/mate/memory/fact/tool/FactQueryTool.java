@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * Agent tools for querying the fact projection.
  * Read-only — no fact_add / fact_remove / fact_update tools (core invariant D1).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Component
 @RequiredArgsConstructor

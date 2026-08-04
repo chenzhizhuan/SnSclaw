@@ -11,7 +11,7 @@ import java.util.List;
  * the relation edges connecting them, and the wiki pages that mention the
  * center entity (the bridge from the entity layer to the page layer).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 public class WikiEntityGraphView {

@@ -49,7 +49,7 @@ import java.util.function.Consumer;
  * 所有面向用户的 LLM 节点（ReasoningNode、StepExecutionNode、PlanSummaryNode 等）
  * 统一使用此 helper，而不是各自散落 {@code chatModel.call()}。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class NodeStreamingChatHelper {

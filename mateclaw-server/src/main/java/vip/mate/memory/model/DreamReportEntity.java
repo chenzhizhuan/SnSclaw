@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * Dream report entity — persists each dream consolidation run.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_dream_report")

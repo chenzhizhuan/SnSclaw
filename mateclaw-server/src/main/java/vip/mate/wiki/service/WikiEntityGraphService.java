@@ -26,7 +26,7 @@ import java.util.Set;
  * Read-side queries over the entity-level knowledge graph: entity listing and
  * single-entity ego-graph assembly for the wiki graph view.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

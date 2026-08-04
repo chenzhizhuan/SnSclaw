@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  * format so that both the validation endpoint and the scan service share a
  * single implementation.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

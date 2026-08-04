@@ -28,7 +28,7 @@ import java.util.Map;
  * 提供渠道的 CRUD、启用/禁用（联动 ChannelManager 生命周期）、状态查询等能力。
  * 对应前端 Channel 管理页面。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Tag(name = "渠道管理")

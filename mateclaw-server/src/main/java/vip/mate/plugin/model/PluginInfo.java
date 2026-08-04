@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * Plugin info DTO for REST API responses.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @Builder

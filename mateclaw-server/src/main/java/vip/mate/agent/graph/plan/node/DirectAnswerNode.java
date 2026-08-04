@@ -35,7 +35,7 @@ import java.util.Map;
  * CONTENT_STREAMED is true, and {@code ChatController} respects that flag
  * to persist without re-pushing.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public class DirectAnswerNode implements NodeAction {
 

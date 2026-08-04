@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 /**
  * Skill 安装任务状态
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 public class InstallTask {

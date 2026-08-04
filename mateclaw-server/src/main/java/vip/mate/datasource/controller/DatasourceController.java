@@ -15,7 +15,7 @@ import vip.mate.workspace.core.annotation.RequireGlobalAdmin;
 /**
  * 数据源管理接口
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "数据源管理")
 @RestController

@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * completed with a result summary. Supports dependency blocking, progress
  * reporting, an optional human-approval stage, and a dispatch circuit breaker.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_team_task")

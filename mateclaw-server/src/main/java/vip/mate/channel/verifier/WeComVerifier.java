@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * The probe is short-lived: connect → send subscribe → wait ≤5s for ack →
  * close. No heartbeat, no message handling, no retained state.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

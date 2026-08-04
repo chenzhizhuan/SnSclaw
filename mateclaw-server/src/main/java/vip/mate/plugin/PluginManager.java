@@ -42,7 +42,7 @@ import java.util.zip.ZipEntry;
  * Supports three discovery paths with priority: workspace > user-global > classpath.
  * Plugins are loaded on application startup and can be enabled/disabled at runtime.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

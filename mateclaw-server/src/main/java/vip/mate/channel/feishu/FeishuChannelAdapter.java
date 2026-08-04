@@ -70,7 +70,7 @@ import java.util.concurrent.TimeUnit;
  * - require_mention: 群聊中是否需要 @机器人 才响应（默认 false）
  *               true: 仅当消息中 @了机器人才处理；通过飞书 mentions 字段精确判断，无需配置 botPrefix
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class FeishuChannelAdapter extends AbstractChannelAdapter implements StreamingChannelAdapter {

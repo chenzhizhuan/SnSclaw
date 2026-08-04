@@ -22,7 +22,7 @@ import java.util.Set;
  * explicit-depth {@link #enter(String, Set, String, String, int)} overload
  * exists for async / parallel children that start on a fresh executor thread.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public final class DelegationContext {
 

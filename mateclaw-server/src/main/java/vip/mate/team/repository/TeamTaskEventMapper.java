@@ -6,7 +6,7 @@ import vip.mate.team.model.TeamTaskEventEntity;
 /**
  * Mapper for the team task event timeline.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface TeamTaskEventMapper extends BaseMapper<TeamTaskEventEntity> {
 }

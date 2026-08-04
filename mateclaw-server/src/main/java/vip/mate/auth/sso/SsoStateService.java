@@ -44,7 +44,7 @@ import java.util.UUID;
  *   <li>校验: 验签 + 过期 + 单次消费 (jti 写入 sso_state 撞 PK, 只有首个请求成功)</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

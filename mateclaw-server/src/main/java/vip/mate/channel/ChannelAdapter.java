@@ -12,7 +12,7 @@ import java.util.List;
  * 所有 IM 渠道（钉钉、飞书、企业微信等）均需实现此接口。
  * 统一生命周期管理 + 消息收发抽象。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface ChannelAdapter {
 

@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  * 一个 {@code mate_user} 可绑定多个 IdP 身份；一个 {@code (provider, external_id)}
  * 至多归属一个用户。匹配优先级：union_id（跨应用唯一）优先，回退到 external_id。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_user_external_identity")

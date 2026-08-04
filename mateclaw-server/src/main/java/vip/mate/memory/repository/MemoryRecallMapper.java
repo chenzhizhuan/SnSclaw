@@ -7,7 +7,7 @@ import vip.mate.memory.model.MemoryRecallEntity;
 /**
  * 记忆召回追踪 Mapper
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface MemoryRecallMapper extends BaseMapper<MemoryRecallEntity> {

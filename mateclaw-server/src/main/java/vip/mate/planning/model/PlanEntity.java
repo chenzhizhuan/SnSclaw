@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * 执行计划实体
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_plan")

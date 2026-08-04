@@ -15,7 +15,7 @@ import java.util.Set;
  *    └──cancel──▶ cancelled
  * </pre>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public final class TeamTaskStatus {
 

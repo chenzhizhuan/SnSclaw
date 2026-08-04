@@ -19,7 +19,7 @@ import java.util.List;
  * {@code @Async} keeps the scheduler-thread pool free — the actual DB
  * work runs on the virtual-thread async executor.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

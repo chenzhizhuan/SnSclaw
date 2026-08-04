@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Token Usage 聚合汇总 VO
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 public class TokenUsageSummaryVO {

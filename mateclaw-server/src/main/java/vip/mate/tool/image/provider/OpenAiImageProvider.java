@@ -27,7 +27,7 @@ import java.util.Set;
  * 能直接选 fast/balanced/high。三档底层都打到 API model {@code "gpt-image-2"}，
  * 区别仅在 {@code quality} 参数。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

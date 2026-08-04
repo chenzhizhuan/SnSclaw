@@ -21,7 +21,7 @@ import java.util.Map;
  * Task events are additionally mirrored onto the originating lead
  * conversation's stream (when the task has one) for in-chat observability.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

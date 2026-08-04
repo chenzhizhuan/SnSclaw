@@ -3,7 +3,7 @@ package vip.mate.tool.video;
 /**
  * 视频生成能力枚举
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public enum VideoCapability {
 

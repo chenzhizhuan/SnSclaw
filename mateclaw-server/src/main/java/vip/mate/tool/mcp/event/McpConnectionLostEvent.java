@@ -19,7 +19,7 @@ package vip.mate.tool.mcp.event;
  *
  * @param serverId the MCP server whose connection was lost
  * @param reason   short human-readable cause, for logs only
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record McpConnectionLostEvent(Long serverId, String reason) {
 }

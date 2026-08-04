@@ -5,7 +5,7 @@ package vip.mate.wiki.event;
  * since page creation is its own transaction). Consumed asynchronously to
  * evaluate count-threshold pipeline triggers without blocking ingest.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record WikiPageCreatedEvent(Long kbId, String pageType, Long pageId) {
 }

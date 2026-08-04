@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
  * Child agents have a narrowed tool set — recursive delegation and agent-discovery tools are
  * blocked.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

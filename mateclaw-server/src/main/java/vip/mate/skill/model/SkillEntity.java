@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 技能实体
  * 技能实体：可扩展的功能模块
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_skill")

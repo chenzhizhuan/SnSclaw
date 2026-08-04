@@ -7,7 +7,7 @@ package vip.mate.team.event;
  * of the dispatch service — a direct dependency would close a bean cycle
  * through the agent graph builder.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record TeamTasksDelegatedEvent(Long teamId) {
 }

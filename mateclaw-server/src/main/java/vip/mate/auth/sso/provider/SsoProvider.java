@@ -5,7 +5,7 @@ package vip.mate.auth.sso.provider;
  * <p>
  * 注册到 {@link SsoProviderRegistry} 后由 {@code SsoController} 按 id 路由。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface SsoProvider {
 

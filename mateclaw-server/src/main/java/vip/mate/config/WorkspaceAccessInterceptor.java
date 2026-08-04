@@ -30,7 +30,7 @@ import java.util.Map;
  * <p>
  * 成员资格查询使用 Caffeine 缓存（60s TTL），避免每次请求查库。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

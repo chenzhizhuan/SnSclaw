@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * Team membership row linking an agent to a team with a role.
  * An agent belongs to at most one active team (enforced in the service layer).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_agent_team_member")

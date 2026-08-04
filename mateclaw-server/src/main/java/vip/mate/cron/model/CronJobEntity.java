@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 /**
  * 定时任务实体
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName(value = "mate_cron_job", autoResultMap = true)

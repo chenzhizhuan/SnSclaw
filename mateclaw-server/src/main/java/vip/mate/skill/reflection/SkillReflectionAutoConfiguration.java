@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Registers configuration for the out-of-band skill reflection service.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Configuration
 @EnableConfigurationProperties(SkillReflectionProperties.class)

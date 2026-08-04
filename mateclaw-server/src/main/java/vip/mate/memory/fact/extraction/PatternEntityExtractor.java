@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
  * - "## key\ncontent" sections in structured/*.md
  * - "- **key**: value" bullet patterns in MEMORY.md
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Component
 public class PatternEntityExtractor implements EntityExtractor {

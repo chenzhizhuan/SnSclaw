@@ -19,7 +19,7 @@ import static vip.mate.agent.graph.state.MateClawStateKeys.*;
  * <p>
  * 这是 maxIterations 字段的核心执行点。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class ObservationDispatcher implements EdgeAction {

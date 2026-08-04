@@ -18,7 +18,7 @@ import java.nio.file.Paths;
  * fail closed: unconfigured conversations are confined to a single directory
  * instead of the whole filesystem.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Configuration

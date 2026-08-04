@@ -29,7 +29,7 @@ import java.util.Set;
  *       by orientation token (landscape / square / portrait).</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public final class PayloadBuilder {
 

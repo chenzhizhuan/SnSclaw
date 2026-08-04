@@ -47,7 +47,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Web 渠道聊天接口
  * 提供 SSE 流式对话和同步对话能力
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "Web聊天")
 @Slf4j

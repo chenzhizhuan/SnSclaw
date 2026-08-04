@@ -15,7 +15,7 @@ import java.util.List;
  * Query service for the fact projection.
  * Read-only + bumpUseCount (the only accumulated column writer).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

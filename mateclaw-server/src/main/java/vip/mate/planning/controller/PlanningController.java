@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * 任务规划接口
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "任务规划")
 @RestController

@@ -5,7 +5,7 @@ import lombok.Data;
 /**
  * 登录请求
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 public class LoginRequest {

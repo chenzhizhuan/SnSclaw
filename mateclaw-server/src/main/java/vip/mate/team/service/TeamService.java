@@ -27,7 +27,7 @@ import java.util.Optional;
  * - an agent belongs to at most one active team (keeps system-prompt team context unambiguous);
  * - the lead cannot be removed or demoted while the team exists.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

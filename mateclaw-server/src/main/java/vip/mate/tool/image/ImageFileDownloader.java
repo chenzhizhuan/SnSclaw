@@ -16,7 +16,7 @@ import java.util.Base64;
 /**
  * 图片文件下载器 — 从 provider CDN 下载图片到本地存储，或解码 Base64 图片
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

@@ -7,7 +7,7 @@ import vip.mate.wiki.model.WikiPageTypeProfileEntity;
 /**
  * Mapper for {@link WikiPageTypeProfileEntity}.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface WikiPageTypeProfileMapper extends BaseMapper<WikiPageTypeProfileEntity> {

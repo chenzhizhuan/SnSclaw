@@ -19,7 +19,7 @@ import java.nio.file.Paths;
  * {@link ChatUploadResolver} so the tool-side fallback lookup agrees with the
  * Spring-managed {@link ChatUploadLocationResolver}.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Configuration

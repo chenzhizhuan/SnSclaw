@@ -40,7 +40,7 @@ import static vip.mate.agent.graph.state.MateClawStateKeys.OBSERVATION_HISTORY;
  * <p>
  * 使用 {@link NodeStreamingChatHelper} 进行流式调用，实时推送 content/thinking 增量。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class SummarizingNode implements NodeAction {

@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
  * marker ({@code <!-- user-edited: YYYY-MM-DD -->}) so that future Dream runs
  * do not overwrite user modifications.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

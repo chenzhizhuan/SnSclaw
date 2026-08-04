@@ -7,7 +7,7 @@ import vip.mate.workspace.conversation.model.MessageEntity;
 /**
  * 消息数据访问层
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface MessageMapper extends BaseMapper<MessageEntity> {

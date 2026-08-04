@@ -48,7 +48,7 @@ import java.util.Set;
  * <p>This is an opt-in pass gated by {@link WikiKbConfig#getEntityExtractionEnabled()};
  * it runs after ingest/embedding and never blocks the page-generation pipeline.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

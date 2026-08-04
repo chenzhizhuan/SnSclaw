@@ -22,7 +22,7 @@ import java.util.Map;
 /**
  * 工作区管理接口
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "工作区管理")
 @RestController

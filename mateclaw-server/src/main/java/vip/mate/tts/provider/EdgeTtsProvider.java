@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
  * 使用 Edge 浏览器内置的 TTS WebSocket 协议。
  * 自动根据文本语言选择中文或英文语音。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

@@ -21,7 +21,7 @@ import java.util.Map;
  * .getDingTalkAccessToken} so a green Step 2 maps to a green channel
  * post-save.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

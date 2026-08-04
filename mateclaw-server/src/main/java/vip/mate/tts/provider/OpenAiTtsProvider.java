@@ -21,7 +21,7 @@ import java.util.List;
  * 同步模式，直接返回音频流。
  * 复用已有的 OpenAI LLM provider 的 API Key。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

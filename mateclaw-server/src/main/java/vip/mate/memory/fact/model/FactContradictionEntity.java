@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * Contradiction between two facts, detected during Dream consolidation.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_fact_contradiction")

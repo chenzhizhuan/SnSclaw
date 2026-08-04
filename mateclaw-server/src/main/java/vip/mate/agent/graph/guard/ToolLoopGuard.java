@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
  * {@link vip.mate.agent.graph.state.MateClawStateKeys#TOOL_LOOP_STATS} and are
  * scoped to a single graph run.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public final class ToolLoopGuard {
 

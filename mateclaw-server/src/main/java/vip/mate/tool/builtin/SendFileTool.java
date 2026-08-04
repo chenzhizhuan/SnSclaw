@@ -26,7 +26,7 @@ import java.util.Map;
  * files): the goal is to deliver the file as an attachment rather than read
  * its text content.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

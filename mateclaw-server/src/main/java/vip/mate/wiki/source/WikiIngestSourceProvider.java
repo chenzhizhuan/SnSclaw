@@ -10,7 +10,7 @@ import vip.mate.wiki.service.WikiDirectoryScanService;
  * message-queue sources can be added later by implementing this interface
  * without touching the watcher.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface WikiIngestSourceProvider {
 

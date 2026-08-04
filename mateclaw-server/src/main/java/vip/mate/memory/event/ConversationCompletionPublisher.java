@@ -26,7 +26,7 @@ import vip.mate.workspace.conversation.ConversationService;
  * publish the event at all. Routing every site through this bean makes the
  * memory production pipeline observable and uniform.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

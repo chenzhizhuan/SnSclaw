@@ -32,7 +32,7 @@ import java.util.UUID;
  * <p>
  * 单文件上限 20 MB（钉钉服务端限制；客户端上传时 timeout 30s 已经够大文件用）。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @RequiredArgsConstructor

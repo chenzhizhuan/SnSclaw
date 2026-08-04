@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * review that autonomously creates or improves skills from a finished
  * conversation, without consuming the live turn's context.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @ConfigurationProperties(prefix = "mateclaw.skill.reflection")

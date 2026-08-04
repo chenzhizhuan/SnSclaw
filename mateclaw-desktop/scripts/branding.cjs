@@ -35,9 +35,9 @@ function loadBrandConfig(rootDir) {
   return {
     name:           env.BRAND_NAME        || config.name        || 'SnSclaw',
     tagline:        env.BRAND_TAGLINE     || config.tagline     || 'AI Personal Assistant',
-    team:           env.BRAND_TEAM        || config.team        || 'SnSclaw Team',
-    publisher:      env.BRAND_PUBLISHER   || config.publisher   || 'SnSclaw Team',
-    copyright:      env.BRAND_COPYRIGHT   || config.copyright   || 'Copyright © 2026 SnSclaw Team',
+    team:           env.BRAND_TEAM        || config.team        || 'SnSclaw',
+    publisher:      env.BRAND_PUBLISHER   || config.publisher   || 'SnSclaw',
+    copyright:      env.BRAND_COPYRIGHT   || config.copyright   || 'Copyright © 2026 SnSclaw',
     appId:          env.BRAND_APP_ID      || config.appId       || 'app.sns.claw',
     githubUrl:      env.BRAND_GITHUB_URL  || config.githubUrl   || defaultGh,
     logoFile:       env.BRAND_LOGO_FILE   || config.logoFile    || 'mateclaw_logo_s.png',
@@ -54,19 +54,19 @@ function loadBrandConfig(rootDir) {
  * Build the string-replacement table.
  *
  * Order matters: longer/more-specific patterns are replaced first to avoid
- * partial matches (e.g. "SnSclaw Team" before "SnSclaw").
+ * partial matches (e.g. "SnSclaw" before "SnSclaw").
  */
 function buildReplacements(brand) {
   const replacements = []
 
   // 1. Copyright line (most specific)
   replacements.push([
-    'Copyright © 2026 SnSclaw Team',
+    'Copyright © 2026 SnSclaw',
     brand.copyright,
   ])
 
   // 2. Team name
-  replacements.push(['SnSclaw Team', brand.team])
+  replacements.push(['SnSclaw', brand.team])
 
   // 3. GitHub URLs
   replacements.push([
@@ -140,7 +140,7 @@ function brandingPlugin(options) {
   var isDefault =
     brand.name === 'SnSclaw' &&
     brand.tagline === 'AI Personal Assistant' &&
-    brand.team === 'SnSclaw Team'
+    brand.team === 'SnSclaw'
 
   if (!isDefault) {
     console.log('[branding] White-label build: "' + brand.name + '" (tagline: "' + brand.tagline + '")')

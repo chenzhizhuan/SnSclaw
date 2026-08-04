@@ -48,7 +48,7 @@ import static org.mockito.Mockito.when;
  *
  * <p>Pure-Mockito (no Spring context) so the test stays fast and isolated.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @ExtendWith(MockitoExtension.class)
 class ConversationServiceOwnershipWorkspaceTest {

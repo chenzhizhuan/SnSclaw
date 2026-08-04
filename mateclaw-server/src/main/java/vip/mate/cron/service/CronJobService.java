@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
 /**
  * 定时任务业务服务
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

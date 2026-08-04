@@ -19,7 +19,7 @@ import vip.mate.wiki.model.WikiKnowledgeBaseEntity;
  * Path validation (symlink resolution + allowed roots) is enforced by the
  * shared validator inside the scan.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

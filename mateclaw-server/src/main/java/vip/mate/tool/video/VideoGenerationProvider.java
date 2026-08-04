@@ -10,7 +10,7 @@ import java.util.Set;
  * <p>
  * 设计参考 {@link vip.mate.tool.search.SearchProvider}。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface VideoGenerationProvider {
 

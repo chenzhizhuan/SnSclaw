@@ -30,7 +30,7 @@ import vip.mate.workspace.conversation.repository.ConversationMapper;
  * that spawned it, and the continued run is re-entered under the standard child
  * deny set so it cannot delegate or send onward.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

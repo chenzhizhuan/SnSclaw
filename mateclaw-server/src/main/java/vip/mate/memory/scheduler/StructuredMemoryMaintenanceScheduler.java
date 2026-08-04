@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
  * nightly dreaming must not silently disable structured consolidation, and vice
  * versa.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

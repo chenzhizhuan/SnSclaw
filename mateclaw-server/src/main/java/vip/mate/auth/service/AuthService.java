@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * 认证服务（JWT）
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

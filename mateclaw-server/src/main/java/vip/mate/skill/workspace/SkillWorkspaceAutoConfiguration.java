@@ -8,7 +8,7 @@ import vip.mate.tool.guard.WorkspacePathGuard;
 /**
  * Skill 工作区与安装器自动配置
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Configuration
 @EnableConfigurationProperties({SkillWorkspaceProperties.class, SkillHubProperties.class})

@@ -19,7 +19,7 @@ import vip.mate.exception.MateClawException;
  * 仅允许 SELECT 语句，拒绝一切写操作。
  * 无 LIMIT 时自动注入 LIMIT 500。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

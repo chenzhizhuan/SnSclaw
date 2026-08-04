@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 工作区是资源隔离的基本单元，Agent、Channel、Wiki、Conversation 都归属于某个工作区。
  * 系统自动创建 id=1 的默认工作区（default），单人部署无需感知。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_workspace")

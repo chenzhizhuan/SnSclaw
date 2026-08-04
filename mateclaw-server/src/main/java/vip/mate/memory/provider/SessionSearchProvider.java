@@ -13,7 +13,7 @@ import java.util.List;
  * Provides no system prompt block (search is on-demand via tool).
  * Tool (SessionSearchTool) is auto-discovered by ToolRegistry.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

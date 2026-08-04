@@ -38,7 +38,7 @@ import java.util.Optional;
  * the agent graph builder) — a {@link TeamTasksDelegatedEvent} triggers the
  * immediate sweep instead.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

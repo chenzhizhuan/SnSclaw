@@ -3,7 +3,7 @@ package vip.mate.memory.service;
 /**
  * A candidate that was adopted into MEMORY.md during a dream.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record PromotedEntry(
         Long recallId,

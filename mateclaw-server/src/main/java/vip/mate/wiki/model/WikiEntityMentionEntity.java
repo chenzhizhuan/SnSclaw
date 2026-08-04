@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
  * from the chunk's citing pages so the entity layer connects to the page
  * layer: entity → mention → chunk → citing page.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_wiki_entity_mention")

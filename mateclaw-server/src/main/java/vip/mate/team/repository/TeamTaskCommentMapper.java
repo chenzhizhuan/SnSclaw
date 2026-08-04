@@ -7,7 +7,7 @@ import vip.mate.team.model.TeamTaskCommentEntity;
 /**
  * Team task comment mapper.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface TeamTaskCommentMapper extends BaseMapper<TeamTaskCommentEntity> {

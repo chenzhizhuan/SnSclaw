@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 /**
  * Token Usage 统计服务
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

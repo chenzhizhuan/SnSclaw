@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
  * {@link WikiEntityRelationEntity}, forming an entity-level knowledge graph
  * beneath the page graph cached in {@link WikiRelationEntity}.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_wiki_entity")

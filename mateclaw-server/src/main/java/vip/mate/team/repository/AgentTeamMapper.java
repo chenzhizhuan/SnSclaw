@@ -7,7 +7,7 @@ import vip.mate.team.model.AgentTeamEntity;
 /**
  * Agent team mapper.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface AgentTeamMapper extends BaseMapper<AgentTeamEntity> {

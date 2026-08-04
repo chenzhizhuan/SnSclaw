@@ -28,7 +28,7 @@ import java.util.List;
  * <p>Order(210) — runs after {@code DatabaseBootstrapRunner}(200) so the
  * skill rows the syncer needs to read are already loaded.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

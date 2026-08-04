@@ -37,7 +37,7 @@ import java.util.concurrent.Executors;
 /**
  * Agent 管理接口
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "Agent管理")
 @Slf4j

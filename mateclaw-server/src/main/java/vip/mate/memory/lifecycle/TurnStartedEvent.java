@@ -4,6 +4,6 @@ package vip.mate.memory.lifecycle;
  * Published after prefetchAll completes, before the LLM call.
  *
  * @param context the turn context
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record TurnStartedEvent(TurnContext context) {}

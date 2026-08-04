@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 /**
  * MyBatis Plus 自动填充配置
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Component
 public class MybatisPlusConfig implements MetaObjectHandler {

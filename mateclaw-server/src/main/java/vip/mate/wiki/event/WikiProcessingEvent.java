@@ -8,7 +8,7 @@ import org.springframework.context.ApplicationEvent;
  * <p>
  * 当原始材料需要被 AI 消化时发布此事件。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Getter
 public class WikiProcessingEvent extends ApplicationEvent {

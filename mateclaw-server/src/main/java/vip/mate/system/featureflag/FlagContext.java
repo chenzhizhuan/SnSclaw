@@ -10,7 +10,7 @@ import lombok.Data;
  * service uses them to match against per-flag whitelists; if both are null
  * the flag is evaluated against the percentage-rollout dial only.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @Builder

@@ -26,7 +26,7 @@ import java.util.Set;
  * 重要限制：此工具仅支持文本文件，不处理 PDF/Office 文档。
  * 对于 .pdf/.docx/.xlsx/.pptx 等文档，请使用 extract_document_text 工具。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

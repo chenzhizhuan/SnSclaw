@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
  * structured record) and {@code REPORT.md} (a human-readable render); a
  * {@code latest} symlink points at the newest run.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

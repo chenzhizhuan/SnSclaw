@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>{@link #startTimer} — generic try-with-resources timer for ad-hoc spans</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

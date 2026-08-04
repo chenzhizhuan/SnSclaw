@@ -14,7 +14,7 @@ import java.util.List;
  * - Derived columns: only FactProjectionBuilder may write (via upsertDerived)
  * - Accumulated columns: only bumpUseCount may write
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface FactMapper extends BaseMapper<FactEntity> {

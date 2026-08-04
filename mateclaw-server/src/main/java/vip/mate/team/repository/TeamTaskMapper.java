@@ -7,7 +7,7 @@ import vip.mate.team.model.TeamTaskEntity;
 /**
  * Team task board mapper.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface TeamTaskMapper extends BaseMapper<TeamTaskEntity> {

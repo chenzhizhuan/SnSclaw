@@ -17,7 +17,7 @@ import java.util.Set;
  * "edit supports up to N reference images" or "generate accepts these
  * formats" without conflating the two modes.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @Builder

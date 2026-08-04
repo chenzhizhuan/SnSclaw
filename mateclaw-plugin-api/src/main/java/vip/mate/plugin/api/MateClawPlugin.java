@@ -10,7 +10,7 @@ package vip.mate.plugin.api;
  *   <li>{@link #onDisable()} — called when the plugin is disabled, clean up resources</li>
  * </ol>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface MateClawPlugin {
 

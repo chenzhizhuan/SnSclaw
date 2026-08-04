@@ -25,7 +25,7 @@ import java.util.Set;
  * page depending on it is marked stale via a single batch update keyed on the
  * reverse index, rather than per-row in the ingest transaction.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

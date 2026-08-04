@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * RFC-013 最小切片：持久化 splitIntoChunks() 的产物，为后续 embedding (RFC-011)、
  * citation、chunk 级增量处理提供基础。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_wiki_chunk")

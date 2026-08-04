@@ -9,7 +9,7 @@ package vip.mate.channel.webchat;
  * HTTP status they pair with; some are intentionally the same status
  * with different messages.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public enum WebChatErrors {
 

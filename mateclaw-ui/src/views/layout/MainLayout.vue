@@ -891,7 +891,7 @@ watch(() => workspaceStore.currentWorkspaceId, () => {
   at least one active auto-approve rule. Designed to be informative, not
   alarming: a soft danger-tinted pill with a steady pulse on the dot, sized
   to fit beside the doctor indicator on one row. Colors come from the
-  mateclaw token system (`var(--mc-danger-*)`), so dark mode picks up the
+  snsclaw token system (`var(--mc-danger-*)`), so dark mode picks up the
   appropriate dim variants automatically.
 */
 .auto-approve-chip {

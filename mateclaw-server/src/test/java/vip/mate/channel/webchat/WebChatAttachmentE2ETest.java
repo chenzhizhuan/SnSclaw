@@ -57,7 +57,7 @@ import static org.mockito.ArgumentMatchers.isNull;
  * asserting is the persisted user-message shape, not the agent's actual file
  * consumption (which would need a real agent + tool runtime).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @SpringBootTest(
         classes = MateClawApplication.class,

@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  *   <li>dynamic — 用户自定义的动态技能（可包含脚本或配置）</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

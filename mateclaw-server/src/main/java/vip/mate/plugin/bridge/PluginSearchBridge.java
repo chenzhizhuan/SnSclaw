@@ -30,7 +30,7 @@ import java.util.List;
  * it runs inside {@code resolve()} on every web_search call — a throwing
  * availability check must not take every other provider down with it.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class PluginSearchBridge implements SearchProvider {

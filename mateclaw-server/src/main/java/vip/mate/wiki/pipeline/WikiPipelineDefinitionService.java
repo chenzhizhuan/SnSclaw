@@ -17,7 +17,7 @@ import java.util.Map;
  * object and a {@code steps} array; this service parses it into the persisted
  * entity (trigger / steps stored as JSON).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

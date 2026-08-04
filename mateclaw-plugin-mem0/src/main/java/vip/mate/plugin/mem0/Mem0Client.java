@@ -27,7 +27,7 @@ import java.util.Map;
  * {@link Mem0Exception}. Callers are expected to catch and degrade gracefully
  * (return empty recall / log sync failures).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 class Mem0Client {
 

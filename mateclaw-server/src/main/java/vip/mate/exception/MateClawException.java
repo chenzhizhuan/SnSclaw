@@ -6,7 +6,7 @@ import vip.mate.common.result.ResultCode;
 /**
  * SnSclaw 业务异常
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Getter
 public class MateClawException extends RuntimeException {

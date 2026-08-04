@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 异步任务对外 DTO
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @Builder

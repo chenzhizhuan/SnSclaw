@@ -42,7 +42,7 @@ import java.util.Set;
  * side; see {@link McpToolCallbackProvider#getToolCallbacks} for the call
  * site.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Component
 @ConfigurationProperties(prefix = "mateclaw.mcp.return-direct")

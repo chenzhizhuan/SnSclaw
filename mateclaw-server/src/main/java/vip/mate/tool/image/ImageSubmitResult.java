@@ -12,7 +12,7 @@ import java.util.List;
  * - 同步（async=false）：submit 时已完成生成，imageUrls 直接包含结果
  * - 异步（async=true）：返回 providerTaskId，需后续轮询
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @Builder

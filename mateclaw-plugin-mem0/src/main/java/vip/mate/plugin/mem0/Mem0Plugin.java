@@ -29,7 +29,7 @@ import java.net.URI;
  *       plugin admin UI</li>
  * </ol>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public class Mem0Plugin implements MateClawPlugin {
 

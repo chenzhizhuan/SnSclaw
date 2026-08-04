@@ -69,7 +69,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <li>filter_tool_messages: false 时每次工具调用发独立留痕消息（默认 true）</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class WeComChannelAdapter extends AbstractChannelAdapter implements StreamingChannelAdapter {

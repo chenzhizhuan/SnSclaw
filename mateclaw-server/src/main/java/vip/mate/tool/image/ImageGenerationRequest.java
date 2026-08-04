@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * Unified image-generation request.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @Builder

@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * 支持异步安装（task_id 轮询模式），参考 SnSclaw 实现。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

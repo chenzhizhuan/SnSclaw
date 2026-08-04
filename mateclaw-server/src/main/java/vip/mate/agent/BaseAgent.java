@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Agent 抽象基类
  * 定义所有 Agent 的基础行为与状态管理
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public abstract class BaseAgent {

@@ -40,7 +40,7 @@ import java.util.Set;
  *   <li>全无 → 返回不可用，上层降级（语义搜索返回空，关键词搜索仍可用）</li>
  * </ol>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

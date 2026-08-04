@@ -12,7 +12,7 @@ package vip.mate.memory.service;
  * is appended. The LLM rewrite remains the primary, content-aware compressor; this
  * is the last-resort guarantee that the file stays bounded.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 final class AlwaysOnFileBudget {
 

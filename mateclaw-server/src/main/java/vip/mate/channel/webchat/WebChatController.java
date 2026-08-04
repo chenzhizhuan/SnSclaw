@@ -61,7 +61,7 @@ import vip.mate.agent.context.ChatOrigin;
  * <p>
  * 认证方式：请求头 X-MC-Key 携带 API Key
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "WebChat 嵌入式对话")
 @Slf4j

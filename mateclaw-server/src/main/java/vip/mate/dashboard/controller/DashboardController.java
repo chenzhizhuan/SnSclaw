@@ -19,7 +19,7 @@ import java.util.Map;
 /**
  * Dashboard 统计接口
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "Dashboard")
 @RestController

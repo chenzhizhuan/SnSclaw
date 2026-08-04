@@ -46,7 +46,7 @@ import java.util.Map;
 /**
  * Wiki 知识库接口
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Tag(name = "Wiki 知识库")

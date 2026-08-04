@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  * when a fact page changes, the experience pages depending on it are marked
  * stale. Stored by page id (never slug) so renames cannot break the edge.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_wiki_page_dependency")

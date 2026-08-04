@@ -7,7 +7,7 @@ import vip.mate.auth.sso.model.ExternalIdentityEntity;
 /**
  * 用户外部身份关联 Mapper。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface ExternalIdentityMapper extends BaseMapper<ExternalIdentityEntity> {

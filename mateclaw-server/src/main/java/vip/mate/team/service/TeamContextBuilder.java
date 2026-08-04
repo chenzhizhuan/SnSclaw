@@ -23,7 +23,7 @@ import java.util.Optional;
  * The block is baked into the cached agent instance; {@code TeamChangedEvent}
  * evicts affected agents so composition changes surface on the next turn.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Component
 @RequiredArgsConstructor

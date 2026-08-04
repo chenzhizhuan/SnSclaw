@@ -21,7 +21,7 @@ import java.util.List;
  * <p>RFC-052: tools listed in {@link McpReturnDirectProperties} are wrapped in
  * {@link ReturnDirectMcpToolCallback} so their results bypass the LLM context.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

@@ -17,7 +17,7 @@ package vip.mate.llm.model;
  *   <li>thinking — 是否为 thinking/reasoning 模型（影响 reasoningContent patch）</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public enum ModelFamily {
 

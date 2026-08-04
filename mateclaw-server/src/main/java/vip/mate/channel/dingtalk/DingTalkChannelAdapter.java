@@ -49,7 +49,7 @@ import java.util.concurrent.Executors;
  * - card_template_id: AI Card 模板 ID（message_type=card 时必填）
  * - robot_code: 机器人编码（card 模式群聊建议配置）
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class DingTalkChannelAdapter extends AbstractChannelAdapter implements StreamingChannelAdapter {

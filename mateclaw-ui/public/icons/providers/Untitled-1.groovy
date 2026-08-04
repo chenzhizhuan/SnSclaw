@@ -343,7 +343,7 @@
       24  * 关键：通过 internalToolExecutionEnabled=false 禁用 ChatModel 内部工具循环，
       25  * 使 StateGraph 完全控制 ReAct 循环。
       26  *
-      27  * @author SnSclaw Team
+      27  * @author SnSclaw
       28  */
       29 @Slf4j
       30 public class ReasoningNode implements NodeAction {
@@ -432,7 +432,7 @@
        21  * 执行 LLM 请求的工具调用，并在执行前通过 ToolGuard 进行安全检查。
        22  * 如果工具被拦截，返回拦截信息作为工具结果，让 LLM 自行调整策略。
        23  *
-       24  * @author SnSclaw Team
+       24  * @author SnSclaw
        25  */
        26 @Slf4j
        27 public class ActionNode implements NodeAction {
@@ -531,7 +531,7 @@
       15  * 处理工具执行结果，递增迭代计数器。
       16  * 迭代控制的核心：配合 ObservationDispatcher 实现 maxIterations 强制执行。
       17  *
-      18  * @author SnSclaw Team
+      18  * @author SnSclaw
       19  */
       20 @Slf4j
       21 public class ObservationNode implements NodeAction {
@@ -574,7 +574,7 @@
       14  * - 有工具调用需求 → 路由到 ActionNode
       15  * - 无工具调用（最终回答） → 路由到 END
       16  *
-      17  * @author SnSclaw Team
+      17  * @author SnSclaw
       18  */
       19 @Slf4j
       20 public class ReasoningDispatcher implements EdgeAction {
@@ -615,7 +615,7 @@
       17  * <p>
       18  * 这是 maxIterations 字段的核心执行点。
       19  *
-      20  * @author SnSclaw Team
+      20  * @author SnSclaw
       21  */
       22 @Slf4j
       23 public class ObservationDispatcher implements EdgeAction {
@@ -679,7 +679,7 @@
        28  * - ToolGuard 安全拦截（在 ActionNode 中执行）
        29  * - 工具调用过程可观测
        30  *
-       31  * @author SnSclaw Team
+       31  * @author SnSclaw
        32  */
        33 @Slf4j
        34 public class StateGraphReActAgent extends BaseAgent {

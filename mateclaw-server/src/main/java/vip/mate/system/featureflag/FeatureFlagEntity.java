@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  * <p>Backed by {@code mate_feature_flag}. Read/write paths go through
  * {@link FeatureFlagService}; no service should query the table directly.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_feature_flag")

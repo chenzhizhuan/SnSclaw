@@ -23,7 +23,7 @@ import java.util.Set;
  *       fields they reject.</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Builder
 public record ImageModelSpec(

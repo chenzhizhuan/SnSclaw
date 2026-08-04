@@ -6,7 +6,7 @@ import lombok.Data;
 /**
  * 视频生成服务提交结果（面向 Tool 层）
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @Builder

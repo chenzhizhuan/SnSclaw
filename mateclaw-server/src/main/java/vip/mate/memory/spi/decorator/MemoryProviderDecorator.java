@@ -9,7 +9,7 @@ import java.util.List;
  * Base decorator for MemoryProvider. All methods delegate to the wrapped provider.
  * Subclass and override specific methods to add behavior (retry, metrics, etc.).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public abstract class MemoryProviderDecorator implements MemoryProvider {
 

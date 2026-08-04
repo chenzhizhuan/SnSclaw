@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
  * <p>
  * 使用方式：在文件工具方法开头调用 {@link #validatePath(String)} 获取规范化路径。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public final class WorkspacePathGuard {

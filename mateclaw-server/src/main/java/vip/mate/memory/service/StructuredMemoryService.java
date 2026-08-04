@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
  * > Source: agent | Updated: 2026-04-09
  * </pre>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

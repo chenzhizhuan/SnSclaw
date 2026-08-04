@@ -39,7 +39,7 @@ import java.util.List;
  * {@code @Schema} / 公开端点的 {@code @SecurityRequirements({})} opt-out。
  * 这些属于「关键端点注解」增强档，留作后续。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Configuration
 public class OpenApiConfig {

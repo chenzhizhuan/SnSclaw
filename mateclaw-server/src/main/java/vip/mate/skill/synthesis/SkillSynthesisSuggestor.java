@@ -17,7 +17,7 @@ import java.util.Map;
  * 通过 hook 事件通知前端"建议保存为 Skill"。<b>不自动创建 skill</b>——用户确认后
  * 通过 {@code POST /api/v1/skills/synthesize-from-conversation} 触发合成。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

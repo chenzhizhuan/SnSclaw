@@ -9,7 +9,7 @@ import java.util.List;
  * Mirrors the platform's internal MemoryProvider SPI with no server-internal dependencies.
  * The platform wraps it via a bridge.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface PluginMemoryProvider {
 

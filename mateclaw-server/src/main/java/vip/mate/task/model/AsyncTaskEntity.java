@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 异步任务实体 — 通用长耗时任务持久化（视频生成、图片生成等）
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_async_task")

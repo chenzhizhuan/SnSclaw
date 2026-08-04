@@ -3,7 +3,7 @@ package vip.mate.agent.graph.state;
 /**
  * ReAct 状态图终止原因枚举
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public enum FinishReason {
 

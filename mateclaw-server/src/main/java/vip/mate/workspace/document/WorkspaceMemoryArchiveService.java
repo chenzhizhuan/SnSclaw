@@ -70,7 +70,7 @@ import java.util.zip.ZipOutputStream;
  *       caller can't bypass it.</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

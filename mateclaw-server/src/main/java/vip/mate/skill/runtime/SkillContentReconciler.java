@@ -51,7 +51,7 @@ import java.util.HexFormat;
  * logs a warning and leaves the marker untouched, so the next resolve
  * pass retries the same reconciliation.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

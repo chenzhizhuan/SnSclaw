@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 记录 workspace 文件在对话上下文注入时的召回信息，
  * 用于加权评分驱动的记忆整合（Dreaming）。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_memory_recall")

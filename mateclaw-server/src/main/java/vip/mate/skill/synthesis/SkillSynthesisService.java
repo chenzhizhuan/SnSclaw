@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  * 供 {@code POST /api/v1/skills/synthesize-from-conversation} 和前端"建议保存 Skill"流程调用。
  * 与 {@code SkillManageTool}（Agent 自治路径）互补——本服务是"用户主动触发"路径。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

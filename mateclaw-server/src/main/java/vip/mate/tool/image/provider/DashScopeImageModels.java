@@ -24,7 +24,7 @@ import java.util.Set;
  *       in the same response.</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 final class DashScopeImageModels {
 

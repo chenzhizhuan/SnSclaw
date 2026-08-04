@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
  * <p>
  * 异步记录用户对资源的 CRUD 操作，不阻塞业务请求。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 /**
  * TTS 提供商注册表
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

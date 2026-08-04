@@ -66,7 +66,7 @@ import java.util.regex.Pattern;
  * minutes (the mapping is immutable once a conversation exists), matching the
  * TTL of the existing {@code WorkspaceLookupCache} on the tool-call hot path.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

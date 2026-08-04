@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * session. Pending RPC futures live in a flat map keyed by request id; the
  * handler completes them when the matching {@code result} frame arrives.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

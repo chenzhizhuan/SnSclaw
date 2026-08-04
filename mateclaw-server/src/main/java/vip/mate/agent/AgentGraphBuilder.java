@@ -79,7 +79,7 @@ import java.util.Set;
  * 纯构建器，不做执行。从 AgentService 中提取出所有 Agent 实例构建逻辑，
  * 包括模型创建、图编译、prompt 增强等。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

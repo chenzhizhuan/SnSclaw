@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * 搜索提供商接口 — 所有搜索 provider（含 keyless）统一实现此接口
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface SearchProvider {
 

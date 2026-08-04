@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * Structured dream consolidation result returned by consolidate().
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record DreamReport(
         Long id,

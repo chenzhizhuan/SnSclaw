@@ -30,7 +30,7 @@ import java.util.Optional;
  * {@code updateById(entity)} so {@code FieldStrategy.ALWAYS} columns are
  * never wiped by a partially-populated entity.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

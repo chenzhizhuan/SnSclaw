@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
  *       kept as-is.</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Service
 public class WikiMetadataValidator {

@@ -21,7 +21,7 @@ import java.util.Map;
  * {@code Authorization: Bot <token>}. Same proxy semantics as
  * {@link TelegramVerifier}.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

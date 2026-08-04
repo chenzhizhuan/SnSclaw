@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * Comment on a team task, written by an agent, a human, or the system.
  * A comment of type "blocker" auto-fails the task and escalates to the lead.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_team_task_comment")

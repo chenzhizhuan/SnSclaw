@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
  * citations. The two tables coexist; nothing in this row supersedes citation
  * rows.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_wiki_relation")

@@ -814,7 +814,7 @@ function showAboutDialog(): void {
       '',
       'Your intelligent AI assistant powered by Spring AI Alibaba.',
       '',
-      `Copyright © 2026 SnSclaw Team`,
+      `Copyright © 2026 SnSclaw`,
     ].join('\n'),
     buttons: ['OK'],
     icon,

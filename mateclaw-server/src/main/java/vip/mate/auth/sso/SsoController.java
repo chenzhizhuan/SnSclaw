@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 /**
  * SSO 单点登录 HTTP 端点。全部 permitAll (与 /auth/login 同级)。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "SSO 单点登录")
 @Slf4j

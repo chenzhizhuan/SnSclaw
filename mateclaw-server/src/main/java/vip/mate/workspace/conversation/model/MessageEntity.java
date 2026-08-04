@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 消息实体
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_message")

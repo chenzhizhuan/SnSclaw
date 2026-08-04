@@ -7,7 +7,7 @@ import vip.mate.wiki.model.WikiAgentPageTypePermissionEntity;
 /**
  * Mapper for {@link WikiAgentPageTypePermissionEntity}.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface WikiAgentPageTypePermissionMapper extends BaseMapper<WikiAgentPageTypePermissionEntity> {

@@ -46,7 +46,7 @@ import static vip.mate.agent.graph.state.MateClawStateKeys.*;
  * chatStructuredStream() 只处理 phase/tool/事件等结构化事件。
  * 不再从 NodeOutput 二次整段下发已流式推送的内容。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class StateGraphReActAgent extends BaseAgent implements StructuredStreamCapable {

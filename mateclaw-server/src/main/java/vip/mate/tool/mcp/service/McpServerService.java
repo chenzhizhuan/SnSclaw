@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
  * <p>
  * 负责 CRUD、参数校验、触发 McpClientManager 连接/断开
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

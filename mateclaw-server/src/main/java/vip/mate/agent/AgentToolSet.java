@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * naming convention the persistence layer happens to use. This is the same pattern Spring's
  * {@code BeanFactory} uses for bean names + aliases.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public class AgentToolSet {
 

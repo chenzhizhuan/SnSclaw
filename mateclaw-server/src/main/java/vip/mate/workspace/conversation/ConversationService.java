@@ -55,7 +55,7 @@ import java.util.stream.Stream;
  * cascade of side-tables that hang off a conversation (approvals,
  * async tasks, channel sessions, attachment files, tool-result spill).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

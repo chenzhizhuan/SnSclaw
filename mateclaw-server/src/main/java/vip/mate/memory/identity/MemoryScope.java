@@ -16,7 +16,7 @@ package vip.mate.memory.identity;
  * Stored as a plain string column ({@code scope}) rather than a DB enum so the
  * H2 / MySQL migrations stay dialect-neutral.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public final class MemoryScope {
 

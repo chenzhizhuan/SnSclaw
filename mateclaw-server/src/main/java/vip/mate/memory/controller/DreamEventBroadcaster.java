@@ -20,7 +20,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Broadcasts dream events to connected SSE clients.
  * Clients subscribe per agentId via GET /dream/events.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

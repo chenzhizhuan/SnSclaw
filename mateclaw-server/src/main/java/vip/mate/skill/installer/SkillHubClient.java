@@ -32,7 +32,7 @@ import java.util.Map;
  * response, which is why an earlier "expect a {@code content} field on the
  * skill JSON" implementation always saw empty content and aborted installs.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

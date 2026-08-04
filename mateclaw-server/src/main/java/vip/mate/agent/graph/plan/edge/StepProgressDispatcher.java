@@ -18,7 +18,7 @@ import java.util.List;
  *   <li>所有步骤完成 → 路由到汇总节点（PLAN_SUMMARY_NODE）</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public class StepProgressDispatcher implements EdgeAction {
 

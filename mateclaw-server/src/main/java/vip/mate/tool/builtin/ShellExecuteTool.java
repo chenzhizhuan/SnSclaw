@@ -36,7 +36,7 @@ import java.util.function.Predicate;
  *       参考 SnSclaw _execute_subprocess_sync 和 claude-code-haha file-mode 思路。</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

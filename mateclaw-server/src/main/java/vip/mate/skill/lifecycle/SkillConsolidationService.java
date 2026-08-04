@@ -38,7 +38,7 @@ import java.util.Map;
  * stay recoverable. The reviewer can only ever cause skills already in the
  * curator's candidate set to be archived — names it invents are ignored.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

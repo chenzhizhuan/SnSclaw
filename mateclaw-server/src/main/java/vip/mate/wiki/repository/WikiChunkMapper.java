@@ -7,7 +7,7 @@ import vip.mate.wiki.model.WikiChunkEntity;
 /**
  * Wiki chunk 数据访问层
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface WikiChunkMapper extends BaseMapper<WikiChunkEntity> {

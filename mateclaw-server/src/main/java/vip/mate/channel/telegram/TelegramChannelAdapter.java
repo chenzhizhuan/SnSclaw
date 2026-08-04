@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * - show_typing: 是否显示"正在输入"状态，默认 true
  * - polling_timeout: Long-Polling 超时秒数，默认 20
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class TelegramChannelAdapter extends AbstractChannelAdapter {

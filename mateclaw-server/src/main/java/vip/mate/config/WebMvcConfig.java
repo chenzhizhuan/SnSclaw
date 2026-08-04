@@ -13,7 +13,7 @@ import vip.mate.kbopen.auth.KbScopeInterceptor;
 /**
  * Web MVC 配置（跨域、拦截器等）
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Configuration
 @RequiredArgsConstructor

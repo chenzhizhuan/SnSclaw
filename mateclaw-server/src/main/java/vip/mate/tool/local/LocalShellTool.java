@@ -19,7 +19,7 @@ import vip.mate.tool.ConcurrencyUnsafe;
  * on macOS/Linux, and truncates stdout/stderr to ~10KB each — mirroring the
  * server-side shell tool's limits.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

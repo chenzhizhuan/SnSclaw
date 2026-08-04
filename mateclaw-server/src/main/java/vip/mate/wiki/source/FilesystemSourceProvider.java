@@ -9,7 +9,7 @@ import vip.mate.wiki.service.WikiDirectoryScanService;
  * directory (path validation, symlink resolution and content-hash change
  * detection live in the scan service).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Component
 public class FilesystemSourceProvider implements WikiIngestSourceProvider {

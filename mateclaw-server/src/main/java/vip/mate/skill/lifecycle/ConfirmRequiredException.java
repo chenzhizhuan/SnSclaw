@@ -15,7 +15,7 @@ import java.util.List;
  * {@link ResponseStatus} maps this to HTTP 409 so clients can branch on the
  * status code rather than parsing the body.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Getter
 @ResponseStatus(HttpStatus.CONFLICT)

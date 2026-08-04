@@ -7,7 +7,7 @@ import vip.mate.wiki.model.WikiPipelineRunEntity;
 /**
  * Mapper for {@link WikiPipelineRunEntity}.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface WikiPipelineRunMapper extends BaseMapper<WikiPipelineRunEntity> {

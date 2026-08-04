@@ -15,7 +15,7 @@ import java.util.Base64;
  *   <li>Base64 编码的 hex 字符串，如 media.aes_key (Format B)</li>
  * </ul>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public final class WeixinAesUtil {
 

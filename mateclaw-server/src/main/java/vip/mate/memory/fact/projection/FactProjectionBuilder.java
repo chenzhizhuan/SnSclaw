@@ -25,7 +25,7 @@ import java.util.List;
  * Only this class may write derived columns to mate_fact (core invariant).
  * Uses MyBatis Plus CRUD (dialect-safe for both H2 and MySQL).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

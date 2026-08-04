@@ -20,7 +20,7 @@ import vip.mate.agent.context.ChatOrigin;
  * any real user's PERSONAL bucket (which would otherwise be a black hole that
  * nobody can read) — such writes are expected to be TEAM-scoped instead.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Component
 public class MemoryOwnerResolver {

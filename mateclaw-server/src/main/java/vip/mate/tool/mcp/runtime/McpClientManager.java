@@ -40,7 +40,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * - 使用 ConcurrentHashMap + per-server lock 保证线程安全
  * - close 时保证 stdio 子进程退出
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

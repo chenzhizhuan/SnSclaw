@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 /**
  * 定时任务 DTO
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 public class CronJobDTO {

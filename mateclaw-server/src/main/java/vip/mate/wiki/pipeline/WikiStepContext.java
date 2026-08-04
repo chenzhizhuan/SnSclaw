@@ -7,7 +7,7 @@ import java.util.Map;
  * step runs under (for permission checks), the step's declared config, and the
  * output of the previous step.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record WikiStepContext(
         Long kbId,

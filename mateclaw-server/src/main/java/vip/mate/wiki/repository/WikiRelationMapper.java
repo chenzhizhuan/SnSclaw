@@ -15,7 +15,7 @@ import vip.mate.wiki.model.WikiRelationEntity;
  * by either {@code page_id} or {@code kb_id}; the consuming services
  * provide thin wrappers via custom SQL when needed.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface WikiRelationMapper extends BaseMapper<WikiRelationEntity> {

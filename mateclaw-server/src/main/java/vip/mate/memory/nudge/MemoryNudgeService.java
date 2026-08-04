@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Triggered every N turns via ConversationCompletedEvent.
  * Runs async to avoid blocking the user response.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

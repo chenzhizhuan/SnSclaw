@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * Strategy interface for extracting facts from markdown content.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface EntityExtractor {
 

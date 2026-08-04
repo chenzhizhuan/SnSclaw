@@ -17,7 +17,7 @@ import java.util.Map;
  * The {@code skipped} variant lets channel types with no verifier (web,
  * webchat, webhook) fast-forward through Step 2 without showing an error.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record VerificationResult(
         boolean ok,

@@ -6,6 +6,6 @@ import vip.mate.memory.service.DreamReport;
  * Published when a dream consolidation completes successfully.
  *
  * @param report the structured dream report
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record DreamCompletedEvent(DreamReport report) {}

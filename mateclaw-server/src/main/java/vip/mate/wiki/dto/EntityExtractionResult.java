@@ -10,7 +10,7 @@ import java.util.List;
  * source chunk. Bound via {@code BeanOutputConverter} and tolerant of a model
  * returning either field empty.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 public class EntityExtractionResult {

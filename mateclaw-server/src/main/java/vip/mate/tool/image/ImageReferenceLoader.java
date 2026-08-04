@@ -39,7 +39,7 @@ import java.util.List;
  *       is expected to anchor it to the active workspace before invocation.</li>
  * </ol>
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

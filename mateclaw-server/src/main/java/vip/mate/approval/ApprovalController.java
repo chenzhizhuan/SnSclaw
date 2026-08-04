@@ -24,7 +24,7 @@ import java.util.Map;
  * Only {@link #getPendingApprovals} remains, used by the frontend for hydration
  * after page refresh.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "工具审批")
 @Slf4j

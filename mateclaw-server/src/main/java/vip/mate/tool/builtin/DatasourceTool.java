@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
  * 提供数据源列表查询、表列表查询、表结构查询三个动作，
  * 供 Agent 在查数场景下发现可用数据源和表结构。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

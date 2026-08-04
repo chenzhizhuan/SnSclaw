@@ -16,7 +16,7 @@ import static vip.mate.agent.graph.plan.state.PlanStateKeys.*;
  * 参照 {@link vip.mate.agent.graph.state.MateClawStateAccessor} 的模式，
  * 为 Plan-Execute 特有的状态字段提供类型安全读取和 fluent 输出构建。
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public final class PlanStateAccessor {
 

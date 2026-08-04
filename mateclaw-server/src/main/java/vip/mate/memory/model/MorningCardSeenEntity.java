@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * Morning card seen state — tracks per (user, agent) whether the card was dismissed.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_morning_card_seen")

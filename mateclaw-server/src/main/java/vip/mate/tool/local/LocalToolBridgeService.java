@@ -27,7 +27,7 @@ import java.util.concurrent.TimeoutException;
  * performed natively on the desktop (where the user can see the full path /
  * command / content), so this layer only records the decision the desktop made.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

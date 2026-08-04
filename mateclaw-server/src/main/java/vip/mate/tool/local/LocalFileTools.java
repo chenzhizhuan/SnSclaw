@@ -22,7 +22,7 @@ import vip.mate.tool.ConcurrencyUnsafe;
  * none is connected they return a friendly {@code OFFLINE} error so the agent
  * can fall back to server-side tools or tell the user to open the desktop app.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

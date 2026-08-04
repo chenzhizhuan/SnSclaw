@@ -7,7 +7,7 @@ import vip.mate.plugin.model.PluginEntity;
 /**
  * MyBatis Plus mapper for mate_plugin table.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface PluginMapper extends BaseMapper<PluginEntity> {

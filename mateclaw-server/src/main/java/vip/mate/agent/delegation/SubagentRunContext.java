@@ -32,7 +32,7 @@ import java.util.Set;
  * @param deniedTools           tool names this layer's agent may not call;
  *                              normalised to a non-null immutable set.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public record SubagentRunContext(
         int depth,

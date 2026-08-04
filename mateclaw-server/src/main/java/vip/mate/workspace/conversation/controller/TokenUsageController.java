@@ -15,7 +15,7 @@ import java.time.LocalDate;
 /**
  * Token Usage 统计接口
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Tag(name = "Token Usage 统计")
 @RestController

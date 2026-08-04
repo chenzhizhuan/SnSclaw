@@ -13,7 +13,7 @@ import vip.mate.agent.AgentService.StreamDelta;
  * - ChannelMessageRouter 负责"事件产生"（调用 Agent 获取 StreamDelta 流）
  * - StreamingChannelAdapter 负责"UI 渲染"（决定如何呈现流式事件）
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 public interface StreamingChannelAdapter extends ChannelAdapter {
 

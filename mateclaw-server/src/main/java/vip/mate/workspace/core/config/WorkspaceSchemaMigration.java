@@ -23,7 +23,7 @@ import java.util.List;
  * <p>
  * Runs after {@code DatabaseBootstrapRunner} ({@code @Order(1)}).
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

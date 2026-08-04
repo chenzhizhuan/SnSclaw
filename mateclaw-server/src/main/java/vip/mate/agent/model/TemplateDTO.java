@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Agent 模板 DTO
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Data
 public class TemplateDTO {

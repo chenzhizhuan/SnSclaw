@@ -21,7 +21,7 @@ import java.util.Map;
  * does on real startup, so a green Step 2 is a strong predictor of a green
  * channel post-save.
  *
- * @author SnSclaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component
