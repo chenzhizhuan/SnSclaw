@@ -286,7 +286,7 @@ ollama pull qwen3
 
 不用配 `EMBEDDING_API_KEY` 环境变量。嵌入模型就是 `mate_model_config` 里 `model_type='embedding'` 的普通行。`设置 → 模型` 里和聊天模型列在一起。知识库从下拉里选它的嵌入模型。
 
-::: tip 1.4.0 新增（[issue #79](https://github.com/sns/SnSclaw/issues/79)）
+::: tip 1.4.0 新增（[issue #79](https://lab.sns.app/SnSclaw/issues/79)）
 **任意供应商都能提供嵌入模型。** 在 `设置 → 模型` 的嵌入区域里，配一个来自任何供应商的嵌入模型——直接**复用那家供应商的 API Key**，不再单独要 `EMBEDDING_API_KEY`。每个知识库从下拉里挑自己的嵌入模型。无密钥的本地代理用一个空操作占位 key；协议从该供应商的聊天模型 / protocol 设置里自动解析，不用再手填。
 :::
 
@@ -313,7 +313,7 @@ ollama pull qwen3
 
 **多轮 tool call + thinking**：带 thinking 的模型（DeepSeek-Reasoner / GPT-5 / Kimi K2.5 / 小米 MiMo）在 ReAct 多轮 tool call 场景下，历史消息的 `reasoning_content` 会正确回传给 provider；跨用户问题边界时自动清除，同一问题内的子轮次全部保留——符合 DeepSeek 的"同问题子轮必须回传、跨问题时清"契约。
 
-**小米 MiMo 思考模式多轮修复**（[issue #189](https://github.com/sns/SnSclaw/issues/189)）：MiMo 思考模式的 `reasoning_content` 现在能在多轮对话里正确保留，不再在后续轮次丢失。
+**小米 MiMo 思考模式多轮修复**（[issue #189](https://lab.sns.app/SnSclaw/issues/189)）：MiMo 思考模式的 `reasoning_content` 现在能在多轮对话里正确保留，不再在后续轮次丢失。
 
 ---
 
@@ -337,7 +337,7 @@ SnSclaw 用一个**活跃模型**作为全局默认。没有指定自己模型�
 也支持按 Agent 覆盖：把某个 Agent 绑定到特定模型配置。
 
 ::: tip 1.4.0 新增
-- **按会话选模型**（[issue #150](https://github.com/sns/SnSclaw/issues/150)）：在聊天界面里可以为**当前这一条会话**临时切换模型，不影响全局活跃模型和别的会话。详见 [聊天与消息](./chat)。
+- **按会话选模型**（[issue #150](https://lab.sns.app/SnSclaw/issues/150)）：在聊天界面里可以为**当前这一条会话**临时切换模型，不影响全局活跃模型和别的会话。详见 [聊天与消息](./chat)。
 - **单个坏模型 id 不再连累整个供应商**：发现 / 探活时遇到一个无效的模型标识符，只跳过那一个模型，供应商下其余模型照常可用。
 :::
 
@@ -359,7 +359,7 @@ SnSclaw 用一个**活跃模型**作为全局默认。没有指定自己模型�
 ## 多模态旁路（系统级）
 
 ::: tip 1.3.0 新增
-让纯文本主模型也能"看图回答"，参见 [issue #87](https://github.com/sns/SnSclaw/issues/87)。
+让纯文本主模型也能"看图回答"，参见 [issue #87](https://lab.sns.app/SnSclaw/issues/87)。
 :::
 
 入口：**设置 → 模型 → 多模态旁路**。两个独立的卡片：
@@ -376,7 +376,7 @@ SnSclaw 用一个**活跃模型**作为全局默认。没有指定自己模型�
 
 下拉只列**支持对应 modality 的模型**——筛选逻辑走后端 `ModelCapabilityService.supports(...)`，未启用 / 没声明 vision 能力的模型都不会出现在选项里。每张卡片有独立的"保存"按钮，互不干扰。
 
-什么时候触发？运行时由 `MultimodalRouter` 决策（[源码](https://github.com/sns/SnSclaw/blob/main/snsclaw-server/src/main/java/vip/mate/llm/routing/MultimodalRouter.java)）：
+什么时候触发？运行时由 `MultimodalRouter` 决策（[源码](https://lab.sns.app/SnSclaw/blob/main/snsclaw-server/src/main/java/vip/mate/llm/routing/MultimodalRouter.java)）：
 
 - 主模型已支持图片 → 不路由（走原 native multimodal 路径）
 - 主模型不支持图片 + 配了视觉旁路 → SIDECAR 策略，视觉模型转描述

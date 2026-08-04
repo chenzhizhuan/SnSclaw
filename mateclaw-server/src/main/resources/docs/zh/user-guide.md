@@ -186,7 +186,7 @@ Wiki 不是全文搜索。它是**语义检索**——问「我们关于认证�
 | 模型调用报错 | API Key 错了，或者网络不通。回设置里检查 |
 | 界面白屏 | Ctrl+Shift+R 强刷 |
 | Ollama 报 "does not support tools" | 换一个支持 function calling 的模型（qwen3、llama3.1:8b+） |
-| 还是不行 | [GitHub Issues](https://github.com/sns/SnSclaw/issues)，贴 `app.log` 尾巴 |
+| 还是不行 | [GitHub Issues](https://lab.sns.app/SnSclaw/issues)，贴 `app.log` 尾巴 |
 
 ---
 

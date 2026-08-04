@@ -602,6 +602,12 @@ public class ChatStreamTracker {
         boolean isDone = "done".equals(eventName);
         boolean isAsyncTask = eventName != null && eventName.startsWith("async_task_");
         boolean isHeartbeat = "heartbeat".equals(eventName);
+        // tts_ready 与 done/async_task_* 同类，属生命周期尾部事件：自动朗读的语音
+        // 合成要数秒，广播时机紧贴流关闭。走这条分支既直投活跃订阅者、又写入
+        // ring buffer —— 后者是刷新/重连场景的兜底。正常路径由
+        // TtsService#autoSynthesize 保证广播发生在 emitter 关闭之前（它在 done
+        // 之后同步等待合成），别把那里改成异步，否则事件只进 buffer 无人取用。
+        boolean isTtsReady = "tts_ready".equals(eventName);
 
         // Stamp last activity for stuck detection. Heartbeats are excluded
         // because they fire on a timer regardless of model progress; counting
@@ -610,7 +616,7 @@ public class ChatStreamTracker {
             state.lastEventAt = System.currentTimeMillis();
         }
 
-        if (isDone || isAsyncTask) {
+        if (isDone || isAsyncTask || isTtsReady) {
             if (state == null) return;
             synchronized (state.lock) {
                 long id = ++state.nextEventId;

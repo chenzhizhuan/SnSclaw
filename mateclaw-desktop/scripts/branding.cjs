@@ -30,7 +30,7 @@ function loadBrandConfig(rootDir) {
 
   // Env vars override the config file.
   const env = process.env
-  const defaultGh = 'https://github.com/sns/SnSclaw'
+  const defaultGh = 'https://lab.sns.app/SnSclaw'
   const defaultHome = 'https://www.sns.app'
   return {
     name:           env.BRAND_NAME        || config.name        || 'SnSclaw',
@@ -70,11 +70,11 @@ function buildReplacements(brand) {
 
   // 3. GitHub URLs
   replacements.push([
-    'https://github.com/sns/SnSclaw/issues',
+    'https://lab.sns.app/SnSclaw/issues',
     brand.githubUrl + '/issues',
   ])
   replacements.push([
-    'https://github.com/sns/SnSclaw',
+    'https://lab.sns.app/SnSclaw',
     brand.githubUrl,
   ])
 

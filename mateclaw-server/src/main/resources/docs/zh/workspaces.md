@@ -223,7 +223,7 @@ Wiki KB 的数据**永远不会离开它的工作空间**。工作空间 B 里�
 1. **导出导入**——一些资源有 JSON 导出（Agent 走 API、Wiki KB 走 API）。在目标工作空间重新创建。
 2. **改所有权**——admin 或 owner 可以直接在数据库里更新简单资源的 `workspace_id` 列。这不是官方支持的；**自担风险而且一定要带备份**。
 
-我们希望在未来版本里支持一等公民的移动。需要这个就在 [GitHub issue](https://github.com/sns/SnSclaw/issues) 上留言。
+我们希望在未来版本里支持一等公民的移动。需要这个就在 [GitHub issue](https://lab.sns.app/SnSclaw/issues) 上留言。
 
 ---
 
