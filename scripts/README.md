@@ -1,6 +1,6 @@
 # Windows 桌面端打包脚本
 
-构建 `智算方舟_<版本>_x64_Setup.exe`。仅限 Windows —— mac/Linux 走
+构建 `智屿_<版本>_x64_Setup.exe`。仅限 Windows —— mac/Linux 走
 [`mateclaw-desktop/scripts/`](../mateclaw-desktop/scripts/README.md)，两者不要混用。
 
 双击根目录 `RUN_LOCAL_PIPELINE.cmd` 即可，它把参数透传给 `build-desktop.ps1`。
