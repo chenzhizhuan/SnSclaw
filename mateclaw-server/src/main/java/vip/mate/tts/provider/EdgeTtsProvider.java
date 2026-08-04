@@ -8,11 +8,16 @@ import vip.mate.tts.TtsRequest;
 import vip.mate.tts.TtsResult;
 
 import java.io.ByteArrayOutputStream;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -31,11 +36,24 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class EdgeTtsProvider implements TtsProvider {
 
-    private static final String WS_URL = "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud";
+    private static final String WS_URL = "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1";
     private static final String TRUSTED_CLIENT_TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
     private static final String DEFAULT_VOICE_ZH = "zh-CN-XiaoxiaoNeural";
     private static final String DEFAULT_VOICE_EN = "en-US-MichelleNeural";
     private static final String OUTPUT_FORMAT = "audio-24khz-48kbitrate-mono-mp3";
+
+    /**
+     * Sec-MS-GEC 令牌的 Chromium 版本标识。微软按此校验客户端版本，
+     * 过旧会被握手拒绝，需随上游 edge-tts 的 CHROMIUM_FULL_VERSION 同步更新。
+     */
+    private static final String CHROMIUM_FULL_VERSION = "143.0.3650.75";
+    private static final String SEC_MS_GEC_VERSION = "1-" + CHROMIUM_FULL_VERSION;
+    private static final String USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                    + "Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0";
+
+    /** Windows 文件时间纪元（1601-01-01）到 Unix 纪元的秒数差。 */
+    private static final long WIN_EPOCH_OFFSET_SECONDS = 11644473600L;
 
     @Override
     public String id() {
@@ -99,6 +117,8 @@ public class EdgeTtsProvider implements TtsProvider {
     private byte[] synthesizeViaWebSocket(String text, String voice, String rate) throws Exception {
         String requestId = UUID.randomUUID().toString().replace("-", "");
         String wsUrl = WS_URL + "?TrustedClientToken=" + TRUSTED_CLIENT_TOKEN
+                + "&Sec-MS-GEC=" + generateSecMsGec()
+                + "&Sec-MS-GEC-Version=" + SEC_MS_GEC_VERSION
                 + "&ConnectionId=" + requestId;
 
         ByteArrayOutputStream audioBuffer = new ByteArrayOutputStream();
@@ -110,7 +130,10 @@ public class EdgeTtsProvider implements TtsProvider {
 
         WebSocket ws = client.newWebSocketBuilder()
                 .header("Origin", "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold")
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .header("Pragma", "no-cache")
+                .header("Cache-Control", "no-cache")
+                .header("Accept-Language", "en-US,en;q=0.9")
+                .header("User-Agent", USER_AGENT)
                 .buildAsync(URI.create(wsUrl), new WebSocket.Listener() {
                     private final StringBuilder textBuffer = new StringBuilder();
 
@@ -186,6 +209,30 @@ public class EdgeTtsProvider implements TtsProvider {
 
         // 等待结果（最多 60 秒）
         return resultFuture.get(60, TimeUnit.SECONDS);
+    }
+
+    /**
+     * 生成 Sec-MS-GEC 令牌。
+     * <p>
+     * 微软 2024-10 起对该端点加了 DRM 校验，握手缺此参数一律返回 400。
+     * 算法：当前 UTC 秒数移到 Windows 文件时间纪元、向下取整到 5 分钟边界、
+     * 换算成 100 纳秒单位，拼上 TrustedClientToken 后取 SHA-256 大写十六进制。
+     * <p>
+     * 令牌按 5 分钟粒度变化，因此本机时钟偏差过大会导致握手失败。
+     */
+    private String generateSecMsGec() throws NoSuchAlgorithmException {
+        long ticks = Instant.now().getEpochSecond() + WIN_EPOCH_OFFSET_SECONDS;
+        ticks -= ticks % 300;
+        // 转 100ns 单位。用 BigInteger 而不是 double：ticks * 10^7 超出 double 的
+        // 53 位精确整数范围，直接乘会丢低位，算出的哈希与服务端不一致。
+        BigInteger intervals = BigInteger.valueOf(ticks).multiply(BigInteger.valueOf(10_000_000L));
+        byte[] digest = MessageDigest.getInstance("SHA-256")
+                .digest((intervals.toString() + TRUSTED_CLIENT_TOKEN).getBytes(StandardCharsets.US_ASCII));
+        StringBuilder hex = new StringBuilder(digest.length * 2);
+        for (byte b : digest) {
+            hex.append(String.format("%02X", b));
+        }
+        return hex.toString();
     }
 
     private int findHeaderEnd(byte[] data) {

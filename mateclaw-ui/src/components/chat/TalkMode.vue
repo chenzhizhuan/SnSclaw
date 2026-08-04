@@ -42,9 +42,13 @@
           @mouseup="stopListening"
           @touchstart.prevent="startListening"
           @touchend.prevent="stopListening"
+          @click="onPttClick"
         >
           {{ pttLabel }}
         </button>
+        <p class="talk-hint" :class="{ 'talk-hint--active': spaceHeld }">
+          {{ spaceHeld ? t('talk.holdingSpace') : t('talk.holdSpaceHint') }}
+        </p>
       </div>
     </div>
   </Transition>
@@ -56,6 +60,8 @@ import { useI18n } from 'vue-i18n'
 import { mcToast } from '@/composables/useMcToast'
 import { CloseBold, Loading, Microphone, Service } from '@element-plus/icons-vue'
 import { WavRecorder } from '@/utils/wavEncoder'
+import { fetchAuthenticatedBlob } from '@/api'
+import { registerTtsStopHook, stopAllTts } from '@/composables/useTtsPlayback'
 
 const { t } = useI18n()
 
@@ -93,6 +99,25 @@ let recorder: WavRecorder | null = null
 let warmRecorder: WavRecorder | null = null
 let audioContext: AudioContext | null = null
 
+/** 正在播放的音频源；保存引用才能被外部（全局停止钩子）掐断。 */
+let currentSource: AudioBufferSourceNode | null = null
+/** 全局 TTS 停止钩子的反注册函数。 */
+let unregisterStopHook: (() => void) | null = null
+/** 空格是否处于按住状态，用于拦截自动重复/合成 click，并驱动提示文案。 */
+const spaceHeld = ref(false)
+
+/**
+ * 停掉本组件正在播放的回复语音。幂等。
+ * 注册进全局 TTS 通道，别处发起朗读时会调用它。
+ */
+function stopCurrentSource() {
+  if (currentSource) {
+    try { currentSource.onended = null; currentSource.stop() } catch { /* 已结束的 source 再 stop 会抛，忽略 */ }
+    currentSource = null
+  }
+  if (state.value === 'speaking') state.value = 'idle'
+}
+
 /**
  * Button-enabled predicate. Allows:
  *   - 'idle' — fresh / between recordings (the normal case)
@@ -120,6 +145,66 @@ const stateLabel = computed(() => {
   }
 })
 
+/** 焦点是否落在可输入元素上 —— 那里的空格该打字，不该录音。 */
+function isTypingTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  if (!el) return false
+  const tag = el.tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable
+}
+
+/** 空格键：优先用 e.code，e.key 是 ' ' 不易读且受输入法影响。 */
+function isSpaceKey(e: KeyboardEvent): boolean {
+  return e.code === 'Space' || e.key === ' '
+}
+
+/**
+ * 空格键按住说话，与鼠标 PTT 等价。
+ *
+ * - `e.repeat` 拦掉按住时的自动重复，否则 keydown 每秒触发数十次，
+ *   startListening 被反复调用。
+ * - `preventDefault()` 放在状态判断之前：非 idle 时也要阻止空格滚动页面。
+ */
+function onKeyDown(e: KeyboardEvent) {
+  if (!isSpaceKey(e) || e.repeat) return
+  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return
+  if (isTypingTarget(e.target)) return
+  // 即便当前不是 idle 也要 preventDefault，否则空格会滚动页面
+  e.preventDefault()
+  if (state.value !== 'idle') return
+  spaceHeld.value = true
+  startListening()
+}
+
+function onKeyUp(e: KeyboardEvent) {
+  if (!isSpaceKey(e) || !spaceHeld.value) return
+  e.preventDefault()
+  spaceHeld.value = false
+  stopListening()
+}
+
+/**
+ * 空格在按钮聚焦时会被浏览器合成为 click —— 那会再触发一次 startListening，
+ * 和键盘路径打架。按住空格期间吞掉 click。
+ */
+function onPttClick(e: MouseEvent) {
+  if (spaceHeld.value) {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+}
+
+/**
+ * 窗口失焦时兜底收尾：按住空格期间切走（Alt+Tab 等）不会派发 keyup，
+ * 录音会一直挂着。这里补一次 stopListening。
+ */
+function onWindowBlur() {
+  if (spaceHeld.value) {
+    spaceHeld.value = false
+    stopListening()
+  }
+}
+
 onMounted(() => {
   if (props.agentId) {
     connectWebSocket()
@@ -131,9 +216,21 @@ onMounted(() => {
       console.debug('[TalkMode] mic warm-up failed (will prompt on first PTT)', err)
     })
   }
+  window.addEventListener('keydown', onKeyDown)
+  window.addEventListener('keyup', onKeyUp)
+  window.addEventListener('blur', onWindowBlur)
+  // 语音模式接管声音：把自身的 Web Audio 通道注册进全局停止钩子，
+  // 这样别处发起朗读时能把这里正在播的回复一起停掉，不会两个声音叠着响。
+  unregisterStopHook = registerTtsStopHook(stopCurrentSource)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeyDown)
+  window.removeEventListener('keyup', onKeyUp)
+  window.removeEventListener('blur', onWindowBlur)
+  unregisterStopHook?.()
+  unregisterStopHook = null
+  stopCurrentSource()
   disconnectWebSocket()
   warmRecorder?.releaseWarmUp()
   warmRecorder = null
@@ -245,6 +342,10 @@ async function startListening() {
   }
   if (state.value !== 'idle') return
 
+  // 用户要说话了：先停掉一切正在朗读的声音（本组件的回复、以及聊天页的朗读），
+  // 否则自己的声音会和 AI 的朗读叠在一起，也容易被麦克风回采。
+  stopAllTts()
+
   try {
     // Web Audio API + manual WAV encode (utils/wavEncoder.ts) — replaces
     // MediaRecorder/WebM. DashScope Paraformer rejects webm; WAV is the
@@ -314,13 +415,20 @@ async function playAudio(blob: Blob) {
     }
     const arrayBuffer = await blob.arrayBuffer()
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+    // 新回复接替旧回复，避免上一段还没念完就叠上来
+    stopCurrentSource()
     const source = audioContext.createBufferSource()
     source.buffer = audioBuffer
     source.connect(audioContext.destination)
     source.onended = () => {
-      state.value = 'idle'
+      // 晚到的 onended 不能踩掉后来者的状态
+      if (currentSource === source) {
+        currentSource = null
+        state.value = 'idle'
+      }
     }
     source.start(0)
+    currentSource = source
     state.value = 'speaking'
   } catch {
     mcToast.warning(t('talk.playbackError'))
@@ -328,11 +436,18 @@ async function playAudio(blob: Blob) {
   }
 }
 
+/**
+ * 兜底路径：后端正常情况下直接推二进制音频帧（走 playAudio）。
+ * 这里必须用鉴权 fetch 取 blob —— <audio src> 不发 Authorization 头，
+ * 而 /api/v1/chat/files/... 要求鉴权，直接 new Audio(url) 会 401 静默失败。
+ */
 function playAudioUrl(url: string) {
-  const audio = new Audio(url)
-  audio.onended = () => { state.value = 'idle' }
-  audio.onerror = () => { state.value = 'idle' }
-  audio.play().catch(() => { state.value = 'idle' })
+  fetchAuthenticatedBlob(url)
+    .then(blob => playAudio(blob))
+    .catch(() => {
+      mcToast.warning(t('talk.playbackError'))
+      state.value = 'idle'
+    })
 }
 </script>
 
@@ -481,6 +596,20 @@ function playAudioUrl(url: string) {
 
 .talk-controls {
   padding: 32px;
+}
+
+.talk-hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--el-text-color-secondary, #909399);
+  transition: color 0.2s;
+  user-select: none;
+}
+
+.talk-hint--active {
+  color: var(--el-color-primary, #409eff);
+  font-weight: 600;
 }
 
 .talk-ptt {

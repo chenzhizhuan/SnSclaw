@@ -7,11 +7,11 @@
   "license": "Apache-2.0",
   "homepage": "https://www.sns.app",
   "bugs": {
-    "url": "https://github.com/sns/SnSclaw/issues"
+    "url": "https://lab.sns.app/SnSclaw/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/sns/SnSclaw"
+    "url": "https://lab.sns.app/SnSclaw"
   },
   "main": "dist-electron/main/index.js",
   "scripts": {

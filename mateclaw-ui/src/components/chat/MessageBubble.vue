@@ -574,7 +574,8 @@ import { buildGeneratedFileNameMap, linkifyGeneratedFileUrls } from '@/utils/gen
 import { ensureModelViewer } from '@/utils/lazyModelViewer'
 import { useAuthenticatedAttachment } from '@/composables/useAuthenticatedAttachment'
 import { useToolLabel } from '@/composables/useToolLabel'
-import { http } from '@/api'
+import { http, fetchAuthenticatedBlob } from '@/api'
+import { playTtsBlob, stopAllTts, isPlayingBy, useTtsOwner } from '@/composables/useTtsPlayback'
 import { copyToClipboard } from '@/utils/clipboard'
 import TypingCursor from './TypingCursor.vue'
 import { previewKindOf } from './preview/previewKind'
@@ -836,14 +837,25 @@ function copyMessage() {
 }
 
 // --- TTS 朗读 ---
+// 播放走全局唯一通道（useTtsPlayback）：朗读是独占语义，点第二条时第一条必须停。
+// 本地只保留 UI 状态，音频句柄不再由组件持有 —— 否则每个气泡各管一个 Audio，
+// 谁都不知道别人在播，就会出现两段语音叠着响。
 const ttsState = ref<'idle' | 'loading' | 'playing'>('idle')
-let ttsAudio: HTMLAudioElement | null = null
+/** 本气泡在全局播放通道里的归属标识。 */
+const ttsOwnerId = computed(() => `bubble:${props.message.id}`)
+const ttsOwner = useTtsOwner()
+
+// 全局播放权被别人抢走时（另一条消息朗读 / 自动朗读 / 语音模式），
+// 本气泡的按钮要跟着回到 idle，不能停在"正在播放"的假象上。
+watch(ttsOwner, (owner) => {
+  if (ttsState.value === 'playing' && owner !== ttsOwnerId.value) {
+    ttsState.value = 'idle'
+  }
+})
 
 async function handleTts() {
   if (ttsState.value === 'playing') {
-    // 停止播放
-    ttsAudio?.pause()
-    ttsAudio = null
+    stopAllTts()
     ttsState.value = 'idle'
     return
   }
@@ -854,43 +866,45 @@ async function handleTts() {
   const conversationId = props.message.conversationId
   if (!conversationId) return
 
+  // 先掐掉在播的声音再合成：合成要等网络往返，期间让旧语音继续念完
+  // 会造成"点了新的、旧的还在说"的错觉。
+  stopAllTts()
   ttsState.value = 'loading'
   try {
+    // TtsController 返回裸 Map（不是项目统一的 R<T> 信封），而响应拦截器只在
+    // 检测到 'code' 字段时才解包。所以这里拿到的就是 Map 本体，字段在 res 上，
+    // 不在 res.data 上 —— 多写一层 .data 会让 success 永远 undefined，
+    // 表现为"后端合成成功、Console 无报错、前端却提示失败"。
     const res: any = await http.post('/tts/synthesize', {
       conversationId,
       text,
     })
-    if (res.data?.success && res.data?.audioUrl) {
-      // 通过认证 fetch 获取音频 blob
-      const audioRes = await fetch(res.data.audioUrl, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
-      })
-      const blob = await audioRes.blob()
-      const blobUrl = URL.createObjectURL(blob)
-      ttsAudio = new Audio(blobUrl)
-      ttsAudio.onended = () => {
-        ttsState.value = 'idle'
-        URL.revokeObjectURL(blobUrl)
-        ttsAudio = null
-      }
-      ttsAudio.onerror = () => {
-        ttsState.value = 'idle'
-        URL.revokeObjectURL(blobUrl)
-        ttsAudio = null
-      }
+    if (res?.success && res?.audioUrl) {
+      // 走统一的鉴权 blob 拉取：它会检查 response.ok。裸 fetch 不检查状态码时，
+      // 401/404 的 JSON 错误正文也会被当成 blob 塞给 <audio>，表现为"能合成却播不出声"。
+      const blob = await fetchAuthenticatedBlob(res.audioUrl)
       ttsState.value = 'playing'
-      await ttsAudio.play()
+      const result = await playTtsBlob(blob, ttsOwnerId.value, () => {
+        ttsState.value = 'idle'
+      })
+      // 'superseded' 是用户主动停止或被其他朗读接替，属正常流程，不提示
+      if (result === 'failed') mcToast.error(t('chat.ttsFailed'))
     } else {
       ttsState.value = 'idle'
+      // 合成失败必须提示：后端把原因放在 error 里（未启用 / provider 全失败等）。
+      // 静默复位会让"点了没反应"变成用户无法自查的问题。
+      mcToast.error(res?.error || t('chat.ttsFailed'))
     }
-  } catch {
+  } catch (e: any) {
     ttsState.value = 'idle'
+    mcToast.error(e?.response?.data?.error || e?.message || t('chat.ttsFailed'))
   }
 }
 
 onBeforeUnmount(() => {
   if (copyTimer) clearTimeout(copyTimer)
-  if (ttsAudio) { ttsAudio.pause(); ttsAudio = null }
+  // 只停自己发起的播放：别的气泡或自动朗读正在念时，本气泡卸载不该打断它
+  if (isPlayingBy(ttsOwnerId.value)) stopAllTts()
   revokeAll()
 })
 

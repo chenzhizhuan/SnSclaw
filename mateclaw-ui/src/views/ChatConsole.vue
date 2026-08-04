@@ -280,6 +280,7 @@ import { ref, computed, onMounted, onBeforeUnmount, onActivated, onDeactivated, 
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { mcToast } from '@/composables/useMcToast'
+import { stopAllTts } from '@/composables/useTtsPlayback'
 import { ChatDotRound, Delete, Setting, UploadFilled } from '@element-plus/icons-vue'
 import { conversationApi, agentApi, modelApi, chatApi, cronJobApi, approvalApi } from '@/api/index'
 import { copyToClipboard } from '@/utils/clipboard'
@@ -1215,6 +1216,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  stopAllTts()
   window.removeEventListener('mc:chat-shortcut', handleChatShortcut)
   document.removeEventListener('click', handleCodeCopy)
   disposeECharts()
@@ -1238,6 +1240,8 @@ onBeforeUnmount(() => {
 })
 
 onDeactivated(() => {
+  // 离开聊天页时静音：朗读属于页面内行为，切到别处还在念很突兀
+  stopAllTts()
   if (activityPollTimer !== null) {
     clearInterval(activityPollTimer)
     activityPollTimer = null
@@ -1669,6 +1673,8 @@ async function selectConversation(conv: Conversation) {
   // 点同一个会话则完全不 reset，避免打断正在观察的流。
   const switchingAway = currentConversationId.value !== conv.conversationId
   if (switchingAway) {
+    // 换会话先静音：上一会话的朗读继续念到新会话里会让人分不清声音来源
+    stopAllTts()
     resetForNewConversation()
     messageListRef.value?.resetScrollLock()
   }

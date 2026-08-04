@@ -168,7 +168,7 @@ curl -s http://localhost:18080/api/v1/system/browser-health | jq .
 ## 第一次部署
 
 ```sh
-git clone https://github.com/sns/SnSclaw.git
+git clone https://lab.sns.app/SnSclaw.git
 cd snsclaw
 
 # 1. 必填项写到 .env

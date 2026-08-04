@@ -18,7 +18,8 @@ import { useSystemSettingsStore } from '@/stores/useSystemSettingsStore'
 import { storeToRefs } from 'pinia'
 import type { Message, MessageContentPart, MessageSegment, StreamPhase, HeartbeatData, QueuedMessage, PhaseEventData, DelegationNode, DelegationToolEntry, PlanMeta, GeneratedFile } from '@/types'
 import { classifyBackendError, type ChatErrorInfo } from '@/types/chatError'
-import { http } from '@/api'
+import { fetchAuthenticatedBlob } from '@/api'
+import { playTtsBlob } from '@/composables/useTtsPlayback'
 
 /**
  * Snapshot of a {@code compact_status} SSE event. Mirrors the payload built
@@ -627,14 +628,6 @@ export function useChat(options: UseChatOptions): UseChatReturn {
           ...msg,
           metadata: { ...metadata, segments: [...currentSegments.value] }
         } as any)
-      }
-    }
-
-    // Auto TTS: trigger when message_complete arrives with status=completed
-    if (data.status === 'completed' && data.hasContent && currentAssistantId.value) {
-      const msg = getMessage(currentAssistantId.value)
-      if (msg?.content && streamConversationId) {
-        triggerAutoTts(streamConversationId, msg.content)
       }
     }
 
@@ -1830,41 +1823,21 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     })
   })
 
-  // ===== Auto TTS =====
-  let ttsAutoModeCache: string | null = null
-  let ttsCacheExpiry = 0
-
-  async function triggerAutoTts(conversationId: string, text: string) {
-    try {
-      // Cache settings for 5 minutes to avoid a request on every message
-      const now = Date.now()
-      if (!ttsAutoModeCache || now > ttsCacheExpiry) {
-        const res: any = await http.get('/system-settings')
-        ttsAutoModeCache = res.data?.ttsAutoMode || 'off'
-        ttsCacheExpiry = now + 5 * 60 * 1000
-      }
-      if (ttsAutoModeCache !== 'always') return
-      // Kick off backend synthesis; the backend broadcasts tts_ready via SSE when done
-      http.post('/tts/synthesize', { conversationId, text }).catch(() => {})
-    } catch {
-      // Silently ignore TTS errors — it's a best-effort feature
-    }
-  }
-
   // ===== Auto TTS: listen for tts_ready events =====
+  // 是否自动朗读由后端在消息完成时判断（ChatController#maybeAutoSynthesizeTts）。
+  // 前端不自己查 ttsAutoMode：/settings 需要 admin 角色，普通用户拉不到该字段，
+  // 前端判断会让这个功能对非 admin 静默失效。这里只负责播放后端推来的音频。
   stream.on('tts_ready', (data) => {
-    if (data.audioUrl) {
-      const token = localStorage.getItem('token') || ''
-      fetch(data.audioUrl, { headers: { Authorization: `Bearer ${token}` } })
-        .then(res => res.blob())
-        .then(blob => {
-          const url = URL.createObjectURL(blob)
-          const audio = new Audio(url)
-          audio.onended = () => URL.revokeObjectURL(url)
-          audio.play().catch(() => URL.revokeObjectURL(url))
-        })
-        .catch(() => {})
-    }
+    if (!data.audioUrl) return
+    // 用统一的鉴权 blob 拉取（内部检查 response.ok）。裸 fetch 不看状态码时，
+    // 401/404 的 JSON 正文会被当成音频塞给 <audio>，表现为静默不出声。
+    fetchAuthenticatedBlob(data.audioUrl)
+      // 走全局唯一播放通道：自动朗读同样是独占的，新回复到来时要接替上一段，
+      // 而不是和手动朗读或上一条自动朗读叠在一起响。
+      .then(blob => playTtsBlob(blob, 'auto'))
+      .catch(() => {
+        // 自动朗读是尽力而为的功能，失败不打扰用户（手动朗读按钮会给提示）
+      })
   })
 
   // ===== Goal events =====

@@ -174,21 +174,22 @@ public class TalkModeWebSocketHandler extends AbstractWebSocketHandler {
                     talkSession.conversationId, reply, null, null, null);
 
             if (Boolean.TRUE.equals(ttsResult.get("success"))) {
-                String audioUrl = (String) ttsResult.get("audioUrl");
-                if (audioUrl != null) {
-                    // 读取音频文件并通过 WebSocket 发送
-                    Path audioPath = Paths.get(audioUrl);
-                    if (!audioPath.isAbsolute()) {
-                        audioPath = Paths.get("data", "tts-output").resolve(audioUrl);
-                    }
+                // 必须用 filePath（落盘绝对路径），不能用 audioUrl。后者是
+                // "/api/v1/chat/files/..." 这种 HTTP 路径，以 "/" 开头会被
+                // Paths.get() 在 Windows 上判成 absolute，指向 C:\api\v1\...，
+                // Files.exists() 恒为 false —— 语音模式因此一直没有声音。
+                String filePath = (String) ttsResult.get("filePath");
+                if (filePath != null) {
+                    Path audioPath = Paths.get(filePath);
                     if (Files.exists(audioPath)) {
                         byte[] audioBytes = Files.readAllBytes(audioPath);
                         session.sendMessage(new BinaryMessage(audioBytes));
                         log.info("[TalkMode] Sent TTS audio: {} bytes", audioBytes.length);
                     } else {
-                        // 回退：发送音频 URL 让前端直接播放
-                        sendJson(session, Map.of("type", "tts_url", "url", audioUrl));
+                        log.warn("[TalkMode] TTS audio file missing: {}", audioPath);
                     }
+                } else {
+                    log.warn("[TalkMode] TTS result has no filePath");
                 }
             } else {
                 log.warn("[TalkMode] TTS failed: {}", ttsResult.get("error"));
