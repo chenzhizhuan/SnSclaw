@@ -1025,14 +1025,14 @@ function setupApplicationMenu(): void {
         { label: 'Check for Updates...', click: menuCheckForUpdates },
         { type: 'separator' as const },
       ] : []),
-      {
-        label: 'GitHub Repository',
-        click: () => shell.openExternal('https://lab.sns.app/SnSclaw'),
-      },
-      {
-        label: 'Report Issue',
-        click: () => shell.openExternal('https://lab.sns.app/SnSclaw/issues'),
-      },
+      // {
+      //   label: 'GitHub Repository',
+      //   click: () => shell.openExternal('https://lab.sns.app/SnSclaw'),
+      // },
+      // {
+      //   label: 'Report Issue',
+      //   click: () => shell.openExternal('https://lab.sns.app/SnSclaw/issues'),
+      // },
       ...(!isMac ? [
         { type: 'separator' as const },
         { label: `About ${app.name}`, click: showAboutDialog },
