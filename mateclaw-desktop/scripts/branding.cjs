@@ -6,14 +6,21 @@
  * stays untouched.
  *
  * Supported env overrides:
- *   BRAND_NAME, BRAND_TAGLINE, BRAND_TEAM, BRAND_COPYRIGHT,
- *   BRAND_APP_ID, BRAND_GITHUB_URL, BRAND_LOGO_FILE
+ *   BRAND_NAME, BRAND_TAGLINE, BRAND_TEAM, BRAND_PUBLISHER,
+ *   BRAND_COPYRIGHT, BRAND_APP_ID, BRAND_GITHUB_URL, BRAND_LOGO_FILE,
+ *   BRAND_HOMEPAGE_URL, BRAND_ABOUT_URL, BRAND_SUPPORT_URL,
+ *   BRAND_UPDATE_URL, BRAND_README_URL, BRAND_COMMENTS
  */
 'use strict'
 
 const fs = require('fs')
 const path = require('path')
 
+/**
+ * Load brand configuration from branding.config.json with environment overrides.
+ * @param {string} rootDir - Root directory containing branding.config.json.
+ * @returns {object} Resolved brand config object with all fields populated.
+ */
 function loadBrandConfig(rootDir) {
   const configPath = path.join(rootDir, 'branding.config.json')
   let config = {}
@@ -23,14 +30,23 @@ function loadBrandConfig(rootDir) {
 
   // Env vars override the config file.
   const env = process.env
+  const defaultGh = 'https://github.com/sns/SnSclaw'
+  const defaultHome = 'https://www.sns.app'
   return {
     name:           env.BRAND_NAME        || config.name        || 'SnSclaw',
     tagline:        env.BRAND_TAGLINE     || config.tagline     || 'AI Personal Assistant',
     team:           env.BRAND_TEAM        || config.team        || 'SnSclaw Team',
+    publisher:      env.BRAND_PUBLISHER   || config.publisher   || 'SnSclaw Team',
     copyright:      env.BRAND_COPYRIGHT   || config.copyright   || 'Copyright © 2026 SnSclaw Team',
     appId:          env.BRAND_APP_ID      || config.appId       || 'app.sns.claw',
-    githubUrl:      env.BRAND_GITHUB_URL  || config.githubUrl   || 'https://github.com/sns/SnSclaw',
+    githubUrl:      env.BRAND_GITHUB_URL  || config.githubUrl   || defaultGh,
     logoFile:       env.BRAND_LOGO_FILE   || config.logoFile    || 'mateclaw_logo_s.png',
+    homepageUrl:    env.BRAND_HOMEPAGE_URL || config.homepageUrl || defaultHome,
+    aboutUrl:       env.BRAND_ABOUT_URL   || config.aboutUrl    || (defaultHome + '/docs/intro'),
+    supportUrl:     env.BRAND_SUPPORT_URL || config.supportUrl  || (defaultGh + '/issues'),
+    updateUrl:      env.BRAND_UPDATE_URL  || config.updateUrl   || (defaultHome + '/releases'),
+    readmeUrl:      env.BRAND_README_URL  || config.readmeUrl   || (defaultHome + '/docs/desktop'),
+    comments:       env.BRAND_COMMENTS    || config.comments    || 'AI Personal Assistant Desktop Workbench',
   }
 }
 

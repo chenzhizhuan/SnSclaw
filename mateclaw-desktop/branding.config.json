@@ -1,9 +1,16 @@
 {
-  "name": "SnSclaw",
+  "name": "智算方舟",
   "tagline": "AI Personal Assistant",
   "team": "SnSclaw Team",
+  "publisher": "SnSclaw Team",
   "copyright": "Copyright © 2026 SnSclaw Team",
   "appId": "app.sns.claw",
   "githubUrl": "https://github.com/sns/SnSclaw",
-  "logoFile": "mateclaw_logo_s.png"
+  "logoFile": "mateclaw_logo_s.png",
+  "homepageUrl": "https://www.sns.app",
+  "aboutUrl": "https://www.sns.app/docs/intro",
+  "supportUrl": "https://github.com/sns/SnSclaw/issues",
+  "updateUrl": "https://www.sns.app/releases",
+  "readmeUrl": "https://www.sns.app/docs/desktop",
+  "comments": "智算方舟 AI 桌面工作台 — 面向企业级场景的私有化智能体平台，集成多模态模型、知识库检索、语音交互与自动化工具链（HTTP/SSE 运行时）"
 }
