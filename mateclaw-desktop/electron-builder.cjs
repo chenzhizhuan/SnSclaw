@@ -82,14 +82,17 @@ function escapeNsis(s) {
 // "MyAI" → "MyAI", "Cool App" → "Cool_App"
 const brandSlug = brand.name.replace(/\s+/g, '_')
 
-// Parse GitHub URL for publish config (owner/repo)
-let githubOwner = 'sns'
-let githubRepo = 'SnSclaw'
-const ghMatch = brand.githubUrl.match(/github\.com\/([^/]+)\/([^/]+)/)
-if (ghMatch) {
-  githubOwner = ghMatch[1]
-  githubRepo = ghMatch[2]
-}
+// 自动更新源 —— 取 branding.config.json 的 updateUrl，走 generic provider。
+//
+// 不要改回 provider: 'github' 加正则从 githubUrl 里抠 owner/repo：那个写法在
+// githubUrl 指向自建 Git 服务（如 lab.sns.app/SnSclaw）时匹配不上 github.com，
+// 会静默回落到硬编码的 sns/SnSclaw，把 owner: sns / repo: SnSclaw 写进产物的
+// resources/app-update.yml —— 私有化部署的客户端仍然去 api.github.com 查更新。
+// 而 provider: 'github' 只认 github.com 的 API，自建 GitLab/Gitea 本就不兼容。
+//
+// generic provider 要求 updateUrl 下托管 latest.yml 和安装包本体；
+// 若该地址暂未就绪，客户端的更新检查会失败但不影响正常使用。
+const updateFeedUrl = brand.updateUrl
 
 /** @type {import('electron-builder').Configuration} */
 const config = {
@@ -114,9 +117,8 @@ const config = {
   },
   publish: [
     {
-      provider: 'github',
-      owner: githubOwner,
-      repo: githubRepo,
+      provider: 'generic',
+      url: updateFeedUrl,
     },
   ],
   files: ['dist-electron', 'dist'],
