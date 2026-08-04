@@ -78,16 +78,22 @@
 !define WriteTier2 '!insertmacro _WriteTier2'
 
 ; ---------------------------------------------------------------------------
-; Hook — runs BEFORE the install directory page is displayed.
-; Forces the install directory to %LOCALAPPDATA%\Programs\SnSclaw (per-user).
-; No admin rights required.  Each Windows user gets their own independent
-; copy; even if the user previously chose a custom path, this override wins.
+; NOTE: 这里刻意没有 customInit / $INSTDIR 覆盖。
+;
+; 安装目录完全交给 electron-builder 的 multiUser 逻辑推导：
+;   perMachine=true  ->  $PROGRAMFILES64\${APP_FILENAME}  =  C:\Program Files\SnSclaw
+;
+; APP_FILENAME 来自 package.json 的 name 字段（"SnSclaw"）——productName 是中文，
+; 过不了 electron-builder 的 ^[-_+0-9a-zA-Z .]+$ 校验，会回落到 sanitizeFileName(name)。
+;
+; 历史教训：这里曾经有 StrCpy $INSTDIR "$LOCALAPPDATA\Programs\SnSclaw"。它带来两个问题：
+;   1. 它在 initMultiUser 之后执行，会压掉注册表里上次安装的 InstallLocation，
+;      也压掉命令行 /D= 参数，静默安装无法指定目录。
+;   2. 当时 name 是 "snsclaw-desktop"，与这里写死的 "SnSclaw" 不一致，于是
+;      electron-builder 的 instFilesPre 兜底逻辑（$INSTDIR 不含 APP_FILENAME 就追加）
+;      把路径拼成了 ...\Programs\SnSclaw\snsclaw-desktop。
+; 现在两边都是 SnSclaw，兜底逻辑检测到已包含就不再追加。别再加回 customInit。
 ; ---------------------------------------------------------------------------
-!macro customInit
-  ; $LOCALAPPDATA = C:\Users\<username>\AppData\Local (always writable by the
-  ; current user; no UAC prompt needed because perMachine=false).
-  StrCpy $INSTDIR "$LOCALAPPDATA\Programs\SnSclaw"
-!macroend
 
 ; ---------------------------------------------------------------------------
 ; Hook — runs AFTER the default install section has already written its

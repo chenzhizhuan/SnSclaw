@@ -199,7 +199,10 @@ const config = {
 
   nsis: {
     oneClick: false,
-    perMachine: false,
+    // perMachine=true：装到 C:\Program Files\SnSclaw（需要 UAC 提权一次）。
+    // 应用运行时所有可写状态（H2 库、connection.json、local-tools.json）都在
+    // app.getPath('userData') = %APPDATA%，不写安装目录，所以只读的 Program Files 没问题。
+    perMachine: true,
     allowToChangeInstallationDirectory: true,
     deleteAppDataOnUninstall: false,
     installerIcon: 'build/icon.ico',
@@ -210,8 +213,9 @@ const config = {
     // ===== Windows "程序和功能"控制面板元数据 =====
     // 卸载列表中的显示名（默认 = productName + version），显式声明可保持中文一致
     uninstallDisplayName: `${brand.name}`,
-    // 菜单分类：开始菜单中快捷方式所在的子文件夹名（默认=publisher）
-    menuCategory: brand.publisher,
+    // ⚠️ 不要设 menuCategory。perMachine 的默认安装目录是
+    //    $PROGRAMFILES64\<menuCategory>\<APP_FILENAME>，设了它就会变成
+    //    C:\Program Files\SnSclaw\SnSclaw。开始菜单快捷方式放根级即可（单应用）。
     // ⚠️ 以下卸载面板 URL 元数据 (HelpLink / URLInfoAbout / URLUpdateInfo / ARPREADME
     //     + Comments) 在 electron-builder 25.1.8 中尚未作为 nsis.* 配置字段暴露。
     //     我们通过 build/installer.nsh 自定义 NSIS include 脚本，在安装完成
