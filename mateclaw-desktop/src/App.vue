@@ -328,7 +328,7 @@ function createParticles() {
         </div>
         <div class="brand-name">
           <!-- <span class="mate">SnS</span><span class="claw">claw</span> -->
-           <span class="mate">智算方舟</span>
+           <span class="mate">SnSclaw</span>
         </div>
         <div class="brand-tagline">AI Personal Assistant</div>
       </div>

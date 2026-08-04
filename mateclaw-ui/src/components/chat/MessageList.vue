@@ -14,7 +14,7 @@
               <img src="/logo/snsclaw_logo_s.png" alt="SnSclaw" class="welcome-logo__icon" />
             </div>
             <!-- <h2 class="welcome-title">SnS<span class="welcome-title-highlight">claw</span></h2> -->
-            <h2 class="welcome-title">智算方舟</h2>
+            <h2 class="welcome-title">SnSclaw</h2>
             <p class="welcome-subtitle">{{ subtitle }}</p>
             <div v-if="suggestions.length" class="welcome-suggestions">
               <button
