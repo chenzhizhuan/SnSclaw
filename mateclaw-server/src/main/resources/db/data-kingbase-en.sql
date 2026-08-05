@@ -514,6 +514,11 @@ INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name
 VALUES (1000000027, 'LocalShellTool', 'Local Shell', 'Execute shell commands on the user''s local desktop machine via the desktop tunnel. Requires native user approval.', 'builtin', 'localShellTool', '🖥', TRUE, TRUE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
+-- Builtin tool: channel message push
+INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)
+VALUES (1000000028, 'ChannelMessageTool', 'Channel Message Push', 'Proactively push messages to IM channel conversations. list_channel_sessions discovers pushable conversations; send_channel_message performs a one-way push — for alerts, reminders, and async task results.', 'builtin', 'channelMessageTool', '📤', TRUE, TRUE, NOW(), NOW(), 0)
+ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
+
 -- Built-in tool: Edit File (enabled by default, dangerous ops controlled by ToolGuard)
 INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)
 VALUES (1000000006, 'EditFileTool', 'Edit File', 'Edit file content via find-and-replace. Matches old_text exactly and replaces with new_text. Requires user approval.', 'builtin', 'editFileTool', '✏️', TRUE, TRUE, NOW(), NOW(), 0)

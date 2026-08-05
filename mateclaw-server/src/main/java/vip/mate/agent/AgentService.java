@@ -764,22 +764,42 @@ public class AgentService {
     // ==================== StreamDelta ====================
 
     public record StreamDelta(String content, String thinking, String eventType, Map<String, Object> eventData,
-                              boolean persistenceOnly, boolean segmentOnly) {
+                              boolean persistenceOnly, boolean segmentOnly, ContentKind kind) {
 
         // 兼容构造器（广播+持久化）
         public StreamDelta(String content, String thinking) {
-            this(content, thinking, null, null, false, false);
+            this(content, thinking, null, null, false, false, null);
         }
 
         // 显式 5-参构造器：保留旧调用点对 (content, thinking, eventType, eventData, persistenceOnly) 的兼容
         public StreamDelta(String content, String thinking, String eventType,
                            Map<String, Object> eventData, boolean persistenceOnly) {
-            this(content, thinking, eventType, eventData, persistenceOnly, false);
+            this(content, thinking, eventType, eventData, persistenceOnly, false, null);
+        }
+
+        // 兼容构造器：kind 出现之前的 6 参 canonical 形态
+        public StreamDelta(String content, String thinking, String eventType,
+                           Map<String, Object> eventData, boolean persistenceOnly, boolean segmentOnly) {
+            this(content, thinking, eventType, eventData, persistenceOnly, segmentOnly, null);
         }
 
         /** 仅用于持久化，不再广播（内容已由 NodeStreamingChatHelper 实时广播过） */
         public static StreamDelta persistOnly(String content, String thinking) {
-            return new StreamDelta(content, thinking, null, null, true, false);
+            return new StreamDelta(content, thinking, null, null, true, false, null);
+        }
+
+        /** {@link #persistOnly(String, String)} 带内容语义标注的变体。 */
+        public static StreamDelta persistOnly(String content, String thinking, ContentKind kind) {
+            return new StreamDelta(content, thinking, null, null, true, false, kind);
+        }
+
+        /**
+         * Final-answer content of the terminal turn. {@code alreadyStreamed}
+         * decides broadcast suppression exactly like the persistOnly/plain
+         * split at the emission sites did before the kind tag existed.
+         */
+        public static StreamDelta finalAnswer(String content, boolean alreadyStreamed) {
+            return new StreamDelta(content, null, null, null, alreadyStreamed, false, ContentKind.FINAL_ANSWER);
         }
 
         /**
@@ -803,15 +823,20 @@ public class AgentService {
          * persisted content field via this flavor.
          */
         public static StreamDelta segmentOnly(String content, String thinking) {
-            return new StreamDelta(content, thinking, null, null, true, true);
+            return new StreamDelta(content, thinking, null, null, true, true, null);
+        }
+
+        /** {@link #segmentOnly(String, String)} 带内容语义标注的变体。 */
+        public static StreamDelta segmentOnly(String content, String thinking, ContentKind kind) {
+            return new StreamDelta(content, thinking, null, null, true, true, kind);
         }
 
         public static StreamDelta empty() {
-            return new StreamDelta(null, null, null, null, false, false);
+            return new StreamDelta(null, null, null, null, false, false, null);
         }
 
         public static StreamDelta event(String type, Map<String, Object> data) {
-            return new StreamDelta(null, null, type, data, false, false);
+            return new StreamDelta(null, null, type, data, false, false, null);
         }
 
         public boolean isEvent() {

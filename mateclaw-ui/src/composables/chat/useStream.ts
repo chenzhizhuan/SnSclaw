@@ -27,6 +27,9 @@ export type SSEEventType =
   | 'tool_approval_resolved'
   // 恢复/警告事件
   | 'warning'
+  // Producer-assigned content semantics of the span that just closed its
+  // completion (pre_tool_narration / grounded_narration / final_answer)
+  | 'segment_kind'
   // Interrupt + Queue 事件
   | 'heartbeat'
   | 'turn_interrupt_requested'

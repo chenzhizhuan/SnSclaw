@@ -509,6 +509,11 @@ INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name
 VALUES (1000000027, 'LocalShellTool', '本地命令执行', '通过桌面隧道在用户本机执行 Shell 命令（非服务器）。每次执行需用户在桌面端原生审批。', 'builtin', 'localShellTool', '🖥', TRUE, TRUE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
+-- 内置工具：渠道消息推送
+INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)
+VALUES (1000000028, 'ChannelMessageTool', '渠道消息推送', '主动向 IM 渠道会话推送消息。list_channel_sessions 查询可推送的会话，send_channel_message 单向推送消息，用于告警通知、定时任务结果回推等场景。', 'builtin', 'channelMessageTool', '📤', TRUE, TRUE, NOW(), NOW(), 0)
+ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
+
 -- 内置工具：编辑文件（默认启用，危险操作由 ToolGuard 审批控制）
 INSERT INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)
 VALUES (1000000006, 'EditFileTool', '编辑文件', '通过查找替换编辑文件内容，精确匹配 old_text 并替换为 new_text。每次执行需要用户审批确认。', 'builtin', 'editFileTool', '✏️', TRUE, TRUE, NOW(), NOW(), 0)
