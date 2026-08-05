@@ -517,6 +517,12 @@ export const channelApi = {
   /** Batch health for all channels in current workspace. */
   healthAll: () => http.get('/channels/health'),
   /**
+   * List a channel's known conversations (proactive-push targets). Used by
+   * the cron delivery-target picker; a conversation appears here once the
+   * bot has received at least one inbound message in it.
+   */
+  listSessions: (id: string | number) => http.get(`/channels/${id}/sessions`),
+  /**
    * Wizard Step 2 — validate a draft config without persisting.
    * Returns a VerificationResult: { ok, skipped, durationMs, headline,
    * identity, invalidField, hint }.

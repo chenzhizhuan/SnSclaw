@@ -7,6 +7,7 @@ import vip.mate.agent.AgentService.StreamDelta;
 import vip.mate.channel.AbstractChannelAdapter;
 import vip.mate.channel.ChannelMessage;
 import vip.mate.channel.ChannelMessageRouter;
+import vip.mate.channel.ProvisionalContentTracker;
 import vip.mate.channel.StreamingChannelAdapter;
 import vip.mate.workspace.core.service.ChatUploadLocationResolver;
 import vip.mate.channel.ExponentialBackoff;
@@ -1416,7 +1417,7 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
                         }
                     })
                     .blockLast(Duration.ofMinutes(10));
-            outcome = new StreamOutcome(null, false, false);
+            outcome = new StreamOutcome(null, false);
         } else {
             outcome = consumeWithProgress(stream, message, replyTarget, ctx, contentAccumulator);
         }
@@ -1432,10 +1433,11 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
         // is likewise dropped once a grounded answer exists: whatever it says
         // — process narration or a predicted result — it was written before
         // this turn's observations, and IM bubbles cannot be retracted later.
-        String pendingNarration = outcome.pendingNarration();
+        String pendingNarration = outcome.tracker() != null
+                ? outcome.tracker().settle(!finalContent.isBlank())
+                : null;
         if (!finalContent.isBlank()) {
-            if (pendingNarration != null && !outcome.pendingNarrationPreTool()
-                    && !sameOutboundText(pendingNarration, finalContent)) {
+            if (pendingNarration != null && !sameOutboundText(pendingNarration, finalContent)) {
                 publishNarrationBubble(replyTarget, pendingNarration);
             }
             renderAndSend(replyTarget, finalContent);
@@ -1459,39 +1461,14 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
      * which only {@link #processStream} can act on (it needs the final answer
      * first).
      *
-     * @param pendingNarration        the last per-stage narration, still unpublished
-     * @param pendingNarrationPreTool the pending narration was written before any
-     *                                tool observation and tools ran after it — not
-     *                                grounded, so it must not become a permanent
-     *                                bubble once a grounded answer exists
-     * @param approvalPending         a tool call is parked on human approval
+     * @param tracker         the narration lifecycle tracker holding the last
+     *                        per-stage narration, still unresolved — settled by
+     *                        {@code processStream} once the final answer is
+     *                        known; {@code null} on the degraded path where
+     *                        narration is never staged
+     * @param approvalPending a tool call is parked on human approval
      */
-    private record StreamOutcome(String pendingNarration, boolean pendingNarrationPreTool,
-                                 boolean approvalPending) {}
-
-    /**
-     * A per-stage narration held back from publication, with the structural
-     * facts needed to decide later whether it may become a permanent bubble.
-     *
-     * @param text              the narration text
-     * @param followsToolResult a tool observation completed between the previous
-     *                          narration (or turn start) and this one — the text
-     *                          was written with real output in hand
-     * @param toolMark          tool-observation count at staging time; a higher
-     *                          count later means tools ran after this narration
-     */
-    private record StagedNarration(String text, boolean followsToolResult, int toolMark) {
-
-        /**
-         * Whether this narration is superseded by whatever content follows it:
-         * it was not grounded in an observation, and tool calls ran after it —
-         * the same structural rule the Web segments timeline applies, evaluated
-         * online. The caller only asks once follow-up content exists.
-         */
-        boolean supersededAt(int toolResultsNow) {
-            return !followsToolResult && toolResultsNow > toolMark;
-        }
-    }
+    private record StreamOutcome(ProvisionalContentTracker tracker, boolean approvalPending) {}
 
     /** Compare two outbound texts the way the user sees them (post-filter, trimmed). */
     private boolean sameOutboundText(String a, String b) {
@@ -1554,15 +1531,13 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
         // as the new progress bubble, so chat chronology stays intact and
         // the final answer always lands in the newest bubble.
         AtomicReference<WeComReplyContext> liveCtx = new AtomicReference<>(initialCtx);
-        AtomicReference<StagedNarration> pendingNarration = new AtomicReference<>();
-        AtomicInteger toolResults = new AtomicInteger();
-        final int[] lastNarrationToolMark = {0};
+        ProvisionalContentTracker tracker = new ProvisionalContentTracker("wecom");
         final long[] lastFlushAt = {0L};
         stream.doOnNext(delta -> {
             boolean flushNow = false;
             if (delta.isEvent()) {
                 if ("tool_call_completed".equals(delta.eventType())) {
-                    toolResults.incrementAndGet();
+                    tracker.onToolObservation();
                 }
                 flushNow = progress.onEvent(delta.eventType(), delta.eventData());
                 if (standaloneToolMessages) {
@@ -1575,33 +1550,27 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
                 // a wall of text, and persisted they pollute the next turn's
                 // LLM history with unanswered chain-of-thought.
                 //
-                // Publishing lags one narration behind: the newest one is only
-                // staged (visible live in the bubble, not yet finalized) so a
-                // later decision can still drop it — when the final answer
-                // turns out to be the same text, or when it proves to be a
-                // pre-tool rehearsal. A narration written before any tool
-                // observation, with tool calls running after it, is not
-                // grounded in this turn's results (it may even be a predicted
-                // result table); once grounded content follows, it is dropped
-                // instead of becoming an unretractable permanent bubble.
-                // Narrations written after an observation keep standalone
-                // value (e.g. intermediate results) and publish as before.
+                // Publishing lags one narration behind via the shared
+                // lifecycle tracker: the newest narration is only staged
+                // (visible live in the bubble, not yet finalized) so a later
+                // decision can still drop it — a pre-tool rehearsal must not
+                // become an unretractable permanent bubble once grounded
+                // content follows. The producer-assigned kind decides; for
+                // untagged deltas the tracker falls back to the observation
+                // counter (a tool result completed since the last narration
+                // means this one was written with real output in hand).
                 String narration = delta.content() != null ? delta.content().trim() : "";
                 if (!narration.isEmpty()) {
-                    int mark = toolResults.get();
-                    StagedNarration staged = new StagedNarration(
-                            narration, mark > lastNarrationToolMark[0], mark);
-                    lastNarrationToolMark[0] = mark;
-                    StagedNarration previous = pendingNarration.getAndSet(staged);
                     progress.onNarration(narration);
-                    if (previous != null && !previous.supersededAt(mark)) {
+                    String publishable = tracker.stageNarration(narration, delta.kind());
+                    if (publishable != null) {
                         WeComReplyContext ctx = liveCtx.get();
                         if (replyContexts.get(replyTarget) == ctx) {
-                            liveCtx.set(rollProgressBubble(replyTarget, ctx, previous.text(), progress));
+                            liveCtx.set(rollProgressBubble(replyTarget, ctx, publishable, progress));
                         } else {
                             // Bubble already force-finished (180s ceiling) — the
                             // narration still goes out as a plain message.
-                            sendMessage(replyTarget, previous.text());
+                            sendMessage(replyTarget, publishable);
                         }
                     }
                     flushNow = true;
@@ -1638,11 +1607,7 @@ public class WeComChannelAdapter extends AbstractChannelAdapter implements Strea
             }
         }).blockLast(Duration.ofMinutes(10));
 
-        StagedNarration last = pendingNarration.get();
-        return new StreamOutcome(
-                last != null ? last.text() : null,
-                last != null && last.supersededAt(toolResults.get()),
-                progress.isApprovalPending());
+        return new StreamOutcome(tracker, progress.isApprovalPending());
     }
 
     /**

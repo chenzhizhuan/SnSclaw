@@ -35,6 +35,15 @@
              paths, so plan-mode progress is never buried in a collapsed panel. -->
         <PlanStepsPanel v-if="planMeta" :plan="planMeta" :is-generating="isGenerating" />
 
+        <!-- 首包前占位：从发送到第一个 delta 之间（上下文准备 + LLM 首 token,
+             可达数秒）气泡完全空白会读作"卡死"。占位动效让气泡从第一帧起就是
+             活的；任何真实内容（thinking/tool/content/phase 面板）出现后自动让位。 -->
+        <div v-if="showPendingPlaceholder" class="pending-placeholder">
+          <span class="pending-placeholder__dots"><i /><i /><i /></span>
+          <span class="pending-placeholder__text">{{ $t('chat.pendingReply') }}</span>
+          <span v-if="phaseElapsed" class="pending-placeholder__elapsed">{{ phaseElapsed }}</span>
+        </div>
+
         <!-- ===== 分段式渲染模式（Claude Code 风格）===== -->
         <template v-if="useSegmentedView">
           <div class="segments-view">
@@ -1447,6 +1456,24 @@ onBeforeUnmount(() => {
   }
 })
 
+/**
+ * First-token wait state: the assistant bubble exists (placeholder created
+ * synchronously on send) but nothing renderable has arrived — no segments, no
+ * thinking, no content, no phase-driven execution panel. Without this the
+ * bubble sits blank for the whole context-prep + LLM-prefill window (multiple
+ * seconds) and reads as a hang; the placeholder yields automatically the
+ * moment any real block renders.
+ */
+const showPendingPlaceholder = computed(() =>
+  role.value === 'assistant'
+  && isGenerating.value
+  && segments.value.length === 0
+  && !thinkingContent.value
+  && !displayContent.value
+  && !showExecutionPanel.value
+  && !planMeta.value
+)
+
 const phaseElapsed = computed(() => {
   // Only meaningful while waiting on the model with nothing else to show.
   if (!isGenerating.value || toolCallsMeta.value.length) return ''
@@ -1577,6 +1604,48 @@ watch(isGenerating, (generating) => {
 .repetition-warning__meta {
   color: var(--mc-text-tertiary, #94a3b8);
   font-size: 11px;
+}
+
+.pending-placeholder {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 8px 14px;
+  margin: 4px 0;
+  font-family: var(--mc-font-body, sans-serif);
+  font-size: var(--mc-text-sm, 13px);
+  color: var(--mc-text-secondary, #665245);
+  background: var(--mc-bg-muted, #f1e8df);
+  border-radius: var(--mc-radius-md, 12px);
+}
+
+.pending-placeholder__dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.pending-placeholder__dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--mc-radius-full, 9999px);
+  background: var(--mc-primary, #d96d46);
+  opacity: 0.35;
+  animation: pending-dot-pulse 1.2s ease-in-out infinite;
+}
+
+.pending-placeholder__dots i:nth-child(2) { animation-delay: 0.2s; }
+.pending-placeholder__dots i:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pending-dot-pulse {
+  0%, 60%, 100% { opacity: 0.35; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
+.pending-placeholder__elapsed {
+  font-size: var(--mc-text-xs, 11px);
+  color: var(--mc-text-tertiary, #9b7d6c);
+  font-variant-numeric: tabular-nums;
 }
 
 .superseded-toggle {
