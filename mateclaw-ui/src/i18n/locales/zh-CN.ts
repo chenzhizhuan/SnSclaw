@@ -532,7 +532,8 @@ export default {
     // 按轮次分组渲染
     iterationEmpty: '第 {index} 轮被中断（无输出）',
     contentRepetitionWarning: '检测到内容尾部重复（疑似模型输出 artifact）',
-    supersededPreviewCollapsed: '过程预演已被实际工具结果替换',
+    supersededPreviewCollapsed: '已折叠：模型在工具执行前预写的内容（可能与实际结果不符）',
+    pendingReply: '正在准备回复…',
     expand: '展开',
     // INCOMPLETE 截断卡片（finishReason=incomplete）
     incompleteTitle: '回答因检测到重复输出已被自动截断',
@@ -3122,7 +3123,16 @@ export default {
       cronExpressionPlaceholder: '分 时 日 月 周，如: 0 9 * * 1-5',
       timezone: '时区',
       enabled: '立即启用',
+      deliveryChannel: '投递渠道',
+      deliveryChannelNone: '不投递（仅写入任务会话）',
+      deliveryChannelHint: '任务执行完成后，最终结果将主动推送到所选渠道的目标会话',
+      targetSession: '目标会话',
+      targetSessionPlaceholder: '选择要投递到的会话',
+      targetSessionEmpty: '该渠道暂无可投递会话：机器人在某个会话中收到过消息后，该会话才会出现在这里',
+      deliveryMode: '分发模式',
+      deliveryModeHint: '静默模式下任务照常执行并记录运行结果，但不把结果推送到渠道会话',
     },
+    deliveryModes: { deliver: '投递结果', silent: '静默（不投递）' },
     actions: { runNow: '立即执行', edit: '编辑', delete: '删除' },
     messages: {
       createSuccess: '定时任务创建成功',

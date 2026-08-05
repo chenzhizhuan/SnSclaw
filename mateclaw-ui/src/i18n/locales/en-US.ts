@@ -532,7 +532,8 @@ export default {
     // Per-iteration grouping
     iterationEmpty: 'Iteration {index} interrupted (no output)',
     contentRepetitionWarning: 'Repetitive content detected near the end (model artifact)',
-    supersededPreviewCollapsed: 'Model preview replaced by the actual tool result',
+    supersededPreviewCollapsed: 'Collapsed: content drafted before tool execution (may not match actual results)',
+    pendingReply: 'Preparing a reply…',
     expand: 'Expand',
     // INCOMPLETE truncation card (finishReason=incomplete)
     incompleteTitle: 'Answer auto-truncated after repeated output was detected',
@@ -3110,7 +3111,16 @@ export default {
       cronExpressionPlaceholder: 'min hour day month weekday, e.g. 0 9 * * 1-5',
       timezone: 'Timezone',
       enabled: 'Enable immediately',
+      deliveryChannel: 'Delivery Channel',
+      deliveryChannelNone: 'No delivery (task conversation only)',
+      deliveryChannelHint: 'When the job finishes, the final result is proactively pushed to the selected channel conversation',
+      targetSession: 'Target Conversation',
+      targetSessionPlaceholder: 'Select the conversation to deliver to',
+      targetSessionEmpty: 'No pushable conversations on this channel yet — a conversation appears here after the bot has received at least one message in it',
+      deliveryMode: 'Delivery Mode',
+      deliveryModeHint: 'In silent mode the job still runs and records its result, but nothing is pushed to the channel conversation',
     },
+    deliveryModes: { deliver: 'Deliver result', silent: 'Silent (no delivery)' },
     actions: { runNow: 'Run Now', edit: 'Edit', delete: 'Delete' },
     messages: {
       createSuccess: 'Cron job created',

@@ -471,6 +471,11 @@ MERGE INTO mate_tool (id, name, display_name, description, tool_type, bean_name,
 KEY (id)
 VALUES (1000000027, 'LocalShellTool', '本地命令执行', '通过桌面隧道在用户本机执行 Shell 命令（非服务器）。每次执行需用户在桌面端原生审批。', 'builtin', 'localShellTool', '🖥', TRUE, TRUE, NOW(), NOW(), 0);
 
+-- 内置工具：渠道消息推送
+MERGE INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)
+KEY (id)
+VALUES (1000000028, 'ChannelMessageTool', '渠道消息推送', '主动向 IM 渠道会话推送消息。list_channel_sessions 查询可推送的会话，send_channel_message 单向推送消息，用于告警通知、定时任务结果回推等场景。', 'builtin', 'channelMessageTool', '📤', TRUE, TRUE, NOW(), NOW(), 0);
+
 -- 内置工具：编辑文件（默认启用，危险操作由 ToolGuard 审批控制）
 MERGE INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)
 KEY (id)

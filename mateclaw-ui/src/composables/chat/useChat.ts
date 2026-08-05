@@ -498,10 +498,38 @@ export function useChat(options: UseChatOptions): UseChatReturn {
         if (thinkingSeg) thinkingSeg.status = 'completed'
         contentSeg = { id: genSegId(), type: 'content', status: 'running', text: '', timestamp: Date.now() }
         applyIterationTags(contentSeg)
+        // Later content supersedes any earlier provisional narration of the
+        // same turn — collapse it in place, live, instead of waiting for the
+        // persisted-metadata annotations in the done payload. Mirrors the
+        // backend tracker's rule for kind-tagged segments.
+        for (const s of segs) {
+          if (s.type === 'content' && s.kind === 'pre_tool_narration' && !s.superseded) {
+            s.superseded = true
+            s.supersededBySegmentId = String(contentSeg.id)
+            s.supersededReason = 'pre_tool_content_replaced_by_post_tool_answer'
+          }
+        }
         segs.push(contentSeg)
         flushSegmentsToMessage() // sync once when a new content segment is created
       }
       contentSeg.text = (contentSeg.text || '') + (data.delta || '')
+    }
+  })
+
+  stream.on('segment_kind', (data) => {
+    if (isStaleEvent(data)) return
+    // Producer-assigned semantics of the content span that just closed its
+    // completion. Text streams live before the backend knows whether the
+    // completion carries tool calls, so the kind arrives as this follow-up
+    // event; tag the newest content segment (still running at this point —
+    // tool_call_started closes it afterwards). First writer wins, matching
+    // the persistence side.
+    const kind = typeof data?.kind === 'string' ? data.kind : ''
+    if (!kind) return
+    const seg = currentSegments.value.findLast((s: MessageSegment) => s.type === 'content')
+    if (seg && !seg.kind) {
+      seg.kind = kind
+      flushSegmentsToMessage()
     }
   })
 
@@ -723,6 +751,9 @@ export function useChat(options: UseChatOptions): UseChatReturn {
                 }
                 if (remote.supersededReason !== undefined) {
                   next.supersededReason = remote.supersededReason
+                }
+                if (next.kind == null && remote.kind != null) {
+                  next.kind = remote.kind
                 }
                 // Server wall-clock bounds are authoritative for durations
                 // ("thought for Ns"). Local segments often miss endTimestamp:

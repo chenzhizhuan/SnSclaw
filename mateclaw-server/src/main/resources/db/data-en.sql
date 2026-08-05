@@ -470,6 +470,11 @@ MERGE INTO mate_tool (id, name, display_name, description, tool_type, bean_name,
 KEY (id)
 VALUES (1000000027, 'LocalShellTool', 'Local Shell', 'Execute shell commands on the user''s local desktop machine via the desktop tunnel. Requires native user approval.', 'builtin', 'localShellTool', '🖥', TRUE, TRUE, NOW(), NOW(), 0);
 
+-- Builtin tool: channel message push
+MERGE INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)
+KEY (id)
+VALUES (1000000028, 'ChannelMessageTool', 'Channel Message Push', 'Proactively push messages to IM channel conversations. list_channel_sessions discovers pushable conversations; send_channel_message performs a one-way push — for alerts, reminders, and async task results.', 'builtin', 'channelMessageTool', '📤', TRUE, TRUE, NOW(), NOW(), 0);
+
 -- Built-in tool: Edit File (enabled by default, dangerous ops controlled by ToolGuard)
 MERGE INTO mate_tool (id, name, display_name, description, tool_type, bean_name, icon, enabled, builtin, create_time, update_time, deleted)
 KEY (id)
