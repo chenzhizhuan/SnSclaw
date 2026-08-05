@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
  * accepted as send targets, so an agent cannot push into another
  * workspace's conversations.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

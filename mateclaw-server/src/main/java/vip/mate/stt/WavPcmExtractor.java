@@ -14,7 +14,7 @@ import java.nio.ByteOrder;
  * precise local error instead of an empty transcript.
  *
  * <p>Limitations: handles only the canonical 44-byte WAV layout produced by
- * MateClaw's WavRecorder. WAVs with extra chunks (LIST, JUNK, …) before the
+ * SnSclaw's WavRecorder. WAVs with extra chunks (LIST, JUNK, …) before the
  * data chunk would need a chunk-walking parser. Callers should gate on
  * {@link #isCanonicalWav} and skip the diagnostics for anything else,
  * rather than treating non-WAV input as an error.
