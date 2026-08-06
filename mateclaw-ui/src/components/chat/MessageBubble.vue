@@ -47,6 +47,18 @@
         <!-- ===== 分段式渲染模式（Claude Code 风格）===== -->
         <template v-if="useSegmentedView">
           <div class="segments-view">
+            <!-- The "full reasoning" preference is hiding earlier spans. Say so:
+                 silently removing them reads as reasoning that went missing. -->
+            <button
+              v-if="hiddenThinkingCount > 0 && showThinking"
+              class="superseded-toggle"
+              type="button"
+              @click="earlyThinkingExpanded = true"
+            >
+              <el-icon><InfoFilled /></el-icon>
+              <span>{{ $t('chat.earlierThinkingCollapsed', { count: hiddenThinkingCount }) }}</span>
+              <span class="superseded-toggle__action">{{ $t('chat.expand') }}</span>
+            </button>
             <template v-for="iter in groupedIterations" :key="iter.key">
               <!-- Iteration interrupted before any output landed — surface a chip
                    so the user knows the agent moved on instead of silently
@@ -70,7 +82,12 @@
                     @click="toggleSupersededSegment(seg.id)"
                   >
                     <el-icon><InfoFilled /></el-icon>
-                    <span>{{ $t('chat.supersededPreviewCollapsed') }}</span>
+                    <!-- Label tracks the actual state — it read "已折叠" even while
+                         the body below it was expanded, so the banner contradicted
+                         what the reader could plainly see. -->
+                    <span>{{ isSupersededExpanded(seg.id)
+                      ? $t('chat.supersededPreviewExpanded')
+                      : $t('chat.supersededPreviewCollapsed') }}</span>
                     <span class="superseded-toggle__action">
                       {{ isSupersededExpanded(seg.id) ? $t('chat.collapse') : $t('chat.expand') }}
                     </span>
@@ -729,7 +746,7 @@ const hasContent = computed(() => {
 // The segments auto-collapse when a thinking phase completes, so the final
 // answer stays the focal point even with reasoning visible. debugMode remains
 // a separate switch for tool-call internals and other diagnostics.
-const { showThinking } = storeToRefs(useSystemSettingsStore())
+const { showThinking, thinkingFull } = storeToRefs(useSystemSettingsStore())
 
 const showThinkingPanel = computed(() => showThinking.value && !!thinkingContent.value)
 
@@ -1107,6 +1124,40 @@ const parsedMetadata = computed(() => {
   return raw
 })
 
+/** Per-message override of the "full reasoning" preference (the collapse banner). */
+const earlyThinkingExpanded = ref(false)
+
+/**
+ * Apply the "full reasoning" preference. When off, only the reasoning span
+ * that produced the answer survives — the last one in the timeline. Everything
+ * is still persisted and still exported by the trajectory endpoint; this is
+ * purely how much of it the bubble shows. A running span is never dropped, so
+ * a live turn still shows the model thinking as it goes.
+ *
+ * Whatever this hides is announced by the banner above the timeline and can be
+ * expanded in place. Dropping spans with no trace is indistinguishable from
+ * losing them — the reader sees reasoning that was there mid-turn simply gone,
+ * and a preference stuck in the off state has no symptom to follow back.
+ */
+function applyThinkingDetail(segs: MessageSegment[]): MessageSegment[] {
+  if (thinkingFull.value || earlyThinkingExpanded.value) return segs
+  const keepIdx = segs.map((s, i) => (s.type === 'thinking' ? i : -1))
+    .filter(i => i >= 0)
+    .pop()
+  if (keepIdx === undefined) return segs
+  return segs.filter((s, i) =>
+    s.type !== 'thinking' || i === keepIdx || s.status === 'running')
+}
+
+/** How many reasoning spans the preference is currently hiding on this message. */
+const hiddenThinkingCount = computed(() => {
+  if (thinkingFull.value || earlyThinkingExpanded.value) return 0
+  const all = (parsedMetadata.value?.segments as MessageSegment[] | undefined) || []
+  const total = all.filter(s => s.type === 'thinking').length
+  const shown = segments.value.filter(s => s.type === 'thinking').length
+  return Math.max(0, total - shown)
+})
+
 const segments = computed<MessageSegment[]>(() => {
   if (props.message.role !== 'assistant') return []
   const meta = parsedMetadata.value
@@ -1125,9 +1176,15 @@ const segments = computed<MessageSegment[]>(() => {
         // iteration's thinking bucket instead of the default-zero bucket
         // colliding with later iteration content. Without this, the fallback
         // thinking renders below the answer for any conversation that has
-        // multi-iteration RFC-22 segments tagged elsewhere.
+        // multi-iteration segments tagged elsewhere.
+        //
+        // seq=-1 keeps it ahead of every producer-numbered segment so the
+        // sort below still applies to the array it was injected into. This
+        // reconstruction has no real emission position — the thinking came
+        // from contentParts, not from the timeline — and leading the turn is
+        // the only defensible placement for it.
         const firstIter = segs.find(s => typeof s.iterationIndex === 'number')?.iterationIndex ?? 0
-        segs.unshift({ id: 'th-fb', type: 'thinking', status: 'completed', thinkingText: thinkingPart.text, iterationIndex: firstIter })
+        segs.unshift({ id: 'th-fb', type: 'thinking', status: 'completed', thinkingText: thinkingPart.text, iterationIndex: firstIter, seq: -1 })
       }
     }
 
@@ -1151,18 +1208,18 @@ const segments = computed<MessageSegment[]>(() => {
     segs.length = 0
     segs.push(...deduped)
 
-    // 修复历史消息顺序：如果 thinking 被落在 content 后面，提到首个 content 前
-    // 只处理单个 thinking 段的常见场景，避免破坏复杂交错时间线
-    const thinkingIndices = segs
-      .map((seg, index) => seg.type === 'thinking' ? index : -1)
-      .filter(index => index >= 0)
-    const firstNonThinkingIdx = segs.findIndex((seg: MessageSegment) => seg.type !== 'thinking')
-    if (thinkingIndices.length === 1 && firstNonThinkingIdx >= 0 && thinkingIndices[0] > firstNonThinkingIdx) {
-      const [thinkingSeg] = segs.splice(thinkingIndices[0], 1)
-      segs.splice(0, 0, thinkingSeg)
+    // 按发射序号排序。segments 携带生产端的单调 `seq`，排序对上面的去重
+    // 步骤是稳定的，且不会按类型搬运任何段落 —— 一段在工具观察之后产生的
+    // thinking 就留在观察之后，那才是模型真正产出它的位置。此前这里把"唯一
+    // 的 thinking 段"强行提到首个 content 之前，会把读完工具结果才得出的推理
+    // 显示在工具卡片上方，语义与实际发生顺序相反。
+    // 没有 `seq` 的走原数组顺序：live 段本就按事件顺序追加，历史消息也只有
+    // 数组顺序这一个信息源，无从重排。
+    if (segs.every(seg => typeof seg.seq === 'number')) {
+      segs.sort((a, b) => (a.seq as number) - (b.seq as number))
     }
 
-    return segs
+    return applyThinkingDetail(segs)
   }
 
   // Fallback：从 toolCalls + contentParts 做 best-effort 重建（旧消息兼容）
@@ -1265,8 +1322,8 @@ function fmtTokens(n: number): string {
  * Group segments by iterationIndex so each ReAct iteration renders as its own
  * thinking/tool-calls/content cluster. Falls back to a single ungrouped bucket
  * for legacy messages (no iterationIndex tagged) so historical conversations
- * keep rendering as before — including the existing "single-thinking reorder"
- * normalization done in the `segments` computed above.
+ * keep rendering as before. Ordering within a bucket is whatever the
+ * `segments` computed above settled on — emission order, by `seq`.
  */
 const groupedIterations = computed(() => {
   const segs = segments.value || []

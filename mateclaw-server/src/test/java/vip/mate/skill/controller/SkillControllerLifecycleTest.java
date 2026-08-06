@@ -58,7 +58,10 @@ class SkillControllerLifecycleTest {
         controller = new SkillController(
                 skillService, null, null, null, null, null, null, null, null, null, null,
                 agentBindingService, null, null,
-                skillLifecycleService, skillCuratorJob, skillCuratorReportStore, null);
+                skillLifecycleService, skillCuratorJob, skillCuratorReportStore,
+                /* skillSnapshotService */ null,
+                /* skillRoutineService */ null,
+                /* skillRoutineMiner */ null, null);
     }
 
     private SkillEntity skill(String state, boolean builtin) {

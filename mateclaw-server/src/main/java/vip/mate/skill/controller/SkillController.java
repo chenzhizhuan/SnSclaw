@@ -34,9 +34,13 @@ import vip.mate.exception.MateClawException;
 import vip.mate.skill.lifecycle.ConfirmRequiredException;
 import vip.mate.skill.lifecycle.LifecycleTransition;
 import vip.mate.skill.lifecycle.SkillCuratorJob;
+import vip.mate.skill.lifecycle.SkillSnapshotService;
+import vip.mate.skill.routine.SkillRoutineMiner;
+import vip.mate.skill.routine.SkillRoutineService;
 import vip.mate.skill.lifecycle.SkillCuratorReport;
 import vip.mate.skill.lifecycle.SkillCuratorReportStore;
 import vip.mate.skill.lifecycle.SkillLifecycleService;
+import vip.mate.skill.lifecycle.model.SkillSnapshotEntity;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -76,6 +80,9 @@ public class SkillController {
     private final SkillLifecycleService skillLifecycleService;
     private final SkillCuratorJob skillCuratorJob;
     private final SkillCuratorReportStore skillCuratorReportStore;
+    private final SkillSnapshotService skillSnapshotService;
+    private final SkillRoutineService skillRoutineService;
+    private final SkillRoutineMiner skillRoutineMiner;
     private final SkillFileService skillFileService;
 
     @Operation(summary = "获取技能分页列表（RFC-042 §2.1）")
@@ -1080,6 +1087,112 @@ public class SkillController {
     @RequireWorkspaceRole("member")
     public R<Map<String, Object>> curatorStatus() {
         return R.ok(skillCuratorJob.status());
+    }
+
+    // ==================== Routine mining ====================
+
+    @Operation(summary = "列出挖掘到的高频请求（例行事项）候选")
+    @GetMapping("/routines")
+    @RequireWorkspaceRole("member")
+    public R<Map<String, Object>> routineList(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false, defaultValue = "50") int limit) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("items", skillRoutineService.list(status, limit));
+        out.put("gates", skillRoutineService.gates());
+        return R.ok(out);
+    }
+
+    @Operation(summary = "立即运行一次例行事项挖掘")
+    @PostMapping("/routines/mine")
+    @RequireWorkspaceRole("admin")
+    public R<Map<String, Object>> routineMine() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("refreshed", skillRoutineMiner.mine());
+        return R.ok(out);
+    }
+
+    @Operation(summary = "忽略某个例行事项候选（后续挖掘不再重开）")
+    @PostMapping("/routines/{id}/dismiss")
+    @RequireWorkspaceRole("admin")
+    public R<Map<String, Object>> routineDismiss(@PathVariable String id) {
+        return R.ok(skillRoutineService.dismiss(parseRoutineId(id)));
+    }
+
+    @Operation(summary = "重新观察一个已忽略的例行事项候选")
+    @PostMapping("/routines/{id}/reopen")
+    @RequireWorkspaceRole("admin")
+    public R<Map<String, Object>> routineReopen(@PathVariable String id) {
+        return R.ok(skillRoutineService.reopen(parseRoutineId(id)));
+    }
+
+    @Operation(summary = "立即把例行事项候选合成为技能（跳过频次门槛）")
+    @PostMapping("/routines/{id}/promote")
+    @RequireWorkspaceRole("admin")
+    public R<Map<String, Object>> routinePromote(@PathVariable String id) {
+        try {
+            return R.ok(skillRoutineService.promoteNow(parseRoutineId(id)));
+        } catch (IllegalStateException e) {
+            throw new MateClawException("err.skill.routine_already_promoted", 409, e.getMessage());
+        }
+    }
+
+    /**
+     * Path variables stay strings end-to-end (19-digit snowflake ids lose
+     * precision as JS numbers); parse once here so a bad id is a clean 400.
+     */
+    private long parseRoutineId(String id) {
+        try {
+            return Long.parseLong(id == null ? "" : id.strip());
+        } catch (NumberFormatException e) {
+            throw new MateClawException("err.skill.routine_not_found", 400, "Invalid routine id: " + id);
+        }
+    }
+
+    @Operation(summary = "列出技能库还原点")
+    @GetMapping("/curator/snapshots")
+    @RequireWorkspaceRole("member")
+    public R<List<Map<String, Object>>> curatorSnapshots() {
+        return R.ok(skillSnapshotService.list(20));
+    }
+
+    @Operation(summary = "手动捕获一个技能库还原点")
+    @PostMapping("/curator/snapshots")
+    @RequireWorkspaceRole("admin")
+    public R<Map<String, Object>> curatorSnapshotCapture(
+            @RequestParam(required = false) String reason) {
+        SkillSnapshotEntity snapshot = skillSnapshotService.capture(
+                reason == null || reason.isBlank() ? "manual" : reason);
+        if (snapshot == null) {
+            throw new MateClawException("err.skill.snapshot_unavailable", 400,
+                    "Snapshot not captured — backups are disabled or there are no skills to capture");
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        // Snowflake id as a string: 19 digits exceed JS Number precision.
+        out.put("id", String.valueOf(snapshot.getId()));
+        out.put("reason", snapshot.getReason());
+        out.put("skillCount", snapshot.getSkillCount());
+        return R.ok(out);
+    }
+
+    @Operation(summary = "将技能库回滚到指定还原点")
+    @PostMapping("/curator/snapshots/{snapshotId}/restore")
+    @RequireWorkspaceRole("admin")
+    public R<Map<String, Object>> curatorSnapshotRestore(@PathVariable String snapshotId) {
+        // Path variable stays a String end-to-end; parsing happens once here so
+        // a malformed id is a 400 rather than a framework-level failure.
+        long id;
+        try {
+            id = Long.parseLong(snapshotId.strip());
+        } catch (NumberFormatException e) {
+            throw new MateClawException("err.skill.snapshot_not_found", 400,
+                    "Invalid snapshot id: " + snapshotId);
+        }
+        try {
+            return R.ok(skillSnapshotService.restore(id));
+        } catch (IllegalArgumentException e) {
+            throw new MateClawException("err.skill.snapshot_not_found", 404, e.getMessage());
+        }
     }
 
     @Operation(summary = "列出最近的 curator 运行报告")

@@ -61,4 +61,14 @@ public class SkillLifecycleProperties {
 
     /** Consolidation model ID ({@code null} = follow the system default model). */
     private String consolidateModelId;
+
+    /**
+     * Whether a restore point is captured before each mutating sweep. Gates
+     * both the automatic pre-sweep capture and the manual one, so there is no
+     * configuration in which a mutating run silently skips its snapshot.
+     */
+    private boolean backupEnabled = true;
+
+    /** Restore points retained; older ones are pruned after each capture. */
+    private int backupKeep = 5;
 }

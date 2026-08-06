@@ -324,6 +324,32 @@ export const skillApi = {
   curatorReports: () => http.get('/skills/curator/reports'),
   /** Read one curator run report (parsed run.json). */
   curatorReport: (runId: string) => http.get(`/skills/curator/reports/${runId}`),
+
+  // ---- Curator restore points ----
+  /** List recent skill-library restore points (newest first). */
+  curatorSnapshots: () => http.get('/skills/curator/snapshots'),
+  /** Capture a restore point on demand. */
+  curatorSnapshotCapture: (reason?: string) =>
+    http.post('/skills/curator/snapshots', null, { params: reason ? { reason } : {} }),
+  /**
+   * Roll the skill library back to a restore point. The id stays a string —
+   * 19-digit snowflake ids lose precision as a JS number.
+   */
+  curatorSnapshotRestore: (snapshotId: string) =>
+    http.post(`/skills/curator/snapshots/${snapshotId}/restore`),
+
+  // ---- Routine mining ----
+  /** Mined recurring-request candidates plus the promotion thresholds. */
+  routines: (status?: string) =>
+    http.get('/skills/routines', { params: status ? { status } : {} }),
+  /** Run a mining sweep now instead of waiting for the nightly job. */
+  routineMine: () => http.post('/skills/routines/mine'),
+  /** Reject a candidate so later sweeps stop re-detecting it. */
+  routineDismiss: (id: string) => http.post(`/skills/routines/${id}/dismiss`),
+  /** Put a dismissed candidate back under observation. */
+  routineReopen: (id: string) => http.post(`/skills/routines/${id}/reopen`),
+  /** Synthesize the skill now, bypassing the recurrence thresholds. */
+  routinePromote: (id: string) => http.post(`/skills/routines/${id}/promote`),
 }
 
 /** Shape returned by GET /skills/{id}/secrets. */

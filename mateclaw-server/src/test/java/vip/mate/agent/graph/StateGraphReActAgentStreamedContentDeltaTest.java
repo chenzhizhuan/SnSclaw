@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import vip.mate.agent.AgentService;
 import vip.mate.agent.ContentKind;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -28,16 +31,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * graph knows definitively whether the completion carried tool calls and whether
  * any observation preceded the text this turn, so downstream consumers read the
  * tag instead of re-deriving the category from stream structure.
+ *
+ * <p>The observation signal is the {@code TOOL_CALL_COUNT} observation counter,
+ * NOT the {@code CURRENT_ITERATION} budget counter — see
+ * {@code observationsWithoutIterationBudget_taggedGrounded} for why.
  */
 class StateGraphReActAgentStreamedContentDeltaTest {
 
     @Test
-    @DisplayName("iteration 0 with tool calls → segmentOnly + PRE_TOOL_NARRATION — provisional rehearsal")
+    @DisplayName("zero observations with tool calls → segmentOnly + PRE_TOOL_NARRATION — provisional rehearsal")
     void preToolNarration_taggedProvisional() {
         AgentService.StreamDelta d = StateGraphReActAgent.streamedContentDelta(
                 /* isFinalAnswerTurn */ false,
                 /* carriesToolCalls */ true,
-                /* iteration */ 0,
+                /* observationCount */ 0,
                 "先加载 skill，然后逐个查询。");
 
         assertTrue(d.persistenceOnly(),
@@ -50,10 +57,10 @@ class StateGraphReActAgentStreamedContentDeltaTest {
     }
 
     @Test
-    @DisplayName("iteration ≥1 narration → segmentOnly + GROUNDED_NARRATION even when the completion issues more tool calls")
+    @DisplayName("≥1 observation → segmentOnly + GROUNDED_NARRATION even when the completion issues more tool calls")
     void postObservationNarration_taggedGrounded() {
         AgentService.StreamDelta d = StateGraphReActAgent.streamedContentDelta(
-                false, /* carriesToolCalls */ true, /* iteration */ 1, "第一间空闲，继续查下一间。");
+                false, /* carriesToolCalls */ true, /* observationCount */ 1, "第一间空闲，继续查下一间。");
 
         assertTrue(d.segmentOnly());
         assertEquals(ContentKind.GROUNDED_NARRATION, d.kind(),
@@ -61,10 +68,31 @@ class StateGraphReActAgentStreamedContentDeltaTest {
     }
 
     @Test
-    @DisplayName("iteration 0 without tool calls (non-terminal) → GROUNDED_NARRATION — conservative, never replaced")
+    @DisplayName("regression: observations landed while the iteration budget still reads 0 → GROUNDED_NARRATION")
+    void observationsWithoutIterationBudget_taggedGrounded() {
+        // The false-collapse this pins. Two graph paths leave CURRENT_ITERATION
+        // at 0 after real observations already happened:
+        //   - ObservationNode refunds the iteration for a progressive-disclosure
+        //     round (load_skill / enable_tool), and
+        //   - GoalEvaluationNode resets it to 0 on a hard continuation.
+        // Reading the budget counter tagged the next round's grounded narration
+        // as provisional, so renderers collapsed it. Observed live: a turn whose
+        // first round was `load_skill` had its second-round narration
+        // ("我先检查…环境配置和 API 参考文档。") folded behind the "模型在工具执行前
+        // 预写的内容" toggle. The observation counter is not refunded or reset.
+        AgentService.StreamDelta d = StateGraphReActAgent.streamedContentDelta(
+                false, /* carriesToolCalls */ true, /* observationCount */ 1,
+                "我先检查腾讯会议技能的环境配置和 API 参考文档。");
+
+        assertEquals(ContentKind.GROUNDED_NARRATION, d.kind(),
+                "one observation already landed — narration after it is grounded regardless of the iteration budget");
+    }
+
+    @Test
+    @DisplayName("zero observations without tool calls (non-terminal) → GROUNDED_NARRATION — conservative, never replaced")
     void noToolCallCompletion_taggedGrounded() {
         AgentService.StreamDelta d = StateGraphReActAgent.streamedContentDelta(
-                false, /* carriesToolCalls */ false, /* iteration */ 0, "narrative without tools");
+                false, /* carriesToolCalls */ false, /* observationCount */ 0, "narrative without tools");
 
         assertEquals(ContentKind.GROUNDED_NARRATION, d.kind(),
                 "a completion that closed without tool calls has no later observation to defer to — keep it");
@@ -118,7 +146,7 @@ class StateGraphReActAgentStreamedContentDeltaTest {
     @Test
     @DisplayName("kind-carrying delta is followed by a segment_kind broadcast event")
     void kindDeltaEmitsSegmentKindEvent() {
-        java.util.List<AgentService.StreamDelta> deltas = new java.util.ArrayList<>();
+        List<AgentService.StreamDelta> deltas = new ArrayList<>();
         StateGraphReActAgent.addWithKindEvent(deltas,
                 StateGraphReActAgent.streamedContentDelta(false, true, 0, "先查询。"));
 
@@ -132,7 +160,7 @@ class StateGraphReActAgentStreamedContentDeltaTest {
     @Test
     @DisplayName("untagged delta emits no segment_kind event")
     void untaggedDeltaEmitsNoEvent() {
-        java.util.List<AgentService.StreamDelta> deltas = new java.util.ArrayList<>();
+        List<AgentService.StreamDelta> deltas = new ArrayList<>();
         StateGraphReActAgent.addWithKindEvent(deltas, AgentService.StreamDelta.segmentOnly("x", null));
 
         assertEquals(1, deltas.size());

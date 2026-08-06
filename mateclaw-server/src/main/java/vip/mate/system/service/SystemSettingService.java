@@ -33,6 +33,7 @@ public class SystemSettingService {
     private static final String STREAM_ENABLED_KEY = "streamEnabled";
     private static final String DEBUG_MODE_KEY = "debugMode";
     private static final String SHOW_THINKING_KEY = "showThinking";
+    private static final String THINKING_FULL_KEY = "thinkingFull";
     private static final String STATEGRAPH_ENABLED_KEY = "stateGraphEnabled";
 
     // 搜索服务配置 keys
@@ -166,6 +167,7 @@ public class SystemSettingService {
         dto.setStreamEnabled(Boolean.parseBoolean(getValue(STREAM_ENABLED_KEY, "true")));
         dto.setDebugMode(Boolean.parseBoolean(getValue(DEBUG_MODE_KEY, "false")));
         dto.setShowThinking(Boolean.parseBoolean(getValue(SHOW_THINKING_KEY, "true")));
+        dto.setThinkingFull(Boolean.parseBoolean(getValue(THINKING_FULL_KEY, "true")));
         dto.setStateGraphEnabled(Boolean.parseBoolean(getValue(STATEGRAPH_ENABLED_KEY, "false")));
 
         // 搜索服务配置
@@ -333,6 +335,10 @@ public class SystemSettingService {
         }
         if (dto.getShowThinking() != null) {
             saveValue(SHOW_THINKING_KEY, String.valueOf(dto.getShowThinking()), "聊天界面是否展示模型思考过程");
+        }
+        if (dto.getThinkingFull() != null) {
+            saveValue(THINKING_FULL_KEY, String.valueOf(dto.getThinkingFull()),
+                    "聊天界面是否展示每一轮的思考，而非只展示得出答案的那一轮");
         }
         if (dto.getStateGraphEnabled() != null) {
             saveValue(STATEGRAPH_ENABLED_KEY, String.valueOf(dto.getStateGraphEnabled()), "启用 StateGraph 架构的 ReAct Agent");

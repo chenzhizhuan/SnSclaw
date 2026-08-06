@@ -63,6 +63,20 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
      */
     private final vip.mate.agent.AgentToolSet toolSet;
 
+    /**
+     * Whether every iteration's reasoning is persisted, or only the terminal
+     * one. Set from {@code mate.agent.reasoning.retention}; defaults to keeping
+     * everything so a turn stays replayable without operator opt-in. A setter
+     * rather than a constructor argument — the agent is built per request in a
+     * builder that already threads a dozen collaborators, and this is a single
+     * boolean with a safe default.
+     */
+    private boolean persistEveryIterationReasoning = true;
+
+    public void setPersistEveryIterationReasoning(boolean persistEveryIterationReasoning) {
+        this.persistEveryIterationReasoning = persistEveryIterationReasoning;
+    }
+
     public StateGraphReActAgent(ChatClient chatClient, ConversationService conversationService,
                                 CompiledGraph compiledGraph,
                                 org.springframework.ai.chat.model.ChatModel chatModel,
@@ -208,6 +222,7 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
             AtomicBoolean finalAnswerEmitted = new AtomicBoolean(false);
             AtomicBoolean finalThinkingEmitted = new AtomicBoolean(false);
             AtomicReference<String> lastEmittedStreamedContent = new AtomicReference<>("");
+            AtomicReference<String> lastEmittedIterationThinking = new AtomicReference<>("");
             // Silent-termination guard (mirrors chatStructuredStream)
             AtomicInteger lastIteration = new AtomicInteger(0);
             AtomicInteger lastSoftCap = new AtomicInteger(0);
@@ -228,6 +243,48 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
 
                         boolean contentAlreadyStreamed = output.state().value(CONTENT_STREAMED, false);
                         boolean thinkingAlreadyStreamed = output.state().value(THINKING_STREAMED, false);
+
+                        // Thinking is emitted BEFORE any content delta of the same
+                        // batch. The reasoning that produced an answer precedes the
+                        // answer, and the accumulator builds its segment timeline in
+                        // delta arrival order — emitting thinking last appended a
+                        // thinking segment after the content segment, which readers
+                        // then had to reorder. FINAL_THINKING and FINAL_ANSWER are
+                        // written by the same node output, so ordering them here is
+                        // enough to make the persisted timeline match reality.
+                        //
+                        // Every iteration's reasoning is persisted, not just the
+                        // terminal one. A tool-calling iteration parks its reasoning
+                        // in STREAMED_THINKING (REPLACE, one value per node), which
+                        // the live channel already broadcast — persistOnly carries it
+                        // into the accumulator without a second broadcast. Without
+                        // this, a turn that ran N tool rounds kept only the last
+                        // round's thinking, so the persisted turn read as a bare
+                        // conclusion and the reasoning that justified each tool call
+                        // survived nowhere.
+                        //
+                        // The cursor tracks STREAMED_THINKING and nothing else. A
+                        // shared cursor would let the stale value re-qualify: the key
+                        // keeps its last write for the rest of the run, so once an
+                        // unrelated emission moved a shared cursor past it, the same
+                        // span was emitted a second time — after the final answer,
+                        // since the later nodes run after the answer was streamed.
+                        String iterationThinking = output.state().<String>value(STREAMED_THINKING).orElse("");
+                        if (persistEveryIterationReasoning
+                                && !iterationThinking.isEmpty()
+                                && !iterationThinking.equals(lastEmittedIterationThinking.get())) {
+                            lastEmittedIterationThinking.set(iterationThinking);
+                            deltas.add(AgentService.StreamDelta.persistOnly(null, iterationThinking));
+                        }
+
+                        String thinking = extractFinalThinking(output);
+                        if (thinking != null && !thinking.isEmpty()
+                                && !thinking.equals(lastEmittedIterationThinking.get())
+                                && finalThinkingEmitted.compareAndSet(false, true)) {
+                            deltas.add(thinkingAlreadyStreamed
+                                    ? AgentService.StreamDelta.persistOnly(null, thinking)
+                                    : new AgentService.StreamDelta(null, thinking));
+                        }
 
                         // Route per-iteration STREAMED_CONTENT (reasoning preamble +
                         // SummarizingNode output) into segments only — final-answer
@@ -254,7 +311,7 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
                             lastEmittedStreamedContent.set(streamed);
                             addWithKindEvent(deltas, streamedContentDelta(isFinalAnswerTurn,
                                     output.state().value(NEEDS_TOOL_CALL, false),
-                                    output.state().value(CURRENT_ITERATION, 0),
+                                    output.state().value(TOOL_CALL_COUNT, 0),
                                     streamed));
                         }
 
@@ -263,13 +320,6 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
                             if (answer != null && !answer.isEmpty()) {
                                 addWithKindEvent(deltas, AgentService.StreamDelta.finalAnswer(answer, contentAlreadyStreamed));
                             }
-                        }
-                        String thinking = extractFinalThinking(output);
-                        if (thinking != null && !thinking.isEmpty()
-                                && finalThinkingEmitted.compareAndSet(false, true)) {
-                            deltas.add(thinkingAlreadyStreamed
-                                    ? AgentService.StreamDelta.persistOnly(null, thinking)
-                                    : new AgentService.StreamDelta(null, thinking));
                         }
 
                         finalPromptTokens.set(output.state().value(PROMPT_TOKENS, 0));
@@ -368,6 +418,9 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
             // 用 compareAndSet 保证只取第一次，避免 content/thinking 被重复追加
             AtomicBoolean finalAnswerEmitted = new AtomicBoolean(false);
             AtomicBoolean finalThinkingEmitted = new AtomicBoolean(false);
+            // 同 STREAMED_CONTENT：STREAMED_THINKING 也是 REPLACE，用独立游标
+            // 跟踪已持久化的每轮 thinking，避免后续节点的 NodeOutput 重复发送。
+            AtomicReference<String> lastEmittedIterationThinking = new AtomicReference<>("");
             // STREAMED_CONTENT 是 REPLACE 策略（每轮 ReasoningNode/SummarizingNode 覆写），
             // 用 lastEmitted 跟踪已发送的值，避免在 ActionNode/ObservationNode 的 NodeOutput 上重复发送同一段内容。
             AtomicReference<String> lastEmittedStreamedContent = new AtomicReference<>("");
@@ -404,7 +457,31 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
                         boolean thinkingAlreadyStreamed = output.state()
                                 .value(THINKING_STREAMED, false);
 
-                        // 2a. Route per-iteration narrative into the segments timeline
+                        // 2a. Thinking first — see the ordering note in
+                        //     chatStructuredStream. The accumulator builds its
+                        //     segment timeline in delta arrival order, so the
+                        //     reasoning must be emitted ahead of the answer it
+                        //     produced. Every iteration's reasoning is persisted —
+                        //     see the note in chatStructuredStream for why the
+                        //     terminal one alone is not enough.
+                        String iterationThinking = output.state().<String>value(STREAMED_THINKING).orElse("");
+                        if (persistEveryIterationReasoning
+                                && !iterationThinking.isEmpty()
+                                && !iterationThinking.equals(lastEmittedIterationThinking.get())) {
+                            lastEmittedIterationThinking.set(iterationThinking);
+                            deltas.add(AgentService.StreamDelta.persistOnly(null, iterationThinking));
+                        }
+
+                        String thinking = extractFinalThinking(output);
+                        if (thinking != null && !thinking.isEmpty()
+                                && !thinking.equals(lastEmittedIterationThinking.get())
+                                && finalThinkingEmitted.compareAndSet(false, true)) {
+                            deltas.add(thinkingAlreadyStreamed
+                                    ? AgentService.StreamDelta.persistOnly(null, thinking)
+                                    : new AgentService.StreamDelta(null, thinking));
+                        }
+
+                        // 2b. Route per-iteration narrative into the segments timeline
                         //     so the segmented UI view still shows "我来…" preludes
                         //     between tool cards, but keep the top-level content
                         //     field (= persisted mate_message.content) reserved for
@@ -426,7 +503,7 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
                             lastEmittedStreamedContent.set(streamed);
                             addWithKindEvent(deltas, streamedContentDelta(isFinalAnswerTurn,
                                     output.state().value(NEEDS_TOOL_CALL, false),
-                                    output.state().value(CURRENT_ITERATION, 0),
+                                    output.state().value(TOOL_CALL_COUNT, 0),
                                     streamed));
                         }
 
@@ -435,14 +512,6 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
                             if (answer != null && !answer.isEmpty()) {
                                 addWithKindEvent(deltas, AgentService.StreamDelta.finalAnswer(answer, contentAlreadyStreamed));
                             }
-                        }
-
-                        String thinking = extractFinalThinking(output);
-                        if (thinking != null && !thinking.isEmpty()
-                                && finalThinkingEmitted.compareAndSet(false, true)) {
-                            deltas.add(thinkingAlreadyStreamed
-                                    ? AgentService.StreamDelta.persistOnly(null, thinking)
-                                    : new AgentService.StreamDelta(null, thinking));
                         }
 
                         // 3. 更新最新累计 token usage
@@ -648,15 +717,23 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
      * {@link ContentKind}: the graph is the only layer that definitively knows
      * whether the completion carried tool calls ({@code NEEDS_TOOL_CALL}) and
      * whether any tool observation preceded the text this turn
-     * ({@code CURRENT_ITERATION} — ObservationNode increments it after each
-     * observed round, so iteration 0 means "no observation yet"). Downstream
-     * consumers read the tag instead of re-deriving it from stream structure.
+     * ({@code TOOL_CALL_COUNT} — ObservationNode adds each round's observed
+     * results to it, so 0 means "no observation yet"). Downstream consumers
+     * read the tag instead of re-deriving it from stream structure.
+     *
+     * <p>The observation signal MUST be the observation counter, not
+     * {@code CURRENT_ITERATION}: the latter is an iteration <em>budget</em>
+     * counter that ObservationNode refunds for progressive-disclosure rounds
+     * (load_skill / enable_tool) and GoalEvaluationNode resets to 0 on a hard
+     * continuation. Either path leaves the budget at 0 after real observations
+     * already landed, which tagged grounded narration as provisional and made
+     * renderers collapse it.
      *
      * <ul>
      *   <li>terminal turn → {@code FINAL_ANSWER};</li>
-     *   <li>completion carries tool calls and no observation happened yet this
-     *       turn → {@code PRE_TOOL_NARRATION} (provisional, may be replaced by
-     *       the turn's next content);</li>
+     *   <li>completion carries tool calls and no tool observation happened yet
+     *       this turn → {@code PRE_TOOL_NARRATION} (provisional, may be
+     *       replaced by the turn's next content);</li>
      *   <li>otherwise → {@code GROUNDED_NARRATION} (follows an observation, or
      *       closed its completion without tool calls — never replaced).</li>
      * </ul>
@@ -685,11 +762,11 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
     }
 
     static AgentService.StreamDelta streamedContentDelta(boolean isFinalAnswerTurn, boolean carriesToolCalls,
-                                                         int iteration, String streamed) {
+                                                         int observationCount, String streamed) {
         if (isFinalAnswerTurn) {
             return AgentService.StreamDelta.persistOnly(streamed, null, ContentKind.FINAL_ANSWER);
         }
-        ContentKind kind = carriesToolCalls && iteration == 0
+        ContentKind kind = carriesToolCalls && observationCount == 0
                 ? ContentKind.PRE_TOOL_NARRATION
                 : ContentKind.GROUNDED_NARRATION;
         return AgentService.StreamDelta.segmentOnly(streamed, null, kind);

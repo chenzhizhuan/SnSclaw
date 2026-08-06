@@ -12,6 +12,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import vip.mate.agent.AgentGraphBuilder;
 import vip.mate.llm.service.ModelConfigService;
 import vip.mate.skill.model.SkillEntity;
+import vip.mate.skill.model.SkillOrigin;
 import vip.mate.skill.service.SkillService;
 import vip.mate.tool.builtin.SkillManageTool;
 
@@ -104,14 +105,14 @@ class SkillConsolidationServiceTest {
         stubLlm("[{\"umbrella_name\":\"spring-rest\",\"umbrella_content\":\"---\\nname: spring-rest\\n---\\n# X\","
                 + "\"absorb\":[\"spring-rest-1\",\"spring-rest-2\"],\"reason\":\"dupes\"}]");
         when(skillService.findByName("spring-rest")).thenReturn(null);
-        when(skillManageTool.skill_manage(any(), any(), any(), any(), any(), any(), any()))
+        when(skillManageTool.skillManageAs(eq(SkillOrigin.AGENT), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn("Skill 'spring-rest' created successfully (security scan: PASSED).");
 
         SkillCuratorReport.Builder report = SkillCuratorReport.builder();
         service.consolidate(candidates(4), LocalDateTime.now(), false, report);
 
         verify(skillManageTool, times(1))
-                .skill_manage(eq("create"), eq("spring-rest"), any(), any(), any(), any(), any());
+                .skillManageAs(eq(SkillOrigin.AGENT), eq("create"), eq("spring-rest"), any(), any(), any(), any(), any());
         verify(lifecycleService, times(1))
                 .applyManual(argSkill("spring-rest-1"), eq(LifecycleTransition.TO_ARCHIVED), any(), any());
         verify(lifecycleService, times(1))
@@ -132,7 +133,7 @@ class SkillConsolidationServiceTest {
         SkillCuratorReport.Builder report = SkillCuratorReport.builder();
         service.consolidate(candidates(4), LocalDateTime.now(), true, report);
 
-        verify(skillManageTool, never()).skill_manage(any(), any(), any(), any(), any(), any(), any());
+        verify(skillManageTool, never()).skillManageAs(eq(SkillOrigin.AGENT), any(), any(), any(), any(), any(), any(), any());
         verify(lifecycleService, never()).applyManual(any(), any(), any(), any());
         List<SkillCuratorReport.ConsolidationRow> rows = report.build().getConsolidations();
         assertEquals(1, rows.size());
@@ -150,7 +151,7 @@ class SkillConsolidationServiceTest {
         service.consolidate(candidates(4), LocalDateTime.now(), false, report);
 
         // Only spring-rest-1 is in scope → 1 absorbed for a NEW umbrella → not a real merge → skipped.
-        verify(skillManageTool, never()).skill_manage(any(), any(), any(), any(), any(), any(), any());
+        verify(skillManageTool, never()).skillManageAs(eq(SkillOrigin.AGENT), any(), any(), any(), any(), any(), any(), any());
         verify(lifecycleService, never()).applyManual(any(), any(), any(), any());
     }
 
@@ -163,13 +164,13 @@ class SkillConsolidationServiceTest {
         String g2 = "{\"umbrella_name\":\"u2\",\"umbrella_content\":\"---\\nname: u2\\n---\\n#\","
                 + "\"absorb\":[\"spring-rest-3\",\"spring-rest-4\"],\"reason\":\"b\"}";
         stubLlm("[" + g1 + "," + g2 + "]");
-        when(skillManageTool.skill_manage(any(), any(), any(), any(), any(), any(), any()))
+        when(skillManageTool.skillManageAs(eq(SkillOrigin.AGENT), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn("created successfully");
 
         SkillCuratorReport.Builder report = SkillCuratorReport.builder();
         service.consolidate(candidates(4), LocalDateTime.now(), false, report);
 
-        verify(skillManageTool, times(1)).skill_manage(any(), any(), any(), any(), any(), any(), any());
+        verify(skillManageTool, times(1)).skillManageAs(eq(SkillOrigin.AGENT), any(), any(), any(), any(), any(), any(), any());
     }
 
     /** Mockito arg matcher for a SkillEntity with the given name. */

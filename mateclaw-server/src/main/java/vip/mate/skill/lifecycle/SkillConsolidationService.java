@@ -17,6 +17,7 @@ import vip.mate.agent.prompt.PromptLoader;
 import vip.mate.llm.model.ModelConfigEntity;
 import vip.mate.llm.service.ModelConfigService;
 import vip.mate.skill.model.SkillEntity;
+import vip.mate.skill.model.SkillOrigin;
 import vip.mate.skill.service.SkillService;
 import vip.mate.tool.builtin.SkillManageTool;
 
@@ -139,7 +140,8 @@ public class SkillConsolidationService {
         ToolContext ctx = toolContext(lineageConv);
 
         String act = willCreate ? "create" : "edit";
-        String result = skillManageTool.skill_manage(act, umbrellaName, umbrellaContent, null, null, null, ctx);
+        String result = skillManageTool.skillManageAs(SkillOrigin.AGENT, act, umbrellaName,
+                umbrellaContent, null, null, null, ctx);
         boolean umbrellaOk = result != null
                 && !result.startsWith("Error") && !result.startsWith("Security scan BLOCKED");
         if (!umbrellaOk) {
