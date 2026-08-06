@@ -111,6 +111,22 @@ public class SkillEntity {
     private String sourceConversationId;
 
     /**
+     * Authorship as a curation policy flag: {@code user} (requested by a
+     * person in a foreground conversation or via the admin UI — off-limits to
+     * autonomous curation), {@code agent} (written by the reflection
+     * reviewer), or {@code routine} (written by routine mining).
+     *
+     * <p>Distinct from {@link #sourceConversationId}, which only records
+     * <em>where</em> a skill came from. Both a user-requested skill and an
+     * autonomously-authored one carry a conversation id, so that field alone
+     * cannot tell the curator which skills it may age out.
+     *
+     * @see SkillOrigin
+     */
+    @TableField(value = "origin", updateStrategy = FieldStrategy.ALWAYS)
+    private String origin;
+
+    /**
      * RFC-023：安全扫描状态。
      * NULL = 旧数据或手动创建（不受扫描约束），PASSED = 扫描通过，FAILED = 扫描拦截。
      * listEnabledSkills 过滤条件：NULL 或 PASSED 才加载。

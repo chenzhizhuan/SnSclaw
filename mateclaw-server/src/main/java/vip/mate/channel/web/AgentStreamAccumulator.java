@@ -212,13 +212,22 @@ public final class AgentStreamAccumulator {
 
         // thinking_delta
         if (delta.thinking() != null && !delta.thinking().isBlank()) {
+            var seg = findLastRunning("thinking");
+            // No running thinking segment means this delta opens a new reasoning
+            // span (a fresh iteration, after a tool call closed the previous one).
+            // The flat `thinking` field concatenates every span of the turn, so
+            // without a break the spans glue into one run-on paragraph — spans
+            // are separate thoughts and read as such only when kept apart.
+            boolean opensNewSpan = seg == null;
             if (!delta.segmentOnly()) {
+                if (opensNewSpan && thinking.length() > 0) {
+                    thinking.append("\n\n");
+                }
                 thinking.append(delta.thinking());
             }
             if (!delta.persistenceOnly()) {
                 sink.broadcast(conversationId, "thinking_delta", Map.of("delta", delta.thinking()));
             }
-            var seg = findLastRunning("thinking");
             if (seg != null) {
                 seg.put("thinkingText", seg.getOrDefault("thinkingText", "") + delta.thinking());
             } else {
@@ -394,8 +403,15 @@ public final class AgentStreamAccumulator {
 
     private Map<String, Object> newSegment(String type) {
         Map<String, Object> seg = new LinkedHashMap<>();
-        seg.put("id", type.substring(0, 2) + "-" + segCounter++);
+        int seq = segCounter++;
+        seg.put("id", type.substring(0, 2) + "-" + seq);
         seg.put("type", type);
+        // Monotonic emission index. Renderers order the timeline by this
+        // rather than inferring a position from the segment's type: array
+        // order can be perturbed on the way to the UI (dedup, fallback
+        // injection, live/persisted merges), and type-based relocation
+        // moves a span away from the point it was actually produced at.
+        seg.put("seq", seq);
         seg.put("status", "running");
         // Wall-clock bounds let history replays show the real per-segment
         // duration (e.g. "thought for 12s") instead of estimating from length.

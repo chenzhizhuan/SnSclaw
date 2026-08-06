@@ -1147,6 +1147,21 @@ public class ConversationService {
     }
 
     /**
+     * Render the whole conversation as one linear transcript for debugging and
+     * acceptance: every reasoning span, tool call, tool result and answer in
+     * emission order. Server paths (never the file system) are exposed, same as
+     * {@link #renderMessageContent(MessageEntity, boolean)} with
+     * {@code includePath=false}.
+     */
+    public String renderTrajectory(String conversationId) {
+        List<MessageEntity> messages = listMessages(conversationId);
+        List<String> rendered = messages.stream()
+                .map(message -> renderMessageContent(message, false))
+                .toList();
+        return new TrajectoryRenderer(objectMapper).render(conversationId, messages, rendered);
+    }
+
+    /**
      * External-facing message views for untrusted callers (webchat visitors).
      * Strips the server-side absolute file path from both the structured parts
      * ({@code path} nulled) and the rendered text, so the server filesystem

@@ -31,7 +31,9 @@ import vip.mate.agent.graph.plan.state.PlanStateKeys;
 import vip.mate.agent.graph.state.MateClawStateKeys;
 import vip.mate.agent.binding.service.AgentBindingService;
 import vip.mate.agent.model.AgentEntity;
+import org.springframework.beans.factory.annotation.Autowired;
 import vip.mate.config.GraphObservationProperties;
+import vip.mate.config.ReasoningRetentionProperties;
 import vip.mate.exception.MateClawException;
 import vip.mate.llm.chatmodel.OpenAiCompatibleChatModelBuilder;
 import vip.mate.llm.chatmodel.ReasoningEffortResolver;
@@ -169,9 +171,22 @@ public class AgentGraphBuilder {
      */
     private vip.mate.audit.service.AuditEventService auditEventService;
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @Autowired(required = false)
     public void setAuditEventService(vip.mate.audit.service.AuditEventService s) {
         this.auditEventService = s;
+    }
+
+    /**
+     * Reasoning retention policy for ReAct turns. Setter injection so the
+     * {@code @RequiredArgsConstructor} signature stays stable for the unit
+     * constructions across the test suite; null in those, where the agent's own
+     * default (keep every iteration) applies.
+     */
+    private ReasoningRetentionProperties reasoningRetentionProperties;
+
+    @Autowired(required = false)
+    public void setReasoningRetentionProperties(ReasoningRetentionProperties p) {
+        this.reasoningRetentionProperties = p;
     }
 
     /**
@@ -571,8 +586,12 @@ public class AgentGraphBuilder {
         String reasoningEffort = resolveReasoningEffortForModel(runtimeModel);
         CompiledGraph compiledGraph = buildReActGraph(toolSet, chatModel, maxIter, reasoningEffort,
                 runtimeModel, agentId, skillCatalogRenderer, prefixBudgetPlan, autoDemotedTools);
-        return new StateGraphReActAgent(chatClient, conversationService, compiledGraph,
+        StateGraphReActAgent agent = new StateGraphReActAgent(chatClient, conversationService, compiledGraph,
                 chatModel, conversationWindowManager, toolSet);
+        if (reasoningRetentionProperties != null) {
+            agent.setPersistEveryIterationReasoning(reasoningRetentionProperties.persistsEveryIteration());
+        }
+        return agent;
     }
 
     StateGraphPlanExecuteAgent buildPlanExecuteAgent(AgentToolSet toolSet, ModelConfigEntity runtimeModel, int maxIter) {
@@ -683,6 +702,7 @@ public class AgentGraphBuilder {
                     // Thinking 键
                     .addStrategy(PlanStateKeys.FINAL_SUMMARY_THINKING, KeyStrategy.REPLACE)
                     .addStrategy(PlanStateKeys.CURRENT_STEP_THINKING, KeyStrategy.REPLACE)
+                    .addStrategy(PlanStateKeys.PLAN_THINKING, KeyStrategy.REPLACE)
                     // 流式防重键
                     .addStrategy(MateClawStateKeys.CONTENT_STREAMED, KeyStrategy.REPLACE)
                     .addStrategy(MateClawStateKeys.THINKING_STREAMED, KeyStrategy.REPLACE)

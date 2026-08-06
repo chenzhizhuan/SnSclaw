@@ -699,7 +699,8 @@ public class PlanGenerationNode implements NodeAction {
                             .planValid(true)
                             .currentStepIndex(0)
                             .currentPhase("plan_generated")
-                            .thinkingStreamed(!result.thinking().isEmpty())
+                            .planThinking(result.thinking())
+                        .thinkingStreamed(!result.thinking().isEmpty())
                             .mergeUsage(state, result)
                             .events(events)
                             .build();
@@ -714,6 +715,7 @@ public class PlanGenerationNode implements NodeAction {
                         .directAnswer(directAnswer)
                         .currentPhase("direct_answer")
                         .contentStreamed(true)
+                        .planThinking(result.thinking())
                         .thinkingStreamed(!result.thinking().isEmpty())
                         .mergeUsage(state, result)
                         .events(events)
@@ -755,7 +757,8 @@ public class PlanGenerationNode implements NodeAction {
                             .directAnswer(announcement)
                             .currentPhase("direct_answer")
                             .contentStreamed(true)
-                            .thinkingStreamed(!result.thinking().isEmpty())
+                            .planThinking(result.thinking())
+                        .thinkingStreamed(!result.thinking().isEmpty())
                             .mergeUsage(state, result)
                             .events(events)
                             .build();
@@ -799,7 +802,8 @@ public class PlanGenerationNode implements NodeAction {
                     .currentStepIndex(0)
                     .currentPhase("plan_generated")
                     .contentStreamed(true)
-                    .thinkingStreamed(!result.thinking().isEmpty())
+                    .planThinking(result.thinking())
+                        .thinkingStreamed(!result.thinking().isEmpty())
                     .mergeUsage(state, result)
                     .events(events);
             if (autoGoal != null) {

@@ -786,6 +786,24 @@ defineExpose({
   cursor: not-allowed;
 }
 
+/* Focus ring. Left unstyled, these fall back to the UA default, whose
+   `outline: auto` draws a thick halo in a colour the browser picks for
+   contrast — a gold ring on the red stop button, which reads as an error
+   state rather than focus. Restyled, not removed: keyboard users need the
+   affordance, so this stays a visible ring in the app's own palette. */
+.action-btn:focus-visible {
+  outline: 2px solid var(--mc-primary, #D97757);
+  outline-offset: 2px;
+}
+
+.send-btn.is-loading:focus-visible {
+  outline-color: var(--mc-danger, #ef4444);
+}
+
+.send-btn.is-interrupt:focus-visible {
+  outline-color: var(--mc-warning, #f59e0b);
+}
+
 .thinking-btn {
   position: relative;
 }
@@ -818,7 +836,11 @@ defineExpose({
   background: var(--mc-primary-light, rgba(217, 119, 87, 0.08));
 }
 
-.send-btn {
+/* Qualified with .action-btn so the send button outranks the generic
+   `.action-btn:hover` that leaks in from a non-scoped stylesheet elsewhere
+   in the app. Bare `.send-btn` ties with it on specificity and loses on
+   source order, which erased the button's fill on hover. */
+.action-btn.send-btn {
   background: var(--mc-primary, #D97757);
   color: white;
 }

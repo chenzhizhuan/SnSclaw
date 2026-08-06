@@ -6,10 +6,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import vip.mate.agent.context.ChatOrigin;
+import vip.mate.skill.event.SkillAuthoredEvent;
 import vip.mate.skill.model.SkillEntity;
+import vip.mate.skill.model.SkillOrigin;
 import vip.mate.skill.runtime.SkillRuntimeService;
 import vip.mate.skill.runtime.SkillSecurityService;
 import vip.mate.skill.runtime.SkillValidationResult;
@@ -44,6 +47,7 @@ public class SkillManageTool {
     private final SkillSecurityService securityService;
     private final SkillWorkspaceManager workspaceManager;
     private final SkillRuntimeService runtimeService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** Skill 名称格式：小写字母/数字/连字符/下划线/点，首字符必须是字母或数字 */
     private static final Pattern NAME_PATTERN = Pattern.compile("^[a-z0-9][a-z0-9._-]{0,63}$");
@@ -140,6 +144,27 @@ public class SkillManageTool {
             // skill with the agent's owning workspace.
             @Nullable ToolContext toolContext
     ) {
+        // A tool call is by definition a live conversation turn, so anything
+        // arriving here was asked for by a person. Autonomous callers use
+        // skillManageAs() and declare their own origin.
+        return skillManageAs(SkillOrigin.USER, action, name, content, oldText, newText, filePath, toolContext);
+    }
+
+    /**
+     * Same pipeline as {@link #skill_manage}, with the authorship stamp made
+     * explicit for callers that are not a user-facing turn — the reflection
+     * reviewer and the routine promoter.
+     *
+     * <p>Not exposed to the model: origin is a trust boundary, and a value the
+     * model could set would be worth nothing. Routing autonomous writes through
+     * the same method keeps them subject to the identical security scan, name
+     * validation, builtin guard, and workspace export.
+     *
+     * @param skillOrigin authorship to stamp on a newly created skill
+     */
+    public String skillManageAs(SkillOrigin skillOrigin, String action, String name, String content,
+                                String oldText, String newText, String filePath,
+                                @Nullable ToolContext toolContext) {
         if (action == null || action.isBlank()) {
             return "Error: action is required (create | edit | patch | delete)";
         }
@@ -158,7 +183,8 @@ public class SkillManageTool {
         String sourceConversationId = origin.conversationId();
 
         return switch (action.strip().toLowerCase()) {
-            case "create"     -> doCreate(normalizedName, content, workspaceId, sourceConversationId);
+            case "create"     -> doCreate(normalizedName, content, workspaceId, sourceConversationId,
+                                          origin.agentId(), skillOrigin);
             case "edit"       -> doEdit(normalizedName, content);
             case "patch"      -> doPatch(normalizedName, oldText, newText);
             case "write_file" -> doWriteFile(normalizedName, filePath, content);
@@ -169,7 +195,8 @@ public class SkillManageTool {
 
     // ==================== Create ====================
 
-    private String doCreate(String name, String content, Long workspaceId, String sourceConversationId) {
+    private String doCreate(String name, String content, Long workspaceId, String sourceConversationId,
+                            Long agentId, SkillOrigin skillOrigin) {
         if (content == null || content.isBlank()) {
             return "Error: content is required for create action. Provide full SKILL.md content.";
         }
@@ -205,6 +232,10 @@ public class SkillManageTool {
             if (sourceConversationId != null && !sourceConversationId.isBlank()) {
                 skill.setSourceConversationId(sourceConversationId);
             }
+            // Authorship decides whether autonomous curation may later age or
+            // rewrite this skill. Stamped here because this is the only point
+            // that still knows whether a user was present.
+            skill.setOrigin((skillOrigin == null ? SkillOrigin.USER : skillOrigin).code());
 
             skillService.createSkill(skill);
 
@@ -213,6 +244,17 @@ public class SkillManageTool {
                 workspaceManager.exportToWorkspace(name, content, skill.getWorkspaceId());
             } catch (Exception e) {
                 log.warn("[SkillManage] Workspace export failed for '{}': {}", name, e.getMessage());
+            }
+
+            // Announce authorship so the agent layer can make the skill
+            // reachable from the authoring agent's own catalog. Best-effort:
+            // the skill is already persisted, so a listener failure must not
+            // turn a successful create into an error for the model.
+            try {
+                eventPublisher.publishEvent(new SkillAuthoredEvent(
+                        skill.getId(), name, agentId, sourceConversationId, skill.getWorkspaceId()));
+            } catch (Exception e) {
+                log.warn("[SkillManage] SkillAuthoredEvent publish failed for '{}': {}", name, e.getMessage());
             }
 
             log.info("[SkillManage] Agent created skill: name={}, contentLen={}", name, content.length());

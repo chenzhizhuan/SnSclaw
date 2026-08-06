@@ -97,6 +97,97 @@
         </dl>
       </div>
 
+      <!-- Mined routines -->
+      <div class="settings-card">
+        <div class="card-head">
+          <h3 class="card-title">{{ t('skillCurator.routines') }}</h3>
+          <div class="curator-actions">
+            <button class="btn-secondary" :disabled="busy" @click="mineNow">
+              {{ t('skillCurator.routineMine') }}
+            </button>
+          </div>
+        </div>
+        <p class="curator-hint">
+          {{ t('skillCurator.routinesHint', { occurrences: gates.minOccurrences, days: gates.minDistinctDays }) }}
+        </p>
+
+        <div class="filter-row">
+          <button
+            v-for="opt in routineFilters"
+            :key="opt.value"
+            class="filter-chip"
+            :class="{ active: routineFilter === opt.value }"
+            @click="setRoutineFilter(opt.value)"
+          >{{ t(opt.label) }}</button>
+        </div>
+
+        <p v-if="routines.length === 0" class="empty-note">{{ t('skillCurator.noRoutines') }}</p>
+        <ul v-else class="routine-list">
+          <li v-for="r in routines" :key="r.id" class="routine-item">
+            <div class="routine-main">
+              <p class="routine-text">{{ r.representativeText || r.signature }}</p>
+              <div class="routine-meta">
+                <span class="curator-pill" :class="routinePillClass(r)">{{ routineStatusLabel(r) }}</span>
+                <span>{{ t('skillCurator.routineOccurrences', { n: r.occurrenceCount }) }}</span>
+                <span>{{ t('skillCurator.routineDays', { n: r.distinctDayCount }) }}</span>
+                <span v-if="r.lastSeenAt">{{ t('skillCurator.routineLastSeen') }}: {{ r.lastSeenAt }}</span>
+                <span v-if="r.promotedSkillName" class="routine-skill">
+                  → <code>{{ r.promotedSkillName }}</code>
+                </span>
+              </div>
+            </div>
+            <div class="routine-actions">
+              <button
+                v-if="r.status === 'observing'"
+                class="btn-secondary" :disabled="busy"
+                @click="promoteRoutine(r)"
+              >{{ r.qualified ? t('skillCurator.routinePromote') : t('skillCurator.routinePromoteEarly') }}</button>
+              <button
+                v-if="r.status === 'observing'"
+                class="btn-secondary" :disabled="busy"
+                @click="dismissRoutine(r)"
+              >{{ t('skillCurator.routineDismiss') }}</button>
+              <button
+                v-if="r.status === 'dismissed'"
+                class="btn-secondary" :disabled="busy"
+                @click="reopenRoutine(r)"
+              >{{ t('skillCurator.routineReopen') }}</button>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Restore points -->
+      <div class="settings-card">
+        <div class="card-head">
+          <h3 class="card-title">{{ t('skillCurator.snapshots') }}</h3>
+          <div class="curator-actions">
+            <button class="btn-secondary" :disabled="busy" @click="captureSnapshot">
+              {{ t('skillCurator.snapshotCapture') }}
+            </button>
+          </div>
+        </div>
+        <p class="curator-hint">{{ t('skillCurator.snapshotsHint') }}</p>
+
+        <p v-if="snapshots.length === 0" class="empty-note">{{ t('skillCurator.noSnapshots') }}</p>
+        <ul v-else class="routine-list">
+          <li v-for="s in snapshots" :key="s.id" class="routine-item">
+            <div class="routine-main">
+              <p class="routine-text">{{ s.reason }}</p>
+              <div class="routine-meta">
+                <span>{{ s.createdAt }}</span>
+                <span>{{ t('skillCurator.snapshotSkillCount', { n: s.skillCount }) }}</span>
+              </div>
+            </div>
+            <div class="routine-actions">
+              <button class="btn-secondary" :disabled="busy" @click="restoreSnapshot(s)">
+                {{ t('skillCurator.snapshotRestore') }}
+              </button>
+            </div>
+          </li>
+        </ul>
+      </div>
+
       <!-- Run reports -->
       <div class="settings-card">
         <h3 class="card-title">{{ t('skillCurator.reports') }}</h3>
@@ -148,6 +239,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ElMessageBox } from 'element-plus'
 import { Loading, WarningFilled } from '@element-plus/icons-vue'
 import { mcToast } from '@/composables/useMcToast'
 import { skillApi } from '@/api/index'
@@ -174,10 +266,54 @@ interface CuratorReport {
   consolidations?: Array<{ umbrella: string; umbrellaCreated: boolean; absorbed: string[]; applied: boolean; reason: string }>
 }
 
+/**
+ * A mined recurring request. `id` and `agentId` stay strings for their whole
+ * lifecycle — they are 19-digit snowflake ids and coercing them through a JS
+ * number silently truncates the last digits.
+ */
+interface RoutineCandidate {
+  id: string
+  agentId: string | null
+  signature: string
+  representativeText: string | null
+  occurrenceCount: number
+  distinctDayCount: number
+  status: 'observing' | 'promoted' | 'dismissed'
+  promotedSkillName: string | null
+  firstSeenAt: string | null
+  lastSeenAt: string | null
+  qualified: boolean
+}
+
+interface RoutineGates {
+  minOccurrences: number
+  minDistinctDays: number
+  enabled: boolean
+}
+
+/** A restore point. `id` is a snowflake — keep it a string. */
+interface SkillSnapshot {
+  id: string
+  reason: string
+  skillCount: number
+  createdAt: string | null
+}
+
 const loading = ref(true)
 const error = ref('')
 const busy = ref(false)
 const status = ref<CuratorStatus | null>(null)
+const routines = ref<RoutineCandidate[]>([])
+const gates = ref<RoutineGates>({ minOccurrences: 3, minDistinctDays: 3, enabled: true })
+const routineFilter = ref<string>('observing')
+const snapshots = ref<SkillSnapshot[]>([])
+
+const routineFilters = [
+  { value: 'observing', label: 'skillCurator.routineFilterObserving' },
+  { value: 'promoted', label: 'skillCurator.routineFilterPromoted' },
+  { value: 'dismissed', label: 'skillCurator.routineFilterDismissed' },
+  { value: '', label: 'skillCurator.routineFilterAll' },
+]
 const reports = ref<string[]>([])
 const selectedReportId = ref<string>('')
 const selectedReport = ref<CuratorReport | null>(null)
@@ -195,7 +331,7 @@ async function load() {
   try {
     const res: any = await skillApi.curatorStatus()
     status.value = res.data as CuratorStatus
-    await loadReports()
+    await Promise.all([loadReports(), loadRoutines(), loadSnapshots()])
   } catch (e: any) {
     error.value = e?.message || t('skillCurator.loadFailed')
   } finally {
@@ -275,6 +411,154 @@ async function setConsolidate(enabled: boolean) {
   }
 }
 
+// ==================== Routines ====================
+
+async function loadRoutines() {
+  try {
+    const res: any = await skillApi.routines(routineFilter.value || undefined)
+    routines.value = Array.isArray(res.data?.items) ? res.data.items : []
+    if (res.data?.gates) gates.value = res.data.gates as RoutineGates
+  } catch {
+    routines.value = []
+  }
+}
+
+async function setRoutineFilter(value: string) {
+  routineFilter.value = value
+  await loadRoutines()
+}
+
+function routineStatusLabel(r: RoutineCandidate): string {
+  if (r.status === 'promoted') return t('skillCurator.routineStatusPromoted')
+  if (r.status === 'dismissed') return t('skillCurator.routineStatusDismissed')
+  return r.qualified ? t('skillCurator.routineStatusReady') : t('skillCurator.routineStatusObserving')
+}
+
+function routinePillClass(r: RoutineCandidate): string {
+  if (r.status === 'promoted') return 'pill-on'
+  if (r.status === 'dismissed') return 'pill-off'
+  return r.qualified ? 'pill-warn' : 'pill-muted'
+}
+
+async function mineNow() {
+  busy.value = true
+  try {
+    const res: any = await skillApi.routineMine()
+    mcToast.success(t('skillCurator.routineMineSuccess', { n: res.data?.refreshed ?? 0 }))
+    await loadRoutines()
+  } catch (e: any) {
+    mcToast.error(e?.message || t('skillCurator.actionFailed'))
+  } finally {
+    busy.value = false
+  }
+}
+
+async function promoteRoutine(r: RoutineCandidate) {
+  // Promotion spends an LLM call and writes a skill the agent will consult
+  // from then on, so an early promotion is worth confirming explicitly.
+  if (!r.qualified) {
+    try {
+      await ElMessageBox.confirm(
+        t('skillCurator.routinePromoteEarlyConfirm', {
+          occurrences: r.occurrenceCount,
+          days: r.distinctDayCount,
+        }),
+        t('skillCurator.routinePromoteEarly'),
+        { type: 'warning' },
+      )
+    } catch {
+      return
+    }
+  }
+  busy.value = true
+  try {
+    await skillApi.routinePromote(r.id)
+    mcToast.success(t('skillCurator.routinePromoteSuccess'))
+    await loadRoutines()
+  } catch (e: any) {
+    mcToast.error(e?.message || t('skillCurator.actionFailed'))
+  } finally {
+    busy.value = false
+  }
+}
+
+async function dismissRoutine(r: RoutineCandidate) {
+  busy.value = true
+  try {
+    await skillApi.routineDismiss(r.id)
+    mcToast.success(t('skillCurator.routineDismissSuccess'))
+    await loadRoutines()
+  } catch (e: any) {
+    mcToast.error(e?.message || t('skillCurator.actionFailed'))
+  } finally {
+    busy.value = false
+  }
+}
+
+async function reopenRoutine(r: RoutineCandidate) {
+  busy.value = true
+  try {
+    await skillApi.routineReopen(r.id)
+    mcToast.success(t('skillCurator.routineReopenSuccess'))
+    await loadRoutines()
+  } catch (e: any) {
+    mcToast.error(e?.message || t('skillCurator.actionFailed'))
+  } finally {
+    busy.value = false
+  }
+}
+
+// ==================== Restore points ====================
+
+async function loadSnapshots() {
+  try {
+    const res: any = await skillApi.curatorSnapshots()
+    snapshots.value = Array.isArray(res.data) ? res.data : []
+  } catch {
+    snapshots.value = []
+  }
+}
+
+async function captureSnapshot() {
+  busy.value = true
+  try {
+    await skillApi.curatorSnapshotCapture('manual')
+    mcToast.success(t('skillCurator.snapshotCaptureSuccess'))
+    await loadSnapshots()
+  } catch (e: any) {
+    mcToast.error(e?.message || t('skillCurator.actionFailed'))
+  } finally {
+    busy.value = false
+  }
+}
+
+async function restoreSnapshot(s: SkillSnapshot) {
+  // Overwrites every current skill body and lifecycle state, so never fire
+  // this from a single click.
+  try {
+    await ElMessageBox.confirm(
+      t('skillCurator.snapshotRestoreConfirm', { time: s.createdAt ?? '', n: s.skillCount }),
+      t('skillCurator.snapshotRestore'),
+      { type: 'warning' },
+    )
+  } catch {
+    return
+  }
+  busy.value = true
+  try {
+    const res: any = await skillApi.curatorSnapshotRestore(s.id)
+    mcToast.success(t('skillCurator.snapshotRestoreSuccess', {
+      restored: res.data?.restored ?? 0,
+      missing: res.data?.missing ?? 0,
+    }))
+    await load()
+  } catch (e: any) {
+    mcToast.error(e?.message || t('skillCurator.actionFailed'))
+  } finally {
+    busy.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -333,7 +617,26 @@ onMounted(load)
 .report-transition { display: flex; gap: 12px; align-items: center; font-size: 13px; color: var(--mc-text-primary); padding: 4px 0; }
 .report-transition code { font-family: var(--mc-font-mono, ui-monospace, Menlo, monospace); font-size: 12px; }
 
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.card-head .card-title { margin-bottom: 0; }
+
+.filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.filter-chip { font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--mc-border); background: var(--mc-bg-elevated); color: var(--mc-text-secondary); cursor: pointer; transition: all 0.15s; }
+.filter-chip:hover { background: var(--mc-bg-sunken); }
+.filter-chip.active { border-color: var(--mc-primary); color: var(--mc-primary); }
+
+.routine-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.routine-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--mc-border-light); }
+.routine-item:last-child { border-bottom: none; }
+.routine-main { min-width: 0; flex: 1; }
+.routine-text { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--mc-text-primary); overflow-wrap: anywhere; }
+.routine-meta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--mc-text-tertiary); }
+.routine-skill code { font-family: var(--mc-font-mono, ui-monospace, Menlo, monospace); font-size: 12px; color: var(--mc-text-secondary); }
+.routine-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+
 @media (max-width: 900px) {
+  .routine-item { flex-direction: column; gap: 10px; }
+  .routine-actions { width: 100%; }
   .kv-row { flex-direction: column; gap: 2px; }
 }
 </style>
