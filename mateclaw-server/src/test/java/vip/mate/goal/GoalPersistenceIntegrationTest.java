@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  *
  * <p>Uses an in-memory H2 MySQL-compat database so Flyway runs V120
  * exactly as it would in dev. The {@code DATABASE_TO_LOWER=TRUE} flag is
- * standard across mateclaw's other Spring tests.
+ * standard across SnSclaw's other Spring tests.
  */
 @SpringBootTest(
         classes = MateClawApplication.class,

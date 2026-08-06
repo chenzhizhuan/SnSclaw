@@ -131,18 +131,30 @@ function getJavaExecutable(): string {
   if (platform === 'darwin') {
     // Packaged: jre/Contents/Home/bin/java
     candidates.push(join(jrePath, 'Contents', 'Home', 'bin', 'java'))
-    // Dev: jre/mac-arm64/Contents/Home/bin/java
-    candidates.push(join(jrePath, 'mac-arm64', 'Contents', 'Home', 'bin', 'java'))
-    candidates.push(join(jrePath, 'mac-x64', 'Contents', 'Home', 'bin', 'java'))
+    // Dev: probe the host arch first. Listing mac-arm64 unconditionally first
+    // made an Intel Mac pick the arm64 JRE when both were downloaded.
+    const macArchFirst = process.arch === 'arm64' ? 'mac-arm64' : 'mac-x64'
+    const macArchSecond = process.arch === 'arm64' ? 'mac-x64' : 'mac-arm64'
+    candidates.push(join(jrePath, macArchFirst, 'Contents', 'Home', 'bin', 'java'))
+    candidates.push(join(jrePath, macArchSecond, 'Contents', 'Home', 'bin', 'java'))
     // Fallback: flat layout
     candidates.push(join(jrePath, 'bin', 'java'))
   } else if (platform === 'win32') {
+    // Packaged: extraResources flattens resources/jre/win-<arch>/ → jre/
     candidates.push(join(jrePath, 'bin', 'java.exe'))
+    // Dev: host arch first so an arm64 machine doesn't pick the x64 JRE.
+    const winFirst = process.arch === 'arm64' ? 'win-arm64' : 'win-x64'
+    const winSecond = process.arch === 'arm64' ? 'win-x64' : 'win-arm64'
+    candidates.push(join(jrePath, winFirst, 'bin', 'java.exe'))
+    candidates.push(join(jrePath, winSecond, 'bin', 'java.exe'))
+    // Legacy folder name kept for older checkouts.
     candidates.push(join(jrePath, 'win32-x64', 'bin', 'java.exe'))
   } else {
     candidates.push(join(jrePath, 'bin', 'java'))
-    candidates.push(join(jrePath, 'linux-x64', 'bin', 'java'))
-    candidates.push(join(jrePath, 'linux-arm64', 'bin', 'java'))
+    const linuxFirst = process.arch === 'arm64' ? 'linux-arm64' : 'linux-x64'
+    const linuxSecond = process.arch === 'arm64' ? 'linux-x64' : 'linux-arm64'
+    candidates.push(join(jrePath, linuxFirst, 'bin', 'java'))
+    candidates.push(join(jrePath, linuxSecond, 'bin', 'java'))
   }
 
   for (const candidate of candidates) {

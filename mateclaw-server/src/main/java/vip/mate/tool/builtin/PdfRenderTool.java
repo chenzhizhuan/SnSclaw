@@ -45,7 +45,7 @@ public class PdfRenderTool {
 
         **Do NOT bypass this tool by shelling out to `chrome --headless --print-to-pdf`,
         `wkhtmltopdf`, `weasyprint`, or any markdown-to-PDF Python skill. Those produce
-        a PDF on local disk that is NOT registered in mateclaw's download cache, so
+        a PDF on local disk that is NOT registered in SnSclaw's download cache, so
         the user has no clickable download link and the file leaks into the workspace.
         Always use this tool instead — it returns a `/api/v1/files/generated/<id>` URL
         the user can download from chat.**

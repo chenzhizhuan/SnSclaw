@@ -16,7 +16,7 @@ import java.util.Map;
  * {@code button.key} — the field is what the server echoes back as
  * {@code event_key} when the user clicks. We pack the action plus the
  * minimal context we need to recover the pending approval (the
- * {@code pendingId} alone is enough — mateclaw's
+ * {@code pendingId} alone is enough — SnSclaw's
  * {@code ApprovalService.findById} resolves the rest, including the
  * original requester). Sender/chat context is intentionally not packed
  * — the inbound handler runs in-process and can do a synchronous DB

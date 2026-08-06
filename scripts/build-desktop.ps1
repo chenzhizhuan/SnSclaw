@@ -37,6 +37,13 @@ param(
   [switch]$VerifyOnly,
   [string]$OutputDir,
   [string]$InstallerPath,
+
+  # Target CPU architecture. x64 stays the default so existing invocations are
+  # unchanged. arm64 requires resources\jre\win-arm64\ to be present first:
+  #   bash mateclaw-desktop/scripts/download-jre.sh --os win --arch arm64
+  [ValidateSet('x64','arm64')]
+  [string]$Arch = 'x64',
+
   [int]$BuilderAttempts = 7,
   [int]$MavenAttempts = 6,
   [switch]$AggressiveUnlock,
@@ -67,6 +74,12 @@ $SRV_JAR    = Join-Path $SRV 'target\mateclaw-server-1.0.0-SNAPSHOT.jar'
 $APP_JAR    = Join-Path $DSK 'resources\app.jar'
 $MAIN_JS    = Join-Path $DSK 'dist-electron\main\index.js'
 $RELEASE    = Join-Path $DSK 'release'
+
+# electron-builder 的 unpacked 目录名带 arch 后缀，但只对「非默认 arch」加：
+# builder-util getArchSuffix() 在 arch == defaultArch(未配置时为 x64) 时返回 ''。
+# 所以 x64 -> 'win-unpacked'，arm64 -> 'win-arm64-unpacked'。写死 win-unpacked
+# 会让 arm64 构建的 verify/unlock 步骤找不到目录。
+$UNPACKED_DIR = if ($Arch -eq 'x64') { 'win-unpacked' } else { "win-$Arch-unpacked" }
 
 if (-not $LogDir) { $LogDir = Join-Path $Root '.build-logs' }
 $TS   = [int][DateTimeOffset]::Now.ToUnixTimeSeconds()
@@ -517,15 +530,23 @@ function Release-LockOnDir {
 $InstallerSrc = $null
 $WinUnpacked  = $null
 if (Should-Run 'installer') {
-  Wr "STEP installer  electron-builder（store 压缩，最多 $BuilderAttempts 次）"
+  Wr "STEP installer  electron-builder（store 压缩，最多 $BuilderAttempts 次，arch=$Arch）"
+
+  # extraResources 读 resources\jre\win-<arch>\，缺了会打出一个没有 JRE 的安装包
+  # ——装完才发现起不来。这里提前失败，报错比事后排查便宜。
+  $jreDir = Join-Path $DSK "resources\jre\win-$Arch"
+  if (-not (Test-Path -LiteralPath (Join-Path $jreDir 'bin\java.exe'))) {
+    Die "缺少 $Arch 的 JRE：$jreDir\bin\java.exe`n  先运行: bash mateclaw-desktop/scripts/download-jre.sh --os win --arch $Arch" $EXIT.precondition
+  }
+
   $attemptDirs = @()
   for ($a = 1; $a -le $BuilderAttempts; $a++) {
     if ($AggressiveUnlock) {
-      Release-LockOnDir (Join-Path $RELEASE 'win-unpacked')
+      Release-LockOnDir (Join-Path $RELEASE $UNPACKED_DIR)
       if ($a -gt 2) {
-        $wu = Join-Path $RELEASE 'win-unpacked'
+        $wu = Join-Path $RELEASE $UNPACKED_DIR
         if (Test-Path -LiteralPath $wu) {
-          W '    hard attempt: rename win-unpacked 后删除'
+          W "    hard attempt: rename $UNPACKED_DIR 后删除"
           $bakName = 'win-unpacked-bak-' + [guid]::NewGuid().ToString('N')
           try {
             Rename-Item -LiteralPath $wu -NewName $bakName -Force -EA Stop
@@ -542,13 +563,17 @@ if (Should-Run 'installer') {
     $berr = Join-Path $LogDir "all-eb-err-$TS-$a.log"
     W "  attempt $a/$BuilderAttempts  dir=$attemptOut"
     [GC]::Collect(); Start-Sleep -Seconds 4
+    # WIN_ARCH drives electron-builder.cjs's target list. Without it, the config
+    # would declare both arches and --$Arch would union rather than filter,
+    # producing both installers plus a combined one.
+    $env:WIN_ARCH = $Arch
     $ec = Invoke-Exe -FilePath $EB -Cwd $DSK -OutLog $bout -ErrLog $berr `
-      -ArgList @('--win','--x64','--publish=never','-c.compression=store',"-c.directories.output=$attemptOut")
+      -ArgList @('--win',"--$Arch",'--publish=never','-c.compression=store',"-c.directories.output=$attemptOut")
     W "    exit=$ec"
     $su = @(Get-ChildItem -LiteralPath $attemptOut -Filter '*Setup*.exe' -Recurse -File -EA 0)
     if ($ec -eq 0 -and $su.Count -gt 0) {
       $InstallerSrc = $su[0]
-      $WinUnpacked  = Join-Path (Split-Path $InstallerSrc.FullName -Parent) 'win-unpacked'
+      $WinUnpacked  = Join-Path (Split-Path $InstallerSrc.FullName -Parent) $UNPACKED_DIR
       break
     }
     Tail $bout 15
@@ -591,7 +616,7 @@ if (Should-Run 'verify') {
   if ($InstallerPath) {
     if (-not (Test-Path -LiteralPath $InstallerPath)) { Die "-InstallerPath 不存在：$InstallerPath" $EXIT.precondition }
     $vInstaller = Get-Item -LiteralPath $InstallerPath
-    $WinUnpacked = Join-Path (Split-Path $vInstaller.FullName -Parent) 'win-unpacked'
+    $WinUnpacked = Join-Path (Split-Path $vInstaller.FullName -Parent) $UNPACKED_DIR
   } elseif ($InstallerSrc) {
     # 本次刚构建：报告 release/ 下的正式副本，而不是 %TEMP% 里的中间产物
     $relCopy = Join-Path $RELEASE $InstallerSrc.Name
