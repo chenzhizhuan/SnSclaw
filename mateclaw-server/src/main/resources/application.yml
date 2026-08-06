@@ -55,7 +55,7 @@ spring:
     clean-disabled: true
     # Disable Flyway's built-in ${...} placeholder substitution. Some migrations
     # (e.g. V85 ckjia MCP seed) intentionally store ${ENV_VAR} literals so that
-    # mateclaw's runtime header parser (McpClientManager.parseHeaders) can
+    # SnSclaw's runtime header parser (McpClientManager.parseHeaders) can
     # expand them at request time. Flyway would otherwise try to resolve those
     # tokens at migration time and fail with "No value provided for placeholder".
     # Safe to disable globally because no migration in this project relies on

@@ -7,7 +7,7 @@ import org.springframework.lang.Nullable;
  * Stash freshly-rendered bytes into the {@link GeneratedFileCache} and format
  * the markdown link the tool returns to the LLM.
  *
- * <p>Two locales are exposed because mateclaw's existing convention has the
+ * <p>Two locales are exposed because SnSclaw's existing convention has the
  * inline render tools speak Chinese and the file-driven render tools speak
  * English. Each variant tells the model to echo the URL verbatim — neither
  * stripping nor inventing a host — because the URL may already be absolute

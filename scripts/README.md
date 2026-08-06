@@ -1,7 +1,7 @@
-# Windows 桌面端打包脚本
+# 桌面端打包脚本
 
-构建 `SnSclaw_<版本>_x64_Setup.exe`。仅限 Windows —— mac/Linux 走
-[`mateclaw-desktop/scripts/`](../mateclaw-desktop/scripts/README.md)，两者不要混用。
+- `build-desktop.ps1` —— Windows，产出 `SnSclaw_<版本>_<arch>_Setup.exe`
+- `build-desktop-mac.sh` —— macOS，产出 `.dmg` / `.zip`（**必须在 Mac 上运行**）
 
 双击根目录 `RUN_LOCAL_PIPELINE.cmd` 即可，它把参数透传给 `build-desktop.ps1`。
 
@@ -17,7 +17,57 @@
 
 # 看会做什么但不真做
 .\scripts\build-desktop.ps1 -WhatIf
+
+# ARM64 安装包（先备好 arm64 的 JRE，见下）
+.\scripts\build-desktop.ps1 -Arch arm64
 ```
+
+## 架构
+
+`-Arch x64`（默认）或 `-Arch arm64`。构建前需要对应架构的 JRE：
+
+```bash
+bash mateclaw-desktop/scripts/download-jre.sh --os win --arch arm64
+```
+
+缺了会在 installer 步骤提前失败——否则会打出一个没有 JRE 的安装包，装完才发现起不来。
+
+两个与架构相关的坑，都是实测踩出来的：
+
+1. **`win.target` 由 `WIN_ARCH` 环境变量驱动**，不要在里面同时声明两个架构。命令行的
+   `--arm64` 是与声明目标取**并集**而非过滤，同时声明会打出两个架构外加一个 640 MB 的
+   合并安装包。`build-desktop.ps1` 会自动设这个变量。
+2. **unpacked 目录名带架构后缀，但只对非默认架构加**：x64 是 `win-unpacked`，
+   arm64 是 `win-arm64-unpacked`（electron-builder 的 `getArchSuffix()` 行为）。
+   脚本里用 `$UNPACKED_DIR` 统一推导，不要写死。
+
+打包后 `app.jar` 会从 405 MB 缩到约 237 MB，是 `afterPack` 钩子按平台裁剪 Playwright
+driver 的正常行为。Windows 上**即使 arm64 也保留 `driver/win32_x64`**——Playwright 没有
+出 Windows ARM 版驱动，ARM 机器靠 x64 模拟层跑，这个不要"修"。
+
+## macOS
+
+```bash
+scripts/build-desktop-mac.sh --to vite       # 分段：先验前端
+scripts/build-desktop-mac.sh --from maven    # 再往后
+scripts/build-desktop-mac.sh --arch both     # arm64 + x64 两个 dmg
+scripts/build-desktop-mac.sh --mode remote   # 瘦包，不含 JRE/JAR
+```
+
+`.dmg` **只能在 macOS 上构建**：electron-builder 在 Windows 上会直接
+`throw`（`Build for macOS is supported only on macOS`），做磁盘镜像和 `codesign`
+需要苹果工具链，没有任何参数能绕过。
+
+产物未签名未公证，用户装完必须先清隔离标记再打开，顺序不能反：
+
+```bash
+xattr -cr /Applications/SnSclaw.app   # 先这个
+open /Applications/SnSclaw.app        # 再打开
+```
+
+要免掉这一步需要付费 Apple Developer 账号：`CSC_LINK` + `CSC_KEY_PASSWORD` 做签名，
+`APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID` 做公证。
+`hardenedRuntime` 和 entitlements 已配好，只缺签名本身。
 
 ## 流水线七步
 

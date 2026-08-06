@@ -265,7 +265,7 @@ public class BuiltinSkillSeedService implements ApplicationRunner {
 
     /** Coerce JSON-decoded value to long. Handles both numeric (Integer /
      *  Long / Double) and string-encoded-long forms — the latter is what
-     *  mateclaw's ObjectMapper emits for long fields by default. */
+     *  SnSclaw's ObjectMapper emits for long fields by default. */
     private static Long toLong(Object value, Long fallback) {
         if (value == null) return fallback;
         if (value instanceof Number n) return n.longValue();

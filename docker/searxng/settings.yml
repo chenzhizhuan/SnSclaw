@@ -1,7 +1,7 @@
 # SearXNG config for SnSclaw's bundled search sidecar.
 #
 # Two things differ from the upstream default:
-#   1. JSON output format is enabled — mateclaw's SearXNGSearchProvider
+#   1. JSON output format is enabled — SnSclaw's SearXNGSearchProvider
 #      queries /search?format=json and fails silently without this.
 #   2. The anti-bot Limiter plugin is disabled — it otherwise rejects
 #      server-side HTTP calls (no JS, no cookies) with HTTP 429.
