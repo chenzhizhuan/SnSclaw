@@ -20,12 +20,14 @@ import vip.mate.llm.model.ModelConfigEntity;
 import vip.mate.llm.service.ModelConfigService;
 import vip.mate.memory.event.ConversationCompletedEvent;
 import vip.mate.skill.model.SkillEntity;
+import vip.mate.skill.model.SkillOrigin;
 import vip.mate.skill.service.SkillService;
 import vip.mate.tool.builtin.SkillManageTool;
 import vip.mate.workspace.conversation.ConversationService;
 import vip.mate.workspace.conversation.model.MessageEntity;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -57,8 +59,27 @@ public class SkillReflectionService {
     private final SkillReflectionProperties properties;
     private final ObjectMapper objectMapper;
 
-    /** Per-conversation cooldown tracking. */
-    private final ConcurrentHashMap<String, Instant> lastRunTimes = new ConcurrentHashMap<>();
+    /**
+     * Per-conversation review bookkeeping: when the last review ran (cooldown)
+     * and the message count it ran at (cadence high-water mark).
+     *
+     * @param lastRunAt         wall-clock time of the last attempted review
+     * @param reviewedAtMessage conversation message count at that attempt
+     */
+    private record ReviewState(Instant lastRunAt, int reviewedAtMessage) {
+    }
+
+    /** Per-conversation cadence + cooldown tracking. */
+    private final ConcurrentHashMap<String, ReviewState> reviewStates = new ConcurrentHashMap<>();
+
+    /**
+     * Cap on tracked conversations. The map is a cadence accelerator, not a
+     * source of truth — dropping the oldest entries only means those
+     * conversations get one extra review opportunity, so a coarse eviction is
+     * enough to keep a long-lived server from accumulating one entry per
+     * conversation forever.
+     */
+    private static final int MAX_TRACKED_CONVERSATIONS = 2000;
 
     /** Per-message truncation when building the review transcript. */
     private static final int MESSAGE_TRUNCATE_CHARS = 1200;
@@ -83,19 +104,34 @@ public class SkillReflectionService {
         if (!properties.isEnabled() || agentId == null || conversationId == null) {
             return;
         }
-        // Cadence gate: review every N messages.
-        if (properties.getReviewTurnInterval() <= 0
-                || messageCount % properties.getReviewTurnInterval() != 0) {
+        int interval = properties.getReviewTurnInterval();
+        if (interval <= 0) {
             return;
         }
-        if (isInCooldown(conversationId)) {
+        // Cadence gate: at least N new messages since the last attempt.
+        // Deliberately a high-water mark rather than `messageCount % interval`
+        // — the count is the conversation total at publish time and can jump by
+        // more than one per event (batched persistence, tool messages, channel
+        // replays), so an exact-multiple test silently skips whole review
+        // opportunities whenever it steps over the multiple.
+        ReviewState state = reviewStates.get(conversationId);
+        int reviewedAt = state == null ? 0 : state.reviewedAtMessage();
+        if (messageCount - reviewedAt < interval) {
+            return;
+        }
+        if (isInCooldown(state)) {
             log.debug("[SkillReflect] conversation {} in cooldown, skipping", conversationId);
             return;
         }
+        // Advance the mark on every attempt the gate lets through, including
+        // ones that bail on the substance floor. A conversation that stays
+        // below the floor should wait another full interval rather than
+        // re-checking on every subsequent message.
+        evictIfOversized();
+        reviewStates.put(conversationId, new ReviewState(Instant.now(), messageCount));
         try {
-            boolean ran = doReflect(agentId, conversationId);
-            if (ran) {
-                lastRunTimes.put(conversationId, Instant.now());
+            if (!doReflect(agentId, conversationId)) {
+                log.debug("[SkillReflect] conv {} yielded no review this cycle", conversationId);
             }
         } catch (Exception e) {
             log.warn("[SkillReflect] Failed for agent={}, conv={}: {}",
@@ -192,7 +228,8 @@ public class SkillReflectionService {
         String oldText = action.path("oldText").asText(null);
         String newText = action.path("newText").asText(null);
         try {
-            String result = skillManageTool.skill_manage(act, name, content, oldText, newText, null, toolContext);
+            String result = skillManageTool.skillManageAs(SkillOrigin.AGENT, act, name, content,
+                    oldText, newText, null, toolContext);
             boolean ok = result != null && !result.startsWith("Error") && !result.startsWith("Security scan BLOCKED");
             if (ok) {
                 log.info("[SkillReflect] {} '{}' — {}", act, name,
@@ -334,13 +371,29 @@ public class SkillReflectionService {
                 || msg.contains("Too Many Requests"));
     }
 
-    private boolean isInCooldown(String conversationId) {
-        Instant lastRun = lastRunTimes.get(conversationId);
-        if (lastRun == null) {
+    private boolean isInCooldown(ReviewState state) {
+        if (state == null || state.lastRunAt() == null) {
             return false;
         }
         long cooldownSeconds = properties.getCooldownMinutes() * 60L;
-        return Instant.now().isBefore(lastRun.plusSeconds(cooldownSeconds));
+        return Instant.now().isBefore(state.lastRunAt().plusSeconds(cooldownSeconds));
+    }
+
+    /**
+     * Drop the least-recently-reviewed entries once the tracking map grows past
+     * {@link #MAX_TRACKED_CONVERSATIONS}, so a long-running server does not
+     * retain one entry per conversation for its whole uptime.
+     */
+    private void evictIfOversized() {
+        if (reviewStates.size() < MAX_TRACKED_CONVERSATIONS) {
+            return;
+        }
+        reviewStates.entrySet().stream()
+                .sorted(Comparator.comparing(e -> e.getValue().lastRunAt()))
+                .limit(Math.max(1, MAX_TRACKED_CONVERSATIONS / 4))
+                .map(Map.Entry::getKey)
+                .toList()
+                .forEach(reviewStates::remove);
     }
 
     private static String truncate(String s, int maxLen) {

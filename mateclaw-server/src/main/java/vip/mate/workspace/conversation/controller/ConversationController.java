@@ -3,6 +3,8 @@ package vip.mate.workspace.conversation.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vip.mate.common.result.R;
@@ -57,6 +59,24 @@ public class ConversationController {
             @RequestParam(required = false) String keyword) {
         String username = auth != null ? auth.getName() : "anonymous";
         return R.ok(conversationService.pageConversations(username, workspaceId, page, size, keyword));
+    }
+
+    /**
+     * 导出会话轨迹 —— 调试/验收用的线性纯文本转录。
+     * <p>
+     * 与聊天界面读同一份 {@code metadata.segments} 时间线，但按发射顺序原样打印：
+     * 每轮推理、工具调用、工具返回、答案各自成块，包括界面会折叠掉的
+     * superseded 预写内容。可直接 diff 两次运行，或贴进 issue。
+     */
+    @Operation(summary = "导出会话轨迹（纯文本）")
+    @GetMapping(value = "/{conversationId}/trajectory", produces = "text/plain;charset=UTF-8")
+    public ResponseEntity<String> exportTrajectory(@PathVariable String conversationId,
+                                                   Authentication auth) {
+        String username = auth != null ? auth.getName() : "anonymous";
+        if (!conversationService.isConversationOwner(conversationId, username)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无权访问该会话\n");
+        }
+        return ResponseEntity.ok(conversationService.renderTrajectory(conversationId));
     }
 
     /**

@@ -13,6 +13,7 @@ import { ref, computed } from 'vue'
 import { useMessages } from './useMessages'
 import { useStream } from './useStream'
 import { useMessageQueue } from './useMessageQueue'
+import { supersedesProvisionalNarration, markSuperseded } from './supersede'
 import { useGoalStore } from '@/stores/useGoalStore'
 import { useSystemSettingsStore } from '@/stores/useSystemSettingsStore'
 import { storeToRefs } from 'pinia'
@@ -234,6 +235,16 @@ export function useChat(options: UseChatOptions): UseChatReturn {
   const genSegId = () => `seg-${Date.now()}-${segIdCounter.value++}`
 
   /**
+   * Tool observations completed so far this turn, and the count each content
+   * segment was opened at. A provisional narration is only replaced once an
+   * observation actually landed after it, so the live collapse needs both the
+   * running total and each span's mark — the same bookkeeping the backend
+   * tracker does. Turn-scoped: reset with the rest of the streaming state.
+   */
+  let observationCount = 0
+  const segmentObservationMark = new Map<string, number>()
+
+  /**
    * Fine-grained lifecycle stage exposed to the UI for the "connecting → started
    * → context_prepared → llm_request_sent → streaming" loading bar. Reset on
    * every new turn; transitions to `streaming` implicitly when the first
@@ -269,6 +280,8 @@ export function useChat(options: UseChatOptions): UseChatReturn {
   function resetCurrentTurnState() {
     currentSegments.value = []
     segIdCounter.value = 0
+    observationCount = 0
+    segmentObservationMark.clear()
     bufferedText = ''
     bufferedThinking = ''
     activeTurnId = `turn-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
@@ -496,18 +509,19 @@ export function useChat(options: UseChatOptions): UseChatReturn {
         // Close any running thinking segment first
         const thinkingSeg = segs.findLast((s: MessageSegment) => s.type === 'thinking' && s.status === 'running')
         if (thinkingSeg) thinkingSeg.status = 'completed'
+        // The content span that precedes the one about to open — the only
+        // candidate this span can replace.
+        const prevContent = segs.findLast((s: MessageSegment) => s.type === 'content')
         contentSeg = { id: genSegId(), type: 'content', status: 'running', text: '', timestamp: Date.now() }
         applyIterationTags(contentSeg)
-        // Later content supersedes any earlier provisional narration of the
-        // same turn — collapse it in place, live, instead of waiting for the
-        // persisted-metadata annotations in the done payload. Mirrors the
-        // backend tracker's rule for kind-tagged segments.
-        for (const s of segs) {
-          if (s.type === 'content' && s.kind === 'pre_tool_narration' && !s.superseded) {
-            s.superseded = true
-            s.supersededBySegmentId = String(contentSeg.id)
-            s.supersededReason = 'pre_tool_content_replaced_by_post_tool_answer'
-          }
+        segmentObservationMark.set(String(contentSeg.id), observationCount)
+        // Later content supersedes an earlier provisional narration — collapse
+        // it in place, live, instead of waiting for the persisted-metadata
+        // annotations in the done payload. Rule and guards live in
+        // supersede.ts, mirroring the backend tracker.
+        const prevMark = prevContent ? (segmentObservationMark.get(String(prevContent.id)) ?? 0) : 0
+        if (prevContent && supersedesProvisionalNarration(prevContent, observationCount, prevMark)) {
+          markSuperseded(prevContent, String(contentSeg.id))
         }
         segs.push(contentSeg)
         flushSegmentsToMessage() // sync once when a new content segment is created
@@ -930,6 +944,11 @@ export function useChat(options: UseChatOptions): UseChatReturn {
   // Body of tool_call_completed — see handleToolCallStarted.
   function handleToolCallCompleted(data: any) {
     if (isStaleEvent(data)) return
+    // Counted regardless of success: a failed tool still produces an
+    // observation, and the content written after it is grounded in that
+    // failure. Counted before the segment work below so a content span opened
+    // later in this turn sees the higher mark.
+    observationCount++
     if (currentAssistantId.value) {
       const msg = getMessage(currentAssistantId.value)
       if (msg) {

@@ -12,6 +12,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import vip.mate.agent.AgentGraphBuilder;
 import vip.mate.llm.service.ModelConfigService;
 import vip.mate.skill.service.SkillService;
+import vip.mate.skill.model.SkillOrigin;
 import vip.mate.tool.builtin.SkillManageTool;
 import vip.mate.workspace.conversation.ConversationService;
 import vip.mate.workspace.conversation.model.MessageEntity;
@@ -85,7 +86,7 @@ class SkillReflectionServiceTest {
         properties.setEnabled(false);
         service.maybeReflect(1L, "conv-1", 8);
         verify(conversationService, never()).listMessages(any());
-        verify(skillManageTool, never()).skill_manage(any(), any(), any(), any(), any(), any(), any());
+        verify(skillManageTool, never()).skillManageAs(eq(SkillOrigin.AGENT), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -104,24 +105,24 @@ class SkillReflectionServiceTest {
         when(conversationService.listMessages("conv-1")).thenReturn(transcriptWithTurns(1));
         service.maybeReflect(1L, "conv-1", 8);
         verify(agentGraphBuilder, never()).buildRuntimeChatModel(any());
-        verify(skillManageTool, never()).skill_manage(any(), any(), any(), any(), any(), any(), any());
+        verify(skillManageTool, never()).skillManageAs(eq(SkillOrigin.AGENT), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("happy path: a create action routes through skill_manage")
+    @DisplayName("happy path: a create action routes through the autonomous skill_manage entry point")
     void appliesCreateAction() {
         properties.setReviewTurnInterval(8);
         properties.setMinAssistantTurns(2);
         when(conversationService.listMessages("conv-1")).thenReturn(transcriptWithTurns(3));
         stubLlm("[{\"action\":\"create\",\"name\":\"spring-scaffold\",\"reason\":\"reusable\","
                 + "\"content\":\"---\\nname: spring-scaffold\\n---\\n# X\"}]");
-        when(skillManageTool.skill_manage(any(), any(), any(), any(), any(), any(), any()))
+        when(skillManageTool.skillManageAs(eq(SkillOrigin.AGENT), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn("Skill 'spring-scaffold' created successfully (security scan: PASSED).");
 
         service.maybeReflect(1L, "conv-1", 8);
 
         verify(skillManageTool, times(1))
-                .skill_manage(eq("create"), eq("spring-scaffold"), any(), any(), any(), any(), any());
+                .skillManageAs(eq(SkillOrigin.AGENT), eq("create"), eq("spring-scaffold"), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -134,7 +135,7 @@ class SkillReflectionServiceTest {
 
         service.maybeReflect(1L, "conv-1", 8);
 
-        verify(skillManageTool, never()).skill_manage(any(), any(), any(), any(), any(), any(), any());
+        verify(skillManageTool, never()).skillManageAs(eq(SkillOrigin.AGENT), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -148,12 +149,44 @@ class SkillReflectionServiceTest {
         stubLlm("[{\"action\":\"create\",\"name\":\"s1\"," + body + "},"
                 + "{\"action\":\"create\",\"name\":\"s2\"," + body + "},"
                 + "{\"action\":\"create\",\"name\":\"s3\"," + body + "}]");
-        when(skillManageTool.skill_manage(any(), any(), any(), any(), any(), any(), any()))
+        when(skillManageTool.skillManageAs(eq(SkillOrigin.AGENT), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn("created successfully");
 
         service.maybeReflect(1L, "conv-1", 8);
 
-        verify(skillManageTool, times(2)).skill_manage(any(), any(), any(), any(), any(), any(), any());
+        verify(skillManageTool, times(2)).skillManageAs(eq(SkillOrigin.AGENT), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("cadence gate: a message count that steps over the interval still reviews")
+    void cadenceGateSurvivesSkippedCounts() {
+        // The published count is the conversation total and can jump by more
+        // than one per event (batched persistence, tool messages, channel
+        // replays). A review must still fire when the count steps straight
+        // over an exact multiple of the interval.
+        properties.setReviewTurnInterval(8);
+        properties.setMinAssistantTurns(2);
+        when(conversationService.listMessages("conv-1")).thenReturn(transcriptWithTurns(3));
+        stubLlm("[]");
+
+        service.maybeReflect(1L, "conv-1", 11);
+
+        verify(conversationService, times(1)).listMessages("conv-1");
+    }
+
+    @Test
+    @DisplayName("cadence gate: an attempt blocked by the floor waits a full interval")
+    void floorBlockedAttemptStillAdvancesTheMark() {
+        properties.setReviewTurnInterval(8);
+        properties.setMinAssistantTurns(5);
+        properties.setCooldownMinutes(0);
+        when(conversationService.listMessages("conv-1")).thenReturn(transcriptWithTurns(1));
+
+        service.maybeReflect(1L, "conv-1", 8);
+        // Only three further messages — below the interval, so no re-check.
+        service.maybeReflect(1L, "conv-1", 11);
+
+        verify(conversationService, times(1)).listMessages("conv-1");
     }
 
     @Test

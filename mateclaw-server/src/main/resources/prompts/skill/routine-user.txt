@@ -1,0 +1,14 @@
+## Recurrence evidence
+
+This request was made in {occurrences} separate conversations, spread over {days} distinct days.
+
+Most recent phrasing of the request:
+{request}
+
+## The occurrences
+
+Each block below is the opening stretch of one conversation that served this request. Transcripts are truncated; treat anything after a "[truncated]" marker as unseen.
+
+{evidence}
+
+Write the skill that captures what these occurrences have in common. Output ONLY the JSON object.

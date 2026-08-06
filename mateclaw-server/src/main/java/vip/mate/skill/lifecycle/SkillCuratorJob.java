@@ -10,6 +10,7 @@ import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Component;
 import vip.mate.agent.binding.service.AgentBindingService;
 import vip.mate.skill.model.SkillEntity;
+import vip.mate.skill.model.SkillOrigin;
 import vip.mate.skill.repository.SkillMapper;
 import vip.mate.skill.workspace.SkillWorkspaceManager;
 import vip.mate.system.service.SystemSettingService;
@@ -60,6 +61,7 @@ public class SkillCuratorJob {
     private final SkillWorkspaceManager workspaceManager;
     private final CuratorRunNotifier notifier;
     private final SkillConsolidationService consolidationService;
+    private final SkillSnapshotService snapshotService;
 
     @Scheduled(cron = "${mateclaw.skill.curator.cron:0 0 2 * * *}")
     @SchedulerLock(name = "skill-curator", lockAtMostFor = "PT10M", lockAtLeastFor = "PT30S")
@@ -191,6 +193,18 @@ public class SkillCuratorJob {
                 .config(properties.getStaleAfterDays(), properties.getArchiveAfterDays(),
                         properties.getScope());
 
+        // Capture a restore point before anything mutates. A dry run changes
+        // nothing, so it needs none; a real sweep can archive and (with
+        // consolidation on) rewrite skill bodies unattended, and this is the
+        // only chance to record what they looked like beforehand.
+        if (!dryRun) {
+            try {
+                snapshotService.capture("pre-sweep");
+            } catch (Exception e) {
+                log.warn("Pre-sweep snapshot failed, continuing: {}", e.getMessage());
+            }
+        }
+
         reconcileOrphans(now, report, dryRun);
 
         List<SkillEntity> candidates = loadCandidates();
@@ -241,7 +255,12 @@ public class SkillCuratorJob {
     /**
      * Candidate skills for the state machine: not builtin, not pinned, not a
      * builtin/mcp/acp type, not bound to any enabled agent, and — under the
-     * default {@code AGENT_CREATED} scope — created by an agent.
+     * default {@code AGENT_CREATED} scope — written autonomously.
+     *
+     * <p>The scope filter keys on {@code origin}, not on the presence of a
+     * source conversation. Both a skill the user asked for mid-chat and one
+     * the background reviewer invented carry a conversation id, so the older
+     * filter swept up user-requested work alongside the machine's own.
      */
     private List<SkillEntity> loadCandidates() {
         Set<Long> bindingProtected = agentBindingService.skillIdsBoundToEnabledAgents();
@@ -254,7 +273,7 @@ public class SkillCuratorJob {
             w.notIn(SkillEntity::getId, bindingProtected);
         }
         if ("AGENT_CREATED".equals(properties.getScope())) {
-            w.isNotNull(SkillEntity::getSourceConversationId);
+            w.in(SkillEntity::getOrigin, SkillOrigin.curatorManagedCodes());
         }
         return skillMapper.selectList(w);
     }

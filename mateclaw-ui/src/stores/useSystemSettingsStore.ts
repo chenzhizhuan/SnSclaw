@@ -19,6 +19,7 @@ interface CachedSettings {
   streamEnabled: boolean
   debugMode: boolean
   showThinking: boolean
+  thinkingFull: boolean
 }
 
 function readCache(): CachedSettings {
@@ -30,10 +31,11 @@ function readCache(): CachedSettings {
         streamEnabled: parsed.streamEnabled !== false, // default true
         debugMode: parsed.debugMode === true,          // default false
         showThinking: parsed.showThinking !== false,   // default true
+        thinkingFull: parsed.thinkingFull !== false,   // default true
       }
     }
   } catch { /* ignore */ }
-  return { streamEnabled: true, debugMode: false, showThinking: true }
+  return { streamEnabled: true, debugMode: false, showThinking: true, thinkingFull: true }
 }
 
 export const useSystemSettingsStore = defineStore('systemSettings', () => {
@@ -46,6 +48,11 @@ export const useSystemSettingsStore = defineStore('systemSettings', () => {
   // Whether the model's reasoning ("thinking") blocks are rendered in chat.
   // Independent from debugMode: this is a user preference, not a debug aid.
   const showThinking = ref<boolean>(cached.showThinking)
+  // Whether every iteration's reasoning is rendered, or only the span that
+  // produced the answer. A tool-heavy turn persists a dozen spans; showing all
+  // of them is what makes a run reviewable, but it is a wall of text when the
+  // reader only wants the conclusion.
+  const thinkingFull = ref<boolean>(cached.thinkingFull)
 
   function persist() {
     try {
@@ -53,6 +60,7 @@ export const useSystemSettingsStore = defineStore('systemSettings', () => {
         streamEnabled: streamEnabled.value,
         debugMode: debugMode.value,
         showThinking: showThinking.value,
+        thinkingFull: thinkingFull.value,
       }))
     } catch { /* ignore */ }
   }
@@ -63,6 +71,7 @@ export const useSystemSettingsStore = defineStore('systemSettings', () => {
     if (typeof settings.streamEnabled === 'boolean') streamEnabled.value = settings.streamEnabled
     if (typeof settings.debugMode === 'boolean') debugMode.value = settings.debugMode
     if (typeof settings.showThinking === 'boolean') showThinking.value = settings.showThinking
+    if (typeof settings.thinkingFull === 'boolean') thinkingFull.value = settings.thinkingFull
     persist()
   }
 
@@ -74,7 +83,7 @@ export const useSystemSettingsStore = defineStore('systemSettings', () => {
     } catch { /* keep cached defaults */ }
   }
 
-  return { streamEnabled, debugMode, showThinking, apply, load }
+  return { streamEnabled, debugMode, showThinking, thinkingFull, apply, load }
 })
 
 if (import.meta.hot) {

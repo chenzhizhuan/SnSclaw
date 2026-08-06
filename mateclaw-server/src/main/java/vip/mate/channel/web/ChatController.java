@@ -25,6 +25,7 @@ import vip.mate.approval.PendingApproval;
 import vip.mate.approval.ResolveOutcome;
 import vip.mate.memory.event.ConversationCompletionPublisher;
 import vip.mate.workspace.conversation.ConversationService;
+import vip.mate.workspace.conversation.MessageMetadataJson;
 import vip.mate.workspace.conversation.model.MessageContentPart;
 import vip.mate.workspace.conversation.model.MessageEntity;
 
@@ -1739,7 +1740,12 @@ public class ChatController {
             String rawMetadata = savedAssistant.getMetadata();
             if (rawMetadata != null && !rawMetadata.isBlank()) {
                 try {
-                    Map<String, Object> parsed = objectMapper.readValue(rawMetadata,
+                    // Without the unwrap this readValue throws on the H2 profile
+                    // and the catch below swallows it, so the superseded markers
+                    // never ride the done payload and every client waits for a
+                    // reload instead — a degradation with no symptom in the log.
+                    Map<String, Object> parsed = objectMapper.readValue(
+                            MessageMetadataJson.normalize(rawMetadata),
                             new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
                     Object segs = parsed.get("segments");
                     if (segs instanceof java.util.List<?> list && !list.isEmpty()) {

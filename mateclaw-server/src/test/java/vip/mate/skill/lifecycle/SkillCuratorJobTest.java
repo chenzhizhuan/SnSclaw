@@ -55,6 +55,8 @@ class SkillCuratorJobTest {
     private CuratorRunNotifier notifier;
     @Mock
     private SkillConsolidationService consolidationService;
+    @Mock
+    private SkillSnapshotService snapshotService;
 
     private SkillLifecycleProperties properties;
     private SkillCuratorJob job;
@@ -72,7 +74,8 @@ class SkillCuratorJobTest {
     void setUp() {
         properties = new SkillLifecycleProperties();
         job = new SkillCuratorJob(lifecycleService, skillMapper, reportStore, properties,
-                systemSettingService, agentBindingService, workspaceManager, notifier, consolidationService);
+                systemSettingService, agentBindingService, workspaceManager, notifier, consolidationService,
+                snapshotService);
     }
 
     private SkillEntity candidate(long id, String state, LocalDateTime lastActivity) {

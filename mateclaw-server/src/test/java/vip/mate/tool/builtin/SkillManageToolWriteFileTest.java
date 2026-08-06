@@ -3,6 +3,7 @@ package vip.mate.tool.builtin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import vip.mate.skill.model.SkillEntity;
 import vip.mate.skill.runtime.SkillRuntimeService;
 import vip.mate.skill.runtime.SkillSecurityService;
@@ -43,7 +44,9 @@ class SkillManageToolWriteFileTest {
         securityService = mock(SkillSecurityService.class);
         workspaceManager = mock(SkillWorkspaceManager.class);
         SkillRuntimeService runtimeService = mock(SkillRuntimeService.class);
-        tool = new SkillManageTool(skillService, skillFileService, securityService, workspaceManager, runtimeService);
+        ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+        tool = new SkillManageTool(skillService, skillFileService, securityService, workspaceManager,
+                runtimeService, eventPublisher);
     }
 
     private SkillEntity skill(String name, boolean builtin) {

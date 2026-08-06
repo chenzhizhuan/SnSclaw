@@ -40,6 +40,12 @@
   --mc-bg-sunken: #f3f4f6;
   --mc-bg-muted: #f3f4f6;
   --mc-surface-strong: #ffffff;
+  /* Hover wash for icon buttons and list rows. Consumers write
+     `background: var(--mc-bg-hover)` with no literal fallback, and an
+     undefined custom property makes the whole declaration compute to the
+     property's initial value — transparent — so a missing definition here
+     silently erases the element's background instead of leaving it alone. */
+  --mc-bg-hover: #ebe3db;
   --mc-surface-overlay: rgba(255, 255, 255, 0.72);
   --mc-panel-top: rgba(255, 255, 255, 0.94);
   --mc-panel-bottom: rgba(246, 247, 248, 0.9);
@@ -166,6 +172,7 @@ html.dark {
   --mc-bg-elevated: #172b2a;
   --mc-bg-sunken: #0d1918;
   --mc-bg-muted: #142524;
+  --mc-bg-hover: #2a211c;
   --mc-surface-strong: #172b2a;
   --mc-surface-overlay: rgba(23, 43, 42, 0.78);
   --mc-panel-top: rgba(23, 43, 42, 0.96);
@@ -214,8 +221,8 @@ html.dark {
   --mc-input-text: #e6f0ee;
 
   /* code blocks — dark mode: deep brown bg, soft text */
-  --mc-code-bg: #0d1918;
-  --mc-code-header-bg: #172b2a;
+  --mc-code-bg: #161210;
+  --mc-code-header-bg: #1E1814;
   --mc-code-header-border: rgba(255, 255, 255, 0.06);
   --mc-code-lang-color: #6f8f89;
   --mc-code-copy-color: #6f8f89;

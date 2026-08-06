@@ -10,7 +10,9 @@ import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import vip.mate.agent.context.ChatOrigin;
 import vip.mate.cron.model.CronJobDTO;
+import vip.mate.cron.model.DeliveryConfig;
 import vip.mate.cron.service.CronJobService;
+import vip.mate.tool.ConcurrencyUnsafe;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -25,7 +27,7 @@ import java.util.Map;
  * from natural language (e.g. "every day at 9am" → "0 9 * * *").
  *
  * @author SnSclaw
- * @see vip.mate.cron.service.CronJobService
+ * @see CronJobService
  */
 @Slf4j
 @Component
@@ -42,7 +44,7 @@ public class CronJobTool {
      */
     private final ObjectMapper objectMapper;
 
-    @vip.mate.tool.ConcurrencyUnsafe("cron job creation persists to mate_cron_job; concurrent creates can race on name")
+    @ConcurrencyUnsafe("cron job creation persists to mate_cron_job; concurrent creates can race on name")
     @Tool(description = "Create a scheduled task that asks the agent to do something at a specific time — "
             + "the trigger message is sent to the LLM, which can use tools (search, weather, etc.) to produce the answer. "
             + "Use this for queries like 'every morning give me a weather report' or 'daily news summary'. "
@@ -119,7 +121,7 @@ public class CronJobTool {
         }
     }
 
-    @vip.mate.tool.ConcurrencyUnsafe("reminder creation persists to mate_cron_job; concurrent creates can race on name")
+    @ConcurrencyUnsafe("reminder creation persists to mate_cron_job; concurrent creates can race on name")
     @Tool(description = "Create a scheduled REMINDER. The reminder text is delivered to the user verbatim at the "
             + "scheduled time — no LLM call, no rephrasing, no token cost. "
             + "Use this when the user wants a notification with specific content (e.g. 'remind me at 3pm to leave for the meeting' → "
@@ -211,7 +213,7 @@ public class CronJobTool {
         }
     }
 
-    @vip.mate.tool.ConcurrencyUnsafe("toggles row state in mate_cron_job; serialize to keep enabled/disabled deterministic")
+    @ConcurrencyUnsafe("toggles row state in mate_cron_job; serialize to keep enabled/disabled deterministic")
     @Tool(description = "Enable or disable a scheduled task by its job ID. "
             + "Use list_cron_jobs first to find the job ID.")
     public String toggle_cron_job(
@@ -236,7 +238,7 @@ public class CronJobTool {
         }
     }
 
-    @vip.mate.tool.ConcurrencyUnsafe("destructive — removes row from mate_cron_job")
+    @ConcurrencyUnsafe("destructive — removes row from mate_cron_job")
     @Tool(description = "Delete a scheduled task by its job ID. This action requires user approval. "
             + "Use list_cron_jobs first to find the job ID.")
     public String delete_cron_job(
@@ -306,7 +308,7 @@ public class CronJobTool {
             // store it as session.targetId, which never equals the cron's own
             // chatId/senderId-derived targetId — the senderId match is the
             // stable common key.
-            dto.setDeliveryConfig(vip.mate.cron.model.DeliveryConfig.from(
+            dto.setDeliveryConfig(DeliveryConfig.from(
                     origin.channelTarget(), origin.requesterId()));
         }
     }
