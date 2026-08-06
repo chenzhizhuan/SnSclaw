@@ -15,7 +15,7 @@ import java.util.Map;
  * {@code value}. The server echoes it back inside the inbound
  * {@code P2CardActionTrigger}'s {@code action.value}. We pack just
  * enough to recover the pending approval (the {@code pendingId}
- * alone is enough — mateclaw's {@code ApprovalService.getPending}
+ * alone is enough — SnSclaw's {@code ApprovalService.getPending}
  * resolves the rest, including the original requester). Sender / chat
  * context is intentionally not packed — the inbound handler runs in-
  * process and can look it up synchronously.

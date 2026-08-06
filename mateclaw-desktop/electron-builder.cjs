@@ -180,10 +180,14 @@ const config = {
   },
 
   win: {
-    target: [
-      { target: 'nsis', arch: 'x64' },
-      // { target: 'nsis', arch: 'arm64' },  // disabled: user needs only x64 for Win10
-    ],
+    // Arch comes from WIN_ARCH (default x64), NOT from listing both arches here.
+    // Measured: declaring x64+arm64 and passing only `--arm64` builds BOTH
+    // arches plus a combined 640 MB installer — the CLI flag unions with the
+    // declared targets instead of filtering them. Driving the list from an env
+    // var keeps `--arch arm64` to a single 321 MB artifact.
+    // A local-mode arm64 build needs resources/jre/win-arm64/ present:
+    //   scripts/download-jre.sh --os win --arch arm64
+    target: [{ target: 'nsis', arch: process.env.WIN_ARCH || 'x64' }],
     icon: 'build/icon.ico',
     forceCodeSigning: false,
     // NOTE: Publisher display in Add/Remove Programs is handled by two layers:
