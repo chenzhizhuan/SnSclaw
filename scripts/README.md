@@ -64,11 +64,11 @@ bundle 里连 `Contents/_CodeSignature` 都不存在）。经网络传输的副�
 这是 Gatekeeper 的误报，不是文件传坏了。
 
 用户装完必须先清隔离标记再打开，顺序不能反（`.app` 名取自
-`branding.config.json` 的 `productName`，当前品牌下是 `SnSclaw.app`）：
+`branding.config.json` 的 `productName`，当前品牌下是 `智屿.app`）：
 
 ```bash
-xattr -rd com.apple.quarantine "/Applications/SnSclaw.app"   # 先这个
-open "/Applications/SnSclaw.app"                              # 再打开
+xattr -rd com.apple.quarantine "/Applications/智屿.app"   # 先这个
+open "/Applications/智屿.app"                              # 再打开
 ```
 
 两点都已用从 `.dmg` 里取出、带隔离标记的副本实测过：
