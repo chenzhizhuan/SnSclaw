@@ -327,6 +327,17 @@ export const skillApi = {
 
   // ---- Curator restore points ----
   /** List recent skill-library restore points (newest first). */
+  /** Skills currently under autonomous curation — the set that can be released. */
+  curatorManaged: () => http.get('/skills/curator/managed'),
+  /** Skills outside autonomous curation, with the reason each one is out. */
+  curatorUnmanaged: () => http.get('/skills/curator/unmanaged'),
+  /**
+   * Hand skills over to autonomous curation. Ids stay strings — 19-digit
+   * snowflake ids lose precision through the JS Number type.
+   */
+  curatorAdopt: (skillIds: string[]) => http.post('/skills/curator/adopt', skillIds),
+  /** Take skills back from autonomous curation. */
+  curatorRelease: (skillIds: string[]) => http.post('/skills/curator/release', skillIds),
   curatorSnapshots: () => http.get('/skills/curator/snapshots'),
   /** Capture a restore point on demand. */
   curatorSnapshotCapture: (reason?: string) =>
