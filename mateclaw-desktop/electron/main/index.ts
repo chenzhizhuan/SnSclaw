@@ -310,9 +310,12 @@ function pollBackendReady(): void {
     }
 
     const isHttps = BACKEND_URL.startsWith('https:')
-    const client = isHttps ? https : http
+    // Annotate as `typeof http`: TS cannot merge the http/https `get` overload
+    // sets across a union, so calling the ternary result directly fails with
+    // TS2349. The two modules share an identical `get` shape at runtime.
+    const client: typeof http = isHttps ? (https as unknown as typeof http) : http
     const reqOpts = isHttps ? { agent: insecureAgent } : {}
-    const req = client.get(`${BACKEND_URL}/`, reqOpts, (res) => {
+    const req = client.get(`${BACKEND_URL}/`, reqOpts, (res: http.IncomingMessage) => {
       if (resolved) return
       resolved = true
 
@@ -440,16 +443,18 @@ function probeServer(
     }
 
     const isHttps = normalized.startsWith('https:')
-    const client = isHttps ? https : http
+    // See the note in the health-check above: `typeof http` keeps the union
+    // from collapsing into an uncallable signature set (TS2349).
+    const client: typeof http = isHttps ? (https as unknown as typeof http) : http
     const reqOpts = isHttps ? { agent: insecureAgent } : {}
-    const req = client.get(`${normalized}/`, reqOpts, (res) => {
+    const req = client.get(`${normalized}/`, reqOpts, (res: http.IncomingMessage) => {
       res.resume()
       const status = res.statusCode ?? 0
       // Any non-5xx response means the server is reachable and serving.
       resolve({ ok: status > 0 && status < 500, status })
     })
 
-    req.on('error', (err) => resolve({ ok: false, error: err.message }))
+    req.on('error', (err: Error) => resolve({ ok: false, error: err.message }))
     req.setTimeout(timeoutMs, () => {
       req.destroy()
       resolve({ ok: false, error: 'timeout' })
