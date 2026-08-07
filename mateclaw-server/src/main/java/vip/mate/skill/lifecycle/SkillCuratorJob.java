@@ -210,7 +210,24 @@ public class SkillCuratorJob {
         List<SkillEntity> candidates = loadCandidates();
         int plannedStale = 0, plannedArchived = 0, plannedReactivate = 0;
         int appliedStale = 0, appliedArchived = 0, appliedReactivate = 0;
+        int newlyObserved = 0;
         for (SkillEntity skill : candidates) {
+            // A candidate no sweep has seen before starts its idle clock now
+            // rather than being judged on time it spent outside curation.
+            // planTransition already returns NONE for these; stamping the
+            // anchor is what lets the next sweep judge it for real.
+            //
+            // A dry run must not write, but it must still reach the same
+            // verdict a real run would — this report is what an operator reads
+            // to decide whether widening the scope is safe, so predicting
+            // archives that a real run would defer would be a lie.
+            if (SkillLifecycleService.isUnobserved(skill)) {
+                newlyObserved++;
+                if (!dryRun) {
+                    lifecycleService.markObserved(skill, now);
+                }
+                continue;
+            }
             LifecycleTransition t = lifecycleService.planTransition(skill, now);
             report.add(skill, t);
             if (t == LifecycleTransition.TO_STALE) {
@@ -236,6 +253,7 @@ public class SkillCuratorJob {
         }
 
         report.scanned(candidates.size())
+                .newlyObserved(newlyObserved)
                 .plannedCounts(plannedStale, plannedArchived, plannedReactivate)
                 .appliedCounts(appliedStale, appliedArchived, appliedReactivate)
                 .blockedByBindings(agentBindingService.blockedByBindingCandidates(now));

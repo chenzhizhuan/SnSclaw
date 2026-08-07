@@ -1149,6 +1149,61 @@ public class SkillController {
         }
     }
 
+    @Operation(summary = "列出未纳入自治治理的技能")
+    @GetMapping("/curator/unmanaged")
+    @RequireWorkspaceRole("member")
+    public R<List<Map<String, Object>>> curatorUnmanaged() {
+        return R.ok(skillLifecycleService.listUnmanaged());
+    }
+
+    @Operation(summary = "列出已纳入自治治理的技能")
+    @GetMapping("/curator/managed")
+    @RequireWorkspaceRole("member")
+    public R<List<Map<String, Object>>> curatorManaged() {
+        return R.ok(skillLifecycleService.listManaged());
+    }
+
+    @Operation(summary = "将技能移交给自治治理（不重置闲置时钟）")
+    @PostMapping("/curator/adopt")
+    @RequireWorkspaceRole("admin")
+    public R<Map<String, Object>> curatorAdopt(@RequestBody List<String> skillIds) {
+        return R.ok(setAdoptedBulk(skillIds, true));
+    }
+
+    @Operation(summary = "撤销移交，技能归还用户所有")
+    @PostMapping("/curator/release")
+    @RequireWorkspaceRole("admin")
+    public R<Map<String, Object>> curatorRelease(@RequestBody List<String> skillIds) {
+        return R.ok(setAdoptedBulk(skillIds, false));
+    }
+
+    /**
+     * Apply adopt/release across a batch, reporting per-skill outcomes rather
+     * than failing the whole call on one bad id — a partial batch that silently
+     * rolled back would leave the operator unsure which skills moved.
+     */
+    private Map<String, Object> setAdoptedBulk(List<String> skillIds, boolean adopt) {
+        List<String> changed = new ArrayList<>();
+        List<Map<String, Object>> rejected = new ArrayList<>();
+        for (String raw : skillIds == null ? List.<String>of() : skillIds) {
+            // Ids stay strings end-to-end; parse once here so a malformed one
+            // is a reported rejection rather than a framework-level failure.
+            try {
+                skillLifecycleService.setAdopted(Long.parseLong(String.valueOf(raw).strip()), adopt);
+                changed.add(String.valueOf(raw));
+            } catch (Exception e) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("id", String.valueOf(raw));
+                row.put("message", e.getMessage());
+                rejected.add(row);
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("changed", changed);
+        out.put("rejected", rejected);
+        return out;
+    }
+
     @Operation(summary = "列出技能库还原点")
     @GetMapping("/curator/snapshots")
     @RequireWorkspaceRole("member")

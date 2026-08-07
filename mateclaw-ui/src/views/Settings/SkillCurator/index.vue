@@ -157,6 +157,64 @@
         </ul>
       </div>
 
+      <!-- Skills outside curation -->
+      <div class="settings-card">
+        <div class="card-head">
+          <h3 class="card-title">{{ t('skillCurator.unmanaged') }}</h3>
+          <div class="curator-actions">
+            <button class="btn-secondary" :disabled="busy" @click="loadUnmanaged">
+              {{ t('common.refresh', 'Refresh') }}
+            </button>
+          </div>
+        </div>
+        <p class="curator-hint">{{ t('skillCurator.unmanagedHint') }}</p>
+
+        <h4 class="roster-heading">{{ t('skillCurator.managedList') }}</h4>
+        <p v-if="managed.length === 0" class="empty-note">{{ t('skillCurator.noManaged') }}</p>
+        <ul v-else class="routine-list">
+          <li v-for="m in managed" :key="m.id" class="routine-item">
+            <div class="routine-main">
+              <p class="routine-text">{{ m.name }}</p>
+              <div class="routine-meta">
+                <span>{{ m.reason }}</span>
+                <span v-if="m.unobserved">{{ t('skillCurator.unobserved') }}</span>
+                <span v-else-if="m.daysIdle != null">
+                  {{ t('skillCurator.unmanagedDaysIdle', { n: m.daysIdle }) }}
+                </span>
+              </div>
+            </div>
+            <div class="routine-actions">
+              <button class="btn-secondary" :disabled="busy" @click="release(m)">
+                {{ t('skillCurator.release') }}
+              </button>
+            </div>
+          </li>
+        </ul>
+
+        <h4 class="roster-heading">{{ t('skillCurator.unmanagedList') }}</h4>
+        <p v-if="unmanaged.length === 0" class="empty-note">{{ t('skillCurator.noUnmanaged') }}</p>
+        <ul v-else class="routine-list">
+          <li v-for="u in unmanaged" :key="u.id" class="routine-item">
+            <div class="routine-main">
+              <p class="routine-text">{{ u.name }}</p>
+              <div class="routine-meta">
+                <span>{{ u.reason === 'predates-provenance'
+                  ? t('skillCurator.unmanagedReasonLegacy')
+                  : t('skillCurator.unmanagedReasonUser') }}</span>
+                <span v-if="u.daysIdle != null">
+                  {{ t('skillCurator.unmanagedDaysIdle', { n: u.daysIdle }) }}
+                </span>
+              </div>
+            </div>
+            <div class="routine-actions">
+              <button class="btn-secondary" :disabled="busy" @click="adopt(u)">
+                {{ t('skillCurator.adopt') }}
+              </button>
+            </div>
+          </li>
+        </ul>
+      </div>
+
       <!-- Restore points -->
       <div class="settings-card">
         <div class="card-head">
@@ -299,6 +357,19 @@ interface SkillSnapshot {
   createdAt: string | null
 }
 
+interface UnmanagedSkill {
+  /** Snowflake id kept as a string end-to-end — 19 digits exceed Number precision. */
+  id: string
+  name: string
+  description?: string | null
+  lifecycleState?: string | null
+  origin?: string | null
+  reason: string
+  /** No sweep has observed it yet, so its idle clock has not started. */
+  unobserved?: boolean
+  daysIdle?: number | null
+}
+
 const loading = ref(true)
 const error = ref('')
 const busy = ref(false)
@@ -307,6 +378,8 @@ const routines = ref<RoutineCandidate[]>([])
 const gates = ref<RoutineGates>({ minOccurrences: 3, minDistinctDays: 3, enabled: true })
 const routineFilter = ref<string>('observing')
 const snapshots = ref<SkillSnapshot[]>([])
+const unmanaged = ref<UnmanagedSkill[]>([])
+const managed = ref<UnmanagedSkill[]>([])
 
 const routineFilters = [
   { value: 'observing', label: 'skillCurator.routineFilterObserving' },
@@ -331,7 +404,7 @@ async function load() {
   try {
     const res: any = await skillApi.curatorStatus()
     status.value = res.data as CuratorStatus
-    await Promise.all([loadReports(), loadRoutines(), loadSnapshots()])
+    await Promise.all([loadReports(), loadRoutines(), loadSnapshots(), loadUnmanaged()])
   } catch (e: any) {
     error.value = e?.message || t('skillCurator.loadFailed')
   } finally {
@@ -508,6 +581,59 @@ async function reopenRoutine(r: RoutineCandidate) {
   }
 }
 
+// ==================== Skills outside curation ====================
+
+async function loadUnmanaged() {
+  try {
+    const [un, mg]: any[] = await Promise.all([
+      skillApi.curatorUnmanaged(),
+      skillApi.curatorManaged(),
+    ])
+    unmanaged.value = Array.isArray(un.data) ? un.data : []
+    managed.value = Array.isArray(mg.data) ? mg.data : []
+  } catch {
+    unmanaged.value = []
+    managed.value = []
+  }
+}
+
+async function release(u: UnmanagedSkill) {
+  busy.value = true
+  try {
+    await skillApi.curatorRelease([u.id])
+    mcToast.success(t('skillCurator.releaseSuccess', { name: u.name }))
+    await loadUnmanaged()
+  } catch (e: any) {
+    mcToast.error(e?.message || t('skillCurator.actionFailed'))
+  } finally {
+    busy.value = false
+  }
+}
+
+async function adopt(u: UnmanagedSkill) {
+  // Adoption does not grant a fresh idle window — an already-idle skill can
+  // age out on the very next sweep — so state that before acting on it.
+  try {
+    await ElMessageBox.confirm(
+      t('skillCurator.adoptConfirm', { name: u.name }),
+      t('skillCurator.adopt'),
+      { type: 'warning' },
+    )
+  } catch {
+    return
+  }
+  busy.value = true
+  try {
+    await skillApi.curatorAdopt([u.id])
+    mcToast.success(t('skillCurator.adoptSuccess', { name: u.name }))
+    await loadUnmanaged()
+  } catch (e: any) {
+    mcToast.error(e?.message || t('skillCurator.actionFailed'))
+  } finally {
+    busy.value = false
+  }
+}
+
 // ==================== Restore points ====================
 
 async function loadSnapshots() {
@@ -604,6 +730,13 @@ onMounted(load)
 .kv-row code { font-family: var(--mc-font-mono, ui-monospace, Menlo, monospace); font-size: 12px; }
 
 .empty-note { margin: 0; font-size: 13px; color: var(--mc-text-tertiary); }
+.roster-heading {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mc-text-secondary);
+}
+.roster-heading:first-of-type { margin-top: 8px; }
 .report-list { display: flex; gap: 8px; flex-wrap: wrap; }
 .report-item { font-family: var(--mc-font-mono, ui-monospace, Menlo, monospace); font-size: 12px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--mc-border); background: var(--mc-bg-muted); color: var(--mc-text-secondary); cursor: pointer; transition: all 0.15s; }
 .report-item:hover { border-color: var(--mc-text-tertiary); }
