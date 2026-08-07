@@ -58,12 +58,27 @@ scripts/build-desktop-mac.sh --mode remote   # 瘦包，不含 JRE/JAR
 `throw`（`Build for macOS is supported only on macOS`），做磁盘镜像和 `codesign`
 需要苹果工具链，没有任何参数能绕过。
 
-产物未签名未公证，用户装完必须先清隔离标记再打开，顺序不能反：
+产物未签名未公证（构建机没有 Developer 证书，electron-builder 直接跳过签名，
+bundle 里连 `Contents/_CodeSignature` 都不存在）。经网络传输的副本会被打上
+`com.apple.quarantine`，隔离标记 + 无有效签名会让 macOS 报「已损坏，无法打开」——
+这是 Gatekeeper 的误报，不是文件传坏了。
+
+用户装完必须先清隔离标记再打开，顺序不能反（`.app` 名取自
+`branding.config.json` 的 `productName`，当前品牌下是 `SnSclaw.app`）：
 
 ```bash
-xattr -cr /Applications/SnSclaw.app   # 先这个
-open /Applications/SnSclaw.app        # 再打开
+xattr -rd com.apple.quarantine "/Applications/SnSclaw.app"   # 先这个
+open "/Applications/SnSclaw.app"                              # 再打开
 ```
+
+两点都已用从 `.dmg` 里取出、带隔离标记的副本实测过：
+
+- 用 `-rd com.apple.quarantine` 而非 `-cr`。后者会清掉所有扩展属性，
+  而这里只有隔离标记需要处理。
+- 会刷出约 180 行 `Permission denied`，来自内嵌 JRE 的只读文件
+  （`r--r--r--`）。**忽略即可**：那是它动不了的*其他*属性，隔离标记本身
+  全部清除成功（实测残留为 0），应用能正常启动。不需要 `sudo`，加了反而
+  要输密码。
 
 要免掉这一步需要付费 Apple Developer 账号：`CSC_LINK` + `CSC_KEY_PASSWORD` 做签名，
 `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID` 做公证。

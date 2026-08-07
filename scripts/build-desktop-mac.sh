@@ -215,14 +215,36 @@ fi
 # ─── Done ─────────────────────────────────────────────────────────────────────
 step "done"
 log "Artifacts under: $DESK/release"
-cat <<'NOTE' | tee -a "$MAIN_LOG"
+# Read the real bundle name out of the packed output rather than hardcoding it:
+# productName comes from branding.config.json, so a rebrand renames the .app and
+# any literal here goes stale (it used to say "<AppName>.app" long after the bundle
+# had become 智屿.app).
+APP_NAME="$(find "$DESK/release" -maxdepth 2 -name '*.app' -print 2>/dev/null | head -1 | xargs -I{} basename {} 2>/dev/null)"
+[ -n "$APP_NAME" ] || APP_NAME="<AppName>.app"
+
+cat <<NOTE | tee -a "$MAIN_LOG"
 
 ── Unsigned build: what your users must do ───────────────────────────────
-This build is NOT signed with an Apple Developer ID and NOT notarized, so
-macOS Gatekeeper quarantines it. After dragging the app to /Applications a
-user must strip the quarantine attribute once:
+This build is NOT signed with an Apple Developer ID and NOT notarized (no
+Developer certificate on the build host, so electron-builder skips signing
+entirely — the bundle has no Contents/_CodeSignature at all). Any copy that
+travels over the network gets a com.apple.quarantine flag, and quarantine
+plus no valid signature makes macOS claim the app "is damaged and can't be
+opened". That message is a Gatekeeper false alarm, not a corrupt download.
 
-    xattr -cr /Applications/SnSclaw.app
+After dragging the app to /Applications the user clears it once:
+
+    xattr -rd com.apple.quarantine "/Applications/$APP_NAME"
+
+Notes on that command, both verified by launching a quarantined copy
+extracted from the .dmg:
+  * Use -rd com.apple.quarantine, not -cr. -cr wipes every extended
+    attribute when only the quarantine flag matters.
+  * It prints ~180 "Permission denied" lines from the embedded JRE's
+    read-only (r--r--r--) files. Ignore them: those are OTHER attributes it
+    could not touch. Every quarantine flag in the bundle is in fact removed
+    (verified: zero remain), and the app launches normally. No sudo needed —
+    and sudo is worse here, since it prompts for a password.
 
 To remove that step, you need a paid Apple Developer account, then set
 CSC_LINK / CSC_KEY_PASSWORD (Developer ID Application cert) plus
