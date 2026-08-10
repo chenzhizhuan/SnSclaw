@@ -23,6 +23,7 @@ import vip.mate.skill.routine.model.SkillRoutineCandidateEntity;
 import vip.mate.skill.routine.repository.SkillRoutineCandidateMapper;
 import vip.mate.tool.builtin.SkillManageTool;
 import vip.mate.workspace.conversation.ConversationService;
+import vip.mate.workspace.conversation.model.ConversationEntity;
 import vip.mate.workspace.conversation.model.MessageEntity;
 
 import java.time.LocalDateTime;
@@ -76,6 +77,8 @@ public class SkillRoutinePromoter {
                                 SkillRoutineCandidateEntity.STATUS_OBSERVING)
                         .ge(SkillRoutineCandidateEntity::getOccurrenceCount, properties.getMinOccurrences())
                         .ge(SkillRoutineCandidateEntity::getDistinctDayCount, properties.getMinDistinctDays())
+                        .ge(SkillRoutineCandidateEntity::getLastSeenAt,
+                                LocalDateTime.now().minusDays(Math.max(1, properties.getLookbackDays())))
                         .orderByDesc(SkillRoutineCandidateEntity::getOccurrenceCount)
                         .last("LIMIT " + Math.max(1, properties.getMaxPromotionsPerRun())));
         if (candidates.isEmpty()) {
@@ -110,7 +113,7 @@ public class SkillRoutinePromoter {
 
     private boolean promote(SkillRoutineCandidateEntity candidate) {
         List<String> conversationIds = parseSamples(candidate.getSampleConversations());
-        String evidence = buildEvidence(conversationIds);
+        String evidence = buildEvidence(conversationIds, candidate.getWorkspaceId());
         if (evidence.isBlank()) {
             log.debug("[SkillRoutine] Candidate {} has no readable transcripts, skipping",
                     candidate.getId());
@@ -186,12 +189,18 @@ public class SkillRoutinePromoter {
      * Render the sample conversations as labelled transcripts. Each is capped
      * so a handful of long sessions cannot blow the synthesis context.
      */
-    private String buildEvidence(List<String> conversationIds) {
+    private String buildEvidence(List<String> conversationIds, Long workspaceId) {
         StringBuilder sb = new StringBuilder();
         int index = 0;
         for (String conversationId : conversationIds) {
             List<MessageEntity> messages;
             try {
+                ConversationEntity conversation = conversationService.findByConversationId(conversationId);
+                if (conversation == null || workspaceId == null
+                        || !workspaceId.equals(conversation.getWorkspaceId())) {
+                    log.warn("[SkillRoutine] Ignoring cross-workspace sample conversation {}", conversationId);
+                    continue;
+                }
                 messages = conversationService.listMessages(conversationId);
             } catch (Exception e) {
                 continue;

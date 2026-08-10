@@ -2,6 +2,7 @@ package vip.mate.skill.routine;
 
 import cn.hutool.crypto.SecureUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,8 @@ import vip.mate.workspace.conversation.model.ConversationEntity;
 import vip.mate.workspace.conversation.model.MessageEntity;
 import vip.mate.workspace.conversation.repository.ConversationMapper;
 import vip.mate.workspace.conversation.repository.MessageMapper;
+import vip.mate.workspace.core.model.WorkspaceEntity;
+import vip.mate.workspace.core.repository.WorkspaceMapper;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -57,6 +60,7 @@ public class SkillRoutineMiner {
     private final ConversationMapper conversationMapper;
     private final MessageMapper messageMapper;
     private final SkillRoutineCandidateMapper candidateMapper;
+    private final WorkspaceMapper workspaceMapper;
     private final SkillRoutineProperties properties;
     private final ObjectMapper objectMapper;
 
@@ -136,11 +140,48 @@ public class SkillRoutineMiner {
      * @return number of candidate rows written or refreshed
      */
     public int mine() {
+        return mineAll();
+    }
+
+    /** Mine every workspace. This entry point is reserved for the scheduler. */
+    public int mineAll() {
+        List<Long> workspaceIds = workspaceMapper.selectList(
+                        new LambdaQueryWrapper<WorkspaceEntity>().select(WorkspaceEntity::getId))
+                .stream()
+                .map(WorkspaceEntity::getId)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .toList();
+        if (workspaceIds.isEmpty()) {
+            workspaceIds = List.of(1L);
+        }
+        int written = 0;
+        for (Long workspaceId : workspaceIds) {
+            try {
+                written += mineInternal(workspaceId);
+            } catch (Exception e) {
+                log.warn("[SkillRoutine] Mining failed for workspace {}: {}", workspaceId, e.getMessage());
+            }
+        }
+        return written;
+    }
+
+    /**
+     * Mine one workspace for an admin request. Missing/invalid scope fails
+     * closed to the legacy default workspace instead of widening to all tenants.
+     */
+    public int mine(Long workspaceId) {
+        long scopedWorkspaceId = workspaceId != null && workspaceId > 0 ? workspaceId : 1L;
+        return mineInternal(scopedWorkspaceId);
+    }
+
+    private int mineInternal(Long workspaceId) {
         if (!properties.isEnabled()) {
             return 0;
         }
         LocalDateTime cutoff = LocalDateTime.now().minusDays(Math.max(1, properties.getLookbackDays()));
-        List<ConversationEntity> conversations = loadRecentConversations(cutoff);
+        expireStaleCandidates(workspaceId, cutoff);
+        List<ConversationEntity> conversations = loadRecentConversations(cutoff, workspaceId);
         if (conversations.isEmpty()) {
             return 0;
         }
@@ -193,9 +234,28 @@ public class SkillRoutineMiner {
         return written;
     }
 
+    /**
+     * Evidence is a sliding window, not a lifetime counter. Once the newest
+     * occurrence falls outside the lookback window, clear the automatic
+     * promotion gates while retaining the row and operator decision history.
+     */
+    private void expireStaleCandidates(Long workspaceId, LocalDateTime cutoff) {
+        if (workspaceId == null || workspaceId <= 0) {
+            return;
+        }
+        candidateMapper.update(null, new LambdaUpdateWrapper<SkillRoutineCandidateEntity>()
+                .eq(SkillRoutineCandidateEntity::getWorkspaceId, workspaceId)
+                .eq(SkillRoutineCandidateEntity::getStatus, SkillRoutineCandidateEntity.STATUS_OBSERVING)
+                .and(w -> w.isNull(SkillRoutineCandidateEntity::getLastSeenAt)
+                        .or().lt(SkillRoutineCandidateEntity::getLastSeenAt, cutoff))
+                .set(SkillRoutineCandidateEntity::getOccurrenceCount, 0)
+                .set(SkillRoutineCandidateEntity::getDistinctDayCount, 0)
+                .set(SkillRoutineCandidateEntity::getSampleConversations, "[]"));
+    }
+
     // ==================== Loading ====================
 
-    private List<ConversationEntity> loadRecentConversations(LocalDateTime cutoff) {
+    private List<ConversationEntity> loadRecentConversations(LocalDateTime cutoff, Long workspaceId) {
         Page<ConversationEntity> page = new Page<>(1, Math.max(1, properties.getMaxConversationsPerRun()), false);
         LambdaQueryWrapper<ConversationEntity> q = new LambdaQueryWrapper<ConversationEntity>()
                 .select(ConversationEntity::getConversationId, ConversationEntity::getAgentId,
@@ -204,6 +264,9 @@ public class SkillRoutineMiner {
                 .isNotNull(ConversationEntity::getAgentId)
                 .ge(ConversationEntity::getLastActiveTime, cutoff)
                 .orderByDesc(ConversationEntity::getLastActiveTime);
+        if (workspaceId != null && workspaceId > 0) {
+            q.eq(ConversationEntity::getWorkspaceId, workspaceId);
+        }
         return conversationMapper.selectPage(page, q).getRecords();
     }
 

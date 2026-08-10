@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -26,7 +27,7 @@ import java.util.Optional;
 @Getter
 public class SkillCuratorReport {
 
-    private static final DateTimeFormatter RUN_ID = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+    private static final DateTimeFormatter RUN_ID = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS");
 
     private final String runId;
     private final LocalDateTime runAt;
@@ -47,7 +48,8 @@ public class SkillCuratorReport {
 
     private SkillCuratorReport(Builder b) {
         this.runAt = b.runAt != null ? b.runAt : LocalDateTime.now();
-        this.runId = this.runAt.format(RUN_ID);
+        this.runId = this.runAt.format(RUN_ID) + "-"
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         this.dryRun = b.dryRun;
         this.config = new Config(b.staleAfterDays, b.archiveAfterDays, b.scope);
         this.scanned = b.scanned;

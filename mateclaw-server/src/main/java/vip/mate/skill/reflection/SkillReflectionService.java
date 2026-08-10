@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.core.LockConfiguration;
+import net.javacrumbs.shedlock.core.LockProvider;
+import net.javacrumbs.shedlock.core.SimpleLock;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
@@ -24,13 +27,19 @@ import vip.mate.skill.model.SkillOrigin;
 import vip.mate.skill.service.SkillService;
 import vip.mate.tool.builtin.SkillManageTool;
 import vip.mate.workspace.conversation.ConversationService;
+import vip.mate.workspace.conversation.model.ConversationEntity;
 import vip.mate.workspace.conversation.model.MessageEntity;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 /**
  * Out-of-band skill reflection — after a conversation finishes, reviews the
@@ -40,7 +49,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>The review runs on an async thread so it never blocks the user response
  * and never consumes the live turn's context window. Every write is routed
  * back through {@link SkillManageTool#skill_manage} so it inherits the same
- * security scan, name validation, builtin guard, fuzzy-patch matching, and
+ * security scan, name validation, builtin guard, exact patch matching, and
  * workspace export as the in-band agent path — this service only decides
  * <em>what</em> to write, never <em>how</em>.
  *
@@ -58,6 +67,7 @@ public class SkillReflectionService {
     private final AgentGraphBuilder agentGraphBuilder;
     private final SkillReflectionProperties properties;
     private final ObjectMapper objectMapper;
+    private final LockProvider lockProvider;
 
     /**
      * Per-conversation review bookkeeping: when the last review ran (cooldown)
@@ -80,11 +90,20 @@ public class SkillReflectionService {
      * conversation forever.
      */
     private static final int MAX_TRACKED_CONVERSATIONS = 2000;
+    /** Atomic single-flight claims for concurrent completion events. */
+    private final ConcurrentHashMap<String, Boolean> inFlight = new ConcurrentHashMap<>();
 
     /** Per-message truncation when building the review transcript. */
     private static final int MESSAGE_TRUNCATE_CHARS = 1200;
     /** Per-skill body truncation when building the catalog. */
     private static final int CATALOG_BODY_TRUNCATE_CHARS = 1200;
+    private static final Pattern SECRET_PATTERN = Pattern.compile(
+            "(?i)(bearer\\s+[a-z0-9._~+/-]{12,}|(?:api[_-]?key|password|passwd|secret|token)\\s*[:=]\\s*[^\\s,;]{6,}|sk-[a-z0-9_-]{12,})");
+    private static final Pattern UNSAFE_PERSISTED_INSTRUCTION = Pattern.compile(
+            "(?is)(ignore\\s+(?:all\\s+)?(?:previous|prior)\\s+instructions|system\\s+prompt|"
+                    + "bypass\\s+(?:the\\s+)?(?:approval|guard|security)|disable\\s+(?:the\\s+)?(?:guard|approval|security)|"
+                    + "(?:read|collect|dump|upload|send|exfiltrat\\w*)[^\\n]{0,100}(?:credential|secret|token|password|private key|environment variable)|"
+                    + "curl[^\\n]{0,120}(?:--data|-d\\s|--upload|-T\\s)|rm\\s+-r?f\\s+/|/dev/tcp/|nc\\s+-e)");
 
     @Async
     @EventListener
@@ -123,25 +142,62 @@ public class SkillReflectionService {
             log.debug("[SkillReflect] conversation {} in cooldown, skipping", conversationId);
             return;
         }
-        // Advance the mark on every attempt the gate lets through, including
-        // ones that bail on the substance floor. A conversation that stays
-        // below the floor should wait another full interval rather than
-        // re-checking on every subsequent message.
-        evictIfOversized();
-        reviewStates.put(conversationId, new ReviewState(Instant.now(), messageCount));
+        if (inFlight.putIfAbsent(conversationId, Boolean.TRUE) != null) {
+            log.debug("[SkillReflect] conversation {} already being reviewed, skipping", conversationId);
+            return;
+        }
         try {
-            if (!doReflect(agentId, conversationId)) {
-                log.debug("[SkillReflect] conv {} yielded no review this cycle", conversationId);
+            ReviewState claimedState = reviewStates.get(conversationId);
+            int claimedAt = claimedState == null ? 0 : claimedState.reviewedAtMessage();
+            if (messageCount - claimedAt < interval || isInCooldown(claimedState)) {
+                return;
+            }
+            Duration distributedCooldown = Duration.ofMinutes(Math.max(0, properties.getCooldownMinutes()));
+            java.util.Optional<SimpleLock> distributedLock = lockProvider.lock(new LockConfiguration(
+                    Instant.now(), reflectionLockName(conversationId),
+                    distributedCooldown.plusMinutes(10), distributedCooldown));
+            if (distributedLock.isEmpty()) {
+                log.debug("[SkillReflect] conversation {} held by another node", conversationId);
+                return;
+            }
+            try {
+                evictIfOversized();
+                reviewStates.put(conversationId, new ReviewState(Instant.now(), messageCount));
+                if (!doReflect(agentId, conversationId)) {
+                    log.debug("[SkillReflect] conv {} yielded no review this cycle", conversationId);
+                }
+            } finally {
+                try {
+                    distributedLock.get().unlock();
+                } catch (Exception e) {
+                    log.warn("[SkillReflect] distributed lock release failed for {}: {}",
+                            conversationId, e.getMessage());
+                }
             }
         } catch (Exception e) {
             log.warn("[SkillReflect] Failed for agent={}, conv={}: {}",
                     agentId, conversationId, e.getMessage());
+        } finally {
+            inFlight.remove(conversationId);
         }
     }
 
     /** @return {@code true} when a review actually ran (cooldown should advance). */
     private boolean doReflect(Long agentId, String conversationId) {
-        // 1. Load the recent window of the conversation.
+        // 1. Derive tenant identity from the persisted conversation. Event
+        // payloads are notifications, not an authorization source.
+        ConversationEntity conversation = conversationService.findByConversationId(conversationId);
+        if (conversation == null || conversation.getWorkspaceId() == null
+                || conversation.getWorkspaceId() <= 0
+                || conversation.getAgentId() == null
+                || !conversation.getAgentId().equals(agentId)) {
+            log.warn("[SkillReflect] Rejecting unscoped/mismatched conversation: agent={}, conv={}",
+                    agentId, conversationId);
+            return false;
+        }
+        Long workspaceId = conversation.getWorkspaceId();
+
+        // 2. Load the recent window of the conversation.
         List<MessageEntity> messages = conversationService.listMessages(conversationId);
         if (messages == null || messages.isEmpty()) {
             return false;
@@ -165,7 +221,7 @@ public class SkillReflectionService {
         if (transcript.isBlank()) {
             return false;
         }
-        String skillCatalog = buildSkillCatalog(properties.getCatalogCharBudget());
+        String skillCatalog = buildSkillCatalog(workspaceId, properties.getCatalogCharBudget());
 
         // 3. Ask the reviewer for a JSON action plan.
         String llmResponse;
@@ -194,7 +250,13 @@ public class SkillReflectionService {
             return true;
         }
 
-        ToolContext toolContext = buildToolContext(agentId, conversationId);
+        if (!properties.isAutoApply()) {
+            log.info("[SkillReflect] Proposed {} action(s) for conv={} (autoApply=false; no mutation)",
+                    plan.size(), conversationId);
+            return true;
+        }
+
+        ToolContext toolContext = buildToolContext(agentId, conversationId, workspaceId);
         int applied = 0;
         for (JsonNode action : plan) {
             if (applied >= properties.getMaxActionsPerRun()) {
@@ -220,13 +282,22 @@ public class SkillReflectionService {
             return false;
         }
         // Reflection never deletes — it only creates or improves.
-        if (!List.of("create", "edit", "patch").contains(act)) {
+        // Full replacement from a truncated/untrusted catalog is unsafe: the
+        // reviewer cannot preserve content it did not receive. Restrict the
+        // autonomous path to additive create and exact-context patch.
+        if (!List.of("create", "patch").contains(act)) {
             log.debug("[SkillReflect] Ignoring unsupported action '{}'", act);
             return false;
         }
         String content = action.path("content").asText(null);
         String oldText = action.path("oldText").asText(null);
         String newText = action.path("newText").asText(null);
+        String proposed = "create".equals(act) ? content : newText;
+        if (proposed == null || UNSAFE_PERSISTED_INSTRUCTION.matcher(proposed).find()
+                || SECRET_PATTERN.matcher(proposed).find()) {
+            log.warn("[SkillReflect] Rejected unsafe autonomous {} for '{}'", act, name);
+            return false;
+        }
         try {
             String result = skillManageTool.skillManageAs(SkillOrigin.AGENT, act, name, content,
                     oldText, newText, null, toolContext);
@@ -249,15 +320,15 @@ public class SkillReflectionService {
      * stamped with their source conversation (making them curator-eligible
      * under the {@code AGENT_CREATED} scope).
      */
-    private ToolContext buildToolContext(Long agentId, String conversationId) {
-        ChatOrigin origin = new ChatOrigin(agentId, conversationId, "", null, null,
+    private ToolContext buildToolContext(Long agentId, String conversationId, Long workspaceId) {
+        ChatOrigin origin = new ChatOrigin(agentId, conversationId, "", workspaceId, null,
                 null, null, false, null, null, null, null, null);
         return new ToolContext(Map.of(ChatOrigin.CTX_KEY, origin));
     }
 
     /** Existing non-builtin skills with truncated bodies, capped to a char budget. */
-    private String buildSkillCatalog(int charBudget) {
-        List<SkillEntity> skills = skillService.listEnabledSkills();
+    private String buildSkillCatalog(Long workspaceId, int charBudget) {
+        List<SkillEntity> skills = skillService.listEnabledSkills(workspaceId);
         if (skills == null || skills.isEmpty()) {
             return "";
         }
@@ -268,7 +339,7 @@ public class SkillReflectionService {
             }
             String entry = "### " + skill.getName() + "\n"
                     + (skill.getDescription() == null ? "" : skill.getDescription().strip() + "\n")
-                    + truncate(skill.getSkillContent(), CATALOG_BODY_TRUNCATE_CHARS) + "\n\n";
+                    + redactSensitive(truncate(skill.getSkillContent(), CATALOG_BODY_TRUNCATE_CHARS)) + "\n\n";
             if (sb.length() + entry.length() > charBudget) {
                 sb.append("... (catalog truncated)\n");
                 break;
@@ -295,7 +366,9 @@ public class SkillReflectionService {
             if (label == null) {
                 continue;
             }
-            sb.append(label).append(": ").append(truncate(content, MESSAGE_TRUNCATE_CHARS)).append("\n\n");
+            sb.append(label).append(": ")
+                    .append(redactSensitive(truncate(content, MESSAGE_TRUNCATE_CHARS)))
+                    .append("\n\n");
         }
         return sb.toString().strip();
     }
@@ -401,5 +474,22 @@ public class SkillReflectionService {
             return "";
         }
         return s.length() <= maxLen ? s : s.substring(0, maxLen) + "... [truncated]";
+    }
+
+    private static String redactSensitive(String text) {
+        if (text == null || text.isBlank()) {
+            return text == null ? "" : text;
+        }
+        return SECRET_PATTERN.matcher(text).replaceAll("[REDACTED_SECRET]");
+    }
+
+    private static String reflectionLockName(String conversationId) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(conversationId.getBytes(StandardCharsets.UTF_8));
+            return "skill-reflect-" + HexFormat.of().formatHex(digest, 0, 16);
+        } catch (Exception e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 }

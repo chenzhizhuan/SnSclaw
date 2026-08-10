@@ -98,4 +98,24 @@ class AgentStreamAccumulatorKindTest {
         JsonNode segments = segmentsOf(acc, mapper);
         assertEquals("grounded_narration", segments.get(0).path("kind").asText());
     }
+
+    @Test
+    @DisplayName("Plan step result stays in plan metadata while final summary exclusively owns message content")
+    void planStepResultDoesNotDuplicateFinalSummary() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        AgentStreamAccumulator acc = new AgentStreamAccumulator(mapper, NOOP_SINK);
+        String cid = "conv-plan";
+
+        acc.accept(StreamDelta.event("plan_created",
+                Map.of("planId", 7L, "steps", java.util.List.of("answer once"))), cid);
+        acc.accept(StreamDelta.event("plan_step_completed",
+                Map.of("index", 0, "result", "TP-01")), cid);
+        acc.accept(StreamDelta.finalAnswer("TP-01", true), cid);
+
+        JsonNode metadata = mapper.readTree(acc.toMetadataJson());
+        assertEquals("TP-01", metadata.path("plan").path("stepResults")
+                .get(0).path("result").asText());
+        assertEquals("TP-01", acc.getContent(),
+                "the canonical body must contain FINAL_SUMMARY exactly once");
+    }
 }

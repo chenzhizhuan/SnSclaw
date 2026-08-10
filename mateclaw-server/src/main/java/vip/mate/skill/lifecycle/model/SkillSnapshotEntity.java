@@ -23,6 +23,9 @@ public class SkillSnapshotEntity {
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
+    /** Owning workspace; snapshots are never shared across tenants. */
+    private Long workspaceId;
+
     /** Why the snapshot was taken — {@code pre-sweep}, {@code pre-restore}, or a manual note. */
     private String reason;
 

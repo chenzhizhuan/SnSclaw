@@ -51,6 +51,10 @@ public class ActionNode implements NodeAction {
     /** Function name of the extension-tool activator, mirrored from EnableExtensionTool. */
     private static final String ENABLE_TOOL = "enable_tool";
 
+    /** Progressive catalog inspection is setup; tool_call itself is real work. */
+    private static final String TOOL_SEARCH = "tool_search";
+    private static final String TOOL_DESCRIBE = "tool_describe";
+
     /** Function name of the progress-update tool — skip auto-recording it. */
     private static final String PROGRESS_UPDATE_TOOL = "progress_update";
 
@@ -70,7 +74,7 @@ public class ActionNode implements NodeAction {
      * </ul>
      */
     private static final Set<String> AUTO_RECORD_SKIP = Set.of(
-            LOAD_SKILL_TOOL, ENABLE_TOOL, PROGRESS_UPDATE_TOOL,
+            LOAD_SKILL_TOOL, ENABLE_TOOL, TOOL_SEARCH, TOOL_DESCRIBE, PROGRESS_UPDATE_TOOL,
             "listAvailableSkills", "readSkillFile", "runSkillScript",
             // read-only / status-query tools
             "read_file", "web_search",
