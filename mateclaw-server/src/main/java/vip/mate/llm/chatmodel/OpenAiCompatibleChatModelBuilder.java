@@ -281,6 +281,7 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
             public org.springframework.http.ResponseEntity<OpenAiApi.ChatCompletion> chatCompletionEntity(
                     OpenAiApi.ChatCompletionRequest chatRequest,
                     MultiValueMap<String, String> additionalHttpHeader) {
+                chatRequest = OpenAiRequestRewriter.preserveToolSchemaNumbers(chatRequest);
                 chatRequest = OpenAiRequestRewriter.sanitizeReasoningEffortForProvider(chatRequest, provider);
                 chatRequest = OpenAiRequestRewriter.patchReasoningContent(chatRequest, provider);
                 chatRequest = OpenAiRequestRewriter.stripReasoningEffortIfIncompatible(chatRequest);
@@ -302,6 +303,7 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
             public Flux<OpenAiApi.ChatCompletionChunk> chatCompletionStream(
                     OpenAiApi.ChatCompletionRequest chatRequest,
                     MultiValueMap<String, String> additionalHttpHeader) {
+                chatRequest = OpenAiRequestRewriter.preserveToolSchemaNumbers(chatRequest);
                 chatRequest = OpenAiRequestRewriter.sanitizeReasoningEffortForProvider(chatRequest, provider);
                 chatRequest = OpenAiRequestRewriter.patchReasoningContent(chatRequest, provider);
                 chatRequest = OpenAiRequestRewriter.stripReasoningEffortIfIncompatible(chatRequest);

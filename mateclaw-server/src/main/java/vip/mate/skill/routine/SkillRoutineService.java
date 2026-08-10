@@ -44,8 +44,13 @@ public class SkillRoutineService {
      * @param limit  maximum rows
      */
     public List<Map<String, Object>> list(String status, int limit) {
+        return list(status, limit, 1L);
+    }
+
+    public List<Map<String, Object>> list(String status, int limit, Long workspaceId) {
         LambdaQueryWrapper<SkillRoutineCandidateEntity> q =
                 new LambdaQueryWrapper<SkillRoutineCandidateEntity>()
+                        .eq(SkillRoutineCandidateEntity::getWorkspaceId, normalizeWorkspaceId(workspaceId))
                         .orderByDesc(SkillRoutineCandidateEntity::getLastSeenAt)
                         .last("LIMIT " + Math.max(1, Math.min(limit, 200)));
         if (status != null && !status.isBlank()) {
@@ -73,7 +78,11 @@ public class SkillRoutineService {
      * the next nightly pass would simply re-detect the same pattern.
      */
     public Map<String, Object> dismiss(Long id) {
-        SkillRoutineCandidateEntity row = require(id);
+        return dismiss(id, 1L);
+    }
+
+    public Map<String, Object> dismiss(Long id, Long workspaceId) {
+        SkillRoutineCandidateEntity row = require(id, workspaceId);
         row.setStatus(SkillRoutineCandidateEntity.STATUS_DISMISSED);
         candidateMapper.updateById(row);
         log.info("[SkillRoutine] Candidate {} ('{}') dismissed by operator", id, row.getSignature());
@@ -82,7 +91,11 @@ public class SkillRoutineService {
 
     /** Put a dismissed candidate back under observation. */
     public Map<String, Object> reopen(Long id) {
-        SkillRoutineCandidateEntity row = require(id);
+        return reopen(id, 1L);
+    }
+
+    public Map<String, Object> reopen(Long id, Long workspaceId) {
+        SkillRoutineCandidateEntity row = require(id, workspaceId);
         row.setStatus(SkillRoutineCandidateEntity.STATUS_OBSERVING);
         candidateMapper.updateById(row);
         log.info("[SkillRoutine] Candidate {} ('{}') reopened by operator", id, row.getSignature());
@@ -97,19 +110,26 @@ public class SkillRoutineService {
      * the thresholds, so an explicit request is allowed through.
      */
     public Map<String, Object> promoteNow(Long id) {
-        SkillRoutineCandidateEntity row = require(id);
+        return promoteNow(id, 1L);
+    }
+
+    public Map<String, Object> promoteNow(Long id, Long workspaceId) {
+        SkillRoutineCandidateEntity row = require(id, workspaceId);
         if (SkillRoutineCandidateEntity.STATUS_PROMOTED.equals(row.getStatus())) {
             throw new IllegalStateException("Routine already promoted to skill '"
                     + row.getPromotedSkillName() + "'");
         }
         boolean ok = promoter.promoteCandidate(row);
-        Map<String, Object> view = toView(require(id));
+        Map<String, Object> view = toView(require(id, workspaceId));
         view.put("promoted", ok);
         return view;
     }
 
-    private SkillRoutineCandidateEntity require(Long id) {
-        SkillRoutineCandidateEntity row = candidateMapper.selectById(id);
+    private SkillRoutineCandidateEntity require(Long id, Long workspaceId) {
+        SkillRoutineCandidateEntity row = candidateMapper.selectOne(
+                new LambdaQueryWrapper<SkillRoutineCandidateEntity>()
+                        .eq(SkillRoutineCandidateEntity::getId, id)
+                        .eq(SkillRoutineCandidateEntity::getWorkspaceId, normalizeWorkspaceId(workspaceId)));
         if (row == null) {
             throw new IllegalArgumentException("Routine candidate " + id + " not found");
         }
@@ -137,6 +157,13 @@ public class SkillRoutineService {
         int occurrences = row.getOccurrenceCount() == null ? 0 : row.getOccurrenceCount();
         int days = row.getDistinctDayCount() == null ? 0 : row.getDistinctDayCount();
         return occurrences >= properties.getMinOccurrences()
-                && days >= properties.getMinDistinctDays();
+                && days >= properties.getMinDistinctDays()
+                && row.getLastSeenAt() != null
+                && !row.getLastSeenAt().isBefore(java.time.LocalDateTime.now()
+                        .minusDays(Math.max(1, properties.getLookbackDays())));
+    }
+
+    private static long normalizeWorkspaceId(Long workspaceId) {
+        return workspaceId != null && workspaceId > 0 ? workspaceId : 1L;
     }
 }

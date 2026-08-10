@@ -268,8 +268,12 @@ public class SkillLifecycleService {
      *                           builtin (never curatable in the first place)
      */
     public SkillEntity setAdopted(Long id, boolean adopt) {
+        return setAdopted(id, adopt, 1L);
+    }
+
+    public SkillEntity setAdopted(Long id, boolean adopt, Long workspaceId) {
         SkillEntity skill = skillMapper.selectById(id);
-        if (skill == null) {
+        if (skill == null || !normalizeWorkspaceId(workspaceId).equals(skill.getWorkspaceId())) {
             throw new MateClawException("err.skill.not_found", 404, "Skill not found: " + id);
         }
         if (isExempt(skill)) {
@@ -279,6 +283,7 @@ public class SkillLifecycleService {
         }
         LambdaUpdateWrapper<SkillEntity> update = new LambdaUpdateWrapper<SkillEntity>()
                 .eq(SkillEntity::getId, id)
+                .eq(SkillEntity::getWorkspaceId, normalizeWorkspaceId(workspaceId))
                 .set(SkillEntity::getOrigin,
                         adopt ? SkillOrigin.AGENT.code() : SkillOrigin.USER.code());
         if (adopt) {
@@ -299,7 +304,11 @@ public class SkillLifecycleService {
      * everything at once.
      */
     public List<Map<String, Object>> listUnmanaged() {
-        return roster(false);
+        return listUnmanaged(1L);
+    }
+
+    public List<Map<String, Object>> listUnmanaged(Long workspaceId) {
+        return roster(false, workspaceId);
     }
 
     /**
@@ -307,7 +316,11 @@ public class SkillLifecycleService {
      * hand back. Without it adoption would be one-way from the UI.
      */
     public List<Map<String, Object>> listManaged() {
-        return roster(true);
+        return listManaged(1L);
+    }
+
+    public List<Map<String, Object>> listManaged(Long workspaceId) {
+        return roster(true, workspaceId);
     }
 
     /**
@@ -316,9 +329,10 @@ public class SkillLifecycleService {
      * dropped from both sides because they are not curatable either way, so
      * offering adopt or release on them would be a lie.
      */
-    private List<Map<String, Object>> roster(boolean managed) {
+    private List<Map<String, Object>> roster(boolean managed, Long workspaceId) {
         LambdaQueryWrapper<SkillEntity> q = new LambdaQueryWrapper<SkillEntity>()
-                .eq(SkillEntity::getBuiltin, false);
+                .eq(SkillEntity::getBuiltin, false)
+                .eq(SkillEntity::getWorkspaceId, normalizeWorkspaceId(workspaceId));
         if (managed) {
             q.in(SkillEntity::getOrigin, SkillOrigin.curatorManagedCodes());
         } else {
@@ -348,6 +362,10 @@ public class SkillLifecycleService {
             out.add(row);
         }
         return out;
+    }
+
+    private static Long normalizeWorkspaceId(Long workspaceId) {
+        return workspaceId != null && workspaceId > 0 ? workspaceId : 1L;
     }
 
     /**
@@ -466,6 +484,6 @@ public class SkillLifecycleService {
             json = String.valueOf(detail);
         }
         auditEventService.record(action, "SKILL",
-                String.valueOf(skill.getId()), skill.getName(), json);
+                String.valueOf(skill.getId()), skill.getName(), json, skill.getWorkspaceId());
     }
 }

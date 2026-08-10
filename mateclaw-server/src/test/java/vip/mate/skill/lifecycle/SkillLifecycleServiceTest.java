@@ -112,6 +112,18 @@ class SkillLifecycleServiceTest {
     }
 
     @Test
+    @DisplayName("lifecycle audit records the owning workspace explicitly")
+    void auditIsWorkspaceScoped() {
+        SkillEntity s = skill("dynamic", "active", now);
+        when(skillMapper.selectById(1L)).thenReturn(s);
+
+        service.setPinned(1L, true);
+
+        verify(auditEventService).record(eq("PIN"), eq("SKILL"), eq("1"),
+                eq("demo-skill"), anyString(), eq(1L));
+    }
+
+    @Test
     @DisplayName("releasing hands ownership back and leaves the clock alone")
     void releaseRestoresUserOwnership() {
         SkillEntity s = skill("dynamic", "active", now.minusDays(10));
@@ -143,6 +155,18 @@ class SkillLifecycleServiceTest {
     void adoptMissingSkillThrows() {
         when(skillMapper.selectById(404L)).thenReturn(null);
         assertThrows(MateClawException.class, () -> service.setAdopted(404L, true));
+    }
+
+    @Test
+    @DisplayName("a workspace cannot adopt another workspace's skill by id")
+    void adoptRejectsForeignWorkspaceSkill() {
+        SkillEntity foreign = skill("dynamic", "active", now.minusDays(10));
+        foreign.setWorkspaceId(2L);
+        when(skillMapper.selectById(1L)).thenReturn(foreign);
+
+        assertThrows(MateClawException.class, () -> service.setAdopted(1L, true, 7L));
+
+        verify(skillMapper, never()).update(any(), any());
     }
 
     @SuppressWarnings("unchecked")

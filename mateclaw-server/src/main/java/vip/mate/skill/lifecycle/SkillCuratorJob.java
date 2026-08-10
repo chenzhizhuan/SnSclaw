@@ -70,23 +70,33 @@ public class SkillCuratorJob {
         if (!properties.isEnabled() || "OFF".equals(properties.getScope())) {
             return;
         }
-        // Gate 2: operational pause.
-        if (systemSettingService.getBool(PAUSED_KEY, false)) {
-            log.debug("Curator paused via {} — skipping this tick", PAUSED_KEY);
+        for (Long workspaceId : curatorWorkspaceIds()) {
+            try {
+                runWorkspace(workspaceId);
+            } catch (Exception e) {
+                log.error("Curator failed for workspace {}: {}", workspaceId, e.getMessage(), e);
+            }
+        }
+    }
+
+    private void runWorkspace(Long workspaceId) {
+        // Gate 2: operational pause, isolated per workspace.
+        if (systemSettingService.getBool(key(PAUSED_KEY, workspaceId), false)) {
+            log.debug("Curator paused for workspace {} — skipping this tick", workspaceId);
             return;
         }
 
         LocalDateTime now = LocalDateTime.now();
-        boolean activated = systemSettingService.getBool(FIRST_RUN_KEY, false);
+        boolean activated = systemSettingService.getBool(key(FIRST_RUN_KEY, workspaceId), false);
 
         // Gate 3: first-run throttle. Before activation the sweep is
         // informational; bound it to once per ~day so the report directory
         // doesn't fill with identical previews.
         if (!activated) {
-            LocalDateTime lastObserved = parseTs(systemSettingService.getString(LAST_OBSERVED_KEY, null));
-            LocalDateTime lastDry = parseTs(systemSettingService.getString(LAST_DRY_RUN_KEY, null));
+            LocalDateTime lastObserved = parseTs(systemSettingService.getString(key(LAST_OBSERVED_KEY, workspaceId), null));
+            LocalDateTime lastDry = parseTs(systemSettingService.getString(key(LAST_DRY_RUN_KEY, workspaceId), null));
             if (lastObserved == null) {
-                systemSettingService.saveString(LAST_OBSERVED_KEY, now.toString(),
+                systemSettingService.saveString(key(LAST_OBSERVED_KEY, workspaceId), now.toString(),
                         "Skill curator first observed timestamp");
                 log.info("Curator first observation — deferring; preview on demand via /curator/dry-run");
                 return;
@@ -101,15 +111,15 @@ public class SkillCuratorJob {
         }
 
         boolean dryRun = !activated;
-        SkillCuratorReport report = sweep(now, dryRun);
+        SkillCuratorReport report = sweep(now, dryRun, workspaceId);
 
         if (dryRun) {
-            systemSettingService.saveString(LAST_DRY_RUN_KEY, now.toString(),
+            systemSettingService.saveString(key(LAST_DRY_RUN_KEY, workspaceId), now.toString(),
                     "Skill curator last dry-run timestamp");
         }
-        systemSettingService.saveString(LAST_RUN_KEY, now.toString(),
+        systemSettingService.saveString(key(LAST_RUN_KEY, workspaceId), now.toString(),
                 "Skill curator last run timestamp");
-        notifier.onRunComplete(report);
+        notifier.onRunComplete(report, workspaceId);
     }
 
     /**
@@ -117,33 +127,54 @@ public class SkillCuratorJob {
      * the scheduler lock — for the admin "preview now" action.
      */
     public SkillCuratorReport dryRunNow() {
-        SkillCuratorReport report = sweep(LocalDateTime.now(), true);
-        notifier.onRunComplete(report);
+        return dryRunNow(1L);
+    }
+
+    public SkillCuratorReport dryRunNow(Long workspaceId) {
+        SkillCuratorReport report = sweep(LocalDateTime.now(), true, normalizeWorkspaceId(workspaceId));
+        notifier.onRunComplete(report, normalizeWorkspaceId(workspaceId));
         return report;
     }
 
     /** Flip the activation flag (preview-only ⇄ applying). */
     public void activate(boolean activate) {
-        systemSettingService.saveBool(FIRST_RUN_KEY, activate, "Skill curator activated");
+        activate(1L, activate);
+    }
+
+    public void activate(Long workspaceId, boolean activate) {
+        systemSettingService.saveBool(key(FIRST_RUN_KEY, workspaceId), activate, "Skill curator activated");
     }
 
     /** Set the runtime pause flag. */
     public void setPaused(boolean paused) {
-        systemSettingService.saveBool(PAUSED_KEY, paused, "Skill curator paused");
+        setPaused(1L, paused);
+    }
+
+    public void setPaused(Long workspaceId, boolean paused) {
+        systemSettingService.saveBool(key(PAUSED_KEY, workspaceId), paused, "Skill curator paused");
     }
 
     /** Set the runtime consolidation flag (overrides the config default). */
     public void setConsolidate(boolean on) {
-        systemSettingService.saveBool(CONSOLIDATE_KEY, on, "Skill curator consolidation enabled");
+        setConsolidate(1L, on);
+    }
+
+    public void setConsolidate(Long workspaceId, boolean on) {
+        systemSettingService.saveBool(key(CONSOLIDATE_KEY, workspaceId), on, "Skill curator consolidation enabled");
     }
 
     /** Effective consolidation switch: runtime override, falling back to config. */
-    private boolean effectiveConsolidate() {
-        return systemSettingService.getBool(CONSOLIDATE_KEY, properties.isConsolidate());
+    private boolean effectiveConsolidate(Long workspaceId) {
+        return systemSettingService.getBool(key(CONSOLIDATE_KEY, workspaceId), properties.isConsolidate());
     }
 
     /** Aggregated control-panel state for the admin UI. */
     public Map<String, Object> status() {
+        return status(1L);
+    }
+
+    public Map<String, Object> status(Long workspaceId) {
+        workspaceId = normalizeWorkspaceId(workspaceId);
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("enabled", properties.isEnabled());
         config.put("scope", properties.getScope());
@@ -152,32 +183,33 @@ public class SkillCuratorJob {
         config.put("cron", properties.getCron());
 
         Map<String, Object> control = new LinkedHashMap<>();
-        control.put("activated", systemSettingService.getBool(FIRST_RUN_KEY, false));
-        control.put("paused", systemSettingService.getBool(PAUSED_KEY, false));
-        control.put("consolidate", effectiveConsolidate());
-        control.put("lastObservedAt", systemSettingService.getString(LAST_OBSERVED_KEY, null));
-        control.put("lastDryRunAt", systemSettingService.getString(LAST_DRY_RUN_KEY, null));
-        control.put("lastRunAt", systemSettingService.getString(LAST_RUN_KEY, null));
+        control.put("activated", systemSettingService.getBool(key(FIRST_RUN_KEY, workspaceId), false));
+        control.put("paused", systemSettingService.getBool(key(PAUSED_KEY, workspaceId), false));
+        control.put("consolidate", effectiveConsolidate(workspaceId));
+        control.put("lastObservedAt", systemSettingService.getString(key(LAST_OBSERVED_KEY, workspaceId), null));
+        control.put("lastDryRunAt", systemSettingService.getString(key(LAST_DRY_RUN_KEY, workspaceId), null));
+        control.put("lastRunAt", systemSettingService.getString(key(LAST_RUN_KEY, workspaceId), null));
         control.put("nextScheduledRun", nextScheduledRun());
 
         Map<String, Object> counts = new LinkedHashMap<>();
-        counts.put("active", countState("active"));
-        counts.put("stale", countState("stale"));
-        counts.put("archived", countState("archived"));
+        counts.put("active", countState("active", workspaceId));
+        counts.put("stale", countState("stale", workspaceId));
+        counts.put("archived", countState("archived", workspaceId));
         counts.put("pinned", skillMapper.selectCount(
-                new LambdaQueryWrapper<SkillEntity>().eq(SkillEntity::getPinned, true)));
+                new LambdaQueryWrapper<SkillEntity>().eq(SkillEntity::getPinned, true)
+                        .eq(SkillEntity::getWorkspaceId, workspaceId)));
         // Count only archival-relevant skills held back by a binding — same
         // set the run report's blockedByBindings array shows, so the status
         // count and the report stay consistent (builtin / mcp / acp / pinned
         // skills are exempt regardless of bindings and are not counted here).
         counts.put("blockedByBindings",
-                agentBindingService.blockedByBindingCandidates(LocalDateTime.now()).size());
+                agentBindingService.blockedByBindingCandidates(LocalDateTime.now(), workspaceId).size());
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("config", config);
         out.put("control", control);
         out.put("counts", counts);
-        String latest = reportStore.latestRunId();
+        String latest = reportStore.latestRunId(workspaceId);
         out.put("lastReport", latest == null ? null : Map.of(
                 "id", latest,
                 "url", "/api/v1/skills/curator/reports/" + latest));
@@ -186,7 +218,7 @@ public class SkillCuratorJob {
 
     // ==================== Internals ====================
 
-    private SkillCuratorReport sweep(LocalDateTime now, boolean dryRun) {
+    private SkillCuratorReport sweep(LocalDateTime now, boolean dryRun, Long workspaceId) {
         SkillCuratorReport.Builder report = SkillCuratorReport.builder()
                 .runAt(now)
                 .dryRun(dryRun)
@@ -198,16 +230,12 @@ public class SkillCuratorJob {
         // consolidation on) rewrite skill bodies unattended, and this is the
         // only chance to record what they looked like beforehand.
         if (!dryRun) {
-            try {
-                snapshotService.capture("pre-sweep");
-            } catch (Exception e) {
-                log.warn("Pre-sweep snapshot failed, continuing: {}", e.getMessage());
-            }
+            snapshotService.captureRequired("pre-sweep", workspaceId);
         }
 
-        reconcileOrphans(now, report, dryRun);
+        reconcileOrphans(now, report, dryRun, workspaceId);
 
-        List<SkillEntity> candidates = loadCandidates();
+        List<SkillEntity> candidates = loadCandidates(workspaceId);
         int plannedStale = 0, plannedArchived = 0, plannedReactivate = 0;
         int appliedStale = 0, appliedArchived = 0, appliedReactivate = 0;
         int newlyObserved = 0;
@@ -256,18 +284,18 @@ public class SkillCuratorJob {
                 .newlyObserved(newlyObserved)
                 .plannedCounts(plannedStale, plannedArchived, plannedReactivate)
                 .appliedCounts(appliedStale, appliedArchived, appliedReactivate)
-                .blockedByBindings(agentBindingService.blockedByBindingCandidates(now));
+                .blockedByBindings(agentBindingService.blockedByBindingCandidates(now, workspaceId));
 
         // Consolidation pass (opt-in). Reload candidates so it sees the state
         // left by the aging pass above and never merges a just-archived skill.
-        if (effectiveConsolidate()) {
-            List<SkillEntity> mergeCandidates = loadCandidates().stream()
+        if (effectiveConsolidate(workspaceId)) {
+            List<SkillEntity> mergeCandidates = loadCandidates(workspaceId).stream()
                     .filter(s -> !"archived".equals(s.getLifecycleState()))
                     .toList();
-            consolidationService.consolidate(mergeCandidates, now, dryRun, report);
+            consolidationService.consolidate(mergeCandidates, now, dryRun, report, workspaceId);
         }
 
-        return reportStore.write(report.build());
+        return reportStore.write(report.build(), workspaceId);
     }
 
     /**
@@ -280,11 +308,12 @@ public class SkillCuratorJob {
      * the background reviewer invented carry a conversation id, so the older
      * filter swept up user-requested work alongside the machine's own.
      */
-    private List<SkillEntity> loadCandidates() {
-        Set<Long> bindingProtected = agentBindingService.skillIdsBoundToEnabledAgents();
+    private List<SkillEntity> loadCandidates(Long workspaceId) {
+        Set<Long> bindingProtected = agentBindingService.skillIdsBoundToEnabledAgents(workspaceId);
 
         LambdaQueryWrapper<SkillEntity> w = new LambdaQueryWrapper<SkillEntity>()
                 .eq(SkillEntity::getBuiltin, false)
+                .eq(SkillEntity::getWorkspaceId, workspaceId)
                 .eq(SkillEntity::getPinned, false)
                 .notIn(SkillEntity::getSkillType, List.of("builtin", "mcp", "acp"));
         if (!bindingProtected.isEmpty()) {
@@ -302,9 +331,11 @@ public class SkillCuratorJob {
      * or a re-install ran). The reverse class — workspace moved but the DB
      * write failed — is handled inline by the archive compensation path.
      */
-    private void reconcileOrphans(LocalDateTime now, SkillCuratorReport.Builder report, boolean dryRun) {
+    private void reconcileOrphans(LocalDateTime now, SkillCuratorReport.Builder report, boolean dryRun,
+                                  Long workspaceId) {
         List<SkillEntity> archived = skillMapper.selectList(new LambdaQueryWrapper<SkillEntity>()
-                .eq(SkillEntity::getLifecycleState, "archived"));
+                .eq(SkillEntity::getLifecycleState, "archived")
+                .eq(SkillEntity::getWorkspaceId, workspaceId));
         for (SkillEntity skill : archived) {
             if (skill.getName() == null || !workspaceManager.conventionWorkspaceExists(skill.getName(), skill.getWorkspaceId())) {
                 continue;
@@ -322,9 +353,30 @@ public class SkillCuratorJob {
         }
     }
 
-    private long countState(String state) {
+    private long countState(String state, Long workspaceId) {
         return skillMapper.selectCount(new LambdaQueryWrapper<SkillEntity>()
-                .eq(SkillEntity::getLifecycleState, state));
+                .eq(SkillEntity::getLifecycleState, state)
+                .eq(SkillEntity::getWorkspaceId, workspaceId));
+    }
+
+    private List<Long> curatorWorkspaceIds() {
+        List<Long> ids = skillMapper.selectList(new LambdaQueryWrapper<SkillEntity>()
+                        .eq(SkillEntity::getBuiltin, false)
+                        .select(SkillEntity::getWorkspaceId))
+                .stream()
+                .map(SkillEntity::getWorkspaceId)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .toList();
+        return ids.isEmpty() ? List.of(1L) : ids;
+    }
+
+    private static Long normalizeWorkspaceId(Long workspaceId) {
+        return workspaceId != null && workspaceId > 0 ? workspaceId : 1L;
+    }
+
+    private static String key(String base, Long workspaceId) {
+        return base + ".workspace." + normalizeWorkspaceId(workspaceId);
     }
 
     private String nextScheduledRun() {

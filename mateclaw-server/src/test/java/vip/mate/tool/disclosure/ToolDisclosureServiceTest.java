@@ -93,11 +93,14 @@ class ToolDisclosureServiceTest {
     }
 
     @Test
-    @DisplayName("meta-tools enable_tool / load_skill are always core")
+    @DisplayName("skill and progressive bridge meta-tools are always core")
     void metaToolsAlwaysCore() {
         var svc = service(List.of(toolRow("enable_tool", "builtin", "extension")), List.of(), List.of());
         assertEquals(DisclosureTier.CORE, svc.resolveTierByName("enable_tool"));
         assertEquals(DisclosureTier.CORE, svc.resolveTierByName("load_skill"));
+        assertEquals(DisclosureTier.CORE, svc.resolveTierByName("tool_search"));
+        assertEquals(DisclosureTier.CORE, svc.resolveTierByName("tool_describe"));
+        assertEquals(DisclosureTier.CORE, svc.resolveTierByName("tool_call"));
     }
 
     @Test
@@ -199,7 +202,7 @@ class ToolDisclosureServiceTest {
         String catalog = svc.renderExtensionCatalog(set, 8192);
         assertTrue(catalog.contains("## Extension Tools"));
         assertTrue(catalog.contains("image_generate"));
-        assertTrue(catalog.contains("enable_tool"));
+        assertTrue(catalog.contains("tool_call"));
         assertFalse(catalog.contains("my_core_tool"), "core tools must not appear in the extension catalog");
     }
 
@@ -278,11 +281,11 @@ class ToolDisclosureServiceTest {
     }
 
     @Test
-    @DisplayName("explicit core DB row and meta-tools are never demoted")
-    void explicitCoreProtected() {
+    @DisplayName("hard schema ceiling may demote explicit core rows")
+    void explicitCoreStillFitsHardCeiling() {
         var svc = service(List.of(toolRow("tool_a", "builtin", "core")), List.of(), List.of());
         var demoted = svc.computeAutoDemotions(manyCoreSet(), 1);
-        assertEquals(Set.of("tool_b", "tool_c"), demoted);
+        assertEquals(Set.of("tool_a", "tool_b", "tool_c"), demoted);
     }
 
     @Test
@@ -292,7 +295,7 @@ class ToolDisclosureServiceTest {
         AgentToolSet set = manyCoreSet();
 
         var split = svc.split(set, Set.of(), Set.of("tool_b"));
-        assertEquals(List.of("tool_a", "tool_c"), names(split.activeCallbacks()));
+        assertEquals(Set.of("tool_a", "tool_c"), Set.copyOf(names(split.activeCallbacks())));
         assertEquals(List.of("tool_b"), names(split.extensionCatalog()));
 
         var enabledBack = svc.split(set, Set.of("tool_b"), Set.of("tool_b"));
@@ -305,6 +308,7 @@ class ToolDisclosureServiceTest {
         var svc = service(List.of(), List.of(), List.of());
         String catalog = svc.renderExtensionCatalog(manyCoreSet(), 8192, Set.of("tool_b"));
         assertTrue(catalog.contains("tool_b"));
+        assertTrue(catalog.contains("tool_call"));
         assertFalse(catalog.contains("| `tool_a`"), "non-demoted core tools stay out of the catalog");
     }
 }

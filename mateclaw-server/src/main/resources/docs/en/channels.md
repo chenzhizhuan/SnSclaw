@@ -295,8 +295,12 @@ Tool-guard approval flows arrive as a card with **Approve / Deny** buttons. Tapp
 Replies stream char-by-char into a **single card** instead of waiting for the whole answer before sending.
 
 - `card_streaming_enabled` (default `true`)
-- The first token appears immediately; subsequent updates are throttled at 500ms
+- The first token appears immediately; regular text updates coalesce at 500ms, while phase transitions refresh preferentially behind a 120ms platform safety limit
+- `stream_progress` (default `true`) keeps thinking status, plan steps, tool progress, and stage narration in the same card; completion retains a bounded execution trace above the final answer
+- Set `filter_thinking=false` to show raw model thinking; by default only status and stage progress are shown
+- Set `filter_tool_messages=false` to show tool names and per-tool results; by default only the tool count is shown
 - On CardKit failure it falls back to accumulate-then-send
+- Final update and close operations retry once; if they still fail, a regular Feishu message carries the answer
 
 #### Inbound voice transcription
 
@@ -354,6 +358,7 @@ curl -X POST http://localhost:18088/api/v1/channels \
       "card_format": "auto",
       "card_header": "AI 助手",
       "card_streaming_enabled": true,
+      "stream_progress": true,
       "media_download_enabled": true,
       "enable_done_reaction": true,
       "require_mention": false

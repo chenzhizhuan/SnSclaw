@@ -152,8 +152,11 @@ public class StateGraphPlanExecuteAgent extends BaseAgent implements StructuredS
         // token usage into the turn's _usage_final and to clear the accumulator
         // on terminal so an errored turn never leaks an entry.
         final String usageConversationId = (String) inputs.get(MateClawStateKeys.CONVERSATION_ID);
-        // 去重：记录上一次已持久化的 step 结果和 thinking，防止 PlanSummaryNode 重复 emit 上一步内容
-        AtomicReference<String> lastPersistedStepResult = new AtomicReference<>("");
+        // Step results are persisted by PlanningService and the plan_step_completed
+        // event (metadata.plan.stepResults). They must never be appended to the
+        // assistant message body: FINAL_SUMMARY is the sole canonical body. Keeping
+        // the two channels separate prevents one-step plans from rendering/persisting
+        // "answeranswer" and keeps live output identical to history replay.
         AtomicReference<String> lastPersistedStepThinking = new AtomicReference<>("");
         // 最终汇总同样需要游标：FINAL_SUMMARY / FINAL_SUMMARY_THINKING 也是 REPLACE，
         // 一旦写入就会出现在此后每个 NodeOutput 上。
@@ -192,26 +195,17 @@ public class StateGraphPlanExecuteAgent extends BaseAgent implements StructuredS
                                 deltas.add(AgentService.StreamDelta.persistOnly(null, planThinking));
                             });
 
-                    // 2a. 各步骤执行结果（StepExecutionNode 已通过 NodeStreamingChatHelper 直推 SSE，
-                    //     这里仅作为 persistOnly 送入 Accumulator，确保写入 mate_message）
-                    //     利用内容本身去重，避免 PlanSummaryNode 输出时重复 emit 上一步残留在 state 的值
-                    //     Within each pair the thinking is emitted first: the
-                    //     accumulator orders its segment timeline by delta arrival,
-                    //     and the reasoning behind a step precedes the step's result.
+                    // 2a. Step reasoning may remain in the diagnostic timeline, but
+                    //     CURRENT_STEP_RESULT deliberately does not become a content
+                    //     delta. The result is already durable in the plan record and
+                    //     plan_step_completed metadata; only FINAL_SUMMARY belongs in
+                    //     mate_message.content.
                     output.state().<String>value(PlanStateKeys.CURRENT_STEP_THINKING)
                             .filter(s -> !s.isEmpty())
                             .filter(s -> !s.equals(lastPersistedStepThinking.get()))
                             .ifPresent(stepThinking -> {
                                 deltas.add(AgentService.StreamDelta.persistOnly(null, stepThinking));
                                 lastPersistedStepThinking.set(stepThinking);
-                            });
-
-                    output.state().<String>value(PlanStateKeys.CURRENT_STEP_RESULT)
-                            .filter(s -> !s.isEmpty())
-                            .filter(s -> !s.equals(lastPersistedStepResult.get()))
-                            .ifPresent(stepContent -> {
-                                deltas.add(AgentService.StreamDelta.persistOnly(stepContent, null));
-                                lastPersistedStepResult.set(stepContent);
                             });
 
                     // 2b. 最终汇总（同样 thinking 先于 content）

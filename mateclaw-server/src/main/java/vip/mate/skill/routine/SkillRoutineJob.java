@@ -33,7 +33,7 @@ public class SkillRoutineJob {
             return;
         }
         try {
-            int mined = miner.mine();
+            int mined = miner.mineAll();
             int promoted = promoter.promoteQualified();
             if (mined > 0 || promoted > 0) {
                 log.info("[SkillRoutine] Sweep complete — {} candidate(s) refreshed, {} promoted",

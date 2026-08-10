@@ -108,7 +108,7 @@ public class TeamDispatchService {
     @Scheduled(fixedDelay = 30_000, initialDelay = 30_000)
     public void scheduledSweep() {
         taskService.recoverStaleTasks();
-        for (AgentTeamEntity team : teamService.listTeams()) {
+        for (AgentTeamEntity team : teamService.listAllTeams()) {
             if (TeamService.STATUS_ACTIVE.equals(team.getStatus())) {
                 try {
                     sweep(team.getId());
