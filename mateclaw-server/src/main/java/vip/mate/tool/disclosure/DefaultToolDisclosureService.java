@@ -38,10 +38,11 @@ public class DefaultToolDisclosureService implements ToolDisclosureService {
 
     /**
      * Meta-tools that must always stay core: hiding them would make progressive
-     * disclosure unrecoverable (the model could never call {@code enable_tool}
-     * to surface anything, nor {@code load_skill} to read a skill).
+     * disclosure unrecoverable (the model could neither search/call a deferred
+     * tool nor load a skill).
      */
-    private static final Set<String> ALWAYS_CORE = Set.of("enable_tool", "load_skill");
+    private static final Set<String> ALWAYS_CORE = Set.of(
+            "enable_tool", "load_skill", "tool_search", "tool_describe", "tool_call");
 
     /**
      * Code-level extension defaults for builtin tools that may not yet have a
@@ -137,8 +138,9 @@ public class DefaultToolDisclosureService implements ToolDisclosureService {
     /**
      * {@inheritDoc}
      *
-     * <p>Protection set: {@link #ALWAYS_CORE} meta-tools and builtin tools
-     * with an explicit {@code disclosure_tier = core} row. MCP tools default
+     * <p>Protection set: only the {@link #ALWAYS_CORE} recovery/bridge tools.
+     * An explicit {@code disclosure_tier = core} remains a preference, but it
+     * cannot override the hard per-request schema ceiling. MCP tools default
      * to EXTENSION (Move 5) so they only enter the CORE list when an operator
      * explicitly sets {@code disclosure_tier = core} on the server — in that
      * case they are still demotable, since MCP schemas are typically the
@@ -171,7 +173,7 @@ public class DefaultToolDisclosureService implements ToolDisclosureService {
         }
         if (!demoted.isEmpty()) {
             log.info("[ToolDisclosure] 工具 schema 估算 {} tokens 超出预算 {}——已将 {} 个最少使用的工具"
-                            + "降级到扩展目录(enable_tool 可找回): {}",
+                            + "降级到渐进目录(tool_call 可当轮调用): {}",
                     coreTokens, budgetTokens, demoted.size(), demoted);
         }
         return demoted;
@@ -181,8 +183,7 @@ public class DefaultToolDisclosureService implements ToolDisclosureService {
         if (toolName == null || ALWAYS_CORE.contains(toolName)) {
             return false;
         }
-        // An explicit core row is an operator decision — never override it.
-        return snap.builtinTierByName.get(toolName) != DisclosureTier.CORE;
+        return true;
     }
 
     /** Never-used tools demote first, then least recently used; name-tiebreak keeps builds deterministic. */
@@ -216,9 +217,9 @@ public class DefaultToolDisclosureService implements ToolDisclosureService {
 
         StringBuilder sb = new StringBuilder();
         sb.append("\n\n## Extension Tools\n");
-        sb.append("These tools are not directly callable yet. To use one, first call ");
-        sb.append("`enable_tool(toolName=\"<name>\")`, then issue the real tool call in your next response. ");
-        sb.append("Activation lasts for the rest of this conversation. Only enable a tool when the task needs it.\n\n");
+        sb.append("Full schemas are hidden until needed. If the exact name is known, call ");
+        sb.append("`tool_call(toolName=\"<name>\", arguments={...})` to execute it in this same round. ");
+        sb.append("Use `tool_search` to discover by capability and `tool_describe` only when arguments are unclear.\n\n");
         sb.append("| Tool | Source | Description |\n");
         sb.append("|------|--------|-------------|\n");
         int shown = 0;

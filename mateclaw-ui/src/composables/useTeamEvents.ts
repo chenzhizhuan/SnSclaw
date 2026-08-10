@@ -20,7 +20,9 @@ export function subscribeTeamEvents(
   const run = async () => {
     const headers: Record<string, string> = { Accept: 'text/event-stream' }
     const token = localStorage.getItem('token')
+    const workspaceId = localStorage.getItem('mc-workspace-id')
     if (token) headers.Authorization = `Bearer ${token}`
+    if (workspaceId) headers['X-Workspace-Id'] = workspaceId
 
     const res = await fetch(`/api/v1/teams/${teamId}/events`, {
       headers,

@@ -14,6 +14,7 @@ import { useMessages } from './useMessages'
 import { useStream } from './useStream'
 import { useMessageQueue } from './useMessageQueue'
 import { supersedesProvisionalNarration, markSuperseded } from './supersede'
+import { stripCompletedPlanStepOutput } from './planStepOutput'
 import { useGoalStore } from '@/stores/useGoalStore'
 import { useSystemSettingsStore } from '@/stores/useSystemSettingsStore'
 import { storeToRefs } from 'pinia'
@@ -1565,11 +1566,27 @@ export function useChat(options: UseChatOptions): UseChatReturn {
           const plan = { ...metadata.plan }
           const stepResults = [...(plan.stepResults || [])]
           stepResults[data.index] = { result: data.result, status: 'completed' }
+
+          // Step output is progress, not the turn's canonical answer. It is now
+          // durable and inspectable in PlanStepsPanel, so remove its live text
+          // from the main assistant body before the next step/final summary
+          // starts. Otherwise StepExecution + PlanSummary concatenate into
+          // "answeranswer" (and non-streamed mode reveals the same duplicate at
+          // done). Thinking/tool/delegation segments remain intact.
+          bufferedText = ''
+          const stripped = stripCompletedPlanStepOutput(
+            currentSegments.value,
+            msg.contentParts || [],
+          )
+          currentSegments.value = stripped.segments
           updateMessage(currentAssistantId.value, {
             ...msg,
+            content: '',
+            contentParts: stripped.contentParts,
             metadata: {
               ...metadata,
-              plan: { ...plan, stepResults }
+              plan: { ...plan, stepResults },
+              segments: [...currentSegments.value],
             }
           } as any)
         }

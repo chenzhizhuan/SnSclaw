@@ -1,13 +1,20 @@
 package vip.mate.skill.routine;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import vip.mate.common.text.Shingles;
 import vip.mate.skill.routine.repository.SkillRoutineCandidateMapper;
+import vip.mate.skill.routine.model.SkillRoutineCandidateEntity;
 import vip.mate.workspace.conversation.repository.ConversationMapper;
 import vip.mate.workspace.conversation.repository.MessageMapper;
+import vip.mate.workspace.conversation.model.ConversationEntity;
+import vip.mate.workspace.core.model.WorkspaceEntity;
+import vip.mate.workspace.core.repository.WorkspaceMapper;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,6 +23,14 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
+import org.mockito.ArgumentCaptor;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.apache.ibatis.session.Configuration;
 
 /**
  * Tests for the deterministic half of routine mining — opener normalization
@@ -26,16 +41,67 @@ class SkillRoutineMinerTest {
 
     private SkillRoutineProperties properties;
     private SkillRoutineMiner miner;
+    private ConversationMapper conversationMapper;
+    private SkillRoutineCandidateMapper candidateMapper;
+    private WorkspaceMapper workspaceMapper;
+
+    @BeforeAll
+    static void initTableInfo() {
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new Configuration(), ""),
+                ConversationEntity.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new Configuration(), ""),
+                SkillRoutineCandidateEntity.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new Configuration(), ""),
+                WorkspaceEntity.class);
+    }
 
     @BeforeEach
     void setUp() {
         properties = new SkillRoutineProperties();
+        conversationMapper = mock(ConversationMapper.class);
+        candidateMapper = mock(SkillRoutineCandidateMapper.class);
+        workspaceMapper = mock(WorkspaceMapper.class);
         miner = new SkillRoutineMiner(
-                mock(ConversationMapper.class),
+                conversationMapper,
                 mock(MessageMapper.class),
-                mock(SkillRoutineCandidateMapper.class),
+                candidateMapper,
+                workspaceMapper,
                 properties,
                 new ObjectMapper());
+    }
+
+    @Test
+    @DisplayName("scheduled mining applies the conversation cap independently per workspace")
+    void scheduledMiningIsWorkspaceFair() {
+        properties.setEnabled(true);
+        WorkspaceEntity one = new WorkspaceEntity();
+        one.setId(1L);
+        WorkspaceEntity two = new WorkspaceEntity();
+        two.setId(2L);
+        when(workspaceMapper.selectList(any())).thenReturn(List.of(one, two));
+        when(conversationMapper.selectPage(any(), any())).thenReturn(new Page<>());
+
+        miner.mineAll();
+
+        verify(conversationMapper, times(2)).selectPage(any(), any());
+        verify(candidateMapper, times(2)).update(any(), any());
+    }
+
+    @Test
+    @DisplayName("manual mining without a workspace fails closed to workspace 1")
+    @SuppressWarnings("unchecked")
+    void missingWorkspaceDoesNotWidenToAllTenants() {
+        properties.setEnabled(true);
+        when(conversationMapper.selectPage(any(), any())).thenReturn(new Page<>());
+
+        miner.mine(null);
+
+        ArgumentCaptor<LambdaQueryWrapper<ConversationEntity>> query =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(conversationMapper).selectPage(any(), query.capture());
+        assertTrue(query.getValue().getSqlSegment().toLowerCase().contains("workspaceid")
+                        && query.getValue().getParamNameValuePairs().containsValue(1L),
+                "manual mining must always add a workspace predicate: " + query.getValue().getSqlSegment());
     }
 
     private SkillRoutineMiner.Opener opener(String text, int dayOffset) {

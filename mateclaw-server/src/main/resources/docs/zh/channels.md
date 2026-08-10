@@ -295,8 +295,12 @@ JSON 卡片 payload 上限约 32 KB，超出后自动降级为纯文本。
 回复逐字刷新进**同一张卡片**，而不是等整段生成完再发。
 
 - `card_streaming_enabled`（默认 `true`）
-- 首 token 立即出现，之后按 500ms 节流刷新
+- 首 token 立即出现；普通文本按 500ms 合并刷新，阶段切换遵守 120ms 平台硬限流后优先刷新
+- `stream_progress`（默认 `true`）：同一卡片会展示思考状态、计划步骤、工具进度和阶段旁白，完成后保留一份有界执行轨迹并追加最终回答
+- `filter_thinking=false` 时展示模型原始思考文本；默认仅展示状态与阶段轨迹，不暴露原始思考
+- `filter_tool_messages=false` 时展示工具名称和逐项结果；默认只展示工具执行数量
 - CardKit 调用失败时自动回退到"先攒齐再一次性发出"
+- 最终更新和关闭操作会自动重试一次；仍失败则通过普通飞书消息兜底
 
 #### 入站语音转写
 
@@ -354,6 +358,7 @@ curl -X POST http://localhost:18088/api/v1/channels \
       "card_format": "auto",
       "card_header": "AI 助手",
       "card_streaming_enabled": true,
+      "stream_progress": true,
       "media_download_enabled": true,
       "enable_done_reaction": true,
       "require_mention": false

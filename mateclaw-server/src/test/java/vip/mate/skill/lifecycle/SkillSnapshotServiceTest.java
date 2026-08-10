@@ -14,6 +14,8 @@ import vip.mate.skill.lifecycle.repository.SkillSnapshotMapper;
 import vip.mate.skill.model.SkillEntity;
 import vip.mate.skill.model.SkillOrigin;
 import vip.mate.skill.repository.SkillMapper;
+import vip.mate.skill.runtime.SkillRuntimeService;
+import vip.mate.skill.workspace.SkillWorkspaceManager;
 
 import java.util.List;
 import java.util.Map;
@@ -25,12 +27,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 /**
  * Tests for the curator's restore points — the only thing standing between an
@@ -41,6 +45,8 @@ class SkillSnapshotServiceTest {
     private SkillMapper skillMapper;
     private SkillSnapshotMapper snapshotMapper;
     private SkillLifecycleProperties properties;
+    private SkillWorkspaceManager workspaceManager;
+    private SkillRuntimeService runtimeService;
     private SkillSnapshotService service;
 
     @BeforeAll
@@ -57,12 +63,22 @@ class SkillSnapshotServiceTest {
         skillMapper = mock(SkillMapper.class);
         snapshotMapper = mock(SkillSnapshotMapper.class);
         properties = new SkillLifecycleProperties();
-        service = new SkillSnapshotService(skillMapper, snapshotMapper, properties, new ObjectMapper());
+        workspaceManager = mock(SkillWorkspaceManager.class);
+        runtimeService = mock(SkillRuntimeService.class);
+        when(workspaceManager.restoreWorkspace(any(), any()))
+                .thenReturn(SkillWorkspaceManager.RestoreResult.MISSING);
+        when(workspaceManager.exportToWorkspace(any(), any(), any()))
+                .thenReturn(java.nio.file.Path.of("/tmp/restored-skill"));
+        when(snapshotMapper.insert(any(SkillSnapshotEntity.class))).thenReturn(1);
+        when(skillMapper.update(isNull(), any())).thenReturn(1);
+        service = new SkillSnapshotService(skillMapper, snapshotMapper, properties, new ObjectMapper(),
+                workspaceManager, runtimeService);
     }
 
     private SkillEntity skill(Long id, String name, String content, String state) {
         SkillEntity s = new SkillEntity();
         s.setId(id);
+        s.setWorkspaceId(1L);
         s.setName(name);
         s.setSkillContent(content);
         s.setLifecycleState(state);
@@ -112,13 +128,25 @@ class SkillSnapshotServiceTest {
     }
 
     @Test
+    @DisplayName("required capture propagates persistence failure")
+    void requiredCaptureFailsClosed() {
+        when(skillMapper.selectList(any())).thenReturn(List.of(skill(1L, "a", "# A", "active")));
+        doThrow(new IllegalStateException("db unavailable"))
+                .when(snapshotMapper).insert(any(SkillSnapshotEntity.class));
+
+        assertThrows(IllegalStateException.class,
+                () -> service.captureRequired("pre-sweep", 1L));
+    }
+
+    @Test
     @DisplayName("restore writes the captured content back over the current rows")
     void restoreRewritesSkills() {
         SkillSnapshotEntity snapshot = new SkillSnapshotEntity();
         snapshot.setId(77L);
         snapshot.setPayload("[{\"id\":1,\"name\":\"a\",\"skillContent\":\"# original\","
                 + "\"lifecycleState\":\"active\",\"origin\":\"agent\",\"enabled\":true,\"pinned\":false}]");
-        when(snapshotMapper.selectById(77L)).thenReturn(snapshot);
+        snapshot.setWorkspaceId(1L);
+        when(snapshotMapper.selectOne(any())).thenReturn(snapshot);
         when(skillMapper.selectById(1L)).thenReturn(skill(1L, "a", "# consolidated away", "archived"));
         when(skillMapper.selectList(any())).thenReturn(List.of(skill(1L, "a", "# consolidated away", "archived")));
         when(snapshotMapper.selectList(any())).thenReturn(List.of());
@@ -127,7 +155,59 @@ class SkillSnapshotServiceTest {
 
         assertEquals(1, result.get("restored"));
         assertEquals(0, result.get("missing"));
+        assertEquals(0, result.get("archivedAdditions"));
         verify(skillMapper, times(1)).update(eq(null), any());
+        verify(workspaceManager).exportToWorkspace("a", "# original", 1L);
+        verify(runtimeService).refreshActiveSkills();
+    }
+
+    @Test
+    @DisplayName("restore archives skills created after the snapshot")
+    void restoreArchivesPostSnapshotAdditions() {
+        SkillSnapshotEntity snapshot = new SkillSnapshotEntity();
+        snapshot.setId(77L);
+        snapshot.setPayload("[{\"id\":1,\"name\":\"a\",\"skillContent\":\"# original\","
+                + "\"lifecycleState\":\"active\",\"enabled\":true}]");
+        snapshot.setWorkspaceId(1L);
+        SkillEntity original = skill(1L, "a", "# changed", "active");
+        SkillEntity umbrella = skill(2L, "a-b", "# merged", "active");
+        when(snapshotMapper.selectOne(any())).thenReturn(snapshot);
+        when(skillMapper.selectById(1L)).thenReturn(original);
+        when(skillMapper.selectList(any())).thenReturn(List.of(original, umbrella));
+        when(snapshotMapper.selectList(any())).thenReturn(List.of());
+        when(workspaceManager.archiveWorkspace("a-b", 1L))
+                .thenReturn(SkillWorkspaceManager.ArchiveResult.MOVED);
+
+        Map<String, Object> result = service.restore(77L);
+
+        assertEquals(1, result.get("restored"));
+        assertEquals(1, result.get("archivedAdditions"));
+        verify(workspaceManager).archiveWorkspace("a-b", 1L);
+        verify(skillMapper, times(2)).update(eq(null), any());
+    }
+
+    @Test
+    @DisplayName("restoring a DB-only snapshot archives a workspace created later")
+    void restoreRemovesPostSnapshotWorkspace() {
+        SkillSnapshotEntity snapshot = new SkillSnapshotEntity();
+        snapshot.setId(77L);
+        snapshot.setPayload("[{\"id\":1,\"name\":\"a\",\"skillContent\":\"# original\","
+                + "\"lifecycleState\":\"active\",\"enabled\":true,\"workspacePresent\":false}]");
+        snapshot.setWorkspaceId(1L);
+        SkillEntity current = skill(1L, "a", "# changed", "active");
+        when(snapshotMapper.selectOne(any())).thenReturn(snapshot);
+        when(skillMapper.selectById(1L)).thenReturn(current);
+        when(skillMapper.selectList(any())).thenReturn(List.of(current));
+        when(snapshotMapper.selectList(any())).thenReturn(List.of());
+        when(workspaceManager.conventionWorkspaceExists("a", 1L)).thenReturn(true);
+        when(workspaceManager.archiveWorkspace("a", 1L))
+                .thenReturn(SkillWorkspaceManager.ArchiveResult.MOVED);
+
+        Map<String, Object> result = service.restore(77L);
+
+        assertEquals(1, result.get("restored"));
+        verify(workspaceManager).archiveWorkspace("a", 1L);
+        verify(workspaceManager, never()).exportToWorkspace(eq("a"), any(), eq(1L));
     }
 
     @Test
@@ -136,7 +216,8 @@ class SkillSnapshotServiceTest {
         SkillSnapshotEntity snapshot = new SkillSnapshotEntity();
         snapshot.setId(77L);
         snapshot.setPayload("[]");
-        when(snapshotMapper.selectById(77L)).thenReturn(snapshot);
+        snapshot.setWorkspaceId(1L);
+        when(snapshotMapper.selectOne(any())).thenReturn(snapshot);
         when(skillMapper.selectList(any())).thenReturn(List.of(skill(1L, "a", "# now", "active")));
         when(snapshotMapper.selectList(any())).thenReturn(List.of());
 
@@ -154,7 +235,8 @@ class SkillSnapshotServiceTest {
         SkillSnapshotEntity snapshot = new SkillSnapshotEntity();
         snapshot.setId(77L);
         snapshot.setPayload("[{\"id\":9,\"name\":\"gone\",\"skillContent\":\"# x\"}]");
-        when(snapshotMapper.selectById(77L)).thenReturn(snapshot);
+        snapshot.setWorkspaceId(1L);
+        when(snapshotMapper.selectOne(any())).thenReturn(snapshot);
         when(skillMapper.selectById(9L)).thenReturn(null);
         when(skillMapper.selectList(any())).thenReturn(List.of());
         when(snapshotMapper.selectList(any())).thenReturn(List.of());
@@ -169,7 +251,7 @@ class SkillSnapshotServiceTest {
     @Test
     @DisplayName("restoring an unknown snapshot is rejected")
     void restoreUnknownSnapshot() {
-        when(snapshotMapper.selectById(404L)).thenReturn(null);
+        when(snapshotMapper.selectOne(any())).thenReturn(null);
         assertThrows(IllegalArgumentException.class, () -> service.restore(404L));
     }
 
@@ -207,5 +289,29 @@ class SkillSnapshotServiceTest {
 
         assertEquals("2055137662148763649", out.get(0).get("id"),
                 "a 19-digit id must not round-trip through a JS Number");
+    }
+
+    @Test
+    @DisplayName("snapshot capture stamps and filters by workspace")
+    void captureIsWorkspaceScoped() {
+        when(skillMapper.selectList(any())).thenReturn(List.of(skill(1L, "a", "# A", "active")));
+        when(snapshotMapper.selectList(any())).thenReturn(List.of());
+
+        SkillSnapshotEntity snapshot = service.capture("manual", 7L);
+
+        assertEquals(7L, snapshot.getWorkspaceId());
+        ArgumentCaptor<SkillSnapshotEntity> inserted = ArgumentCaptor.forClass(SkillSnapshotEntity.class);
+        verify(snapshotMapper).insert(inserted.capture());
+        assertEquals(7L, inserted.getValue().getWorkspaceId());
+    }
+
+    @Test
+    @DisplayName("a snapshot outside the caller workspace is indistinguishable from missing")
+    void restoreRejectsForeignWorkspaceSnapshot() {
+        when(snapshotMapper.selectOne(any())).thenReturn(null);
+
+        assertThrows(IllegalArgumentException.class, () -> service.restore(77L, 7L));
+
+        verify(skillMapper, never()).update(any(), any());
     }
 }
