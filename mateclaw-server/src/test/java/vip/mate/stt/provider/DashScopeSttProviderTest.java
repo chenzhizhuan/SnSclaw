@@ -20,8 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * parts with encoding rules worth pinning:
  *
  * <ul>
- *   <li>The audio must ride as a {@code data:;base64,} URI plus an explicit
- *       {@code format} field — dropping either breaks decoding server-side.</li>
+ *   <li>The audio must ride as a MIME-qualified data URI. Qwen3-ASR does not
+ *       use the separate {@code format} field supported by other Qwen audio models.</li>
  *   <li>{@code asr_options} must be omitted entirely when no language hint
  *       is supplied, so the service auto-detects.</li>
  *   <li>Transcript extraction must tolerate both plain-string and
@@ -40,10 +40,10 @@ class DashScopeSttProviderTest {
     }
 
     @Test
-    @DisplayName("buildRequestBody serialises model, base64 audio, format and stream=false")
+    @DisplayName("buildRequestBody serialises model and MIME-qualified base64 audio")
     void buildRequestBody_coreShape() throws Exception {
         byte[] audio = "fake-wav-bytes".getBytes(StandardCharsets.UTF_8);
-        String json = provider.buildRequestBody("qwen3-asr-flash", audio, "wav", null);
+        String json = provider.buildRequestBody("qwen3-asr-flash", audio, "audio/wav", null);
         JsonNode node = mapper.readTree(json);
 
         assertEquals("qwen3-asr-flash", node.path("model").asText());
@@ -52,18 +52,19 @@ class DashScopeSttProviderTest {
         JsonNode content = node.path("messages").path(0).path("content").path(0);
         assertEquals("user", node.path("messages").path(0).path("role").asText());
         assertEquals("input_audio", content.path("type").asText());
-        assertEquals("wav", content.path("input_audio").path("format").asText());
+        assertTrue(content.path("input_audio").path("format").isMissingNode());
 
         String data = content.path("input_audio").path("data").asText();
-        assertTrue(data.startsWith("data:;base64,"), "audio must be a base64 data URI");
+        assertTrue(data.startsWith("data:audio/wav;base64,"),
+                "audio must carry its real MIME type in the data URI");
         assertEquals(Base64.getEncoder().encodeToString(audio),
-                data.substring("data:;base64,".length()));
+                data.substring("data:audio/wav;base64,".length()));
     }
 
     @Test
     @DisplayName("buildRequestBody adds asr_options.language with locale stripped")
     void buildRequestBody_languageHint() throws Exception {
-        String json = provider.buildRequestBody("qwen3-asr-flash", new byte[]{1}, "wav", "zh-CN");
+        String json = provider.buildRequestBody("qwen3-asr-flash", new byte[]{1}, "audio/wav", "zh-CN");
         JsonNode node = mapper.readTree(json);
         assertEquals("zh", node.path("asr_options").path("language").asText());
     }
@@ -74,9 +75,9 @@ class DashScopeSttProviderTest {
         // An empty or null language means "let the service detect the
         // language"; sending asr_options with a null/blank language field
         // would be rejected as a parameter error.
-        String json = provider.buildRequestBody("qwen3-asr-flash", new byte[]{1}, "wav", null);
+        String json = provider.buildRequestBody("qwen3-asr-flash", new byte[]{1}, "audio/wav", null);
         assertTrue(mapper.readTree(json).path("asr_options").isMissingNode());
-        String jsonBlank = provider.buildRequestBody("qwen3-asr-flash", new byte[]{1}, "wav", " ");
+        String jsonBlank = provider.buildRequestBody("qwen3-asr-flash", new byte[]{1}, "audio/wav", " ");
         assertTrue(mapper.readTree(jsonBlank).path("asr_options").isMissingNode());
     }
 
@@ -88,17 +89,6 @@ class DashScopeSttProviderTest {
         assertEquals("en", DashScopeSttProvider.stripLocale("en"));
         assertNull(DashScopeSttProvider.stripLocale(null));
         assertNull(DashScopeSttProvider.stripLocale("  "));
-    }
-
-    @Test
-    @DisplayName("resolveFormat maps filename/content-type to the input_audio format value")
-    void resolveFormat_variants() {
-        assertEquals("wav", DashScopeSttProvider.resolveFormat("clip.wav", null));
-        assertEquals("mp3", DashScopeSttProvider.resolveFormat(null, "audio/mpeg"));
-        assertEquals("ogg", DashScopeSttProvider.resolveFormat("note.ogg", "audio/ogg"));
-        assertEquals("webm", DashScopeSttProvider.resolveFormat(null, "audio/webm; codecs=opus"));
-        // Unknown everything → wav (matches the web recorder's output).
-        assertEquals("wav", DashScopeSttProvider.resolveFormat(null, null));
     }
 
     @Test
@@ -125,6 +115,16 @@ class DashScopeSttProviderTest {
     void parseTranscript_missingContent() throws Exception {
         assertEquals("", provider.parseTranscript("{}"));
         assertEquals("", provider.parseTranscript("{\"choices\":[]}"));
+    }
+
+    @Test
+    @DisplayName("duration mismatch detects a truncated decode but tolerates rounding")
+    void durationMismatch() {
+        assertTrue(DashScopeSttProvider.isSuspiciouslyTruncated(8.0, 2));
+        assertEquals(false, DashScopeSttProvider.isSuspiciouslyTruncated(8.0, 7));
+        assertEquals(false, DashScopeSttProvider.isSuspiciouslyTruncated(2.0, 1));
+        assertEquals(6, provider.parseRecognizedSeconds("{\"usage\":{\"seconds\":6}}"));
+        assertEquals(-1, provider.parseRecognizedSeconds("{}"));
     }
 
     @Test

@@ -13,6 +13,7 @@ import vip.mate.workspace.conversation.ConversationService;
 import vip.mate.workspace.conversation.vo.ConversationVO;
 import vip.mate.workspace.conversation.vo.MessageVO;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +27,8 @@ import java.util.Map;
 @RequestMapping("/api/v1/conversations")
 @RequiredArgsConstructor
 public class ConversationController {
+
+    private static final int MAX_BATCH_DELETE_SIZE = 200;
 
     private final ConversationService conversationService;
     private final ChatStreamTracker streamTracker;
@@ -219,13 +222,22 @@ public class ConversationController {
         String username = auth != null ? auth.getName() : "anonymous";
         List<String> ids = body.get("conversationIds");
         if (ids == null || ids.isEmpty()) {
-            return R.fail("未指定要删除的会话");
+            return R.fail(400, "未指定要删除的会话");
+        }
+        LinkedHashSet<String> uniqueIds = new LinkedHashSet<>();
+        for (String id : ids) {
+            if (id != null && !id.isBlank()) {
+                uniqueIds.add(id.trim());
+            }
+        }
+        if (uniqueIds.isEmpty()) {
+            return R.fail(400, "未指定要删除的会话");
+        }
+        if (uniqueIds.size() > MAX_BATCH_DELETE_SIZE) {
+            return R.fail(400, "单次最多删除 " + MAX_BATCH_DELETE_SIZE + " 个会话");
         }
         int deleted = 0;
-        for (String conversationId : ids) {
-            if (conversationId == null || conversationId.isBlank()) {
-                continue;
-            }
+        for (String conversationId : uniqueIds) {
             if (!conversationService.isConversationOwner(conversationId, username)) {
                 continue;
             }

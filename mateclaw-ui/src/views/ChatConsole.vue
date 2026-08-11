@@ -78,6 +78,8 @@
             :active-label="activeModelLabel"
             :saving="modelSaving"
             :show-all-states="true"
+            :can-configure="canConfigureModels"
+            :empty-hint="modelSelectorEmptyHint"
             @select="selectModel"
             @navigate-fix="onModelSelectorFix"
           />
@@ -290,7 +292,7 @@ import { useChat } from '@/composables/chat/useChat'
 import RunOverviewPanel from '@/components/chat/RunOverviewPanel.vue'
 import { reconstructErrorInfo } from '@/types/chatError'
 import { reconcileMessages, extractMessages } from '@/utils/messageReconcile'
-import type { Conversation, Agent, ModelConfig, ProviderInfo, ActiveModelsInfo, ChatAttachment, MessageContentPart, Message, ToolCallMeta, StreamPhase } from '@/types'
+import type { Conversation, Agent, ModelConfig, ProviderInfo, ActiveModelsInfo, ChatAttachment, MessageContentPart, Message, ToolCallMeta } from '@/types'
 
 // 导入组件化组件
 import MessageList from '@/components/chat/MessageList.vue'
@@ -310,6 +312,7 @@ import { useKatexRenderer } from '@/composables/useKatexRenderer'
 import { useMermaidRenderer, handleMermaidDownload } from '@/composables/useMermaidRenderer'
 import { useGoalStore } from '@/stores/useGoalStore'
 import { useWorkspaceStore } from '@/stores/useWorkspaceStore'
+import { buildViewerModelProviders } from '@/utils/viewerModelProviders'
 import GoalSetInlinePrompt from '@/components/goal/GoalSetInlinePrompt.vue'
 import GoalSystemLine from '@/components/goal/GoalSystemLine.vue'
 
@@ -393,14 +396,12 @@ const recoverablePrompt = ref(false)
 const recoverableDismissed = ref(false)
 const defaultModel = ref<ModelConfig | null>(null)
 const providers = ref<ProviderInfo[]>([])
-// True when /models 403s for a viewer-level user. Provider config (API keys,
-// base URLs, liveness) is admin-only, so viewers chat without it; the prompt
-// flags fall back to "trust the active model" in that branch.
+// True when a viewer uses the credential-free provider projection. Provider
+// config (API keys, base URLs, liveness) is admin-only, so viewers can switch
+// models but prompt flags must still trust the active model's runtime state.
 const providersUnavailable = ref(false)
-// Mirror of /models/enabled (viewer-accessible). Used to resolve the display
-// name of the active model when providers is empty for viewer-level users —
-// otherwise the model selector trigger would show its 配置模型 fallback even
-// though there IS an active model.
+// Mirror of /models/enabled (viewer-accessible). It supplies the model half of
+// the safe picker projection and resolves the active label during hydration.
 const enabledModels = ref<ModelConfig[]>([])
 // The model the CURRENT conversation uses. Per-conversation — switching it
 // never leaks into other conversations (see selectModel / applyConversationModel).
@@ -832,7 +833,7 @@ const currentRuntimeModel = computed(() => {
     const all = provider ? [...(provider.models || []), ...(provider.extraModels || [])] : []
     const hit = all.find((m) => m.id === modelName || m.name === modelName)
     if (hit) return `${hit.name || hit.id} (${hit.id})`
-    // Viewer-level users get an empty providers list — resolve via /models/enabled.
+    // During initial hydration the safe provider projection may not be ready yet.
     const em = enabledModels.value.find(
       (m) => m.provider === providerId && (m.modelName === modelName || m.name === modelName)
     )
@@ -880,10 +881,9 @@ const activeModelLabel = computed(() => {
   if (!activeModelValue.value) return ''
   const match = eligibleModels.value.find(m => m.value === activeModelValue.value)
   if (match?.label) return match.label
-  // Viewer-level users have an empty providers list (admin-only endpoint), so
-  // eligibleModels is empty even when there IS an active model. Fall back to
-  // the viewer-readable /models/enabled list to resolve a display name —
-  // otherwise the trigger button would read "配置模型" forever.
+  // Fall back to the viewer-readable /models/enabled list while the safe
+  // provider projection is still hydrating, so the trigger never flashes the
+  // "配置模型" placeholder for an already active model.
   const providerId = activeModels.value?.activeLlm?.providerId
   const modelName = activeModels.value?.activeLlm?.model
   if (!providerId || !modelName) return ''
@@ -1302,8 +1302,12 @@ watch([selectedAgentId, currentConversationId], () => {
 // avatar ring listens on goalStore.activeGoalByConv[cid]; without this
 // fetch the ring would only appear after an SSE event mutated the store.
 const goalStore = useGoalStore()
-const workspaceStoreForGoal = useWorkspaceStore()
-const currentWorkspaceId = computed(() => workspaceStoreForGoal.currentWorkspaceId ?? '1')
+const workspaceStore = useWorkspaceStore()
+const currentWorkspaceId = computed(() => workspaceStore.currentWorkspaceId ?? '1')
+const canConfigureModels = computed(() => workspaceStore.isGlobalAdmin)
+const modelSelectorEmptyHint = computed(() => canConfigureModels.value
+  ? undefined
+  : t('chat.noModelsAvailableContactAdmin'))
 watch(currentConversationId, async (cid) => {
   // Skip un-persisted conversations: a brand-new empty chat has no goal yet
   // and the lookup would only 403 (Not the owner). The ring is hydrated by the
@@ -1479,13 +1483,18 @@ async function loadAgents() {
 async function loadModelState() {
   // /default + /active + /enabled are viewer-accessible and required to chat.
   // /models (provider list) is admin-only because it returns API keys + base
-  // URLs; viewers degrade to "trust the active model, skip the liveness
-  // banner" and resolve the label via /enabled instead.
+  // URLs. Viewers join /models/options with /models/enabled for the selector,
+  // but still skip the liveness banner because neither safe response exposes
+  // runtime diagnostics.
   try {
-    const [defaultRes, activeRes, enabledRes]: any = await Promise.all([
+    const providerOptionsRequest = workspaceStore.isGlobalAdmin
+      ? Promise.resolve({ data: [] })
+      : modelApi.listProviderOptions()
+    const [defaultRes, activeRes, enabledRes, providerOptionsRes]: any = await Promise.all([
       modelApi.getDefault(),
       modelApi.getActive(),
       modelApi.listEnabled(),
+      providerOptionsRequest,
     ])
     defaultModel.value = defaultRes.data || null
     const ga = activeRes.data?.activeLlm
@@ -1499,6 +1508,17 @@ async function loadModelState() {
       activeModels.value = { activeLlm: { ...globalDefaultModel.value } }
     }
     enabledModels.value = enabledRes.data || []
+    if (!workspaceStore.isGlobalAdmin) {
+      providers.value = buildViewerModelProviders(
+        providerOptionsRes.data || [],
+        enabledModels.value,
+      )
+      // The safe projection intentionally has no liveness diagnostics. Trust
+      // the active model and let the runtime report a real call failure.
+      providersUnavailable.value = true
+      recomputePromptFlags()
+      return
+    }
   } catch (e) {
     mcToast.error(t('chat.loadModelFailed'))
     blockingPrompt.value = true
