@@ -51,9 +51,13 @@ class WavPcmExtractorTest {
     }
 
     @Test
-    @DisplayName("isCanonicalWav: true for RIFF/WAVE, false for junk / short / null")
+    @DisplayName("isCanonicalWav accepts PCM16 mono and rejects non-canonical WAV layouts")
     void isCanonicalWav_gates() {
         assertTrue(WavPcmExtractor.isCanonicalWav(buildWav(16_000, 16, new byte[8])));
+        byte[] stereo = buildWav(16_000, 16, new byte[8]);
+        ByteBuffer.wrap(stereo).order(ByteOrder.LITTLE_ENDIAN).putShort(22, (short) 2);
+        assertFalse(WavPcmExtractor.isCanonicalWav(stereo));
+        assertFalse(WavPcmExtractor.isCanonicalWav(buildWav(16_000, 24, new byte[8])));
         assertFalse(WavPcmExtractor.isCanonicalWav(new byte[64]));       // no magic
         assertFalse(WavPcmExtractor.isCanonicalWav(new byte[10]));       // too short
         assertFalse(WavPcmExtractor.isCanonicalWav(null));

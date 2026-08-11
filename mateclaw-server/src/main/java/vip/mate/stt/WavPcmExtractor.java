@@ -30,14 +30,20 @@ public final class WavPcmExtractor {
     private WavPcmExtractor() {}
 
     /**
-     * True when the bytes carry the RIFF/WAVE magic and are long enough to
-     * hold the canonical 44-byte header. Cheap gate for callers that only
-     * want PCM diagnostics on inputs {@link #extract} can actually handle.
+     * True only for the 44-byte PCM16/mono layout produced by MateClaw's web
+     * recorder. Stereo WAVs and files with extra chunks are still valid audio,
+     * but callers must send them directly to STT instead of applying the
+     * mono-specific sample math in this helper.
      */
     public static boolean isCanonicalWav(byte[] bytes) {
         return bytes != null && bytes.length >= CANONICAL_HEADER_BYTES
                 && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
-                && bytes[8] == 'W' && bytes[9] == 'A' && bytes[10] == 'V' && bytes[11] == 'E';
+                && bytes[8] == 'W' && bytes[9] == 'A' && bytes[10] == 'V' && bytes[11] == 'E'
+                && bytes[12] == 'f' && bytes[13] == 'm' && bytes[14] == 't' && bytes[15] == ' '
+                && unsignedShort(bytes, 20) == 1
+                && unsignedShort(bytes, 22) == 1
+                && unsignedShort(bytes, 34) == 16
+                && bytes[36] == 'd' && bytes[37] == 'a' && bytes[38] == 't' && bytes[39] == 'a';
     }
 
     /**
@@ -72,6 +78,10 @@ public final class WavPcmExtractor {
         return ByteBuffer.wrap(wavBytes, OFFSET_SAMPLE_RATE, 4)
                 .order(ByteOrder.LITTLE_ENDIAN)
                 .getInt();
+    }
+
+    private static int unsignedShort(byte[] bytes, int offset) {
+        return (bytes[offset] & 0xFF) | ((bytes[offset + 1] & 0xFF) << 8);
     }
 
 }

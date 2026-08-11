@@ -5,7 +5,7 @@
         <h2 class="section-title">{{ t('settings.model.title') }}</h2>
         <p class="section-desc">{{ t('settings.model.desc') }}</p>
       </div>
-      <div class="section-header__actions">
+      <div v-if="canConfigureModels" class="section-header__actions">
         <!-- RFC-074 PR-2: primary entry to enable a built-in provider. -->
         <button class="btn-primary" @click="openDrawer">
           {{ t('settings.model.enableProviderCta') }}
@@ -16,6 +16,13 @@
         </button>
       </div>
     </div>
+
+    <div v-if="!canConfigureModels" class="provider-empty provider-empty--permission">
+      <h3>{{ t('settings.model.permissionTitle') }}</h3>
+      <p>{{ t('settings.model.permissionDesc') }}</p>
+    </div>
+
+    <template v-else>
 
     <!-- RFC-074 PR-1: skeleton placeholder so the page paints something
          immediately on first load instead of blank-then-pop. -->
@@ -186,6 +193,7 @@
       :expires-at="deviceCodeDialog.expiresAt"
       @close="closeDeviceCodeDialog"
     />
+    </template>
   </div>
 </template>
 
@@ -195,6 +203,7 @@ import { useI18n } from 'vue-i18n'
 import { mcToast } from '@/composables/useMcToast'
 import { mcConfirm } from '@/components/common/useConfirm'
 import { useRoute, useRouter } from 'vue-router'
+import { useWorkspaceStore } from '@/stores/useWorkspaceStore'
 import type { ProviderInfo, ProviderModelInfo } from '@/types'
 import { useProviders } from './useProviders'
 import ProviderCard from './ProviderCard.vue'
@@ -210,6 +219,8 @@ const AddProviderDrawer = defineAsyncComponent(() => import('./AddProviderDrawer
 const DeviceCodeDialog = defineAsyncComponent(() => import('./modals/DeviceCodeDialog.vue'))
 
 const { t } = useI18n()
+const workspaceStore = useWorkspaceStore()
+const canConfigureModels = computed(() => workspaceStore.isGlobalAdmin)
 const savedTip = ref('')
 // Skeleton gate. Driven by onMounted only — fine because /settings/models is
 // NOT a keepAlive route. If anyone re-adds keepAlive in router/index.ts,
@@ -296,6 +307,10 @@ const router = useRouter()
 const AUTO_OPEN_KEY = 'rfc074-add-provider-auto-opened'
 
 onMounted(async () => {
+  if (!canConfigureModels.value) {
+    loading.value = false
+    return
+  }
   try {
     await Promise.all([loadProviders(), loadActiveModel()])
   } finally {
@@ -489,6 +504,7 @@ function showSavedTip(message: string) {
 }
 .provider-empty h3 { margin: 0 0 8px; font-size: 16px; color: var(--mc-text-primary); }
 .provider-empty p { margin: 0 0 18px; font-size: 13px; color: var(--mc-text-tertiary); }
+.provider-empty--permission p { margin-bottom: 0; }
 
 .save-tip { position: fixed; right: 24px; bottom: 24px; background: var(--mc-text-primary); color: var(--mc-text-inverse); padding: 10px 14px; border-radius: 10px; box-shadow: 0 10px 30px rgba(124, 63, 30, 0.22); }
 
