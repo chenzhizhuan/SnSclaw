@@ -628,11 +628,12 @@ function setupAutoUpdater(): void {
   })
 
   // Check for updates after a short delay to avoid blocking startup
-  setTimeout(() => {
-    autoUpdater.checkForUpdates().catch((err) => {
-      console.error('[SnSclaw] Update check failed:', err.message)
-    })
-  }, 3000)
+  // DISABLED: update server not deployed yet
+  // setTimeout(() => {
+  //   autoUpdater.checkForUpdates().catch((err) => {
+  //     console.error('[SnSclaw] Update check failed:', err.message)
+  //   })
+  // }, 3000)
 }
 
 // ─── IPC Handlers ────────────────────────────────────────────────────────────
