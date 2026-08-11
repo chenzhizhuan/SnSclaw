@@ -1,6 +1,6 @@
 {
   "name": "snsclaw-ui",
-  "version": "1.0.0-SNAPSHOT",
+  "version": "1.0.1-SNAPSHOT",
   "private": true,
   "type": "module",
   "description": "SnSclaw AI 助手 — 面向企业级场景的私有化智能体平台，集成多模态模型、知识库检索、语音交互与自动化工具链（HTTP/SSE 运行时）",
