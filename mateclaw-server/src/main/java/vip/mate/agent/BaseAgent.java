@@ -895,7 +895,13 @@ public abstract class BaseAgent {
         }
         return switch (message.getRole()) {
             case "assistant" -> new AssistantMessage(renderedContent);
-            case "system" -> new SystemMessage(renderedContent);
+            case "system" -> isCompressionSummary(message)
+                    // Compression boundaries are persisted as system rows so
+                    // the loader can find the latest boundary cheaply. They
+                    // are still model-generated history context, not durable
+                    // instructions, so replay them at user priority.
+                    ? new UserMessage(renderedContent)
+                    : new SystemMessage(renderedContent);
             // History user messages: text only. Re-injecting Media on every replay
             // accumulates attachments across turns — many providers cap at 1 video
             // per request (e.g. Zhipu GLM-5V returns code 1210). The current turn

@@ -16,6 +16,7 @@ import vip.mate.tts.TtsService;
 import vip.mate.workspace.conversation.ConversationService;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -105,7 +106,10 @@ public class TalkModeWebSocketHandler extends AbstractWebSocketHandler {
             return;
         }
 
-        byte[] audioData = message.getPayload().array();
+        // Respect the ByteBuffer's position/limit. Calling array() can include
+        // unrelated capacity bytes when a WebSocket container hands us a
+        // sliced or pooled buffer, corrupting the WAV data URL sent to STT.
+        byte[] audioData = copyPayload(message.getPayload());
         log.info("[TalkMode] Received audio: {} bytes", audioData.length);
 
         // 异步处理：STT -> Agent -> TTS
@@ -225,5 +229,13 @@ public class TalkModeWebSocketHandler extends AbstractWebSocketHandler {
         if (session.isOpen()) {
             session.sendMessage(new TextMessage(objectMapper.writeValueAsString(data)));
         }
+    }
+
+    /** Copy exactly the readable WebSocket payload, independent of backing-array capacity/offset. */
+    static byte[] copyPayload(ByteBuffer source) {
+        ByteBuffer payload = source.slice();
+        byte[] audioData = new byte[payload.remaining()];
+        payload.get(audioData);
+        return audioData;
     }
 }

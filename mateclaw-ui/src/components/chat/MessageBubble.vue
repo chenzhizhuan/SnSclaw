@@ -75,34 +75,15 @@
                 <ThinkingSegment v-if="seg.type === 'thinking' && showThinking" :segment="seg" />
                 <ToolCallSegment v-else-if="seg.type === 'tool_call'" :segment="seg" />
                 <template v-else-if="seg.type === 'content'">
-                  <button
-                    v-if="seg.superseded"
-                    class="superseded-toggle"
-                    type="button"
-                    @click="toggleSupersededSegment(seg.id)"
-                  >
-                    <el-icon><InfoFilled /></el-icon>
-                    <!-- Label tracks the actual state — it read "已折叠" even while
-                         the body below it was expanded, so the banner contradicted
-                         what the reader could plainly see. -->
-                    <span>{{ isSupersededExpanded(seg.id)
-                      ? $t('chat.supersededPreviewExpanded')
-                      : $t('chat.supersededPreviewCollapsed') }}</span>
-                    <span class="superseded-toggle__action">
-                      {{ isSupersededExpanded(seg.id) ? $t('chat.collapse') : $t('chat.expand') }}
-                    </span>
-                  </button>
-                  <div v-if="seg.repetitionWarning && (!seg.superseded || isSupersededExpanded(seg.id))" class="repetition-warning">
+                  <div v-if="seg.repetitionWarning" class="repetition-warning">
                     <el-icon><WarningFilled /></el-icon>
                     <span class="repetition-warning__text">{{ $t('chat.contentRepetitionWarning') }}</span>
                     <span v-if="seg.truncatedChars" class="repetition-warning__meta">({{ seg.truncatedChars }} chars)</span>
                   </div>
                   <ContentSegment
-                    v-if="!seg.superseded || isSupersededExpanded(seg.id)"
                     :segment="seg"
                     :show-cursor="showCursor && seg.status === 'running'"
                     :generated-file-names="generatedFileNames"
-                    :class="{ 'content-segment--superseded': seg.superseded }"
                   />
                 </template>
                 </template>
@@ -1094,18 +1075,6 @@ const formatFileSize = (size: number) => {
 
 // --- 执行过程面板 ---
 const executionExpanded = ref(false)
-const expandedSupersededSegments = ref(new Set<string>())
-
-function isSupersededExpanded(id: string) {
-  return expandedSupersededSegments.value.has(id)
-}
-
-function toggleSupersededSegment(id: string) {
-  const next = new Set(expandedSupersededSegments.value)
-  if (next.has(id)) next.delete(id)
-  else next.add(id)
-  expandedSupersededSegments.value = next
-}
 
 // --- 分段式渲染（Claude Code 风格） ---
 const parsedMetadata = computed(() => {
@@ -1727,10 +1696,6 @@ watch(isGenerating, (generating) => {
 
 .superseded-toggle__action {
   color: var(--mc-primary, #2563eb);
-}
-
-.content-segment--superseded {
-  opacity: 0.72;
 }
 
 .message-wrapper {

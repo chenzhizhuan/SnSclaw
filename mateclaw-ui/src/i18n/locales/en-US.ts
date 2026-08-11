@@ -378,6 +378,7 @@ export default {
     modelLivenessCooldown: 'In cooldown ({seconds}s remaining)',
     // RFC-074 PR-2: empty-state inside the model dropdown
     noProvidersConfigured: 'No models available yet',
+    noModelsAvailableContactAdmin: 'No models are available. Contact a global administrator to configure one.',
     goConfigure: 'Configure',
     // Issue #81: liveness-aware popup state machine.
     prompt: {
@@ -926,6 +927,8 @@ export default {
     model: {
       title: 'Model Management',
       desc: 'Configure model providers, credentials, and model lists',
+      permissionTitle: 'Global administrator access required',
+      permissionDesc: 'Provider configuration contains system-level credentials. You can still switch among enabled models in Chat; contact a global administrator to add or change models.',
       addProvider: 'Add Provider',
       localProviders: 'Local Models',
       cloudProviders: 'Cloud Models',
@@ -1237,7 +1240,7 @@ export default {
       sttProvider: 'Select preferred STT provider. Auto mode picks the first available one.',
       sttFallbackEnabled: 'Automatically try other configured providers if the preferred one fails.',
       openaiSttInfo: 'Reuses OpenAI API Key from Model Management. Whisper model, supports multilingual auto-detection.',
-      dashscopeSttInfo: 'Reuses DashScope API Key from Model Management. Paraformer Realtime over WebSocket — strong Chinese recognition, sub-second latency.',
+      dashscopeSttInfo: 'Reuses the DashScope API Key from Model Management. Qwen3-ASR Flash transcribes each complete recording over HTTP with multilingual and Chinese dialect support.',
       // Issue #76
       sttOpenAiCompatProviderId: 'Pick any OpenAI-compatible provider from Model Management as the credential source (baseUrl + API key). Beyond OpenAI itself this covers self-hosted FunASR, SiliconFlow, Groq, Together, Volcano, Qiniu, and any custom provider you add with the OpenAI-compatible protocol.',
       sttOpenAiCompatModel: 'Model id sent in the multipart "model" field. Defaults to whisper-1; use paraformer-large for FunASR, or whatever id your vendor documents.',
@@ -1346,7 +1349,7 @@ export default {
       saveFail: 'Save failed',
     },
     sttTitle: 'Speech Recognition',
-    sttDesc: 'Configure STT speech-to-text with OpenAI Whisper and DashScope Paraformer',
+    sttDesc: 'Configure STT speech-to-text with OpenAI Whisper and DashScope Qwen3-ASR',
     sttProviderOptions: { auto: 'Auto Select' },
     sttProviderTags: { reuseLlmKey: 'Reuses LLM API Key' },
     musicTitle: 'Music Generation',
@@ -2254,6 +2257,18 @@ export default {
     deleteConfirm: 'Are you sure you want to delete this session?',
     deleteTitle: 'Confirm Delete',
     deleteFailed: 'Failed to delete session',
+    selectAll: 'Select all sessions on this page',
+    deselectAll: 'Deselect all',
+    selectSession: 'Select session "{title}"',
+    selectedCount: '{count} sessions selected',
+    clearSelection: 'Clear selection',
+    batchDelete: 'Delete selected',
+    deleting: 'Deleting...',
+    batchDeleteTitle: 'Confirm Bulk Delete',
+    batchDeleteConfirm: 'Delete the {count} selected sessions? This action cannot be undone.',
+    batchDeleteSuccess: 'Deleted {count} sessions',
+    batchDeletePartial: 'Deleted {deleted} of {total} sessions. The others may no longer exist or may not be accessible.',
+    batchDeleteFailed: 'Failed to delete selected sessions',
     switchModel: 'Switch the model used for this conversation',
     modelSwitched: 'Model switched',
     modelSwitchFailed: 'Failed to switch model',
