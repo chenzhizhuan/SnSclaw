@@ -103,6 +103,20 @@ public class WebChatController {
     @Value("${mateclaw.jwt.secret:SnSclaw-JWT-Secret-Key-2024-Please-Change-In-Production}")
     private String visitorTokenSecret;
 
+    /**
+     * SseEmitter timeout (minutes) for WebChat SSE streams. Previously
+     * hardcoded to 10 minutes across three {@code new Utf8SseEmitter(...)} call
+     * sites; downstream integrators were forced to reason about a constant
+     * living in someone else's repo (issue #586). Configurable so operators
+     * have a documented knob, defaulting to the historical 10 minutes.
+     */
+    @Value("${mateclaw.webchat.sse-timeout-minutes:10}")
+    private int webchatSseTimeoutMinutes;
+
+    private long sseTimeoutMillis() {
+        return (long) webchatSseTimeoutMinutes * 60_000L;
+    }
+
     private final ExecutorService sseExecutor = Executors.newCachedThreadPool();
 
     /**
@@ -115,7 +129,7 @@ public class WebChatController {
             @RequestBody WebChatRequest request) {
 
         // RFC-058 PR-1: Utf8SseEmitter 显式 charset=UTF-8，防止中文 SSE 乱码
-        SseEmitter emitter = new Utf8SseEmitter(10 * 60 * 1000L);
+        SseEmitter emitter = new Utf8SseEmitter(sseTimeoutMillis());
 
         // 验证 API Key 并获取关联的 Channel 配置
         ChannelEntity channel = resolveChannel(apiKey);
@@ -172,15 +186,34 @@ public class WebChatController {
 
         log.info("[WebChat] Stream: agentId={}, conversationId={}, visitor={}", agentId, conversationId, visitorId);
 
-        // 注册 emitter 回调
-        emitter.onCompletion(() -> log.debug("[WebChat] SSE completed: {}", conversationId));
+        // Register emitter callbacks. An SSE disconnect means this subscriber
+        // left, not that the agent run finished. Use detach() instead of
+        // complete(); complete() would prematurely mark the RunState done,
+        // drop later content deltas from the replay buffer, and double-count
+        // completion when the agent Flux actually finishes.
+        emitter.onCompletion(() -> {
+            log.debug("[WebChat] SSE completed: {}", conversationId);
+            streamTracker.detach(conversationId, emitter);
+        });
         emitter.onTimeout(() -> {
-            log.debug("[WebChat] SSE timeout: {}", conversationId);
-            streamTracker.complete(conversationId);
+            // INFO: a timeout means the stream went idle past the SseEmitter
+            // budget, which is a key signal when diagnosing stream stalls.
+            log.info("[WebChat] SSE timeout (stream went idle past the emitter budget): {}", conversationId);
+            streamTracker.detach(conversationId, emitter);
+            // Explicitly complete after timeout so the servlet container does
+            // not rethrow AsyncRequestTimeoutException.
+            emitter.complete();
         });
         emitter.onError(e -> {
-            log.debug("[WebChat] SSE error: {} - {}", conversationId, e.getMessage());
-            streamTracker.complete(conversationId);
+            // INFO only for non-benign causes; a client simply closing the tab
+            // (broken pipe / connection reset) is routine and stays DEBUG so it
+            // doesn't flood production logs.
+            if (isClientDisconnect(e)) {
+                log.debug("[WebChat] SSE client disconnected: {} - {}", conversationId, e.getMessage());
+            } else {
+                log.info("[WebChat] SSE error: {} - {}", conversationId, e.getMessage());
+            }
+            streamTracker.detach(conversationId, emitter);
         });
 
         sseExecutor.execute(() -> {
@@ -282,12 +315,21 @@ public class WebChatController {
                                         persistErr.getMessage());
                             }
                             streamTracker.broadcast(conversationId, "done", "{\"status\":\"completed\"}");
+                            // WebChat is a pure-backend SSE channel with no re-attach
+                            // endpoint: for third-party integrators reading until the
+                            // server closes, `done` IS the end of the stream. Close the
+                            // subscriber connections so a 5-second answer doesn't hold
+                            // a downstream connection-pool slot for the full SseEmitter
+                            // timeout (issue #586). The in-house web channel does NOT
+                            // do this — it keeps emitters open for reconnect + replay.
+                            streamTracker.closeSubscribers(conversationId);
                             streamTracker.complete(conversationId);
                         })
                         .doOnError(e -> {
                             log.error("[WebChat] Stream error: {}", e.getMessage());
                             streamTracker.broadcast(conversationId, "error",
                                     "{\"message\":" + escapeJson(e.getMessage()) + "}");
+                            streamTracker.closeSubscribers(conversationId);
                             streamTracker.complete(conversationId);
                         })
                         .subscribe();
@@ -297,6 +339,11 @@ public class WebChatController {
                 // HTTP call keeps running — token burn + side-effect tools still fire.
                 // Mirrors ChatController#chatStream line 495.
                 streamTracker.setDisposable(conversationId, disposable);
+                // Wire the emergency save so an orphaned run (only subscriber
+                // gone) is flushed as an "interrupted" assistant message when
+                // the grace-period eviction reclaims it — otherwise the visitor
+                // would see only their own user message (issue #587).
+                registerEmergencySave(conversationId, assistantReply, usage, modelInfo);
 
             } catch (Exception e) {
                 log.error("[WebChat] Error: {}", e.getMessage(), e);
@@ -1187,7 +1234,7 @@ public class WebChatController {
             @RequestParam String visitorId,
             @RequestParam(required = false) String sessionId,
             @RequestParam String pendingId) {
-        SseEmitter emitter = new Utf8SseEmitter(10 * 60 * 1000L);
+        SseEmitter emitter = new Utf8SseEmitter(sseTimeoutMillis());
         ChannelEntity channel = resolveChannel(apiKey);
         if (channel == null) {
             sendErrorAndComplete(emitter, "Invalid API Key");
@@ -1219,14 +1266,22 @@ public class WebChatController {
             return emitter;
         }
 
-        emitter.onCompletion(() -> log.debug("[WebChat] approve SSE completed: {}", conversationId));
+        emitter.onCompletion(() -> {
+            log.debug("[WebChat] approve SSE completed: {}", conversationId);
+            streamTracker.detach(conversationId, emitter);
+        });
         emitter.onTimeout(() -> {
-            log.debug("[WebChat] approve SSE timeout: {}", conversationId);
-            streamTracker.complete(conversationId);
+            log.info("[WebChat] approve SSE timeout (stream went idle past the emitter budget): {}", conversationId);
+            streamTracker.detach(conversationId, emitter);
+            emitter.complete();
         });
         emitter.onError(e -> {
-            log.debug("[WebChat] approve SSE error: {} - {}", conversationId, e.getMessage());
-            streamTracker.complete(conversationId);
+            if (isClientDisconnect(e)) {
+                log.debug("[WebChat] approve SSE client disconnected: {} - {}", conversationId, e.getMessage());
+            } else {
+                log.info("[WebChat] approve SSE error: {} - {}", conversationId, e.getMessage());
+            }
+            streamTracker.detach(conversationId, emitter);
         });
 
         String actor = webchatUsername(visitorId);
@@ -1248,6 +1303,7 @@ public class WebChatController {
                     broadcastApprovalResolved(conversationId, consumed);
                     streamTracker.broadcast(conversationId, "done",
                             "{\"status\":\"already_resolved\"}");
+                    streamTracker.closeSubscribers(conversationId);
                     return;
                 }
 
@@ -1263,6 +1319,7 @@ public class WebChatController {
                             pendingId);
                     streamTracker.broadcast(conversationId, "done",
                             "{\"status\":\"error\",\"message\":\"No agent bound to approval\"}");
+                    streamTracker.closeSubscribers(conversationId);
                     return;
                 }
 
@@ -1333,22 +1390,28 @@ public class WebChatController {
                             }
                             streamTracker.broadcast(conversationId, "done",
                                     "{\"status\":\"completed\"}");
+                            // Close the WebChat SSE connection on the logical end of
+                            // the replay stream — same rationale as /stream (issue #586).
+                            streamTracker.closeSubscribers(conversationId);
                             streamTracker.complete(conversationId);
                         })
                         .doOnError(e -> {
                             log.error("[WebChat] approve replay stream error: {}", e.getMessage());
                             streamTracker.broadcast(conversationId, "error",
                                     "{\"message\":" + escapeJson(e.getMessage()) + "}");
+                            streamTracker.closeSubscribers(conversationId);
                             streamTracker.complete(conversationId);
                         })
                         .subscribe();
                 streamTracker.setDisposable(conversationId, disposable);
+                registerEmergencySave(conversationId, assistantReply, usage, modelInfo);
             } catch (Exception e) {
                 log.error("[WebChat] approve failed for {}: {}", conversationId, e.getMessage());
                 try {
                     streamTracker.broadcast(conversationId, "error",
                             "{\"message\":" + escapeJson(e.getMessage()) + "}");
                 } catch (Exception ignored) {}
+                streamTracker.closeSubscribers(conversationId);
                 streamTracker.complete(conversationId);
             }
         });
@@ -1365,6 +1428,22 @@ public class WebChatController {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    /**
+     * True when the SSE error is a routine client-side disconnect (closed tab,
+     * network drop) rather than a server-side failure. Used to keep the
+     * lifecycle log noise down: a visitor closing the tab is expected and
+     * stays DEBUG; anything else is worth an INFO line for production triage.
+     * Mirrors ChatController#isClientDisconnect.
+     */
+    private static boolean isClientDisconnect(Throwable e) {
+        if (e instanceof IOException) return true;
+        String msg = e.getMessage();
+        if (msg == null) return false;
+        String lower = msg.toLowerCase();
+        return lower.contains("broken pipe") || lower.contains("connection reset")
+                || lower.contains("client abort") || lower.contains("closed");
     }
 
     /**
@@ -1404,7 +1483,7 @@ public class WebChatController {
             @RequestHeader(value = "X-MC-Visitor-Token", required = false) String visitorToken,
             @RequestParam String visitorId,
             @RequestParam(required = false) String sessionId) {
-        SseEmitter emitter = new Utf8SseEmitter(10 * 60 * 1000L);
+        SseEmitter emitter = new Utf8SseEmitter(sseTimeoutMillis());
         ChannelEntity channel = resolveChannel(apiKey);
         if (channel == null) {
             sendErrorAndComplete(emitter, "Invalid API Key");
@@ -1606,6 +1685,53 @@ public class WebChatController {
             }
         }
         return parts;
+    }
+
+    /**
+     * Register an emergency-save callback that flushes the partial assistant
+     * reply accumulated so far as an {@code interrupted} message. Wired on
+     * both {@code /stream} and {@code /sessions/approve} so that when a run is
+     * reclaimed while its only subscriber is gone (orphan-grace eviction,
+     * shutdown, admin force-recycle), the visitor can still retrieve the
+     * partial answer via {@code /sessions/messages} instead of seeing only the
+     * user message (issue #587). Mirrors ChatController#emergencySaveAccumulator.
+     *
+     * @param conversationId target conversation
+     * @param assistantReply live accumulator appended to in doOnNext
+     * @param usage          [prompt, completion, cacheRead, cacheWrite, reasoning]
+     * @param modelInfo      [runtimeModel, runtimeProvider]
+     */
+    private void registerEmergencySave(String conversationId, StringBuilder assistantReply,
+                                       int[] usage, String[] modelInfo) {
+        streamTracker.setEmergencySaveCallback(conversationId, () -> {
+            try {
+                String reply = assistantReply.toString();
+                if (reply.isBlank()) {
+                    log.debug("[WebChat] Emergency save skipped (empty reply): {}", conversationId);
+                    return;
+                }
+                // usage length varies by call site (chatStream = 5 tokens,
+                // approve replay = 2); read defensively so the save never
+                // throws ArrayIndexOutOfBoundsException.
+                int prompt = usage.length > 0 ? usage[0] : 0;
+                int completion = usage.length > 1 ? usage[1] : 0;
+                int cacheRead = usage.length > 2 ? usage[2] : 0;
+                int cacheWrite = usage.length > 3 ? usage[3] : 0;
+                int reasoning = usage.length > 4 ? usage[4] : 0;
+                String runtimeModel = modelInfo.length > 0 ? modelInfo[0] : null;
+                String runtimeProvider = modelInfo.length > 1 ? modelInfo[1] : null;
+                conversationService.saveMessage(
+                        conversationId, "assistant", reply, List.of(),
+                        "interrupted",
+                        prompt, completion, cacheRead, cacheWrite, reasoning,
+                        runtimeModel, runtimeProvider, null);
+                log.info("[WebChat] Emergency-saved partial assistant reply: " +
+                                "conversationId={}, textLen={}",
+                        conversationId, reply.length());
+            } catch (Exception e) {
+                log.warn("[WebChat] Emergency save failed for {}: {}", conversationId, e.getMessage());
+            }
+        });
     }
 
     // ==================== 内部方法 ====================

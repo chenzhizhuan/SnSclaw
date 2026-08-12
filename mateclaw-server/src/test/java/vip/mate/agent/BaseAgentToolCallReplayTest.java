@@ -65,14 +65,15 @@ class BaseAgentToolCallReplayTest {
     }
 
     @Test
-    @DisplayName("running / awaiting_approval entries are skipped — replaying them produces orphan tool_call_ids")
+    @DisplayName("non-terminal entries are skipped — replaying them produces orphan tool_call_ids")
     void incompleteToolCalls_dropped() {
         MessageEntity msg = new MessageEntity();
         msg.setRole("assistant");
         msg.setMetadata("{\"toolCalls\":["
                 + "{\"toolCallId\":\"call_a\",\"name\":\"a\",\"status\":\"completed\",\"result\":\"ok\"},"
                 + "{\"toolCallId\":\"call_b\",\"name\":\"b\",\"status\":\"running\"},"
-                + "{\"toolCallId\":\"call_c\",\"name\":\"c\",\"status\":\"awaiting_approval\"}"
+                + "{\"toolCallId\":\"call_c\",\"name\":\"c\",\"status\":\"awaiting_approval\"},"
+                + "{\"toolCallId\":\"call_d\",\"name\":\"d\",\"status\":\"interrupted\"}"
                 + "]}");
 
         List<BaseAgent.PersistedToolCall> calls = BaseAgent.extractCompletedToolCalls(msg);

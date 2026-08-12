@@ -100,6 +100,26 @@ class AgentStreamAccumulatorKindTest {
     }
 
     @Test
+    @DisplayName("started-only tool calls persist as interrupted, never completed")
+    void startedOnlyToolCallRemainsInterrupted() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        AgentStreamAccumulator acc = new AgentStreamAccumulator(mapper, NOOP_SINK);
+
+        acc.accept(StreamDelta.event("tool_call_started",
+                Map.of("toolCallId", "orphan-1", "toolName", "schedule_meeting",
+                        "arguments", "{\"title\":\"review\"}")), "conv-interrupted");
+
+        JsonNode metadata = mapper.readTree(acc.toMetadataJson());
+        JsonNode call = metadata.path("toolCalls").get(0);
+        JsonNode segment = metadata.path("segments").get(0);
+
+        assertEquals("interrupted", call.path("status").asText());
+        assertFalse(call.has("result"), "no completion event means there is no tool result");
+        assertEquals("interrupted", segment.path("status").asText());
+        assertFalse(segment.has("toolResult"), "timeline must not manufacture a result");
+    }
+
+    @Test
     @DisplayName("Plan step result stays in plan metadata while final summary exclusively owns message content")
     void planStepResultDoesNotDuplicateFinalSummary() throws Exception {
         ObjectMapper mapper = new ObjectMapper();

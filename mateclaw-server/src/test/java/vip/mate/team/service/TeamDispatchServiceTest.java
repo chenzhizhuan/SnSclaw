@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import vip.mate.agent.AgentService;
 import vip.mate.channel.web.ChatStreamTracker;
+import vip.mate.team.model.AgentTeamEntity;
 import vip.mate.team.model.TeamTaskEntity;
 import vip.mate.team.model.TeamTaskStatus;
 import vip.mate.workspace.conversation.ConversationService;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.*;
 class TeamDispatchServiceTest {
 
     private static final Long TEAM_ID = 10L;
+    private static final Long WORKSPACE_ID = 77L;
     private static final Long MEMBER_A = 2L;
     private static final Long MEMBER_B = 3L;
 
@@ -188,6 +190,33 @@ class TeamDispatchServiceTest {
         // Both sides of the run persist, so the task card's transcript view has content.
         verify(conversationService).saveMessage(startsWith("team-task-"), eq("user"), anyString());
         verify(conversationService).saveMessage(startsWith("team-task-"), eq("assistant"), eq("all done"));
+    }
+
+    @Test
+    @DisplayName("member child conversation inherits the team's workspace")
+    void runTaskCreatesChildConversationInTeamWorkspace() {
+        AgentTeamEntity team = new AgentTeamEntity();
+        team.setId(TEAM_ID);
+        team.setWorkspaceId(WORKSPACE_ID);
+        when(teamService.getTeam(TEAM_ID)).thenReturn(team);
+
+        TeamTaskEntity assigned = task(1L, MEMBER_A);
+        assigned.setStatus(TeamTaskStatus.IN_PROGRESS);
+        TeamTaskEntity done = task(1L, MEMBER_A);
+        done.setStatus(TeamTaskStatus.COMPLETED);
+        when(taskService.getTask(1L)).thenReturn(assigned, done, done);
+        when(taskService.completeTask(eq(1L), isNull(), anyString())).thenReturn(List.of());
+        when(agentService.chatWithUsage(eq(MEMBER_A), anyString(), anyString()))
+                .thenReturn(AgentService.ChatResult.contentOnly("all done"));
+
+        service.runTask(TEAM_ID, assigned);
+
+        verify(conversationService).createChildConversation(
+                startsWith("team-task-"),
+                eq(MEMBER_A),
+                eq("system"),
+                eq(WORKSPACE_ID),
+                eq("lead-conv"));
     }
 
     @Test
