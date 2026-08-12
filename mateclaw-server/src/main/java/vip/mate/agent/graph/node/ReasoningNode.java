@@ -30,6 +30,7 @@ import vip.mate.agent.graph.state.FinishReason;
 import vip.mate.agent.graph.state.MateClawStateAccessor;
 import vip.mate.agent.graph.state.MateClawStateKeys;
 import vip.mate.agent.graph.state.SourceEvidenceLedger;
+import vip.mate.agent.graph.guard.ActionCompletionPolicy;
 
 import vip.mate.channel.web.ChatStreamTracker;
 import vip.mate.team.service.TeamContextBuilder;
@@ -59,7 +60,7 @@ public class ReasoningNode implements NodeAction {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static MateClawStateAccessor.OutputBuilder reasonOutput() {
-        return MateClawStateAccessor.output();
+        return MateClawStateAccessor.output().continueReasoning(false);
     }
 
     /**
@@ -1166,6 +1167,57 @@ public class ReasoningNode implements NodeAction {
                     .build();
         } else {
             String content = result.text();
+            ActionCompletionPolicy.Decision completionDecision = ActionCompletionPolicy.evaluate(
+                    accessor.actionCompletionRequired(), accessor.actionCompletionRetryCount(),
+                    accessor.actionExecutionLedger());
+            if (completionDecision == ActionCompletionPolicy.Decision.RETRY) {
+                log.warn("[ReasoningNode] Rejecting text-only action completion; continuing once");
+                UserMessage continuation = new UserMessage("""
+                        [Runtime completion gate]
+                        This turn requires a real tool-backed action, but no substantive tool call was observed.
+                        Continue now by emitting the required tool call. Do not claim success or only describe the call.
+                        """);
+                return reasonOutput()
+                        .continueReasoning(true)
+                        .actionCompletionRetryCount(accessor.actionCompletionRetryCount() + 1)
+                        .needsToolCall(false)
+                        .shouldSummarize(false)
+                        .finalAnswer("")
+                        .clearFinishReason()
+                        .messages(List.of((Message) result.assistantMessage(), continuation))
+                        .currentPhase("reasoning")
+                        .streamedContent(content != null ? content : "")
+                        .streamedThinking(result.thinking())
+                        .contentStreamed(true)
+                        .thinkingStreamed(!result.thinking().isEmpty())
+                        .llmCallCount(nextLlmCallCount)
+                        .mergeUsage(state, result)
+                        .events(buildEvents(phaseEvent, iterStartEvent))
+                        .build();
+            }
+            if (completionDecision == ActionCompletionPolicy.Decision.UNVERIFIED
+                    || completionDecision == ActionCompletionPolicy.Decision.FAILED) {
+                boolean failed = completionDecision == ActionCompletionPolicy.Decision.FAILED;
+                String guardedAnswer = failed
+                        ? "动作工具执行失败，未确认操作成功。请检查工具返回的错误后重试。"
+                        : "未观察到实际的动作工具调用，因此没有执行或确认该操作。请重试。";
+                log.warn("[ReasoningNode] Blocking unsupported action completion: {}", completionDecision);
+                return reasonOutput()
+                        .needsToolCall(false)
+                        .shouldSummarize(false)
+                        .finalAnswer(guardedAnswer)
+                        .finalThinking(result.thinking())
+                        .messages(List.of((Message) result.assistantMessage()))
+                        .currentPhase("reasoning")
+                        .streamedContent("")
+                        .finishReason(failed ? FinishReason.ACTION_FAILED : FinishReason.ACTION_UNVERIFIED)
+                        .contentStreamed(false)
+                        .thinkingStreamed(!result.thinking().isEmpty())
+                        .llmCallCount(nextLlmCallCount)
+                        .mergeUsage(state, result)
+                        .events(buildEvents(phaseEvent, iterStartEvent))
+                        .build();
+            }
             log.info("[ReasoningNode] LLM produced final answer ({} chars)", content != null ? content.length() : 0);
             pushPhase(conversationId, "drafting_answer", Map.of(
                     "iteration", accessor.iterationCount(),

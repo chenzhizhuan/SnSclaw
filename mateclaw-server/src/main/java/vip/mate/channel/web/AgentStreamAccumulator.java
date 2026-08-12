@@ -476,9 +476,16 @@ public final class AgentStreamAccumulator {
         return parts;
     }
 
-    private void finalizeToolCalls() {
+    private void interruptUnfinishedToolCalls() {
         for (Map<String, Object> tc : toolCalls) {
-            if ("running".equals(tc.get("status"))) tc.put("status", "completed");
+            if ("running".equals(tc.get("status"))) tc.put("status", "interrupted");
+        }
+        for (Map<String, Object> segment : segments) {
+            if ("tool_call".equals(segment.get("type"))
+                    && "running".equals(segment.get("status"))) {
+                segment.put("status", "interrupted");
+                segment.put("endTimestamp", System.currentTimeMillis());
+            }
         }
     }
 
@@ -487,8 +494,8 @@ public final class AgentStreamAccumulator {
      * toolCalls 保留兼容旧 UI，segments 是按事件顺序的完整时间线。
      */
     public synchronized String toMetadataJson() {
-        finalizeToolCalls();
-        finalizeRunningSegments("thinking", "content", "tool_call");
+        interruptUnfinishedToolCalls();
+        finalizeRunningSegments("thinking", "content");
         // Producer-tagged timelines use the kind-driven authority; untagged
         // ones (pre-tag producers, replayed legacy turns) keep the structural
         // scan as fallback.
