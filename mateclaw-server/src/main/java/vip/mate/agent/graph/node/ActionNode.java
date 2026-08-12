@@ -12,6 +12,7 @@ import vip.mate.agent.graph.executor.ToolExecutionExecutor;
 import vip.mate.agent.graph.state.MateClawStateAccessor;
 import vip.mate.agent.graph.state.MateClawStateKeys;
 import vip.mate.agent.graph.state.SourceEvidenceLedger;
+import vip.mate.agent.graph.state.ActionExecutionLedger;
 
 import java.util.*;
 import java.util.concurrent.CancellationException;
@@ -152,12 +153,14 @@ public class ActionNode implements NodeAction {
         SourceEvidenceLedger rawLedger = result.rawEvidenceLedger() != null
                 ? result.rawEvidenceLedger()
                 : SourceEvidenceLedger.empty();
+        ActionExecutionLedger actionLedger = ActionExecutionLedger.fromEvents(result.events());
         MateClawStateAccessor.OutputBuilder output = MateClawStateAccessor.output()
                 .toolResults(result.responses())
                 .messages(List.of((Message) toolResponseMessage))
                 .currentPhase("action")
                 .events(result.events())
-                .sourceEvidenceLedger(accessor.sourceEvidenceLedger().merge(rawLedger));
+                .sourceEvidenceLedger(accessor.sourceEvidenceLedger().merge(rawLedger))
+                .actionExecutionLedger(accessor.actionExecutionLedger().merge(actionLedger));
 
         if (result.awaitingApproval()) {
             output.awaitingApproval(true);
@@ -195,6 +198,10 @@ public class ActionNode implements NodeAction {
             // and pin them into the ProgressLedger so they survive context
             // compression and stay visible on every turn.
             pinSkillConstraints(conversationId, requestedSkills);
+            if (actionLedger.hasSuccessfulTool(LOAD_SKILL_TOOL)
+                    && loadedSkillsRequireAction(conversationId, requestedSkills)) {
+                output.actionCompletionRequired(true);
+            }
         }
 
         // Same mechanism for enable_tool
@@ -210,7 +217,7 @@ public class ActionNode implements NodeAction {
         // sees what it already did even if it forgot to call progress_update.
         // Skips meta-tools (load_skill, enable_tool, progress_update) and
         // doesn't overwrite LLM-authored entries.
-        autoRecordToolCalls(conversationId, result.responses());
+        autoRecordToolCalls(conversationId, result.responses(), actionLedger);
 
         return output.build();
     }
@@ -264,6 +271,41 @@ public class ActionNode implements NodeAction {
         }
     }
 
+    private boolean loadedSkillsRequireAction(String conversationId, Set<String> skillNames) {
+        if (skillRuntimeService == null) return false;
+        Long workspaceId = executor.workspaceIdForConversation(conversationId);
+        for (String skillName : skillNames) {
+            try {
+                vip.mate.skill.runtime.model.ResolvedSkill skill =
+                        skillRuntimeService.findActiveSkill(skillName, workspaceId);
+                if (resolvedSkillRequiresActionCompletion(skill)) {
+                    return true;
+                }
+            } catch (Exception e) {
+                log.debug("[ActionNode] Could not inspect action contract for skill '{}': {}",
+                        skillName, e.getMessage());
+            }
+        }
+        return false;
+    }
+
+    static boolean manifestRequiresActionCompletion(vip.mate.skill.manifest.SkillManifest manifest) {
+        if (manifest == null) return false;
+        String type = manifest.getType();
+        if (type != null && Set.of("mcp", "acp", "code").contains(type.toLowerCase(java.util.Locale.ROOT))) {
+            return true;
+        }
+        return (manifest.getAllowedTools() != null && !manifest.getAllowedTools().isEmpty())
+                || (manifest.getScripts() != null && !manifest.getScripts().isEmpty());
+    }
+
+    static boolean resolvedSkillRequiresActionCompletion(
+            vip.mate.skill.runtime.model.ResolvedSkill skill) {
+        if (skill == null) return false;
+        return manifestRequiresActionCompletion(skill.getManifest())
+                || (skill.getScripts() != null && !skill.getScripts().isEmpty());
+    }
+
     // ==================== B5: Auto-record tool calls ====================
 
     /**
@@ -278,6 +320,12 @@ public class ActionNode implements NodeAction {
      */
     void autoRecordToolCalls(String conversationId,
                              List<ToolResponseMessage.ToolResponse> responses) {
+        autoRecordToolCalls(conversationId, responses, null);
+    }
+
+    void autoRecordToolCalls(String conversationId,
+                             List<ToolResponseMessage.ToolResponse> responses,
+                             ActionExecutionLedger executionLedger) {
         if (progressLedgerService == null || conversationId == null
                 || conversationId.isBlank() || responses == null || responses.isEmpty()) {
             return;
@@ -286,6 +334,12 @@ public class ActionNode implements NodeAction {
         // N separate lock+load+save cycles when the LLM calls tools in parallel.
         List<vip.mate.agent.progress.ProgressLedgerService.AutoRecordEntry> batch = new java.util.ArrayList<>();
         for (ToolResponseMessage.ToolResponse resp : responses) {
+            if (executionLedger != null) {
+                ActionExecutionLedger.Receipt receipt = executionLedger.receipts().get(resp.id());
+                if (receipt == null || receipt.status() != ActionExecutionLedger.Status.SUCCEEDED) {
+                    continue;
+                }
+            }
             String toolName = resp.name();
             if (toolName == null || toolName.isBlank() || AUTO_RECORD_SKIP.contains(toolName)) {
                 continue;

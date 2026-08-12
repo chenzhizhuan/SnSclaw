@@ -309,9 +309,10 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
                         String streamed = output.state().<String>value(STREAMED_CONTENT).orElse("");
                         if (!streamed.isEmpty() && !streamed.equals(lastEmittedStreamedContent.get())) {
                             lastEmittedStreamedContent.set(streamed);
+                            boolean completionRetry = output.state().value(CONTINUE_REASONING, false);
                             addWithKindEvent(deltas, streamedContentDelta(isFinalAnswerTurn,
-                                    output.state().value(NEEDS_TOOL_CALL, false),
-                                    output.state().value(TOOL_CALL_COUNT, 0),
+                                    completionRetry || output.state().value(NEEDS_TOOL_CALL, false),
+                                    completionRetry ? 0 : output.state().value(TOOL_CALL_COUNT, 0),
                                     streamed));
                         }
 
@@ -501,9 +502,10 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
                         String streamed = output.state().<String>value(STREAMED_CONTENT).orElse("");
                         if (!streamed.isEmpty() && !streamed.equals(lastEmittedStreamedContent.get())) {
                             lastEmittedStreamedContent.set(streamed);
+                            boolean completionRetry = output.state().value(CONTINUE_REASONING, false);
                             addWithKindEvent(deltas, streamedContentDelta(isFinalAnswerTurn,
-                                    output.state().value(NEEDS_TOOL_CALL, false),
-                                    output.state().value(TOOL_CALL_COUNT, 0),
+                                    completionRetry || output.state().value(NEEDS_TOOL_CALL, false),
+                                    completionRetry ? 0 : output.state().value(TOOL_CALL_COUNT, 0),
                                     streamed));
                         }
 
