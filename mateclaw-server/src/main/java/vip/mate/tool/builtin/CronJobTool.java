@@ -217,17 +217,18 @@ public class CronJobTool {
     @Tool(description = "Enable or disable a scheduled task by its job ID. "
             + "Use list_cron_jobs first to find the job ID.")
     public String toggle_cron_job(
-            @ToolParam(description = "Job ID (number)") Long jobId,
+            @ToolParam(description = "Job ID. Must be passed as a string to preserve large integer precision") String jobId,
             @ToolParam(description = "true to enable, false to disable") Boolean enabled,
             @Nullable ToolContext ctx) {
         try {
+            Long parsedJobId = parseJobId(jobId);
             // RFC-083: scope toggle to the originating workspace.
             Long workspaceId = workspaceFromContext(ctx);
-            cronJobService.toggle(jobId, enabled, workspaceId);
-            CronJobDTO updated = cronJobService.getById(jobId, workspaceId);
+            cronJobService.toggle(parsedJobId, enabled, workspaceId);
+            CronJobDTO updated = cronJobService.getById(parsedJobId, workspaceId);
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", true);
-            result.put("jobId", jobId);
+            result.put("jobId", parsedJobId);
             result.put("name", updated.getName());
             result.put("enabled", updated.getEnabled());
             result.put("nextRunTime", updated.getNextRunTime() != null ? updated.getNextRunTime().toString() : "");
@@ -242,14 +243,15 @@ public class CronJobTool {
     @Tool(description = "Delete a scheduled task by its job ID. This action requires user approval. "
             + "Use list_cron_jobs first to find the job ID.")
     public String delete_cron_job(
-            @ToolParam(description = "Job ID (number) to delete") Long jobId,
+            @ToolParam(description = "Job ID to delete. Must be passed as a string to preserve large integer precision") String jobId,
             @Nullable ToolContext ctx) {
         try {
+            Long parsedJobId = parseJobId(jobId);
             // RFC-083: scope delete to the originating workspace.
             Long workspaceId = workspaceFromContext(ctx);
-            CronJobDTO job = cronJobService.getById(jobId, workspaceId);
+            CronJobDTO job = cronJobService.getById(parsedJobId, workspaceId);
             String jobName = job.getName();
-            cronJobService.delete(jobId, workspaceId);
+            cronJobService.delete(parsedJobId, workspaceId);
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", true);
             result.put("deleted", jobName);
@@ -265,6 +267,18 @@ public class CronJobTool {
         result.put("success", false);
         result.put("error", message);
         return writeJson(result);
+    }
+
+    private Long parseJobId(String jobId) {
+        String trimmed = jobId != null ? jobId.trim() : "";
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("jobId is required");
+        }
+        try {
+            return Long.parseLong(trimmed);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("jobId must be a numeric string");
+        }
     }
 
     /**
