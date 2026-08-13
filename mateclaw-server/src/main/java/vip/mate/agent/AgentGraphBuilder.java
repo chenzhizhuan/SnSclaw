@@ -36,6 +36,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import vip.mate.config.GraphObservationProperties;
 import vip.mate.config.ReasoningRetentionProperties;
 import vip.mate.exception.MateClawException;
+import vip.mate.llm.chatmodel.HttpTimeouts;
 import vip.mate.llm.chatmodel.OpenAiCompatibleChatModelBuilder;
 import vip.mate.llm.chatmodel.ReasoningEffortResolver;
 import vip.mate.llm.model.ModelConfigEntity;
@@ -660,16 +661,9 @@ public class AgentGraphBuilder {
                         contextWindowResolver.noteContextLimitError(
                                 primaryModelConfig.getProvider(),
                                 primaryModelConfig.getModelName(), errorMessage));
-                // Issue #585: drive the streaming inter-frame idle timeout from
-                // the per-model read-timeout knob so a stalled provider can't
-                // hang the body Flux after the response headers arrive. Only
-                // override when the model explicitly sets a value — otherwise
-                // the helper keeps its 180s default.
-                Integer perModelTimeout = primaryModelConfig.getRequestTimeoutSeconds();
-                if (perModelTimeout != null) {
-                    streamingHelper.setStreamIdleTimeoutSec(perModelTimeout);
-                }
             }
+            streamingHelper.setStreamIdleTimeoutSec(
+                    resolveStreamIdleTimeoutSeconds(primaryModelConfig));
             ToolExecutionExecutor executor = new ToolExecutionExecutor(
                     toolSet, toolGuardService, approvalService, streamTracker,
                     toolTimeoutProperties, toolResultStorage, toolConcurrencyRegistry,
@@ -943,6 +937,13 @@ public class AgentGraphBuilder {
         return perSegment * (1 + vip.mate.goal.config.GoalProperties.MAX_HARD_CONTINUATIONS_CEILING) + 100;
     }
 
+    static long resolveStreamIdleTimeoutSeconds(ModelConfigEntity modelConfig) {
+        Integer override = modelConfig != null
+                ? modelConfig.getRequestTimeoutSeconds()
+                : null;
+        return HttpTimeouts.resolveStreamIdleTimeout(override).toSeconds();
+    }
+
     CompiledGraph buildReActGraph(AgentToolSet toolSet, ChatModel chatModel, int maxIterations, String reasoningEffort) {
         return buildReActGraph(toolSet, chatModel, maxIterations, reasoningEffort, null, null);
     }
@@ -983,16 +984,9 @@ public class AgentGraphBuilder {
                         contextWindowResolver.noteContextLimitError(
                                 primaryModelConfig.getProvider(),
                                 primaryModelConfig.getModelName(), errorMessage));
-                // Issue #585: drive the streaming inter-frame idle timeout from
-                // the per-model read-timeout knob so a stalled provider can't
-                // hang the body Flux after the response headers arrive. Only
-                // override when the model explicitly sets a value — otherwise
-                // the helper keeps its 180s default.
-                Integer perModelTimeout = primaryModelConfig.getRequestTimeoutSeconds();
-                if (perModelTimeout != null) {
-                    streamingHelper.setStreamIdleTimeoutSec(perModelTimeout);
-                }
             }
+            streamingHelper.setStreamIdleTimeoutSec(
+                    resolveStreamIdleTimeoutSeconds(primaryModelConfig));
             ToolExecutionExecutor executor = new ToolExecutionExecutor(
                     toolSet, toolGuardService, approvalService, streamTracker,
                     toolTimeoutProperties, toolResultStorage, toolConcurrencyRegistry,
@@ -1782,7 +1776,7 @@ public class AgentGraphBuilder {
 
                 ## ProgressLedger Discipline (mandatory)
                 The `## 当前任务进度` block injected near the top of every turn is the **authoritative record** of what you have done and what remains. Treat it as ground truth, not as a scratchpad you may ignore.
-                - **On starting any multi-step task** (≥3 tool calls expected), call `progress_update` in a parallel tool_calls batch to register every pending step BEFORE doing the work. Do not wait until "later" — context compression can trim earlier turns and you will lose track.
+                - **On starting any multi-step task** (≥3 tool calls expected), call `progress_update` in parallel batches of at most 16 calls to register every pending step BEFORE doing the work. Split larger ledgers across turns so the executor cap never drops entries.
                 - **After each completed sub-step**, immediately call `progress_update` to flip its status to `done`. "Immediately" means in the same tool_calls batch that returns the result, not after the next reasoning turn.
                 - **Never re-execute a step the ledger shows as `done`** unless you can articulate why the prior result is stale.
                 - **🔒 固定约束 entries** (pinned from skill manifests) are non-negotiable. They survive context compression for a reason — re-read them every turn and make sure your planned action still satisfies them.
