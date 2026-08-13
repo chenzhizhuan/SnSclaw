@@ -194,6 +194,26 @@ export interface SendMessageOptions {
   regenerate?: boolean
 }
 
+export function buildChatStreamRequestBody(content: string, options: SendMessageOptions): Record<string, any> {
+  const body: Record<string, any> = {
+    agentId: String(options.agentId),
+    message: content,
+    conversationId: options.conversationId,
+    contentParts: options.contentParts || [],
+  }
+  if (options.thinkingLevel) {
+    body.thinkingLevel = options.thinkingLevel
+  }
+  if (options.modelProvider && options.modelName) {
+    body.modelProvider = options.modelProvider
+    body.modelName = options.modelName
+  }
+  if (options.regenerate) {
+    body.regenerate = true
+  }
+  return body
+}
+
 export function useChat(options: UseChatOptions): UseChatReturn {
   const { baseUrl, token, onStreamEnd } = options
   const thinkingLevelRef = options.thinkingLevel
@@ -2000,24 +2020,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
       currentAssistantId.value = assistantMessage.id as string
 
       // contentParts already includes file entries from buildOutgoingParts — do not re-merge attachments
-      const body: Record<string, any> = {
-        agentId,
-        message: content,
-        conversationId,
-        contentParts,
-      }
-      if (options.thinkingLevel) {
-        body.thinkingLevel = options.thinkingLevel
-      }
-      // Per-conversation model: the backend pins it onto the conversation row
-      // so switching the model here never leaks into other conversations.
-      if (options.modelProvider && options.modelName) {
-        body.modelProvider = options.modelProvider
-        body.modelName = options.modelName
-      }
-      if (options.regenerate) {
-        body.regenerate = true
-      }
+      const body = buildChatStreamRequestBody(content, { ...options, contentParts })
       await stream.connect(body)
     } catch (e) {
       error.value = e instanceof Error ? e : new Error(String(e))
@@ -2044,7 +2047,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
         method: 'POST',
         body: JSON.stringify({
           message: content,
-          agentId,
+          agentId: String(agentId),
           contentParts: options.contentParts || [],
         }),
       })
