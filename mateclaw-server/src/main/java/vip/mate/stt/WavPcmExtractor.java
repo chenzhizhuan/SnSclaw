@@ -30,7 +30,7 @@ public final class WavPcmExtractor {
     private WavPcmExtractor() {}
 
     /**
-     * True only for the 44-byte PCM16/mono layout produced by MateClaw's web
+     * True only for the 44-byte PCM16/mono layout produced by SnSclaw's web
      * recorder. Stereo WAVs and files with extra chunks are still valid audio,
      * but callers must send them directly to STT instead of applying the
      * mono-specific sample math in this helper.

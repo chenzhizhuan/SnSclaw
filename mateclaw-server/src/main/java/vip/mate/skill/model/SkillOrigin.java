@@ -18,7 +18,7 @@ import java.util.List;
  * wrote it — so the value is stamped at write time by the caller that knows,
  * and never guessed afterwards.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 public enum SkillOrigin {
 

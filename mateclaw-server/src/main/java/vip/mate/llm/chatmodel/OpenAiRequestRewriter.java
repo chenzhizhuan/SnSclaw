@@ -38,7 +38,7 @@ final class OpenAiRequestRewriter {
      *
      * <p>Spring AI parses every tool's schema string into a nested {@link Map}.
      * Values beyond {@link Integer#MAX_VALUE} consequently become {@link Long}s.
-     * MateClaw's application-wide Jackson configuration intentionally serializes
+     * SnSclaw's application-wide Jackson configuration intentionally serializes
      * {@code Long} as strings to protect Snowflake IDs from JavaScript precision
      * loss, but that policy must not leak into protocol metadata: providers reject
      * schemas such as {@code "maximum":"9007199254740991"} because JSON Schema

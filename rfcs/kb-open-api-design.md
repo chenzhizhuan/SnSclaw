@@ -832,7 +832,7 @@ TokenHashUtil（共享 hash 生成/校验）
 - [x] **R9 granularity=`section` 缺底层（§5.2）** ✅ → P0 只支持 entity/chunk，section 标注"暂不支持"。
 - [x] **R10 索引（§3.1 / §3.2）** ✅ → 删除冗余 `idx_kb_api_key_hash`；binding 表补 `kb_id` 索引。
 - [x] **R11 traverse 一对一假设（§6.2）** ✅ → 响应回显实际选中的 `root.entityId`/`root.name`。
-- [ ] **R12 流程（issue）** ⏳ → 动工前在上游 mateaix/mateclaw 开 issue（实施时第一步）。
+- [ ] **R12 流程（issue）** ⏳ → 动工前在上游 sns/SnSclaw 开 issue（实施时第一步）。
 
 ### 架构层修订 — 全部已决策
 

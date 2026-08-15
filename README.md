@@ -17,7 +17,7 @@
 [![Java Version](https://img.shields.io/badge/Java-21+-blue.svg?logo=openjdk&label=Java)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen.svg?logo=springboot)](https://spring.io/projects/spring-boot)
 [![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg?logo=vuedotjs)](https://vuejs.org/)
-[![Last Commit](https://img.shields.io/github/last-commit/mateaix/mateclaw)](https://lab.sns.app/SnSclaw)
+[![Last Commit](https://img.shields.io/github/last-commit/sns/SnSclaw)](https://lab.sns.app/SnSclaw)
 [![License](https://img.shields.io/badge/license-Apache--2.0-red.svg?logo=opensourceinitiative&label=License)](LICENSE)
 
 [[Website](https://claw.sns.app)] [[Live Demo](https://claw-demo.sns.app)] [[Documentation](https://claw.sns.app/docs)] [[中文](README_zh.md)]
@@ -34,7 +34,7 @@
 
 ---
 
-> **Other personal AI agents are built for one person. MateClaw is the one your IT department can actually sign off on.**
+> **Other personal AI agents are built for one person. SnSclaw is the one your IT department can actually sign off on.**
 >
 > Multi-user workspaces. Approval-gated sensitive actions. Full audit trail. Spring Boot Actuator health monitoring. Per-channel error isolation so one chat platform's outage doesn't take down the rest. One JAR in your environment; you control persisted data, and task content is sent only to model, channel, or tool services you explicitly configure.
 >
@@ -122,7 +122,7 @@ RBAC + JWT. **Personal Access Tokens** for headless scripts and CI. **HMAC-SHA-2
 
 Model providers rate-limit, networks fail, keys expire, and services become temporarily unavailable. Betting every AI capability on one provider turns an upstream incident into your own outage.
 
-Once AI enters production, the stable layer should not be tied to one supplier. MateClaw absorbs that uncertainty into one runtime through provider priorities, health tracking, cooldown, and failover.
+Once AI enters production, the stable layer should not be tied to one supplier. SnSclaw absorbs that uncertainty into one runtime through provider priorities, health tracking, cooldown, and failover.
 
 **SnSclaw is that layer — built the Spring Boot way.**
 
@@ -193,7 +193,7 @@ Download from [GitHub Releases](https://lab.sns.app/SnSclaw/releases). Bundles J
 ## Project structure
 
 ```
-mateclaw/
+SnSclaw/
 ├── mateclaw-server/        Spring Boot 3.5 backend (Spring AI Alibaba, StateGraph runtime)
 ├── mateclaw-ui/            Vue 3 + TypeScript admin SPA (built into the server JAR)
 ├── mateclaw-desktop/       Electron desktop app (local-embedded / remote-centralized)
@@ -289,7 +289,7 @@ Full story in the [v1.7.0 release notes](https://claw.sns.app/docs/en/releases/1
 
 ```bash
 git clone https://lab.sns.app/SnSclaw.git
-cd mateclaw
+cd SnSclaw
 cd mateclaw-server && mvn clean compile
 cd ../mateclaw-ui && npm install && npm run dev
 ```

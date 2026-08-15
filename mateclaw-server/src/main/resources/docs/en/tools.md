@@ -389,7 +389,7 @@ Capability already exists as an MCP server? Just add the server configuration. S
 
 ## 2.1.0: progressive tool bridge and action completion
 
-With a large tool catalog, MateClaw exposes a lightweight directory first and expands concrete schemas only when the task needs them. The progressive bridge reduces context pressure; normalized, enabled tool names are cached so long loops do not repeatedly scan the MCP hot path.
+With a large tool catalog, SnSclaw exposes a lightweight directory first and expands concrete schemas only when the task needs them. The progressive bridge reduces context pressure; normalized, enabled tool names are cached so long loops do not repeatedly scan the MCP hot path.
 
 Action requests now carry a completion policy: when the user explicitly asks to send, create, delete, query an external system, or operate a browser, the runtime retries once if its ledger has no successful substantive tool call. A second text-only attempt ends as `action_unverified`; a substantive attempt that failed ends as `action_failed`, rather than claiming completion. This proves that a substantive call succeeded, not semantic equivalence between its result and the user's goal. Read-only explanations and answers that need no tool are unaffected.
 

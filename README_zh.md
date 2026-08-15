@@ -17,7 +17,7 @@
 [![Java 版本](https://img.shields.io/badge/Java-21+-blue.svg?logo=openjdk&label=Java)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen.svg?logo=springboot)](https://spring.io/projects/spring-boot)
 [![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg?logo=vuedotjs)](https://vuejs.org/)
-[![最后提交](https://img.shields.io/github/last-commit/mateaix/mateclaw)](https://lab.sns.app/SnSclaw)
+[![最后提交](https://img.shields.io/github/last-commit/sns/SnSclaw)](https://lab.sns.app/SnSclaw)
 [![许可证](https://img.shields.io/badge/license-Apache--2.0-red.svg?logo=opensourceinitiative&label=License)](LICENSE)
 
 [[官网](https://claw.sns.app)] [[在线演示](https://claw-demo.sns.app)] [[文档](https://claw.sns.app/docs)] [[English](README.md)]
@@ -34,7 +34,7 @@
 
 ---
 
-> **别的 AI 助手是给一个人用的。MateClaw 是公司允许部署的那一个。**
+> **别的 AI 助手是给一个人用的。SnSclaw 是公司允许部署的那一个。**
 >
 > 多用户工作空间。敏感操作走审批。完整审计日志。Spring Boot Actuator 健康监控。单个渠道挂掉不影响其他渠道的错误隔离。一个 JAR 包跑在自己的环境里；持久化数据由你掌控，任务所需内容只会发送到你主动配置的模型、渠道或工具服务。
 >
@@ -122,7 +122,7 @@ RBAC + JWT。**Personal Access Token** 给无人值守脚本和 CI 使用。**We
 
 模型供应商会限流，网络会抖动，Key 会过期，服务也可能临时不可用。把所有 AI 能力押在单一供应商上，会让上游故障直接变成自己的业务故障。
 
-当 AI 进入生产环境，稳定的一层不应绑定在一家供应商身上。MateClaw 通过供应商优先级、健康追踪、冷却与故障转移，把这种不确定性收进统一运行时。
+当 AI 进入生产环境，稳定的一层不应绑定在一家供应商身上。SnSclaw 通过供应商优先级、健康追踪、冷却与故障转移，把这种不确定性收进统一运行时。
 
 **SnSclaw 就是那一层——用 Spring Boot 方式盖的。**
 
@@ -193,7 +193,7 @@ docker compose up -d          # http://localhost:18080
 ## 项目结构
 
 ```
-mateclaw/
+SnSclaw/
 ├── mateclaw-server/        Spring Boot 3.5 后端（Spring AI Alibaba · StateGraph 运行时）
 ├── mateclaw-ui/            Vue 3 + TypeScript 管理 SPA（构建产物打进后端 JAR）
 ├── mateclaw-desktop/       Electron 桌面端（本地内嵌 / 远程集中双模式）
@@ -289,7 +289,7 @@ mateclaw/
 
 ```bash
 git clone https://lab.sns.app/SnSclaw.git
-cd mateclaw
+cd SnSclaw
 cd mateclaw-server && mvn clean compile
 cd ../mateclaw-ui && npm install && npm run dev
 ```

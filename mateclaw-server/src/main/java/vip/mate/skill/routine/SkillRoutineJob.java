@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * ones, and interleaving them within one window would let a freshly promoted
  * routine meet the archival sweep before it has ever been used.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

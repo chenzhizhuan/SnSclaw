@@ -34,7 +34,7 @@ import java.util.List;
  * &lt;/tool_response&gt;
  * </pre>
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Slf4j
 public class TrajectoryRenderer {

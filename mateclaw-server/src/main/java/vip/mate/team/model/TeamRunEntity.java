@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 /**
  * Persistent identity and lifecycle state for one team execution.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_team_run")

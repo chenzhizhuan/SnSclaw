@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * A restore point for the skill library, captured before a mutating curator
  * sweep.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_skill_snapshot")

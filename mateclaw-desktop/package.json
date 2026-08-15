@@ -1,7 +1,7 @@
 {
   "_nameNote": "name 决定 NSIS 的 APP_FILENAME（安装目录名）。productName 是中文，过不了 electron-builder 的 ^[-_+0-9a-zA-Z .]+$ 校验，会回落到 sanitizeFileName(name)。所以这里必须是 SnSclaw，否则安装目录会多出一层子目录。",
   "name": "SnSclaw",
-  "version": "1.0.1-SNAPSHOT",
+  "version": "1.0.2-SNAPSHOT",
   "description": "SnSclaw AI 助手 — 面向企业级场景的私有化智能体平台，集成多模态模型、知识库检索、语音交互与自动化工具链（HTTP/SSE 运行时）",
   "author": "SnSclaw",
   "license": "Apache-2.0",
