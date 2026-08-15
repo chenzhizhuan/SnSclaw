@@ -158,6 +158,7 @@ public class ConversationService {
         LambdaQueryWrapper<ConversationEntity> wrapper = new LambdaQueryWrapper<ConversationEntity>()
                 .and(w -> applyOwnerScope(w, username, includeWebchat))
                 .and(this::applyMalformedIdGuard)
+                .and(this::applyOrdinaryConversationGuard)
                 .isNull(ConversationEntity::getParentConversationId)
                 .orderByDesc(ConversationEntity::getPinned)
                 .orderByDesc(ConversationEntity::getLastActiveTime);
@@ -231,6 +232,15 @@ public class ConversationService {
         w.notLikeLeft(ConversationEntity::getConversationId, ":");
     }
 
+    /** Keep worker evidence sessions out of ordinary list/page SQL, including legacy rows. */
+    private void applyOrdinaryConversationGuard(LambdaQueryWrapper<ConversationEntity> w) {
+        w.and(kind -> kind
+                        .isNull(ConversationEntity::getConversationKind)
+                        .or()
+                        .ne(ConversationEntity::getConversationKind, "team_worker"))
+                .notLikeRight(ConversationEntity::getConversationId, "team-task-");
+    }
+
     /**
      * Whether the user is a global admin (role=admin), resolved from the DB —
      * never from client-controlled data. Gates webchat row visibility in the
@@ -268,6 +278,7 @@ public class ConversationService {
         LambdaQueryWrapper<ConversationEntity> wrapper = new LambdaQueryWrapper<ConversationEntity>()
                 .and(w -> applyOwnerScope(w, username, isGlobalAdmin(username)))
                 .and(this::applyMalformedIdGuard)
+                .and(this::applyOrdinaryConversationGuard)
                 .isNull(ConversationEntity::getParentConversationId)
                 .orderByDesc(ConversationEntity::getPinned)
                 .orderByDesc(ConversationEntity::getLastActiveTime);
@@ -443,8 +454,19 @@ public class ConversationService {
     public ConversationEntity createChildConversation(String childConversationId, Long agentId,
                                                         String username, Long workspaceId,
                                                         String parentConversationId) {
+        return createChildConversation(childConversationId, agentId, username, workspaceId,
+                parentConversationId, "primary");
+    }
+
+    @Transactional
+    public ConversationEntity createChildConversation(String childConversationId, Long agentId,
+                                                        String username, Long workspaceId,
+                                                        String parentConversationId,
+                                                        String conversationKind) {
         ConversationEntity conv = getOrCreateConversation(childConversationId, agentId, username, workspaceId);
         conv.setParentConversationId(parentConversationId);
+        conv.setConversationKind(conversationKind == null || conversationKind.isBlank()
+                ? "primary" : conversationKind);
         conv.setTitle("子任务");
         conversationMapper.updateById(conv);
         return conv;
@@ -1798,6 +1820,22 @@ public class ConversationService {
         return conversationMapper.selectOne(
                 new LambdaQueryWrapper<ConversationEntity>()
                         .eq(ConversationEntity::getConversationId, conversationId));
+    }
+
+    /** User-facing Chat endpoints may not append turns to worker evidence sessions. */
+    public boolean isUserMessageAllowed(String conversationId) {
+        ConversationEntity conversation = findByConversationId(conversationId);
+        return !isTeamWorkerConversation(conversation);
+    }
+
+    /** Canonical server-side worker classification, including bounded legacy fallback. */
+    public static boolean isTeamWorkerConversation(ConversationEntity conversation) {
+        if (conversation == null) {
+            return false;
+        }
+        return "team_worker".equals(conversation.getConversationKind())
+                || conversation.getConversationId() != null
+                && conversation.getConversationId().startsWith("team-task-");
     }
 
     /**

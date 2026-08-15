@@ -208,6 +208,8 @@ export const conversationApi = {
     http.get(`/conversations/${encId(conversationId)}/messages`, { params }),
   getStatus: (conversationId: string) =>
     http.get(`/conversations/${encId(conversationId)}/status`),
+  getTeamWorkerContext: (conversationId: string, params?: { runId?: string; taskId?: string }) =>
+    http.get(`/conversations/${encId(conversationId)}/team-worker-context`, { params }),
   delete: (conversationId: string) =>
     http.delete(`/conversations/${encId(conversationId)}`),
   clearMessages: (conversationId: string) =>
@@ -893,6 +895,7 @@ export interface TeamMemberVO {
 export interface TeamTask {
   id: string
   teamId: string
+  runId?: string | null
   taskNumber: number
   subject: string
   description: string | null
@@ -924,6 +927,7 @@ export interface TeamTaskVO {
   task: TeamTask
   assigneeName: string | null
   ownerName: string | null
+  runId?: string | null
 }
 
 export interface TeamTaskComment {
@@ -977,6 +981,7 @@ export const teamApi = {
     data: {
       subject: string
       description?: string
+      runId?: string
       assigneeAgentId: string
       priority?: number
       blockedBy?: string[]
@@ -992,6 +997,125 @@ export const teamApi = {
     http.post(`/teams/${id}/tasks/${taskId}/cancel`, { reason }),
   commentTask: (id: string, taskId: string, content: string) =>
     http.post(`/teams/${id}/tasks/${taskId}/comments`, { content }),
+}
+
+export type TeamRunStatus =
+  | 'planning'
+  | 'running'
+  | 'awaiting_review'
+  | 'finalizing'
+  | 'completed'
+  | 'partial'
+  | 'failed'
+  | 'cancelled'
+
+export interface TeamRunProgress {
+  total: number
+  done: number
+  failed: number
+  inReview: number
+  percent: number
+}
+
+export interface TeamRunTask {
+  id: string
+  teamId: string
+  runId: string
+  taskNumber: number
+  subject: string
+  description: string | null
+  status: string
+  priority: number
+  taskType: string
+  assigneeAgentId: string
+  ownerAgentId: string | null
+  blockedBy: string | null
+  requireApproval: boolean | null
+  progressPercent: number | null
+  progressStep: string | null
+  result: string | null
+  reason: string | null
+  conversationId: string | null
+  metadata: string | null
+  createTime: string | null
+  updateTime: string | null
+}
+
+export type TeamRunOutcomeQuality = 'synthesized' | 'fallback' | 'partial' | 'pending'
+export type TeamRunLivenessState = 'live' | 'quiet' | 'stalled' | 'terminal'
+export interface TeamRunDeliverable { id: string; name: string; url: string; type: string; sourceTaskIds: string[]; sourceAgentIds: string[]; createdAt: string | null; verificationStatus: string }
+export interface TeamRunContribution { taskId: string; agentId: string; subject: string; status: string; durationSeconds: number | null; lastActivityAt: string | null; resultSummary: string | null; conversationId: string | null }
+export interface TeamRunAttentionItem { id: string; type: string; severity: string; priority: number; taskId: string | null; message: string; createdAt: string | null }
+export interface TeamRunLiveness { state: TeamRunLivenessState; lastActivityAt: string | null }
+export interface TeamRunMetrics { durationSeconds: number | null; totalTasks: number; completedTasks: number; failedTasks: number; deliverableCount: number }
+export interface TeamRunPage { items: TeamRun[]; nextCursor: string | null }
+
+export interface TeamRun {
+  id: string
+  teamId: string
+  workspaceId: string
+  leadAgentId: string
+  leadConversationId: string
+  originMessageId: string | null
+  title: string
+  objective: string
+  status: TeamRunStatus
+  finalSummary: string | null
+  stopReason: string | null
+  metadata: string | null
+  startedAt: string | null
+  completedAt: string | null
+  createTime: string | null
+  updateTime: string | null
+  projectionCompleteness?: 'full' | 'summary' | string
+  outcomeQuality?: TeamRunOutcomeQuality | null
+  deliverables?: TeamRunDeliverable[]
+  contributions?: TeamRunContribution[]
+  attentionItems?: TeamRunAttentionItem[]
+  liveness?: TeamRunLiveness | null
+  metrics?: TeamRunMetrics | null
+  progress: TeamRunProgress
+  tasks: TeamRunTask[]
+}
+
+export const teamRunApi = {
+  get: (runId: string) => http.get(`/team-runs/${runId}`),
+  listByTeamPage: (
+    teamId: string,
+    options: { activeOnly?: boolean; cursor?: string; limit?: number } = {},
+  ) => {
+    const params: { activeOnly?: boolean; cursor?: string; limit: number } = {
+      limit: options.limit ?? 20,
+    }
+    if (options.activeOnly) params.activeOnly = true
+    if (options.cursor) params.cursor = options.cursor
+    return http.get(`/teams/${teamId}/runs/page`, { params })
+  },
+  listByConversationPage: (
+    conversationId: string,
+    options: { cursor?: string; limit?: number } = {},
+  ) => {
+    const params: { cursor?: string; limit: number } = { limit: options.limit ?? 20 }
+    if (options.cursor) params.cursor = options.cursor
+    return http.get(`/conversations/${encId(conversationId)}/team-runs/page`, { params })
+  },
+  listByTeam: (teamId: string, activeOnly = false, cursor?: string, limit = 30) => {
+    const query = new URLSearchParams()
+    if (activeOnly) query.set('activeOnly', 'true')
+    if (cursor) query.set('cursor', cursor)
+    if (limit !== 30) query.set('limit', String(limit))
+    const suffix = query.size ? `?${query}` : ''
+    return http.get(`/teams/${teamId}/runs${suffix}`)
+  },
+  listByConversation: (conversationId: string, cursor?: string, limit = 30) => {
+    const query = new URLSearchParams()
+    if (cursor) query.set('cursor', cursor)
+    if (limit !== 30) query.set('limit', String(limit))
+    const suffix = query.size ? `?${query}` : ''
+    return http.get(`/conversations/${encId(conversationId)}/team-runs${suffix}`)
+  },
+  cancel: (runId: string, reason?: string) =>
+    http.post(`/team-runs/${runId}/cancel`, { reason }),
 }
 
 // ==================== Wiki Knowledge Base ====================

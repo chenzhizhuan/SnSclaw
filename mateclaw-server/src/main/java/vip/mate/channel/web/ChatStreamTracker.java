@@ -58,6 +58,8 @@ public class ChatStreamTracker {
 
     /** buffer 最大事件数，超出后丢弃最早的 thinking_delta 事件以释放空间 */
     private static final int MAX_BUFFER_SIZE = 16000;
+    private static final SseEventIdGenerator EVENT_IDS =
+            new SseEventIdGenerator(System::currentTimeMillis);
 
     private final ObjectMapper objectMapper;
 
@@ -130,10 +132,9 @@ public class ChatStreamTracker {
     }
 
     /**
-     * One buffered SSE event. The {@code id} is a per-conversation monotonic
-     * sequence — the SSE protocol's standard {@code id:} line carries this
-     * value so the client can echo it back via {@code lastEventId} when
-     * reconnecting, allowing us to skip already-delivered events on replay.
+     * One buffered SSE event. The {@code id} is process-global and monotonic,
+     * with a wall-clock floor so a normally restarted process starts above
+     * ids emitted by its predecessor.
      */
     record SseEvent(long id, String name, String json) {}
 
@@ -155,15 +156,6 @@ public class ChatStreamTracker {
         volatile boolean done;
         /** Guarded by lock; once true, cleanup owns this state. */
         boolean evicting;
-        /**
-         * Monotonic sequence used as the SSE protocol {@code id:} field.
-         * Incremented inside {@code state.lock} as each event is buffered,
-         * so the buffer is always in (id-asc) order. On reconnect, the
-         * client echoes its last-seen id back via {@code lastEventId} and
-         * we skip events whose id is &le; that value during replay —
-         * eliminating the duplicate-delivery class of bugs.
-         */
-        long nextEventId = 0L;
         /** Flux 订阅的 Disposable，用于取消 LLM 流 */
         volatile Disposable disposable;
         /** 停止标志：requestStop() 设为 true，各图节点和 LLM 调用检查此标志以提前退出 */
@@ -673,7 +665,7 @@ public class ChatStreamTracker {
                 return;
             }
             if ((isDone || isAsyncTask) || (!isHeartbeat && !skipBuffer)) {
-                eventId = ++state.nextEventId;
+                eventId = EVENT_IDS.nextId();
                 state.buffer.add(new SseEvent(eventId, eventName, jsonData));
                 if (state.buffer.size() > MAX_BUFFER_SIZE) {
                     trimBuffer(state.buffer);
@@ -753,7 +745,7 @@ public class ChatStreamTracker {
         if (isDone || isAsyncTask || isTtsReady) {
             if (state == null) return;
             synchronized (state.lock) {
-                long id = ++state.nextEventId;
+                long id = EVENT_IDS.nextId();
                 SseEvent ev = new SseEvent(id, eventName, jsonData);
                 state.buffer.add(ev);
                 if (state.buffer.size() > MAX_BUFFER_SIZE) {
@@ -807,9 +799,10 @@ public class ChatStreamTracker {
         }
 
         synchronized (state.lock) {
+            long eventId = 0L;
             if (!skipBuffer) {
-                long id = ++state.nextEventId;
-                SseEvent event = new SseEvent(id, eventName, jsonData);
+                eventId = EVENT_IDS.nextId();
+                SseEvent event = new SseEvent(eventId, eventName, jsonData);
                 state.buffer.add(event);
                 if (state.buffer.size() > MAX_BUFFER_SIZE) {
                     trimBuffer(state.buffer);
@@ -822,7 +815,7 @@ public class ChatStreamTracker {
                     if (skipBuffer) {
                         emitter.send(SseEmitter.event().name(eventName).data(jsonData));
                     } else {
-                        emitter.send(SseEmitter.event().id(String.valueOf(state.nextEventId)).name(eventName).data(jsonData));
+                        emitter.send(SseEmitter.event().id(String.valueOf(eventId)).name(eventName).data(jsonData));
                     }
                 } catch (IOException | IllegalStateException e) {
                     log.debug("Removing dead subscriber for {}: {}", conversationId, e.getMessage());
@@ -1071,8 +1064,8 @@ public class ChatStreamTracker {
      * {@code lastEventId}. Pass 0 to replay everything (fresh attach
      * behavior — same as the no-arg overload).
      *
-     * <p>The id is the per-conversation monotonic sequence stamped on
-     * each {@link SseEvent} when it was first emitted. Frontend tracks
+     * <p>The id is the process-global monotonic value stamped on each
+     * {@link SseEvent} when it was first emitted. Frontend tracks
      * the last id it processed and echoes it back via the request
      * body's {@code lastEventId} field, eliminating the duplicate-
      * delivery class of bugs (the symptom: thinking segments rendered

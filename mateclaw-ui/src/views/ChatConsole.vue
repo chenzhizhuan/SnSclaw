@@ -104,6 +104,15 @@
         </div>
       </div>
 
+      <TeamWorkerBanner
+        v-if="workerRunContext"
+        :run-id="workerRunContext.runId"
+        :task-id="workerRunContext.taskId"
+        :team-id="workerRunContext.teamId"
+        :lead-conversation-id="workerRunContext.leadConversationId"
+        @navigate="router.push($event)"
+      />
+
       <!-- 使用组件化的 MessageList -->
       <MessageList
         ref="messageListRef"
@@ -114,6 +123,12 @@
         :title="blockingPrompt ? modelPromptText.title : $t('app.title')"
         :subtitle="blockingPrompt ? modelPromptText.desc : $t('chat.subtitle')"
         :suggestions="blockingPrompt ? [] : suggestions"
+        :team-runs="teamRuns"
+        :expanded-team-run-id="teamRunRouteQuery.teamRunId || null"
+        :selected-team-task-id="teamRunRouteQuery.taskId || null"
+        :team-runs-has-more="Boolean(teamRunsNextCursor)"
+        :team-runs-loading-more="teamRunsLoadingMore"
+        :readonly="workerConversationReadOnly"
         @regenerate="handleRegenerate"
         @rewind="handleRewind"
         @suggestion-click="sendSuggestion"
@@ -121,6 +136,8 @@
         @approve="handleApprove"
         @approve-always="handleApproveAlways"
         @deny="handleDeny"
+        @team-run-navigate="router.push($event)"
+        @team-runs-load-more="loadMoreTeamRuns"
       >
         <!-- Issue #81 v2 R2: blocking-only popup. Recoverable cases use the
              non-blocking <RecoverableModelBanner> below instead. -->
@@ -224,7 +241,7 @@
         ref="chatInputRef"
         v-model="inputText"
         :loading="isGenerating && !hasPendingApproval"
-        :disabled="blockingPrompt || !currentAgent"
+        :disabled="blockingPrompt || !currentAgent || workerConversationReadOnly"
         :skills-enabled="!!currentAgent && !currentAgent.skillsDisabled"
         :placeholder="$t('chat.messagePlaceholder')"
         :hint="currentRuntimeModel"
@@ -289,14 +306,24 @@ import { copyToClipboard } from '@/utils/clipboard'
 import { useFileDrop } from '@/composables/useFileDrop'
 import { useIsMobile, useMediaQuery, BREAKPOINTS } from '@/composables/useBreakpoint'
 import { useChat } from '@/composables/chat/useChat'
+import { useTeamRuns } from '@/composables/chat/useTeamRuns'
+import { useWorkerConversationGuard } from '@/composables/chat/useWorkerConversationGuard'
+import { parseTeamMessageMetadata } from '@/composables/chat/messageMetadata'
 import RunOverviewPanel from '@/components/chat/RunOverviewPanel.vue'
 import { reconstructErrorInfo } from '@/types/chatError'
 import { reconcileMessages, extractMessages } from '@/utils/messageReconcile'
-import { resolveConversationAgentSelection, resolveRouteHydrationQuery } from '@/utils/chatRouteHydration'
+import {
+  buildChatRouteQuery,
+  readLegacyWorkerRouteContext,
+  readTeamRunRouteQuery,
+  resolveConversationAgentSelection,
+  resolveRouteHydrationQuery,
+} from '@/utils/chatRouteHydration'
 import type { Conversation, Agent, ModelConfig, ProviderInfo, ActiveModelsInfo, ChatAttachment, MessageContentPart, Message, ToolCallMeta } from '@/types'
 
 // 导入组件化组件
 import MessageList from '@/components/chat/MessageList.vue'
+import TeamWorkerBanner from '@/components/chat/TeamWorkerBanner.vue'
 import RecoverableModelBanner from '@/components/chat/RecoverableModelBanner.vue'
 import SkillIcon from '@/components/common/SkillIcon.vue'
 import ConversationSidebar from '@/components/chat/ConversationSidebar.vue'
@@ -631,6 +658,7 @@ function reconcileCurrentConversation() {
 const { isDragging, onDragEnter, onDragLeave, onDrop } = useFileDrop(processDroppedItems)
 
 async function processDroppedItems(e: DragEvent) {
+  if (workerConversationReadOnly.value) return
   const dtFiles = Array.from(e.dataTransfer?.files || [])
   const items = Array.from(e.dataTransfer?.items || [])
 
@@ -672,6 +700,7 @@ async function processDroppedItems(e: DragEvent) {
 }
 
 function handleDirectoryAttach(dirFiles: File[]) {
+  if (workerConversationReadOnly.value) return
   if (!currentConversationId.value) {
     newConversation()
   }
@@ -783,6 +812,44 @@ const {
     }
   },
 })
+
+const teamRunRouteQuery = computed(() => readTeamRunRouteQuery(route.query))
+const metadataWorkerRunId = computed(() => {
+  for (let index = messages.value.length - 1; index >= 0; index -= 1) {
+    const metadata = parseTeamMessageMetadata(messages.value[index])
+    if (metadata.runId && metadata.taskId) return metadata.runId
+  }
+  return undefined
+})
+const linkedTeamRunId = computed(() => teamRunRouteQuery.value.teamRunId ?? metadataWorkerRunId.value)
+const {
+  runs: teamRuns,
+  nextCursor: teamRunsNextCursor,
+  loadingMore: teamRunsLoadingMore,
+  loadMore: loadMoreTeamRuns,
+} = useTeamRuns(currentConversationId, { linkedRunId: linkedTeamRunId })
+const currentConversationKind = computed(() => conversations.value
+  .find(conversation => conversation.conversationId === currentConversationId.value)?.conversationKind)
+const workerRouteHint = computed(() => Boolean(
+  teamRunRouteQuery.value.teamRunId
+  || teamRunRouteQuery.value.taskId
+  || currentConversationKind.value === 'team_worker'))
+const workerGuard = useWorkerConversationGuard({
+  conversationId: currentConversationId,
+  workerHint: workerRouteHint,
+  load: async (conversationId) => {
+    if (isEphemeralConversation(conversationId)) return null
+    const query = teamRunRouteQuery.value
+    const response = await conversationApi.getTeamWorkerContext(conversationId, {
+      runId: query.teamRunId,
+      taskId: query.taskId,
+    })
+    return response.data ?? null
+  },
+})
+const workerRunContext = computed(() => workerGuard.context.value
+  ?? readLegacyWorkerRouteContext(currentConversationId.value, route.query))
+const workerConversationReadOnly = computed(() => workerGuard.readOnly.value)
 
 // ============ 连接状态 ============
 const connectionStatusClass = computed(() => {
@@ -1667,9 +1734,11 @@ async function hydrateStateFromRoute() {
 }
 
 function syncRouteState() {
-  const query: Record<string, string> = {}
-  if (selectedAgentId.value) query.agentId = String(selectedAgentId.value)
-  if (currentConversationId.value) query.conversationId = currentConversationId.value
+  const query = buildChatRouteQuery({
+    currentQuery: route.query,
+    agentId: selectedAgentId.value ? String(selectedAgentId.value) : undefined,
+    conversationId: currentConversationId.value || undefined,
+  })
   router.replace({ path: '/chat', query })
 }
 
@@ -1925,7 +1994,10 @@ async function handleSendMessage(content: string) {
   // 允许在等待审批时发送审批命令
   const isApprovalCommand = /^\/(approve|deny)$/i.test(content.trim())
 
-  if ((!content && pendingAttachments.value.length === 0) || !selectedAgentId.value || blockingPrompt.value) return
+  if ((!content && pendingAttachments.value.length === 0)
+      || !selectedAgentId.value
+      || blockingPrompt.value
+      || workerConversationReadOnly.value) return
   // 不再阻止运行中发送 — useChat 会自动走 interrupt/queue 路径
 
   // 拦截 /approve 和 /deny 命令 —— 通过 SSE 流发送（和普通消息相同通道）
@@ -2033,7 +2105,8 @@ function handleStopStream() {
 }
 
 async function handleRegenerate(message: Message) {
-  if (isGenerating.value || !currentConversationId.value || !selectedAgentId.value) return
+  if (workerConversationReadOnly.value
+    || isGenerating.value || !currentConversationId.value || !selectedAgentId.value) return
   const idx = messages.value.indexOf(message)
   if (idx >= 0) {
     // The server drops the trailing assistant block and reuses the persisted
@@ -2057,7 +2130,7 @@ async function handleRegenerate(message: Message) {
 }
 
 async function handleRewind(message: Message) {
-  if (isGenerating.value || !currentConversationId.value) return
+  if (workerConversationReadOnly.value || isGenerating.value || !currentConversationId.value) return
   const idx = messages.value.indexOf(message)
   if (idx < 0) return
   const count = messages.value.length - idx
@@ -2185,6 +2258,7 @@ function resetStreamingState() {
 
 // ============ 附件处理 ============
 async function handleFileSelect(files: File[]) {
+  if (workerConversationReadOnly.value) return
   if (!currentConversationId.value) {
     newConversation()
   }

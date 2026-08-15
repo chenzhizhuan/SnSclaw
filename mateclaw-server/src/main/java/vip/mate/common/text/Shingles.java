@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
  * Callers should lowercase the input first when case should be ignored — the
  * Latin token pattern only matches lowercase.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 public final class Shingles {
 

@@ -5,24 +5,35 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import vip.mate.agent.repository.AgentMapper;
+import vip.mate.agent.model.AgentEntity;
 import vip.mate.auth.model.UserEntity;
 import vip.mate.auth.service.AuthService;
 import vip.mate.common.result.R;
 import vip.mate.config.WorkspaceAccessInterceptor;
 import vip.mate.team.model.TeamTaskCreateCommand;
 import vip.mate.team.model.AgentTeamEntity;
+import vip.mate.team.model.TeamRunCreateCommand;
+import vip.mate.team.model.TeamRunEntity;
+import vip.mate.team.model.TeamRunStatus;
 import vip.mate.team.model.TeamTaskEntity;
+import vip.mate.team.model.TeamTaskStatus;
+import vip.mate.team.event.TeamRunDispatchCommittedIntent;
 import vip.mate.team.service.TeamAnnounceService;
 import vip.mate.team.service.TeamDispatchService;
 import vip.mate.team.service.TeamEventChannel;
+import vip.mate.team.service.TeamManualTaskService;
+import vip.mate.team.service.TeamRunService;
 import vip.mate.team.service.TeamService;
 import vip.mate.team.service.TeamTaskService;
 import vip.mate.workspace.core.annotation.RequireWorkspaceRole;
 import vip.mate.workspace.core.service.WorkspaceService;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -31,9 +42,11 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -47,9 +60,12 @@ class TeamControllerTest {
 
     private static final Long TEAM_ID = 1L;
     private static final Long TASK_ID = 100L;
+    private static final Long RUN_ID = 200L;
 
     @Mock private TeamService teamService;
     @Mock private TeamTaskService taskService;
+    @Mock private TeamRunService runService;
+    @Mock private ApplicationEventPublisher events;
     @Mock private TeamDispatchService dispatchService;
     @Mock private TeamAnnounceService announceService;
     @Mock private TeamEventChannel eventChannel;
@@ -58,15 +74,18 @@ class TeamControllerTest {
     @Mock private AuthService authService;
 
     private TeamController controller;
+    private TeamManualTaskService manualTaskService;
 
     @BeforeEach
     void setUp() {
-        controller = new TeamController(teamService, taskService, dispatchService,
+        manualTaskService = new TeamManualTaskService(runService, taskService, events);
+        controller = new TeamController(teamService, taskService, manualTaskService, dispatchService,
                 announceService, eventChannel, agentMapper);
         AgentTeamEntity team = new AgentTeamEntity();
         team.setId(TEAM_ID);
         team.setWorkspaceId(1L);
-        org.mockito.Mockito.lenient().when(teamService.getTeam(TEAM_ID, 1L)).thenReturn(team);
+        team.setLeadAgentId(10L);
+        lenient().when(teamService.getTeam(TEAM_ID, 1L)).thenReturn(team);
     }
 
     @AfterEach
@@ -82,6 +101,15 @@ class TeamControllerTest {
         task.setStatus(status);
         task.setSubject("subject");
         return task;
+    }
+
+    private TeamRunEntity run(Long teamId, Long workspaceId, String status) {
+        TeamRunEntity run = new TeamRunEntity();
+        run.setId(RUN_ID);
+        run.setTeamId(teamId);
+        run.setWorkspaceId(workspaceId);
+        run.setStatus(status);
+        return run;
     }
 
     // ==================== team / membership ====================
@@ -140,10 +168,51 @@ class TeamControllerTest {
     // ==================== task board ====================
 
     @Test
+    void listTasksBatchLoadsDistinctAssigneesAndOwnersOnce() {
+        TeamTaskEntity first = task(TEAM_ID, TeamTaskStatus.PENDING);
+        first.setId(101L);
+        first.setAssigneeAgentId(11L);
+        first.setOwnerAgentId(12L);
+        TeamTaskEntity second = task(TEAM_ID, TeamTaskStatus.IN_PROGRESS);
+        second.setId(102L);
+        second.setAssigneeAgentId(11L);
+        second.setOwnerAgentId(13L);
+        TeamTaskEntity third = task(TEAM_ID, TeamTaskStatus.COMPLETED);
+        third.setId(103L);
+        third.setAssigneeAgentId(13L);
+        third.setOwnerAgentId(null);
+        when(taskService.listTasks(TEAM_ID, null, null, null)).thenReturn(List.of(first, second, third));
+        AgentEntity assignee = new AgentEntity();
+        assignee.setId(11L);
+        assignee.setName("Assignee");
+        AgentEntity owner = new AgentEntity();
+        owner.setId(12L);
+        owner.setName("Owner");
+        AgentEntity shared = new AgentEntity();
+        shared.setId(13L);
+        shared.setName("Shared");
+        when(agentMapper.selectBatchIds(any())).thenReturn(List.of(assignee, owner, shared));
+
+        R<List<TeamController.TaskVO>> response = controller.listTasks(TEAM_ID, null, null, null);
+
+        assertEquals(List.of("Assignee", "Assignee", "Shared"),
+                response.getData().stream().map(TeamController.TaskVO::assigneeName).toList());
+        assertEquals(java.util.Arrays.asList("Owner", "Shared", null),
+                response.getData().stream().map(TeamController.TaskVO::ownerName).toList());
+        ArgumentCaptor<java.util.Collection<Long>> ids = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(agentMapper, times(1)).selectBatchIds(ids.capture());
+        assertEquals(Set.of(11L, 12L, 13L), Set.copyOf(ids.getValue()));
+        verify(agentMapper, never()).selectById(anyLong());
+    }
+
+    @Test
     void createTaskSurfacesUnknownAssigneeAsReadableFailure() {
+        TeamRunEntity planning = run(TEAM_ID, 1L, TeamRunStatus.PLANNING);
+        when(runService.requireRun(RUN_ID, 1L)).thenReturn(planning);
         when(taskService.createTask(any(TeamTaskCreateCommand.class)))
                 .thenThrow(new IllegalArgumentException("assignee 9 is not a member of this team"));
         TeamController.CreateTaskRequest req = new TeamController.CreateTaskRequest();
+        req.setRunId(RUN_ID);
         req.setSubject("do the thing");
         req.setAssigneeAgentId(9L);
 
@@ -153,6 +222,95 @@ class TeamControllerTest {
         assertEquals("assignee 9 is not a member of this team", r.getMsg());
         verify(eventChannel, never()).publishTaskEvent(any(), anyString(), any());
         verify(dispatchService, never()).requestDispatch(anyLong());
+    }
+
+    @Test
+    void createTaskWithoutRunCreatesSealsAndPublishesOneDispatchIntent() {
+        TeamRunEntity planning = run(TEAM_ID, 1L, TeamRunStatus.PLANNING);
+        TeamRunEntity running = run(TEAM_ID, 1L, TeamRunStatus.RUNNING);
+        when(runService.startRun(any())).thenReturn(planning);
+        TeamTaskEntity created = task(TEAM_ID, TeamTaskStatus.PENDING);
+        created.setRunId(RUN_ID);
+        when(taskService.createTask(any())).thenReturn(created);
+        when(runService.sealRunWithResult(RUN_ID, 1L))
+                .thenReturn(new TeamRunService.SealResult(running, true));
+        TeamController.CreateTaskRequest req = new TeamController.CreateTaskRequest();
+        req.setSubject("dashboard task");
+        req.setDescription("details");
+        req.setAssigneeAgentId(9L);
+
+        R<TeamController.TaskVO> result = controller.createTask(TEAM_ID, req, null);
+
+        assertEquals(RUN_ID, result.getData().runId());
+        ArgumentCaptor<TeamRunCreateCommand> runCommand =
+                ArgumentCaptor.forClass(TeamRunCreateCommand.class);
+        verify(runService).startRun(runCommand.capture());
+        assertEquals("dashboard-team-1", runCommand.getValue().getLeadConversationId());
+        assertEquals("dashboard task", runCommand.getValue().getTitle());
+        assertEquals("details", runCommand.getValue().getObjective());
+        assertEquals(null, runCommand.getValue().getOriginMessageId());
+        ArgumentCaptor<TeamTaskCreateCommand> taskCommand =
+                ArgumentCaptor.forClass(TeamTaskCreateCommand.class);
+        verify(taskService).createTask(taskCommand.capture());
+        assertEquals(RUN_ID, taskCommand.getValue().getRunId());
+        verify(runService).sealRunWithResult(RUN_ID, 1L);
+        verify(events, times(1)).publishEvent(new TeamRunDispatchCommittedIntent(TEAM_ID));
+    }
+
+    @Test
+    void createTaskWithoutRunDoesNotPublishWhenSealAlreadyTransitioned() {
+        TeamRunEntity planning = run(TEAM_ID, 1L, TeamRunStatus.PLANNING);
+        TeamRunEntity running = run(TEAM_ID, 1L, TeamRunStatus.RUNNING);
+        when(runService.startRun(any())).thenReturn(planning);
+        TeamTaskEntity created = task(TEAM_ID, TeamTaskStatus.PENDING);
+        created.setRunId(RUN_ID);
+        when(taskService.createTask(any())).thenReturn(created);
+        when(runService.sealRunWithResult(RUN_ID, 1L))
+                .thenReturn(new TeamRunService.SealResult(running, false));
+        TeamController.CreateTaskRequest req = new TeamController.CreateTaskRequest();
+        req.setSubject("dashboard task");
+        req.setAssigneeAgentId(9L);
+
+        controller.createTask(TEAM_ID, req, null);
+
+        verify(events, never()).publishEvent(any());
+    }
+
+    @Test
+    void createTaskWithExplicitRunDoesNotSealOrDispatch() {
+        when(runService.requireRun(RUN_ID, 1L))
+                .thenReturn(run(TEAM_ID, 1L, TeamRunStatus.PLANNING));
+        TeamTaskEntity created = task(TEAM_ID, TeamTaskStatus.PENDING);
+        created.setRunId(RUN_ID);
+        when(taskService.createTask(any())).thenReturn(created);
+        TeamController.CreateTaskRequest req = new TeamController.CreateTaskRequest();
+        req.setRunId(RUN_ID);
+        req.setSubject("another task");
+        req.setAssigneeAgentId(9L);
+
+        R<TeamController.TaskVO> result = controller.createTask(TEAM_ID, req, null);
+
+        assertEquals(RUN_ID, result.getData().runId());
+        verify(runService, never()).startRun(any());
+        verify(runService, never()).sealRunWithResult(anyLong(), anyLong());
+        verify(events, never()).publishEvent(any());
+        verify(dispatchService, never()).requestDispatch(anyLong());
+    }
+
+    @Test
+    void createTaskRejectsExplicitRunFromAnotherTeam() {
+        when(runService.requireRun(RUN_ID, 1L))
+                .thenReturn(run(99L, 1L, TeamRunStatus.PLANNING));
+        TeamController.CreateTaskRequest req = new TeamController.CreateTaskRequest();
+        req.setRunId(RUN_ID);
+        req.setSubject("another task");
+        req.setAssigneeAgentId(9L);
+
+        R<TeamController.TaskVO> result = controller.createTask(TEAM_ID, req, null);
+
+        assertEquals(500, result.getCode());
+        assertEquals("team task and run must belong to the same team", result.getMsg());
+        verify(taskService, never()).createTask(any());
     }
 
     @Test

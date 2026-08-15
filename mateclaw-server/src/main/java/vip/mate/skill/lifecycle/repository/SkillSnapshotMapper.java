@@ -7,7 +7,7 @@ import vip.mate.skill.lifecycle.model.SkillSnapshotEntity;
 /**
  * Data access for skill library restore points.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface SkillSnapshotMapper extends BaseMapper<SkillSnapshotEntity> {

@@ -88,6 +88,7 @@ export interface Conversation {
   status?: 'active' | 'closed'
   streamStatus?: 'idle' | 'running'
   source?: string
+  conversationKind?: 'primary' | 'team_worker' | 'scheduled'
   pinned?: number
   /** Provider id of the model this conversation is pinned to (per-conversation model). */
   modelProvider?: string
@@ -305,6 +306,12 @@ export interface MessageMetadata {
   type?: string
   /** type=team_announce: number of settled team tasks carried by this note */
   taskCount?: number
+  /** Team orchestration ids remain strings to preserve Snowflake precision. */
+  runId?: string
+  taskId?: string
+  originMessageId?: string
+  teamId?: string
+  leadConversationId?: string
   currentPhase?: string
   toolCalls?: ToolCallMeta[]
   plan?: PlanMeta

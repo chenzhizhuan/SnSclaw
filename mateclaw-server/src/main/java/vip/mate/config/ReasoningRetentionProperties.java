@@ -16,7 +16,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * needs. Persisting all of them costs message-row size, so operators running
  * long tool loops on a small database can trade the detail away.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Data
 @ConfigurationProperties(prefix = "mate.agent.reasoning")

@@ -3,9 +3,10 @@ package vip.mate.team.service;
 import cn.hutool.core.util.IdUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import vip.mate.team.event.TeamTasksDelegatedEvent;
 import vip.mate.agent.AgentService;
 import vip.mate.channel.web.ChatStreamTracker;
@@ -84,7 +85,7 @@ public class TeamDispatchService {
      * plan's tasks land. Event-driven because the hand-off bridge cannot
      * depend on this service directly (bean cycle through the graph builder).
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onTeamTasksDelegated(TeamTasksDelegatedEvent event) {
         requestDispatch(event.teamId());
     }
@@ -166,7 +167,8 @@ public class TeamDispatchService {
         try {
             AgentTeamEntity team = teamService.getTeam(teamId);
             conversationService.createChildConversation(childConvId, memberId, "system",
-                    team == null ? null : team.getWorkspaceId(), task.getLeadConversationId());
+                    team == null ? null : team.getWorkspaceId(), task.getLeadConversationId(),
+                    "team_worker");
             taskService.attachConversation(task.getId(), childConvId);
             // Track the child run so graph nodes honor requestStop() — without a
             // registered RunState, cancelling the task could never interrupt the

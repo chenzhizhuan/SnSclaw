@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Registers configuration for routine mining.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Configuration
 @EnableConfigurationProperties(SkillRoutineProperties.class)
