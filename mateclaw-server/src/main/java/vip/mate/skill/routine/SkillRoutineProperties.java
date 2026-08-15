@@ -12,7 +12,7 @@ import org.springframework.validation.annotation.Validated;
  * Configuration for routine mining — the cross-session pass that detects
  * requests the user makes habitually and promotes them into skills.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Data
 @Validated

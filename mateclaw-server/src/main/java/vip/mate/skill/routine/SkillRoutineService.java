@@ -23,7 +23,7 @@ import java.util.Map;
  * becomes a skill the agent consults on every similar request, so the operator
  * needs to see candidates before they qualify, not only after.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

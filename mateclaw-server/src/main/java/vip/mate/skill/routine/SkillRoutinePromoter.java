@@ -47,7 +47,7 @@ import java.util.Map;
  * agent — so the routine is reachable on the agent's very next turn, which is
  * the entire point of promoting it.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

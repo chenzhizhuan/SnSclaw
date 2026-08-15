@@ -50,7 +50,7 @@ import java.util.regex.Pattern;
  * That makes repeated sweeps idempotent (a re-run cannot inflate counts) and
  * lets a routine the user abandoned decay back out of the window on its own.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

@@ -13,6 +13,8 @@ import vip.mate.team.model.TeamTaskCommentEntity;
 import vip.mate.team.model.TeamTaskCreateCommand;
 import vip.mate.team.model.TeamTaskEntity;
 import vip.mate.team.model.TeamTaskStatus;
+import vip.mate.team.model.TeamRunEntity;
+import vip.mate.team.model.TeamRunStatus;
 import vip.mate.team.model.TeamTaskEventEntity;
 import vip.mate.team.repository.TeamTaskCommentMapper;
 import vip.mate.team.repository.TeamTaskEventMapper;
@@ -26,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Shared task board service. All status transitions are guarded conditional
@@ -57,6 +60,8 @@ public class TeamTaskService {
     private final TeamTaskCommentMapper commentMapper;
     private final TeamTaskEventMapper eventMapper;
     private final TeamService teamService;
+    private final TeamRunProjectionScheduler projectionScheduler;
+    private final TeamRunService runService;
 
     // ==================== creation ====================
 
@@ -65,6 +70,15 @@ public class TeamTaskService {
         AgentTeamEntity team = teamService.getTeam(cmd.getTeamId());
         if (team == null || !TeamService.STATUS_ACTIVE.equals(team.getStatus())) {
             throw new IllegalArgumentException("team not found or not active: " + cmd.getTeamId());
+        }
+        if (cmd.getRunId() != null) {
+            TeamRunEntity run = runService.requireRun(cmd.getRunId(), team.getWorkspaceId());
+            if (!cmd.getTeamId().equals(run.getTeamId())) {
+                throw new IllegalArgumentException("team task and run must belong to the same team");
+            }
+            if (!TeamRunStatus.PLANNING.equals(run.getStatus())) {
+                throw new IllegalStateException("team run must be planning to accept tasks: " + cmd.getRunId());
+            }
         }
         if (cmd.getSubject() == null || cmd.getSubject().isBlank()) {
             throw new IllegalArgumentException("subject is required");
@@ -92,6 +106,9 @@ public class TeamTaskService {
             if (blocker == null || !blocker.getTeamId().equals(cmd.getTeamId())) {
                 throw new IllegalArgumentException("blocking task not found in this team: " + blockerId);
             }
+            if (!Objects.equals(blocker.getRunId(), cmd.getRunId())) {
+                throw new IllegalArgumentException("blocking task must belong to the same run: " + blockerId);
+            }
             if (TeamTaskStatus.isTerminal(blocker.getStatus())) {
                 throw new IllegalArgumentException("blocking task " + blockerId
                         + " is already " + blocker.getStatus()
@@ -101,6 +118,7 @@ public class TeamTaskService {
 
         TeamTaskEntity task = new TeamTaskEntity();
         task.setTeamId(cmd.getTeamId());
+        task.setRunId(cmd.getRunId());
         task.setTaskNumber(teamService.nextTaskNumber(cmd.getTeamId()));
         task.setSubject(cmd.getSubject());
         task.setDescription(cmd.getDescription());
@@ -125,6 +143,7 @@ public class TeamTaskService {
                 "assignee: agent " + assignee);
         log.info("Team {} task #{} created ({}), assignee={} status={}",
                 cmd.getTeamId(), task.getTaskNumber(), task.getId(), assignee, task.getStatus());
+        projectTask(task);
         return task;
     }
 
@@ -135,13 +154,17 @@ public class TeamTaskService {
      * get false. The WHERE clause is the mutex.
      */
     public boolean claimTask(Long taskId, Long agentId) {
-        return taskMapper.update(null, Wrappers.<TeamTaskEntity>lambdaUpdate()
+        boolean claimed = taskMapper.update(null, Wrappers.<TeamTaskEntity>lambdaUpdate()
                 .eq(TeamTaskEntity::getId, taskId)
                 .eq(TeamTaskEntity::getStatus, TeamTaskStatus.PENDING)
                 .isNull(TeamTaskEntity::getOwnerAgentId)
                 .set(TeamTaskEntity::getStatus, TeamTaskStatus.IN_PROGRESS)
                 .set(TeamTaskEntity::getOwnerAgentId, agentId)
                 .set(TeamTaskEntity::getLockExpiresAt, newLease())) == 1;
+        if (claimed) {
+            projectTask(taskId);
+        }
+        return claimed;
     }
 
     /**
@@ -149,12 +172,16 @@ public class TeamTaskService {
      * this overrides a previously set owner but still requires pending status.
      */
     public boolean assignTask(Long taskId, Long agentId) {
-        return taskMapper.update(null, Wrappers.<TeamTaskEntity>lambdaUpdate()
+        boolean assigned = taskMapper.update(null, Wrappers.<TeamTaskEntity>lambdaUpdate()
                 .eq(TeamTaskEntity::getId, taskId)
                 .eq(TeamTaskEntity::getStatus, TeamTaskStatus.PENDING)
                 .set(TeamTaskEntity::getStatus, TeamTaskStatus.IN_PROGRESS)
                 .set(TeamTaskEntity::getOwnerAgentId, agentId)
                 .set(TeamTaskEntity::getLockExpiresAt, newLease())) == 1;
+        if (assigned) {
+            projectTask(taskId);
+        }
+        return assigned;
     }
 
     /** Record the member conversation executing the task. */
@@ -207,7 +234,9 @@ public class TeamTaskService {
                 toReview ? TeamTaskEventEntity.IN_REVIEW : TeamTaskEventEntity.COMPLETED,
                 agentId != null ? AUTHOR_AGENT : AUTHOR_SYSTEM,
                 agentId != null ? String.valueOf(agentId) : null, null);
-        return toReview ? List.of() : releaseDependents(task);
+        List<Long> released = toReview ? List.of() : releaseDependents(task);
+        projectTask(task);
+        return released;
     }
 
     /** Human approval of an in_review task; releases dependents. */
@@ -221,7 +250,9 @@ public class TeamTaskService {
         if (rows != 1) {
             throw new IllegalStateException("task #" + task.getTaskNumber() + " is not awaiting review");
         }
-        return releaseDependents(task);
+        List<Long> released = releaseDependents(task);
+        projectTask(task);
+        return released;
     }
 
     /** Human rejection of an in_review task; cancels it and releases dependents. */
@@ -236,11 +267,14 @@ public class TeamTaskService {
         if (rows != 1) {
             throw new IllegalStateException("task #" + task.getTaskNumber() + " is not awaiting review");
         }
-        return releaseDependents(task);
+        List<Long> released = releaseDependents(task);
+        projectTask(task);
+        return released;
     }
 
     /** Fail a task (blocker escalation, runner error, circuit breaker). Does NOT release dependents. */
     public boolean failTask(Long taskId, String reason) {
+        TeamTaskEntity task = taskMapper.selectById(taskId);
         boolean failed = taskMapper.update(null, Wrappers.<TeamTaskEntity>lambdaUpdate()
                 .eq(TeamTaskEntity::getId, taskId)
                 .in(TeamTaskEntity::getStatus,
@@ -249,9 +283,9 @@ public class TeamTaskService {
                 .set(TeamTaskEntity::getReason, reason)
                 .set(TeamTaskEntity::getLockExpiresAt, null)) == 1;
         if (failed) {
-            TeamTaskEntity task = taskMapper.selectById(taskId);
             recordEvent(task == null ? null : task.getTeamId(), taskId,
                     TeamTaskEventEntity.FAILED, AUTHOR_SYSTEM, null, reason);
+            projectTask(taskId);
         }
         return failed;
     }
@@ -270,12 +304,14 @@ public class TeamTaskService {
         if (rows != 1) {
             throw new IllegalStateException("task #" + task.getTaskNumber() + " is already terminal");
         }
-        return releaseDependents(task);
+        List<Long> released = releaseDependents(task);
+        projectTask(task);
+        return released;
     }
 
     /** Manual retry of a failed/stale task: back to pending, owner and breaker reset. */
     public boolean retryTask(Long taskId) {
-        return taskMapper.update(null, Wrappers.<TeamTaskEntity>lambdaUpdate()
+        boolean retried = taskMapper.update(null, Wrappers.<TeamTaskEntity>lambdaUpdate()
                 .eq(TeamTaskEntity::getId, taskId)
                 .in(TeamTaskEntity::getStatus, TeamTaskStatus.FAILED, TeamTaskStatus.STALE)
                 .set(TeamTaskEntity::getStatus, TeamTaskStatus.PENDING)
@@ -283,12 +319,17 @@ public class TeamTaskService {
                 .set(TeamTaskEntity::getLockExpiresAt, null)
                 .set(TeamTaskEntity::getReason, null)
                 .set(TeamTaskEntity::getDispatchCount, 0)) == 1;
+        if (retried) {
+            projectTask(taskId);
+        }
+        return retried;
     }
 
     // ==================== progress / comments ====================
 
     /** Update progress and renew the execution lease in one shot. */
     public boolean updateProgress(Long taskId, Long agentId, Integer percent, String step) {
+        TeamTaskEntity task = taskMapper.selectById(taskId);
         boolean updated = taskMapper.update(null, Wrappers.<TeamTaskEntity>lambdaUpdate()
                 .eq(TeamTaskEntity::getId, taskId)
                 .eq(TeamTaskEntity::getStatus, TeamTaskStatus.IN_PROGRESS)
@@ -297,11 +338,11 @@ public class TeamTaskService {
                 .set(step != null, TeamTaskEntity::getProgressStep, step)
                 .set(TeamTaskEntity::getLockExpiresAt, newLease())) == 1;
         if (updated) {
-            TeamTaskEntity task = taskMapper.selectById(taskId);
             recordEvent(task == null ? null : task.getTeamId(), taskId,
                     TeamTaskEventEntity.PROGRESS, AUTHOR_AGENT,
                     agentId != null ? String.valueOf(agentId) : null,
                     (percent != null ? percent + "%" : "") + (step != null ? " — " + step : ""));
+            projectTask(taskId);
         }
         return updated;
     }
@@ -524,12 +565,20 @@ public class TeamTaskService {
      * picks at most one per assignee so a member never runs two tasks at once.
      */
     public List<TeamTaskEntity> findDispatchable(Long teamId) {
-        return taskMapper.selectList(Wrappers.<TeamTaskEntity>lambdaQuery()
+        List<TeamTaskEntity> candidates = taskMapper.selectList(Wrappers.<TeamTaskEntity>lambdaQuery()
                 .eq(TeamTaskEntity::getTeamId, teamId)
                 .eq(TeamTaskEntity::getStatus, TeamTaskStatus.PENDING)
                 .isNotNull(TeamTaskEntity::getAssigneeAgentId)
                 .orderByDesc(TeamTaskEntity::getPriority)
                 .orderByAsc(TeamTaskEntity::getCreateTime));
+        Set<Long> runIds = candidates.stream()
+                .map(TeamTaskEntity::getRunId)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        Set<Long> planningRunIds = runService.findPlanningRunIds(runIds);
+        return candidates.stream()
+                .filter(task -> task.getRunId() == null || !planningRunIds.contains(task.getRunId()))
+                .toList();
     }
 
     /** Whether the agent is already executing a task in this team. */
@@ -551,13 +600,16 @@ public class TeamTaskService {
                 .isNotNull(TeamTaskEntity::getLockExpiresAt)
                 .lt(TeamTaskEntity::getLockExpiresAt, LocalDateTime.now()));
         for (TeamTaskEntity task : expired) {
-            taskMapper.update(null, Wrappers.<TeamTaskEntity>lambdaUpdate()
+            int rows = taskMapper.update(null, Wrappers.<TeamTaskEntity>lambdaUpdate()
                     .eq(TeamTaskEntity::getId, task.getId())
                     .eq(TeamTaskEntity::getStatus, TeamTaskStatus.IN_PROGRESS)
                     .set(TeamTaskEntity::getStatus, TeamTaskStatus.STALE)
                     .set(TeamTaskEntity::getReason, "execution lease expired"));
-            recordEvent(task.getTeamId(), task.getId(), TeamTaskEventEntity.STALE,
-                    AUTHOR_SYSTEM, null, "execution lease expired");
+            if (rows == 1) {
+                recordEvent(task.getTeamId(), task.getId(), TeamTaskEventEntity.STALE,
+                        AUTHOR_SYSTEM, null, "execution lease expired");
+                projectTask(task);
+            }
         }
         if (!expired.isEmpty()) {
             log.warn("Marked {} team task(s) stale after lease expiry", expired.size());
@@ -569,6 +621,12 @@ public class TeamTaskService {
 
     public TeamTaskEntity getTask(Long taskId) {
         return taskMapper.selectById(taskId);
+    }
+
+    public List<TeamTaskEntity> listTasksByRun(Long runId) {
+        return taskMapper.selectList(Wrappers.<TeamTaskEntity>lambdaQuery()
+                .eq(TeamTaskEntity::getRunId, runId)
+                .orderByAsc(TeamTaskEntity::getTaskNumber));
     }
 
     /**
@@ -659,6 +717,7 @@ public class TeamTaskService {
                     .set(TeamTaskEntity::getStatus, TeamTaskStatus.PENDING));
             if (rows == 1) {
                 released.add(candidate.getId());
+                projectTask(candidate);
             }
         }
         if (!released.isEmpty()) {
@@ -676,6 +735,26 @@ public class TeamTaskService {
             throw new IllegalArgumentException("team task not found: " + taskId);
         }
         return task;
+    }
+
+    private void projectTask(Long taskId) {
+        try {
+            projectionScheduler.scheduleTask(taskId);
+        } catch (RuntimeException error) {
+            log.warn("Team run projection failed after task {} changed: {}", taskId, error.getMessage());
+        }
+    }
+
+    private void projectTask(TeamTaskEntity task) {
+        if (task == null || task.getRunId() == null) {
+            return;
+        }
+        try {
+            projectionScheduler.scheduleRun(task.getRunId());
+        } catch (RuntimeException error) {
+            log.warn("Team run {} projection failed after task {} changed: {}",
+                    task.getRunId(), task.getId(), error.getMessage());
+        }
     }
 
     private static LocalDateTime newLease() {

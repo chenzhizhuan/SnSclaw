@@ -119,7 +119,7 @@ sample 模块增加一个最小 `PluginSearchProvider` 实现（如包装一个�
 
 ## 4. 交付拆分（遵循上游单一关注点规范）
 
-- **上游 issue 先行**：动手前在 mateaix/mateclaw 提 issue 说明设计（本文档摘要），获认可后实施。
+- **上游 issue 先行**：动手前在 sns/SnSclaw 提 issue 说明设计（本文档摘要），获认可后实施。
 - **PR-1（后端 + SDK）**：`PluginType.SEARCH` + SDK 接口/record + `PluginSearchBridge` + registry 可变化 + `PluginContextImpl`/`PluginManager` 生命周期 + sample 参考实现 + 单测。
 - **PR-2（接口 + 前端）**：catalog 接口 + 搜索设置页分组折叠重构 + Plugins.vue schema 配置表单。PR-2 不依赖 PR-1 合并（catalog 对纯内置 provider 同样成立），但先后合并时插件 provider 自动出现在下拉中。
 

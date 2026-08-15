@@ -23,7 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * </ul>
  * Call {@link #normalize(String)} before parsing or matching.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 public final class MessageMetadataJson {
 

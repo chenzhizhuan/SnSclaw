@@ -1257,7 +1257,7 @@ git push -u origin feat/plugin-search-provider
 - [ ] **Step 2: 开 PR 到 mateaix:dev**
 
 ```bash
-gh pr create --repo mateaix/mateclaw --base dev \
+gh pr create --repo sns/SnSclaw --base dev \
   --title "feat(plugin): 插件化搜索 Provider — PluginType.SEARCH + PluginSearchProvider SPI (#477)" \
   --body "$(cat <<'EOF'
 Closes 部分 #477（PR-1：SDK + 桥接 + registry；PR-2 的 catalog 接口与设置页重构另行提交）。

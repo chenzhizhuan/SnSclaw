@@ -38,6 +38,7 @@ import vip.mate.config.ReasoningRetentionProperties;
 import vip.mate.exception.MateClawException;
 import vip.mate.llm.chatmodel.HttpTimeouts;
 import vip.mate.llm.chatmodel.OpenAiCompatibleChatModelBuilder;
+import vip.mate.llm.chatmodel.ProviderGenerateKwargs;
 import vip.mate.llm.chatmodel.ReasoningEffortResolver;
 import vip.mate.llm.model.ModelConfigEntity;
 import vip.mate.llm.model.ModelFamily;
@@ -403,7 +404,7 @@ public class AgentGraphBuilder {
         if (protocol == ModelProtocol.DASHSCOPE_NATIVE) {
             builtinSearchEnabled = dashScopeBuilder.isBuiltinSearchEnabled(runtimeModel, provider);
         } else if (OpenAiCompatibleChatModelBuilder.isKimiProvider(provider)
-                && Boolean.TRUE.equals(providerKwargs.get("enableSearch"))) {
+                && Boolean.TRUE.equals(ProviderGenerateKwargs.findOptionValue(providerKwargs, "enableSearch"))) {
             builtinSearchEnabled = true;
         }
         if (builtinSearchEnabled) {

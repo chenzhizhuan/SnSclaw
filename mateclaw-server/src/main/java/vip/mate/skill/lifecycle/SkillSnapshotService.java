@@ -44,7 +44,7 @@ import java.util.Set;
  * <p>Restore is itself snapshotted first, so a rollback applied to the wrong
  * run can be rolled forward again.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Service

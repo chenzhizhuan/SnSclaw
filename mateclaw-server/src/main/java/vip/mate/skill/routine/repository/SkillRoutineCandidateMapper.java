@@ -7,7 +7,7 @@ import vip.mate.skill.routine.model.SkillRoutineCandidateEntity;
 /**
  * Data access for recurring-request candidates.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Mapper
 public interface SkillRoutineCandidateMapper extends BaseMapper<SkillRoutineCandidateEntity> {

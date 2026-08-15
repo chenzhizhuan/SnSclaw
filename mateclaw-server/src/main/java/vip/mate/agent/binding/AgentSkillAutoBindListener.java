@@ -47,7 +47,7 @@ import java.util.Set;
  *       explicit human decision from a background code path.</li>
  * </ul>
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Slf4j
 @Component

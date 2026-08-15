@@ -288,7 +288,7 @@ Configure `http_proxy` in the channel config:
 cp ./data/snsclaw.mv.db ./backup/snsclaw-$(date +%Y%m%d).mv.db
 ```
 
-**MySQL (production):**
+**MySQL (supported self-managed deployment):**
 
 ```bash
 mysqldump -u root -p snsclaw > snsclaw-backup-$(date +%Y%m%d).sql
@@ -297,7 +297,7 @@ mysqldump -u root -p snsclaw > snsclaw-backup-$(date +%Y%m%d).sql
 **Docker:**
 
 ```bash
-docker exec snsclaw-mysql mysqldump -u root -p${MYSQL_ROOT_PASSWORD} snsclaw > backup.sql
+docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup.sql
 ```
 
 **Desktop** data lives in the per-user directory:
@@ -332,19 +332,19 @@ Try launching from a terminal. On Windows, right-click → Unblock. On macOS, al
 
 ```bash
 docker compose logs snsclaw-server
-docker compose logs snsclaw-mysql
+docker compose logs postgres
 ```
 
 Common:
 
-- MySQL not ready yet
-- Port conflicts (18080, 3306)
-- Missing `.env` — copy from `.env.example`
+- PostgreSQL not ready yet
+- Public port 18080 is already in use
+- Missing `.env`, `DB_PASSWORD`, or `DB_ADMIN_PASSWORD`
 
 ### How do I access the database in Docker?
 
 ```bash
-docker exec -it snsclaw-mysql mysql -u root -p snsclaw
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 ```
 
 ---
@@ -397,7 +397,7 @@ curl -N -X POST 'http://localhost:18088/api/v1/chat/stream' \
 
 ```bash
 cd snsclaw-ui
-pnpm build
+npm run build
 ls ../snsclaw-server/src/main/resources/static/
 # Should contain index.html and asset files
 ```

@@ -159,7 +159,7 @@ class ToolExecutionExecutorNameNormalizationTest {
 
         var result = executor.execute(List.of(new AssistantMessage.ToolCall(
                         "bridge_1", "function", "tool_call",
-                        "{\"toolName\":\"web_search\",\"arguments\":{\"query\":\"MateClaw\"}}")),
+                        "{\"toolName\":\"web_search\",\"arguments\":{\"query\":\"SnSclaw\"}}")),
                 "conv", "agent", false, "user", null);
 
         assertEquals("web_search", guardedName.get(),
@@ -168,7 +168,7 @@ class ToolExecutionExecutorNameNormalizationTest {
                 "provider-facing response must stay paired with the bridge function name");
         assertEquals("ok:web_search", result.responses().get(0).responseData());
         var contextCaptor = org.mockito.ArgumentCaptor.forClass(ToolContext.class);
-        verify(target).call(eq("{\"query\":\"MateClaw\"}"), contextCaptor.capture());
+        verify(target).call(eq("{\"query\":\"SnSclaw\"}"), contextCaptor.capture());
         Object scoped = contextCaptor.getValue().getContext()
                 .get(ProgressiveToolBridgeTool.SCOPED_TOOL_CALLBACKS_CONTEXT_KEY);
         assertInstanceOf(java.util.Map.class, scoped);

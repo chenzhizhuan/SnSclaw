@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
  * used to tell one routine from another. This reduces exposure; it is not a
  * guarantee, and it is not a substitute for keeping secrets out of chat.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 public final class SecretRedactor {
 

@@ -216,7 +216,8 @@ class TeamDispatchServiceTest {
                 eq(MEMBER_A),
                 eq("system"),
                 eq(WORKSPACE_ID),
-                eq("lead-conv"));
+                eq("lead-conv"),
+                eq("team_worker"));
     }
 
     @Test

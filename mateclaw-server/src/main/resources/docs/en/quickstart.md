@@ -78,7 +78,7 @@ First run should Just Work. If it didn't:
 ## Other ways to run SnSclaw
 
 - **Docker** — `cp .env.example .env`, set the passwords, then `docker compose up -d --build`. Full prerequisites, Maven mirror selection (China vs US), browser-tool self-check, and upgrade flow live in [Docker Deployment](./docker-deploy).
-- **From source** — `mvn spring-boot:run` in `snsclaw-server/` and `pnpm dev` in `snsclaw-ui/`. See [Contributing](./contributing).
+- **From source** — `mvn spring-boot:run` in `snsclaw-server/` and `npm run dev` in `snsclaw-ui/`. See [Contributing](./contributing).
 - **Desktop internals** — packaging, code signing, auto-update. See [Desktop App](./desktop).
 
 ---

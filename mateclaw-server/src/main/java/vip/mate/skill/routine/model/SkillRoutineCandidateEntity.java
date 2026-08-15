@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
  * can distinguish "the user asked this once" from "the user asks this every
  * Monday". This row carries that count.
  *
- * @author MateClaw Team
+ * @author SnSclaw
  */
 @Data
 @TableName("mate_skill_routine_candidate")
