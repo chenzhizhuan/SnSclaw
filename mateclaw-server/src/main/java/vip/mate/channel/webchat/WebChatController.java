@@ -235,10 +235,13 @@ public class WebChatController {
                 // 保存用户消息（含访客本轮引用的附件）。附件元数据一律服务端按 fileId 回查，
                 // 不信客户端传入；path 用于 Agent 侧工具读取，对外消息视图会被剥离。
                 List<MessageContentPart> userParts = buildUserParts(conversationId, message, request.getAttachmentIds());
+                Long originMessageId = request.getInternalOriginMessageId();
                 if (!request.isInternalSkipUserPersist()) {
                     // Regenerate reuses the already-persisted seed user row —
                     // inserting again would duplicate it.
-                    conversationService.saveMessage(conversationId, "user", message, userParts);
+                    var savedUser = conversationService
+                            .saveMessage(conversationId, "user", message, userParts);
+                    originMessageId = savedUser == null ? null : savedUser.getId();
                 }
 
                 // 初始化 SSE 流跟踪
@@ -271,7 +274,8 @@ public class WebChatController {
                 // (publish) paths below.
                 vip.mate.agent.context.ChatOrigin webchatOrigin =
                         vip.mate.agent.context.ChatOrigin.web(conversationId, visitorId, webWsId, null)
-                                .withSender(null, "api", null);
+                                .withSender(null, "api", null)
+                                .withOriginMessageId(originMessageId);
                 String webchatOwnerKey = memoryOwnerResolver.resolve(webchatOrigin);
 
                 reactor.core.Disposable disposable = agentService.chatStructuredStream(resolvedAgentId, message, conversationId, visitorId, null, webchatOrigin)
@@ -1572,6 +1576,7 @@ public class WebChatController {
         req.setVisitorId(visitorId);
         req.setSessionId(sid);
         req.setInternalSkipUserPersist(true);
+        req.setInternalOriginMessageId(seed.seedMessageId());
         return chatStream(apiKey, req);
     }
 
@@ -2099,6 +2104,7 @@ public class WebChatController {
          */
         @JsonIgnore
         private boolean internalSkipUserPersist;
+        private Long internalOriginMessageId;
     }
 
     /** Compact view of one of a visitor's conversation threads. */

@@ -697,6 +697,20 @@ The worst part of long tasks in IM is the "message dropped into a void" feeling.
 
 ---
 
+## Proactive push and targeted Cron delivery (2.1.0+)
+
+An employee can proactively notify an IM conversation when the task explicitly asks for it:
+
+1. call `list_channel_sessions` to list recent pushable conversations in the current workspace;
+2. select the exact returned `conversation_id`;
+3. call `send_channel_message` for a one-way text/Markdown notification.
+
+The adapters that currently implement proactive send are QQ, Telegram, WeChat, Slack, Discord, Feishu, DingTalk, and WeCom. The bot must first have received at least one message in that conversation so a verified platform delivery handle exists, and the channel must be running. Guessed ids and cross-workspace targets are rejected; messages are capped at 4096 characters. Ordinary replies still use the current conversation.
+
+Cron edits now retain both delivery channel and target, so changing a schedule or prompt cannot silently lose the destination. This fits scheduled reports, alerts, and asynchronous completion notifications.
+
+---
+
 ## Next
 
 - [Chat & Messaging](./chat) — message flow, segments, streaming events

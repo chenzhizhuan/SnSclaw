@@ -728,6 +728,7 @@ import type { Agent } from '@/types/index'
 import SkillIcon from '@/components/common/SkillIcon.vue'
 import SkillIconPicker from '@/components/common/SkillIconPicker.vue'
 import LivePanel from '@/components/live/LivePanel.vue'
+import { parseAgentsLiveRoute, type AgentsView } from '@/composables/agentsLiveRouteState'
 import PlanBoard from '@/components/agents/PlanBoard.vue'
 import AgentGuideEditor from './Agents/components/AgentGuideEditor.vue'
 import {
@@ -1159,7 +1160,7 @@ const filteredAgents = computed(() => {
 // Roster ↔ Live view switch — admin only. The running/stuck counts feed the
 // segmented control's pulse + badge so you know whether Live is worth a look.
 const isAdminRole = computed(() => (localStorage.getItem('role') || 'user') === 'admin')
-type AgentView = 'roster' | 'live' | 'plans'
+type AgentView = AgentsView
 const view = ref<AgentView>(
   isAdminRole.value && (route.query.view === 'live' || route.query.view === 'plans')
     ? (route.query.view as AgentView)
@@ -1173,6 +1174,13 @@ function setView(next: AgentView) {
   view.value = next
   router.replace({ query: next === 'roster' ? {} : { view: next } })
 }
+
+watch(
+  () => [route.query.view, route.query.teamRunId, route.query.taskId] as const,
+  () => {
+    view.value = isAdminRole.value ? parseAgentsLiveRoute(route.query).view : 'roster'
+  },
+)
 
 async function refreshLiveCounts() {
   if (!isAdminRole.value) return

@@ -191,7 +191,7 @@
           -->
           <UserMessageContent v-if="role === 'user'" :content="displayContent" />
           <template v-else>
-            <div class="markdown-body" v-html="renderedContent"></div>
+            <div class="markdown-body compact-markdown" v-html="renderedContent"></div>
             <TypingCursor v-if="showCursor" :typing="isGenerating" />
           </template>
         </div>
@@ -219,7 +219,7 @@
           <p class="error-card__action">{{ errorAction }}</p>
           <div class="error-card__footer">
             <span v-if="errorCode" class="error-card__code">{{ errorCode }}</span>
-            <button v-if="errorRetryable" class="error-card__retry" type="button" @click="$emit('regenerate')">
+            <button v-if="errorRetryable && !readonly" class="error-card__retry" type="button" @click="$emit('regenerate')">
               <el-icon><RefreshRight /></el-icon>
               {{ $t('chat.retry') }}
             </button>
@@ -242,7 +242,7 @@
           </div>
           <p class="incomplete-card__description">{{ $t('chat.incompleteDescription') }}</p>
           <div class="incomplete-card__footer">
-            <button class="incomplete-card__retry" type="button" @click="$emit('regenerate')">
+            <button v-if="!readonly" class="incomplete-card__retry" type="button" @click="$emit('regenerate')">
               <el-icon><RefreshRight /></el-icon>
               {{ $t('chat.incompleteRetry') }}
             </button>
@@ -423,7 +423,7 @@
           </button>
           <!-- 重新生成（仅会话末尾的 assistant 回答；服务端只支持对末条回答重生成） -->
           <button
-            v-if="role === 'assistant' && !isGenerating && isLast"
+            v-if="role === 'assistant' && !isGenerating && isLast && !readonly"
             class="action-btn"
             type="button"
             :title="$t('chat.regenerate')"
@@ -434,7 +434,7 @@
           <!-- 回退到此处：删除本条及之后的所有消息。仅已持久化的消息可回退
                （客户端临时 id 带下划线，持久化雪花 id 是纯数字） -->
           <button
-            v-if="!isGenerating && canRewind"
+            v-if="!isGenerating && canRewind && !readonly"
             class="action-btn"
             type="button"
             :title="$t('chat.rewindHere')"
@@ -621,6 +621,7 @@ interface Props {
   assistantIcon?: string
   userIcon?: string
   showCursor?: boolean
+  readonly?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -628,6 +629,7 @@ const props = withDefaults(defineProps<Props>(), {
   assistantIcon: '🤖',
   userIcon: 'U',
   showCursor: false,
+  readonly: false,
 })
 
 const emit = defineEmits<{
@@ -1393,6 +1395,7 @@ const feedbackInfo = computed<FeedbackInfo | undefined>(() => {
 })
 
 function handleFeedbackAction(action: string) {
+  if (props.readonly && (action === 'retry' || action === 'regenerate')) return
   if (action === 'retry' || action === 'regenerate') {
     emit('regenerate')
     return
@@ -1778,6 +1781,58 @@ watch(isGenerating, (generating) => {
   border-radius: 0;
   padding: 4px 0;
   color: var(--mc-assistant-bubble-color, #1e293b);
+}
+
+/* Keep long delegated results readable without letting one response become a
+   full-width wall of text. The message column remains responsive on narrow
+   screens, while desktop reading stays close to a comfortable line length. */
+.assistant-bubble .markdown-body {
+  max-width: 980px;
+  overflow-wrap: anywhere;
+}
+.assistant-bubble .markdown-body :deep(p) {
+  max-width: 920px;
+  margin: 0 0 6px !important;
+  line-height: 1.5;
+}
+.assistant-bubble .markdown-body :deep(p:empty) {
+  display: none;
+}
+.assistant-bubble .markdown-body :deep(p:has(br:only-child)) {
+  display: none;
+}
+.assistant-bubble .markdown-body :deep(> *) {
+  margin-block-start: 0;
+  margin-block-end: 6px;
+}
+.assistant-bubble .markdown-body :deep(> *:last-child) {
+  margin-block-end: 0;
+}
+.assistant-bubble .markdown-body :deep(h1),
+.assistant-bubble .markdown-body :deep(h2),
+.assistant-bubble .markdown-body :deep(h3) {
+  margin-top: 12px !important;
+  margin-bottom: 6px !important;
+  line-height: 1.35;
+}
+.assistant-bubble .markdown-body :deep(h2:first-child),
+.assistant-bubble .markdown-body :deep(h3:first-child) {
+  margin-top: 4px;
+}
+.assistant-bubble .markdown-body :deep(ul),
+.assistant-bubble .markdown-body :deep(ol) {
+  margin: 6px 0 !important;
+}
+.assistant-bubble .markdown-body :deep(li) {
+  margin: 2px 0;
+  line-height: 1.5;
+}
+.assistant-bubble .markdown-body :deep(li > p) {
+  margin: 0 !important;
+}
+.assistant-bubble .markdown-body :deep(hr) {
+  max-width: 920px;
+  margin: 12px 0;
 }
 
 .user-bubble {

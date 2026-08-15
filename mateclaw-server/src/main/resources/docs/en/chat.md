@@ -386,6 +386,25 @@ curl -X DELETE http://localhost:18088/api/v1/conversations/conv-abc123 \
 
 ---
 
+## Thinking visibility and linear trajectories (2.1.0+)
+
+2.1.0 turns thinking from one ambiguous block into segments ordered by execution:
+
+- inline `<think>` content is extracted live and kept separate from the final answer;
+- each ReAct iteration stays where it occurred, so tool calls and observations do not drift into the next round;
+- wall-clock start/end times produce real duration and phase feedback;
+- Workspace admins use “Show thinking” to control rendering and “Show all iterations” to switch between every round and only the answer-producing round;
+- `mate.agent.reasoning.retention=all|terminal` controls server-side persistence;
+- a conversation owner can request `GET /api/v1/conversations/{conversationId}/trajectory` for a plain-text export of user input, reasoning, tool calls, observations, and the final answer in execution order. Durations come from segment bounds and appear in the UI; the current text export does not include them.
+
+Provisional narration before a tool call becomes `superseded` when real output arrives. The current chat UI renders it inline, while trajectory output preserves it with `content superseded="true"`. Intermediate Team Run announcements fold into the run card instead of becoming repeated final replies.
+
+### Batch conversation deletion
+
+Sessions can batch-delete up to 200 selected conversations. The server deduplicates ids, checks ownership per item, and deletes only conversations the current user may operate. `team_worker` conversations stay out of the normal sidebar, so they do not appear in sidebar batch selection.
+
+---
+
 ## Next
 
 - [Agents](./agents) — what's actually doing the thinking

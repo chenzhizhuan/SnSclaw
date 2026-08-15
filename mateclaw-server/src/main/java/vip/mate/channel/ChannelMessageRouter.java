@@ -827,7 +827,8 @@ public class ChannelMessageRouter {
             // through unchanged (chatId is null).
             List<MessageContentPart> parts = message.getContentParts();
             String attributedContent = applyGroupTag(message, message.getContent());
-            conversationService.saveMessage(conversationId, "user", attributedContent, parts);
+            MessageEntity savedUser = conversationService.saveMessage(
+                    conversationId, "user", attributedContent, parts);
 
             // 构建 prompt（语音输入时注入场景提示词）
             String promptText = buildPromptFromParts(message.getContent(), parts, message.getInputMode());
@@ -853,7 +854,8 @@ public class ChannelMessageRouter {
                 // so cron jobs created during this conversation inherit the
                 // channel binding (Issue #25 root path).
                 ChatOrigin chatOrigin = chatOriginFactory.from(
-                        channelEntity, message, conversationId, /* workspaceBasePath */ null);
+                        channelEntity, message, conversationId, /* workspaceBasePath */ null)
+                        .withOriginMessageId(savedUser == null ? null : savedUser.getId());
 
                 if (adapter instanceof StreamingChannelAdapter streamingAdapter) {
                     savedAssistantId = processWithStreaming(message, streamingAdapter, conversationId, agentId, promptText, channelEntity, chatOrigin);
@@ -1596,14 +1598,16 @@ public class ChannelMessageRouter {
         // Mirror processMessage's group attribution for the streaming path
         // (Web channel today; future streaming IM channels inherit it).
         String attributedContent = applyGroupTag(message, message.getContent());
-        conversationService.saveMessage(conversationId, "user", attributedContent, parts);
+        MessageEntity savedUser = conversationService.saveMessage(
+                conversationId, "user", attributedContent, parts);
 
         String promptText = buildPromptFromParts(message.getContent(), parts, message.getInputMode());
         promptText = applyGroupTag(message, promptText);
         // RFC-063r §2.5: forward ChatOrigin so tools created during this
         // streaming conversation inherit channel binding.
         ChatOrigin origin = chatOriginFactory.from(
-                channelEntity, message, conversationId, /* workspaceBasePath */ null);
+                channelEntity, message, conversationId, /* workspaceBasePath */ null)
+                .withOriginMessageId(savedUser == null ? null : savedUser.getId());
         return agentService.chatStream(agentId, promptText, conversationId, origin);
     }
 

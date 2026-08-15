@@ -4,7 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.annotation.Transactional;
 import vip.mate.agent.model.AgentEntity;
 import vip.mate.agent.repository.AgentMapper;
 import vip.mate.planning.model.PlanEntity;
@@ -13,6 +15,9 @@ import vip.mate.planning.service.PlanningService;
 import vip.mate.team.event.TeamTasksDelegatedEvent;
 import vip.mate.team.model.AgentTeamEntity;
 import vip.mate.team.model.AgentTeamMemberEntity;
+import vip.mate.team.model.TeamRunCreateCommand;
+import vip.mate.team.model.TeamRunEntity;
+import vip.mate.team.model.TeamRunStatus;
 import vip.mate.team.model.TeamRole;
 import vip.mate.team.model.TeamTaskCreateCommand;
 import vip.mate.team.model.TeamTaskEntity;
@@ -40,10 +45,13 @@ class TeamPlanBridgeTest {
     private static final Long ANALYST_ID = 3L;
     private static final Long PLAN_ID = 77L;
     private static final String CONV = "lead-conv";
+    private static final Long WORKSPACE_ID = 30L;
+    private static final Long RUN_ID = 20L;
 
     private TeamService teamService;
     private TeamTaskService taskService;
     private PlanningService planningService;
+    private TeamRunService runService;
     private AgentMapper agentMapper;
     private ApplicationEventPublisher eventPublisher;
     private TeamPlanBridge bridge;
@@ -54,15 +62,17 @@ class TeamPlanBridgeTest {
         teamService = mock(TeamService.class);
         taskService = mock(TeamTaskService.class);
         planningService = mock(PlanningService.class);
+        runService = mock(TeamRunService.class);
         agentMapper = mock(AgentMapper.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
-        bridge = new TeamPlanBridge(teamService, taskService, planningService,
+        bridge = new TeamPlanBridge(teamService, taskService, runService, planningService,
                 agentMapper, eventPublisher);
 
         team = new AgentTeamEntity();
         team.setId(TEAM_ID);
         team.setName("编队");
         team.setLeadAgentId(LEAD_ID);
+        team.setWorkspaceId(WORKSPACE_ID);
 
         when(teamService.listMembers(TEAM_ID)).thenReturn(List.of(
                 member(LEAD_ID, TeamRole.LEAD),
@@ -91,6 +101,7 @@ class TeamPlanBridgeTest {
         TeamTaskEntity t = new TeamTaskEntity();
         t.setId(id);
         t.setTeamId(TEAM_ID);
+        t.setRunId(RUN_ID);
         t.setTaskNumber(number);
         t.setSubject("task " + number);
         t.setStatus(status);
@@ -116,6 +127,13 @@ class TeamPlanBridgeTest {
     @Test
     @DisplayName("delegatePlan maps deps to blockedBy, stamps plan linkage, parks and nudges dispatch")
     void delegatePlanCreatesLinkedTasks() {
+        TeamRunEntity run = new TeamRunEntity();
+        run.setId(RUN_ID);
+        run.setStatus(TeamRunStatus.PLANNING);
+        when(runService.startRun(any())).thenReturn(run);
+        when(taskService.listTasksByRun(RUN_ID)).thenReturn(List.of());
+        when(runService.sealRunWithResult(RUN_ID, WORKSPACE_ID))
+                .thenReturn(new TeamRunService.SealResult(run, true));
         when(taskService.createTask(any())).thenAnswer(inv -> {
             TeamTaskCreateCommand cmd = inv.getArgument(0);
             TeamTaskEntity created = new TeamTaskEntity();
@@ -143,12 +161,79 @@ class TeamPlanBridgeTest {
         assertTrue(second.getMetadata().contains("\"stepIndex\":1"));
         assertEquals(CONV, first.getLeadConversationId());
         assertEquals(LEAD_ID, first.getCreatedByAgentId());
+        assertEquals(RUN_ID, first.getRunId());
+        assertEquals(RUN_ID, second.getRunId());
         assertTrue(first.getDescription().contains("整体请求"));
 
-        verify(planningService).markPlanDelegated(PLAN_ID);
-        verify(eventPublisher).publishEvent(new TeamTasksDelegatedEvent(TEAM_ID));
+        ArgumentCaptor<TeamRunCreateCommand> runCaptor = ArgumentCaptor.forClass(TeamRunCreateCommand.class);
+        verify(runService).startRun(runCaptor.capture());
+        assertEquals(WORKSPACE_ID, runCaptor.getValue().getWorkspaceId());
+        assertEquals(-PLAN_ID, runCaptor.getValue().getOriginMessageId());
+        assertTrue(runCaptor.getValue().getMetadata().contains("\"planId\":\"" + PLAN_ID + "\""));
+
+        InOrder order = inOrder(runService, taskService, planningService, eventPublisher);
+        order.verify(runService).startRun(any());
+        order.verify(taskService, times(2)).createTask(any());
+        order.verify(runService).sealRunWithResult(RUN_ID, WORKSPACE_ID);
+        order.verify(planningService).markPlanDelegated(PLAN_ID);
+        order.verify(eventPublisher).publishEvent(new TeamTasksDelegatedEvent(TEAM_ID));
         assertTrue(announcement.contains("并行"));
         assertTrue(announcement.contains("前置"));
+    }
+
+    @Test
+    @DisplayName("a repeated delegation for a sealed run returns existing tasks without side effects")
+    void sealedRunDelegationIsIdempotent() {
+        TeamRunEntity run = new TeamRunEntity();
+        run.setId(RUN_ID);
+        run.setStatus(TeamRunStatus.RUNNING);
+        List<TeamTaskEntity> existing = List.of(
+                task(101L, 1, 0, TeamTaskStatus.PENDING),
+                task(102L, 2, 1, TeamTaskStatus.PENDING));
+        when(runService.startRun(any())).thenReturn(run);
+        when(taskService.listTasksByRun(RUN_ID)).thenReturn(existing);
+
+        String announcement = bridge.delegatePlan(team, PLAN_ID, "整体请求",
+                List.of("第一步", "第二步"), List.of(List.of(), List.of(0)),
+                List.of(WRITER_ID, ANALYST_ID), CONV);
+
+        assertTrue(announcement.contains("task 1"));
+        verify(taskService, never()).createTask(any());
+        verify(runService, never()).sealRunWithResult(any(), any());
+        verify(planningService, never()).markPlanDelegated(any());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    @DisplayName("a retry with existing planning tasks seals once without recreating tasks")
+    void existingPlanningTasksAreSealedWithoutDuplication() {
+        TeamRunEntity run = new TeamRunEntity();
+        run.setId(RUN_ID);
+        run.setStatus(TeamRunStatus.PLANNING);
+        List<TeamTaskEntity> existing = List.of(
+                task(101L, 1, 0, TeamTaskStatus.PENDING),
+                task(102L, 2, 1, TeamTaskStatus.PENDING));
+        when(runService.startRun(any())).thenReturn(run);
+        when(taskService.listTasksByRun(RUN_ID)).thenReturn(existing);
+        when(runService.sealRunWithResult(RUN_ID, WORKSPACE_ID))
+                .thenReturn(new TeamRunService.SealResult(run, true));
+
+        bridge.delegatePlan(team, PLAN_ID, "整体请求",
+                List.of("第一步", "第二步"), List.of(List.of(), List.of(0)),
+                List.of(WRITER_ID, ANALYST_ID), CONV);
+
+        verify(taskService, never()).createTask(any());
+        verify(runService).sealRunWithResult(RUN_ID, WORKSPACE_ID);
+        verify(planningService).markPlanDelegated(PLAN_ID);
+        verify(eventPublisher).publishEvent(new TeamTasksDelegatedEvent(TEAM_ID));
+    }
+
+    @Test
+    @DisplayName("delegatePlan is transactional")
+    void delegatePlanIsTransactional() throws NoSuchMethodException {
+        assertNotNull(TeamPlanBridge.class.getMethod("delegatePlan", AgentTeamEntity.class,
+                Long.class, String.class, List.class, List.class, List.class, String.class)
+                .getAnnotation(Transactional.class));
     }
 
     // ==================== resume gate ====================
@@ -214,6 +299,7 @@ class TeamPlanBridgeTest {
         assertTrue(settled.completedResults().get(1).contains("步骤2未完成"));
         verify(planningService).updateSubPlanResult(PLAN_ID, 0, "卖点已产出");
         verify(planningService).updateSubPlanFailure(eq(PLAN_ID), eq(1), anyString());
+        verify(runService).markFinalized(eq(RUN_ID), eq(WORKSPACE_ID), contains("执行摘要"));
     }
 
     @Test

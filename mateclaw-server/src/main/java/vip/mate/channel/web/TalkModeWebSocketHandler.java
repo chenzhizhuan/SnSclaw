@@ -146,13 +146,15 @@ public class TalkModeWebSocketHandler extends AbstractWebSocketHandler {
             Long talkWsId = talkAgent != null ? talkAgent.getWorkspaceId() : 1L;
             conversationService.getOrCreateConversation(
                     talkSession.conversationId, talkSession.agentId, talkSession.username, talkWsId);
-            conversationService.saveMessage(talkSession.conversationId, "user", transcript, List.of());
+            var savedUser = conversationService.saveMessage(
+                    talkSession.conversationId, "user", transcript, List.of());
 
             // 5. Agent 对话（同步）。Carry the voice user's identity so per-owner
             // memory recall (read) and the post-turn memory write (below) agree
             // on the same owner key.
             vip.mate.agent.context.ChatOrigin talkOrigin = vip.mate.agent.context.ChatOrigin.web(
-                    talkSession.conversationId, talkSession.username, talkWsId, null);
+                    talkSession.conversationId, talkSession.username, talkWsId, null)
+                    .withOriginMessageId(savedUser == null ? null : savedUser.getId());
             AgentService.ChatResult chatResult = agentService.chatWithUsage(
                     talkSession.agentId, transcript, talkSession.conversationId, talkOrigin);
             String reply = chatResult.content();

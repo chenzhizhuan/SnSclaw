@@ -32,6 +32,7 @@ import vip.mate.llm.service.ModelProviderService;
 
 import java.net.http.HttpClient;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -159,11 +160,11 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
 
         // built-in search: model-level field wins, provider generateKwargs as fallback
         boolean searchEnabled = Boolean.TRUE.equals(runtimeModel.getEnableSearch())
-                || Boolean.TRUE.equals(kwargs.get("enableSearch"));
+                || Boolean.TRUE.equals(ProviderGenerateKwargs.findOptionValue(kwargs, "enableSearch"));
         if (searchEnabled) {
             String strategy = runtimeModel.getSearchStrategy();
             if (!StringUtils.hasText(strategy)) {
-                strategy = (String) kwargs.get("searchStrategy");
+                strategy = (String) ProviderGenerateKwargs.findOptionValue(kwargs, "searchStrategy");
             }
             OpenAiApi.ChatCompletionRequest.WebSearchOptions.SearchContextSize contextSize;
             try {
@@ -183,6 +184,19 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
         // Leaving it null keeps Spring AI from serializing the field; each node controls it
         // when tools are present.
         options.setStreamUsage(true);
+
+        // Forward unrecognized top-level generateKwargs keys as-is via extraBody (e.g. vLLM's
+        // chat_template_kwargs). Get-then-merge rather than overwrite, in case a future addition
+        // to buildOpenAiOptions ever sets extraBody above this point.
+        Map<String, Object> passthroughExtraBody = ProviderGenerateKwargs.collectPassthroughExtraBody(kwargs);
+        if (!passthroughExtraBody.isEmpty()) {
+            Map<String, Object> existingExtraBody = options.getExtraBody();
+            Map<String, Object> mergedExtraBody = (existingExtraBody == null)
+                    ? new LinkedHashMap<>()
+                    : new LinkedHashMap<>(existingExtraBody);
+            mergedExtraBody.putAll(passthroughExtraBody);
+            options.setExtraBody(mergedExtraBody);
+        }
         return options;
     }
 
@@ -263,7 +277,7 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
         }
 
         boolean kimiSearchEnabled = isKimiProvider(provider)
-                && Boolean.TRUE.equals(kwargs.get("enableSearch"));
+                && Boolean.TRUE.equals(ProviderGenerateKwargs.findOptionValue(kwargs, "enableSearch"));
 
         ApiKey apiKeyImpl = (keyRequired && StringUtils.hasText(apiKey))
                 ? new SimpleApiKey(apiKey.trim())
@@ -396,7 +410,7 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
     private static final Pattern OPENAI_BASE_URL_VERSION_SUFFIX = Pattern.compile(".*/v\\d+$");
 
     private String resolveOpenAiCompletionsPath(String baseUrl, Map<String, Object> kwargs) {
-        Object raw = kwargs.get("completionsPath");
+        Object raw = ProviderGenerateKwargs.findOptionValue(kwargs, "completionsPath");
         boolean explicit = raw instanceof String value && StringUtils.hasText(value);
         String path = explicit ? ((String) raw).trim() : "/v1/chat/completions";
         if (!path.startsWith("/")) {

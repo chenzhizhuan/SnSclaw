@@ -102,13 +102,14 @@ public class CronJobRunner {
         String conversationId = conversationResolver.resolve(job);
 
         // T1 — short tx
-        CronJobRunEntity run;
+        CronJobLifecycleService.StartResult started;
         try {
-            run = lifecycle.startRun(job, userMessage, triggerType, conversationId);
+            started = lifecycle.startRun(job, userMessage, triggerType, conversationId);
         } catch (Exception e) {
             log.error("[CronRunner] T1 startRun failed for job {}: {}", job.getId(), e.getMessage(), e);
             return;
         }
+        CronJobRunEntity run = started.run();
 
         // task_type='reminder' — pure notification, no LLM call. The user
         // (or the create_reminder tool on their behalf) supplied the exact
@@ -141,7 +142,8 @@ public class CronJobRunner {
         AgentService.ChatResult chatResult;
         AssistantMessage result;
         try {
-            ChatOrigin origin = originFactory.from(job, conversationId);
+            ChatOrigin origin = originFactory.from(
+                    job, conversationId, started.originMessageId());
             chatResult = runAgent(job, userMessage, origin, conversationId);
             result = new AssistantMessage(chatResult.content());
         } catch (Exception e) {

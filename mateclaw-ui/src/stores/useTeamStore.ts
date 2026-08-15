@@ -33,6 +33,8 @@ export const useTeamStore = defineStore('team', () => {
   const closedTasks = ref<TeamTaskVO[]>([])
   /** True per-status totals from the stats endpoint. */
   const taskStats = ref<Record<string, number>>({})
+  let teamGeneration = 0
+  let boardRequestSequence = 0
 
   /** Merged view consumed by the board's status-filtered columns. */
   const tasks = computed<TeamTaskVO[]>(() => [
@@ -65,21 +67,28 @@ export const useTeamStore = defineStore('team', () => {
   }
 
   async function openTeam(teamId: string) {
+    const generation = ++teamGeneration
     const res: any = await teamApi.get(teamId)
+    if (generation !== teamGeneration) return
     currentTeam.value = res.data?.team || null
     members.value = res.data?.members || []
+    activeTasks.value = []
     completedTasks.value = []
     closedTasks.value = []
-    await fetchTasks(teamId)
+    taskStats.value = {}
+    await fetchTasks(teamId, generation)
   }
 
   function closeTeam() {
+    teamGeneration++
+    boardRequestSequence++
     currentTeam.value = null
     members.value = []
     activeTasks.value = []
     completedTasks.value = []
     closedTasks.value = []
     taskStats.value = {}
+    boardLoading.value = false
   }
 
   /**
@@ -87,7 +96,8 @@ export const useTeamStore = defineStore('team', () => {
    * loaded size, so a poll/event refresh never collapses a column the user
    * has extended with load-more.
    */
-  async function fetchTasks(teamId: string) {
+  async function fetchTasks(teamId: string, expectedGeneration = teamGeneration) {
+    const requestSequence = ++boardRequestSequence
     boardLoading.value = true
     try {
       const completedLimit = Math.max(TERMINAL_PAGE, completedTasks.value.length)
@@ -98,30 +108,41 @@ export const useTeamStore = defineStore('team', () => {
         teamApi.listTasks(teamId, CLOSED_STATUSES, { limit: closedLimit, offset: 0 }),
         teamApi.taskStats(teamId),
       ])) as any[]
+      if (expectedGeneration !== teamGeneration
+        || requestSequence !== boardRequestSequence
+        || String(currentTeam.value?.team.id ?? '') !== teamId) return
       activeTasks.value = active.data || []
       completedTasks.value = completed.data || []
       closedTasks.value = closed.data || []
       taskStats.value = stats.data || {}
     } catch (e) {
-      console.error('Failed to fetch team tasks', e)
+      if (expectedGeneration === teamGeneration && requestSequence === boardRequestSequence) {
+        console.error('Failed to fetch team tasks', e)
+      }
     } finally {
-      boardLoading.value = false
+      if (expectedGeneration === teamGeneration && requestSequence === boardRequestSequence) {
+        boardLoading.value = false
+      }
     }
   }
 
   async function loadMoreCompleted(teamId: string) {
+    const generation = teamGeneration
     const res: any = await teamApi.listTasks(teamId, COMPLETED_STATUSES, {
       limit: TERMINAL_PAGE,
       offset: completedTasks.value.length,
     })
+    if (generation !== teamGeneration || String(currentTeam.value?.team.id ?? '') !== teamId) return
     completedTasks.value = [...completedTasks.value, ...(res.data || [])]
   }
 
   async function loadMoreClosed(teamId: string) {
+    const generation = teamGeneration
     const res: any = await teamApi.listTasks(teamId, CLOSED_STATUSES, {
       limit: TERMINAL_PAGE,
       offset: closedTasks.value.length,
     })
+    if (generation !== teamGeneration || String(currentTeam.value?.team.id ?? '') !== teamId) return
     closedTasks.value = [...closedTasks.value, ...(res.data || [])]
   }
 
