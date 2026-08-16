@@ -24,7 +24,7 @@ describe('teamRunApi', () => {
       assigneeAgentId: '2',
     })
 
-    expect(get).toHaveBeenNthCalledWith(1, `/team-runs/${runId}`)
+    expect(get).toHaveBeenNthCalledWith(1, `/team-runs/${runId}`, { timeout: 15_000 })
     expect(get).toHaveBeenNthCalledWith(2, `/teams/${teamId}/runs`)
     expect(get).toHaveBeenNthCalledWith(
       3,
@@ -48,11 +48,12 @@ describe('teamRunApi', () => {
 
     expect(get).toHaveBeenNthCalledWith(1, `/teams/${teamId}/runs/page`, {
       params: { activeOnly: true, cursor: 'team-cursor', limit: 17 },
+      timeout: 15_000,
     })
     expect(get).toHaveBeenNthCalledWith(
       2,
       `/conversations/${encodeURIComponent(conversationId)}/team-runs/page`,
-      { params: { cursor: 'conversation-cursor', limit: 19 } },
+      { params: { cursor: 'conversation-cursor', limit: 19 }, timeout: 15_000 },
     )
   })
 

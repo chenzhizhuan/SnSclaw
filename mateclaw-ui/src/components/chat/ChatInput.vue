@@ -204,11 +204,13 @@
           type="button"
           class="action-btn send-btn"
           :class="sendBtnClass"
-          :disabled="!canSend && !loading"
+          :disabled="props.streamPhase === 'interrupting' || (!canSend && !loading)"
+          :title="props.streamPhase === 'interrupting' ? t('chat.streamInterrupting') : undefined"
           @click="handleSubmit"
         >
           <!-- 有输入时始终显示发送图标（运行中发送 = interrupt） -->
-          <el-icon v-if="canSend"><Promotion /></el-icon>
+          <el-icon v-if="props.streamPhase === 'interrupting'" class="stop-spinner"><Loading /></el-icon>
+          <el-icon v-else-if="canSend"><Promotion /></el-icon>
           <!-- 运行中无输入：停止图标 -->
           <el-icon v-else-if="loading"><CloseBold /></el-icon>
           <!-- 空闲无输入 -->
@@ -241,7 +243,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowDown, CloseBold, MagicStick, Microphone, Paperclip, Promotion, Select, Timer, WarningFilled } from '@element-plus/icons-vue'
+import { ArrowDown, CloseBold, Loading, MagicStick, Microphone, Paperclip, Promotion, Select, Timer, WarningFilled } from '@element-plus/icons-vue'
 import { useToolLabel } from '@/composables/useToolLabel'
 import SkillSlashMenu from '@/components/chat/SkillSlashMenu.vue'
 import type { ChatAttachment, PendingApprovalMeta, StreamPhase, QueuedMessage, Skill } from '@/types'
@@ -489,6 +491,7 @@ const canSend = computed(() => {
 
 // 运行中输入的占位符
 const inputPlaceholder = computed(() => {
+  if (props.streamPhase === 'interrupting') return t('chat.streamInterrupting')
   if (props.loading) {
     if (props.queuedMessage) return t('chat.queuedReplace')
     return props.placeholder
@@ -498,6 +501,7 @@ const inputPlaceholder = computed(() => {
 
 // 处理提交
 const handleSubmit = () => {
+  if (props.streamPhase === 'interrupting') return
   // 有排队消息时，点击按钮取消排队
   if (props.queuedMessage && props.queuedMessage.status === 'queued') {
     // 如果输入框为空，取消排队；如果有新输入，替换排队消息
@@ -530,6 +534,7 @@ const handleSubmit = () => {
 // 发送按钮样式
 const sendBtnClass = computed(() => ({
   'is-loading': props.loading && !canSend.value,
+  'is-stopping': props.streamPhase === 'interrupting',
   'is-empty': !canSend.value && !props.loading,
   'is-interrupt': props.loading && canSend.value,
 }))
@@ -855,6 +860,21 @@ defineExpose({
 
 .send-btn.is-loading:hover:not(:disabled) {
   background: var(--mc-danger-hover, #dc2626);
+}
+
+.send-btn.is-stopping,
+.send-btn.is-stopping:disabled {
+  background: var(--mc-text-tertiary, #94a3b8);
+  opacity: 1;
+  cursor: wait;
+}
+
+.stop-spinner {
+  animation: stop-spin 0.8s linear infinite;
+}
+
+@keyframes stop-spin {
+  to { transform: rotate(360deg); }
 }
 
 .send-btn.is-empty:not(.is-loading) {

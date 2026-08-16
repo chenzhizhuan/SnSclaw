@@ -421,6 +421,38 @@ class TeamTaskServiceTest {
         verify(taskMapper, never()).update(isNull(), any());
     }
 
+    @Test
+    @DisplayName("checkpoint evidence note is inserted only when its stable key is absent")
+    void addCommentOnceIsIdempotent() {
+        when(commentMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L, 0L);
+        when(taskMapper.selectById(5L)).thenReturn(task(5L, TeamTaskStatus.COMPLETED));
+
+        assertFalse(service.addCommentOnce(5L, TeamTaskService.AUTHOR_SYSTEM, "bridge",
+                TeamTaskService.COMMENT_NOTE, "[checkpoint:R001] acknowledged"));
+        assertTrue(service.addCommentOnce(5L, TeamTaskService.AUTHOR_SYSTEM, "bridge",
+                TeamTaskService.COMMENT_NOTE, "[checkpoint:R002] acknowledged"));
+
+        verify(commentMapper, times(1)).insert(any(TeamTaskCommentEntity.class));
+    }
+
+    @Test
+    @DisplayName("checkpoint notes are deduplicated by their embedded stable key")
+    void checkpointCommentIsSemanticallyIdempotent() {
+        TeamTaskEntity tracker = task(5L, TeamTaskStatus.IN_PROGRESS);
+        tracker.setSubject("R001-R010 共享跟踪检查点");
+        when(taskMapper.selectById(5L)).thenReturn(tracker);
+        when(commentMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+
+        assertFalse(service.addComment(5L, TeamTaskService.AUTHOR_AGENT, "2",
+                TeamTaskService.COMMENT_NOTE,
+                "[运行台账] R001: [checkpoint:R001] acknowledged"));
+
+        verify(commentMapper, never()).insert(any(TeamTaskCommentEntity.class));
+        assertEquals("[checkpoint:R001] acknowledged",
+                TeamTaskService.checkpointEvidenceKey(
+                        "[运行台账] [CHECKPOINT:r001] acknowledged"));
+    }
+
     // ==================== circuit breaker ====================
 
     @Test
@@ -585,5 +617,19 @@ class TeamTaskServiceTest {
         verify(taskMapper).selectList(query.capture());
         query.getValue().getSqlSegment();
         assertTrue(query.getValue().getParamNameValuePairs().containsValue(RUN_ID));
+    }
+
+    @Test
+    @DisplayName("checkpoint range detection ignores the injected overall plan context")
+    void checkpointTerminalTagUsesOnlyLocalTaskText() {
+        TeamTaskEntity tracker = task(1L, TeamTaskStatus.IN_PROGRESS);
+        tracker.setSubject("R001-R300 唯一共享跟踪条目");
+        tracker.setDescription("每轮登记证据，R300 前保持进行中\n\n[Plan context]\nOverall request");
+        assertEquals("R300", service.checkpointTerminalTag(tracker));
+
+        TeamTaskEntity ordinary = task(2L, TeamTaskStatus.IN_PROGRESS);
+        ordinary.setSubject("设计稳定性指标");
+        ordinary.setDescription("产出指标清单\n\n[Plan context]\nOverall request: R001-R300 共享跟踪");
+        assertNull(service.checkpointTerminalTag(ordinary));
     }
 }

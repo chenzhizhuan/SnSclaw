@@ -89,4 +89,50 @@ describe('useTeamStore request generation', () => {
     expect(store.tasks).toEqual([])
     expect(store.taskStats).toEqual({})
   })
+
+  it('scopes every board request to the selected run', async () => {
+    api.get.mockResolvedValue(detail('A'))
+    api.listTasks.mockResolvedValue({ data: [] })
+    api.taskStats.mockResolvedValue({ data: {} })
+    const store = useTeamStore()
+    await store.openTeam('A')
+    vi.clearAllMocks()
+
+    await store.setTaskRunId('A', '9007199254740993')
+
+    expect(api.listTasks).toHaveBeenCalledTimes(3)
+    for (const call of api.listTasks.mock.calls) {
+      expect(call[2]).toMatchObject({ runId: '9007199254740993' })
+    }
+
+    const callsBeforeAggregateRefresh = api.listTasks.mock.calls.length
+    await store.setTaskRunId('A', null)
+    const aggregateCalls = api.listTasks.mock.calls.slice(callsBeforeAggregateRefresh)
+    expect(aggregateCalls).toHaveLength(3)
+    for (const call of aggregateCalls) {
+      expect(call[2]).toMatchObject({ runId: undefined })
+    }
+    expect(api.taskStats).toHaveBeenCalledWith('A', '9007199254740993')
+  })
+
+  it('retries one transient board timeout and publishes the recovered snapshot', async () => {
+    api.get.mockResolvedValue(detail('A'))
+    const timeout = Object.assign(new Error('timeout of 15000ms exceeded'), {
+      code: 'ECONNABORTED',
+    })
+    api.listTasks
+      .mockRejectedValueOnce(timeout)
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [] })
+      .mockImplementation((_teamId: string, statuses: string[]) =>
+        Promise.resolve({ data: statuses.includes('pending') ? [task('recovered')] : [] }))
+    api.taskStats.mockResolvedValue({ data: { pending: 1 } })
+    const store = useTeamStore()
+
+    await store.openTeam('A')
+
+    expect(api.listTasks).toHaveBeenCalledTimes(6)
+    expect(api.taskStats).toHaveBeenCalledTimes(2)
+    expect(store.tasks.map(item => item.task.id)).toEqual(['recovered'])
+  })
 })

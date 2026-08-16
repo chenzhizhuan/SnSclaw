@@ -408,6 +408,7 @@ public class NodeStreamingChatHelper {
     // retry (e.g., proxy timeout returns HTTP 200 with empty body). Keep
     // the cap low — if it truly takes 4+ attempts, the provider is sick.
     static final int MAX_RETRIES_EMPTY_RESPONSE = 3;
+    static final long EMPTY_RESPONSE_BACKOFF_MS = 250;
     // UNKNOWN: conservative retry cap. Defensive: retry what we can't
     // classify, but with a smaller budget than SERVER_ERROR (5 vs 10) to
     // avoid masking truly fatal errors. MAX_TOTAL_DURATION_MS is the
@@ -888,6 +889,7 @@ public class NodeStreamingChatHelper {
                 if (errType == ErrorType.EMPTY_RESPONSE && attempt < errType.retryBudget()) {
                     log.warn("[{}] Primary returned empty response (attempt {}/{}), retrying same model...",
                             phase, attempt + 1, errType.retryBudget() + 1);
+                    retryType.set(ErrorType.EMPTY_RESPONSE);
                     continue;
                 }
                 // Generic routing — driven entirely by the ErrorType policy
@@ -1108,6 +1110,7 @@ public class NodeStreamingChatHelper {
                                             AtomicReference<Long> retryHintRef) {
         if (attempt > 0) {
             boolean overloaded = retryTypeRef.get() == ErrorType.OVERLOADED;
+            boolean emptyResponse = retryTypeRef.get() == ErrorType.EMPTY_RESPONSE;
             Long hintedMs = retryHintRef.get();
             long delay;
             if (hintedMs != null && hintedMs > 0) {
@@ -1118,6 +1121,8 @@ public class NodeStreamingChatHelper {
                 // in lockstep at the stated instant.
                 delay = Math.min(hintedMs, HINTED_BACKOFF_CAP_MS)
                         + ThreadLocalRandom.current().nextLong(0, 1_000);
+            } else if (emptyResponse) {
+                delay = EMPTY_RESPONSE_BACKOFF_MS;
             } else if (overloaded) {
                 // Saturated provider: recovery periods run tens of seconds, so
                 // the generic 3s-based exponential would burn attempts before
@@ -1135,7 +1140,7 @@ public class NodeStreamingChatHelper {
             log.warn("[{}] Retry attempt {}/{} after {}ms (prev type={}) for conversation {}",
                     phase, attempt, MAX_RETRIES, delay, retryTypeRef.get(), conversationId);
             // 广播给前端：用户可见的重试倒计时
-            if (broadcast) {
+            if (broadcast && !emptyResponse) {
                 String cause = overloaded ? "模型服务繁忙" : "请求频率受限";
                 broadcastDelta(conversationId, "warning",
                         buildDeltaJson("⏱️ " + cause + "，等待 " + (delay / 1000) + " 秒后重试（第 " + attempt + "/" + MAX_RETRIES + " 次）..."));
@@ -1588,7 +1593,10 @@ public class NodeStreamingChatHelper {
                 && thinkingAccum.length() == 0
                 && toolCallAccumulators.isEmpty()) {
             log.warn("[{}] LLM returned empty response (no content, no thinking, no tool calls) — marking as EMPTY_RESPONSE for fallback", phase);
-            return buildErrorResultWithType("LLM 返回空响应", conversationId, phase, ErrorType.EMPTY_RESPONSE);
+            // The outer policy owns retry/failover. Keep transient empty
+            // attempts out of the user-visible error stream, and leave text
+            // blank so callers can apply a deterministic final fallback.
+            return buildEmptyResponseResult();
         }
 
         String truncationReason = truncatedByThinkingCap ? "thinking_only_no_content"
@@ -1912,6 +1920,12 @@ public class NodeStreamingChatHelper {
         AssistantMessage errorMessage = new AssistantMessage("[错误] " + errorMsg);
         return new StreamResult("[错误] " + errorMsg, "", errorMessage,
                 List.of(), false, 0, 0, false, errorMsg, errorType);
+    }
+
+    private StreamResult buildEmptyResponseResult() {
+        return new StreamResult("", "", new AssistantMessage(""),
+                List.of(), false, 0, 0, false,
+                "LLM 返回空响应", ErrorType.EMPTY_RESPONSE);
     }
 
     /** 构建 error 事件的 JSON payload */

@@ -734,7 +734,12 @@ public class ToolExecutionExecutor {
             return new ToolResponseMessage.ToolResponse(toolCall.id(), toolName, msg);
         }
 
+        Thread executionThread = Thread.currentThread();
+        Runnable removeCancellationHook = streamTracker != null
+                ? streamTracker.registerCancellationHook(conversationId, executionThread::interrupt)
+                : () -> { };
         try {
+            throwIfStopRequested(conversationId);
             log.info("[ToolExecutor] Executing pre-approved tool: {}", toolName);
             // RFC-063r §2.5: forward ToolContext so the pre-approved tool can
             // still observe the originating ChatOrigin (channel/workspace).
@@ -745,6 +750,7 @@ public class ToolExecutionExecutor {
                     .withConversationId(conversationId)
                     .withWorkspace(null, workspaceBasePath);
             String result = callback.call(callArguments, toolContextWithScopedCatalog(replayOrigin));
+            throwIfStopRequested(conversationId);
             int rawLen = result != null ? result.length() : 0;
 
             // RFC-052: pre-approved tool may itself be returnDirect — in that
@@ -779,6 +785,8 @@ public class ToolExecutionExecutor {
             // leaving the broadcast tool-result panel unchanged.
             return new ToolResponseMessage.ToolResponse(
                     toolCall.id(), toolName, withProductCardDirective(toolName, result != null ? result : ""));
+        } catch (CancellationException e) {
+            throw e;
         } catch (Exception e) {
             log.error("[ToolExecutor] Pre-approved tool {} failed: {}", toolName, e.getMessage());
             String safeError = isReturnDirect(callback)
@@ -786,6 +794,11 @@ public class ToolExecutionExecutor {
                     : "Tool execution failed: " + e.getMessage();
             events.add(GraphEventPublisher.toolComplete(toolCall.id(), toolName, safeError, false));
             return new ToolResponseMessage.ToolResponse(toolCall.id(), toolName, safeError);
+        } finally {
+            removeCancellationHook.run();
+            if (streamTracker != null && streamTracker.isStopRequested(conversationId)) {
+                Thread.interrupted();
+            }
         }
     }
 
@@ -826,6 +839,7 @@ public class ToolExecutionExecutor {
         List<List<PreparedToolCall>> batches = buildExecutionBatches(preparedCalls);
 
         for (List<PreparedToolCall> batch : batches) {
+            throwIfStopRequested(preparedCalls.isEmpty() ? null : preparedCalls.get(0).conversationId);
             if (batch.size() == 1) {
                 // 单个工具（safe 或 unsafe），直接执行
                 PreparedToolCall pc = batch.get(0);
@@ -893,13 +907,26 @@ public class ToolExecutionExecutor {
         // 等待所有并行工具完成，按原始顺序填入结果
         for (var entry : futures.entrySet()) {
             try {
+                String conversationId = batch.isEmpty() ? null : batch.get(0).conversationId;
+                if (streamTracker != null && streamTracker.isStopRequested(conversationId)) {
+                    futures.values().forEach(future -> future.cancel(true));
+                    throw new CancellationException("Stream stopped by user during tool execution");
+                }
                 // 按工具名查找配置的超时时间
                 PreparedToolCall matchedPc = batch.stream()
                         .filter(p -> p.resultIndex == entry.getKey()).findFirst().orElse(null);
                 long timeoutMs = getToolTimeoutMs(matchedPc != null ? matchedPc.toolCall.name() : null);
                 ToolResponseMessage.ToolResponse response = entry.getValue().get(timeoutMs, TimeUnit.MILLISECONDS);
                 allResponses.set(entry.getKey(), response);
+            } catch (CancellationException e) {
+                futures.values().forEach(future -> future.cancel(true));
+                throw e;
             } catch (Exception e) {
+                String conversationId = batch.isEmpty() ? null : batch.get(0).conversationId;
+                if (streamTracker != null && streamTracker.isStopRequested(conversationId)) {
+                    futures.values().forEach(future -> future.cancel(true));
+                    throw new CancellationException("Stream stopped by user during tool execution");
+                }
                 // 超时或异常 — 填入错误响应
                 PreparedToolCall pc = batch.stream()
                         .filter(p -> p.resultIndex == entry.getKey())
@@ -920,7 +947,12 @@ public class ToolExecutionExecutor {
                                                                 List<GraphEventPublisher.GraphEvent> events,
                                                                 List<DirectToolOutput> directOutputs) {
         String toolName = pc.toolCall.name();
+        Thread executionThread = Thread.currentThread();
+        Runnable removeCancellationHook = streamTracker != null
+                ? streamTracker.registerCancellationHook(pc.conversationId, executionThread::interrupt)
+                : () -> { };
         try {
+            throwIfStopRequested(pc.conversationId);
             if (streamTracker != null) {
                 streamTracker.updateRunningTool(pc.conversationId, toolName);
                 streamTracker.broadcastObject(pc.conversationId, GraphEventPublisher.EVENT_TOOL_START,
@@ -956,6 +988,7 @@ public class ToolExecutionExecutor {
                 }
 
                 result = pc.callback.call(pc.arguments, toolContext);
+                throwIfStopRequested(pc.conversationId);
             } finally {
                 if (progressToken != null) {
                     progressContext.remove(progressToken);
@@ -1035,6 +1068,11 @@ public class ToolExecutionExecutor {
             return new ToolResponseMessage.ToolResponse(
                     pc.toolCall.id(), pc.responseName,
                     withProductCardDirective(toolName, result != null ? result : ""));
+        } catch (CancellationException e) {
+            if (streamTracker != null) {
+                streamTracker.updateRunningTool(pc.conversationId, null);
+            }
+            throw e;
         } catch (Exception e) {
             log.error("[ToolExecutor] Tool {} execution failed: {}", toolName, e.getMessage(), e);
             // RFC-052: for returnDirect tools, even the error message is
@@ -1053,6 +1091,20 @@ public class ToolExecutionExecutor {
             }
             return new ToolResponseMessage.ToolResponse(
                     pc.toolCall.id(), pc.responseName, reportedError);
+        } finally {
+            removeCancellationHook.run();
+            // Virtual-thread workers are not reused, but single/unsafe calls
+            // can execute on a Reactor worker. Do not leak Stop's interrupt bit
+            // into unrelated work scheduled on that carrier.
+            if (streamTracker != null && streamTracker.isStopRequested(pc.conversationId)) {
+                Thread.interrupted();
+            }
+        }
+    }
+
+    private void throwIfStopRequested(String conversationId) {
+        if (streamTracker != null && streamTracker.isStopRequested(conversationId)) {
+            throw new CancellationException("Stream stopped by user during tool execution");
         }
     }
 

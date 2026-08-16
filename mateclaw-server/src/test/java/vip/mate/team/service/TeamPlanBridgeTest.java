@@ -122,6 +122,18 @@ class TeamPlanBridgeTest {
         assertNull(bridge.resolveMembers(team, List.of("s1", "s2"), null));
     }
 
+    @Test
+    @DisplayName("explicitly requested workspace agents missing from the team are reported")
+    void reportsNamedAgentsOutsideRoster() {
+        AgentEntity general = agent(4L, "通用助手");
+
+        assertEquals(List.of("通用助手"), bridge.namedAgentsOutsideRoster(
+                team, "请让写手、分析师和通用助手共同完成", List.of(
+                        agent(WRITER_ID, "写手"), agent(ANALYST_ID, "分析师"), general)));
+        assertTrue(bridge.namedAgentsOutsideRoster(
+                team, "请让写手和分析师共同完成", List.of(general)).isEmpty());
+    }
+
     // ==================== hand-off ====================
 
     @Test
@@ -272,6 +284,83 @@ class TeamPlanBridgeTest {
         TeamPlanBridge.InFlight inFlight = assertInstanceOf(TeamPlanBridge.InFlight.class, state);
         assertTrue(inFlight.progressText().contains("in_progress"));
         verify(planningService, never()).updateSubPlanResult(any(), anyInt(), anyString());
+    }
+
+    @Test
+    @DisplayName("checkpoint status requests get a single-line deterministic response")
+    void compactCheckpointProgress() {
+        parkedPlan();
+        TeamTaskEntity completed = task(101L, 46, 0, TeamTaskStatus.COMPLETED);
+        TeamTaskEntity active = task(102L, 47, 1, TeamTaskStatus.IN_PROGRESS);
+        active.setProgressPercent(80);
+        when(taskService.listTasksByPlan(TEAM_ID, PLAN_ID)).thenReturn(List.of(completed, active));
+        when(taskService.findCheckpointTracker(TEAM_ID)).thenReturn(Optional.of(active));
+
+        TeamPlanBridge.InFlight state = assertInstanceOf(TeamPlanBridge.InFlight.class,
+                bridge.checkParkedPlan(CONV,
+                        "R100/100 最终检查点：仅用一行回复，并确认已连续完成100轮"));
+
+        assertEquals("R100｜执行中 1/2｜#47 in_progress 80%（已完成第100轮检查点）"
+                        + "｜证据 [checkpoint:R100] acknowledged",
+                state.progressText());
+        assertFalse(state.progressText().contains("\n"));
+        verify(taskService).addCommentOnce(102L, TeamTaskService.AUTHOR_SYSTEM,
+                "team-plan-bridge", TeamTaskService.COMMENT_NOTE,
+                "[checkpoint:R100] acknowledged");
+        assertEquals("R002", TeamPlanBridge.checkpointTagOf("R002/100 checkpoint"));
+        assertNull(TeamPlanBridge.checkpointTagOf("R002 ordinary status"));
+    }
+
+    @Test
+    @DisplayName("checkpoint fast path survives after the delegated plan has settled")
+    void compactCheckpointUsesLatestTerminalRun() {
+        when(planningService.findDelegatedPlan(CONV)).thenReturn(null);
+        TeamRunEntity latest = new TeamRunEntity();
+        latest.setId(RUN_ID);
+        when(runService.findLatestConversationRun(CONV)).thenReturn(Optional.of(latest));
+        TeamTaskEntity first = task(101L, 46, 0, TeamTaskStatus.COMPLETED);
+        TeamTaskEntity tracker = task(102L, 47, 1, TeamTaskStatus.COMPLETED);
+        tracker.setSubject("R001-R100 共享跟踪检查点");
+        tracker.setProgressPercent(100);
+        when(taskService.listTasksByRun(RUN_ID)).thenReturn(List.of(first, tracker));
+        latest.setTeamId(TEAM_ID);
+        TeamTaskEntity crossRunTracker = task(103L, 54, 2, TeamTaskStatus.COMPLETED);
+        crossRunTracker.setSubject("R001-R100 共享跟踪检查点");
+        when(taskService.findCheckpointTracker(TEAM_ID)).thenReturn(Optional.of(crossRunTracker));
+
+        TeamPlanBridge.InFlight state = assertInstanceOf(TeamPlanBridge.InFlight.class,
+                bridge.checkParkedPlan(CONV, "R047/100 checkpoint"));
+
+        assertEquals("R047｜已完成 2/2｜#47 completed 100%"
+                + "｜证据 [checkpoint:R047] acknowledged", state.progressText());
+        verify(taskService).addCommentOnce(102L, TeamTaskService.AUTHOR_SYSTEM,
+                "team-plan-bridge", TeamTaskService.COMMENT_NOTE,
+                "[checkpoint:R047] acknowledged");
+        verify(taskService, never()).addCommentOnce(eq(103L), anyString(), anyString(),
+                anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("the terminal checkpoint completes the current run tracker and releases dispatch")
+    void terminalCheckpointCompletesCurrentTracker() {
+        parkedPlan();
+        TeamTaskEntity tracker = task(102L, 59, 0, TeamTaskStatus.IN_PROGRESS);
+        tracker.setSubject("R001-R300 唯一共享跟踪条目");
+        when(taskService.listTasksByPlan(TEAM_ID, PLAN_ID)).thenReturn(List.of(tracker));
+        when(taskService.checkpointTerminalTag(tracker)).thenReturn("R300");
+        when(taskService.completeTask(102L, null,
+                "Checkpoint tracking completed at R300")).thenReturn(List.of());
+
+        TeamPlanBridge.InFlight state = assertInstanceOf(TeamPlanBridge.InFlight.class,
+                bridge.checkParkedPlan(CONV, "最终检查点 R300"));
+
+        assertTrue(state.progressText().contains("[checkpoint:R300] acknowledged"));
+        verify(taskService).addCommentOnce(102L, TeamTaskService.AUTHOR_SYSTEM,
+                "team-plan-bridge", TeamTaskService.COMMENT_NOTE,
+                "[checkpoint:R300] acknowledged");
+        verify(taskService).completeTask(102L, null,
+                "Checkpoint tracking completed at R300");
+        verify(eventPublisher).publishEvent(new TeamTasksDelegatedEvent(TEAM_ID));
     }
 
     @Test
