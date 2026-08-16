@@ -181,7 +181,7 @@ class TeamControllerTest {
         third.setId(103L);
         third.setAssigneeAgentId(13L);
         third.setOwnerAgentId(null);
-        when(taskService.listTasks(TEAM_ID, null, null, null)).thenReturn(List.of(first, second, third));
+        when(taskService.listTasks(TEAM_ID, null, null, null, null)).thenReturn(List.of(first, second, third));
         AgentEntity assignee = new AgentEntity();
         assignee.setId(11L);
         assignee.setName("Assignee");
@@ -193,7 +193,7 @@ class TeamControllerTest {
         shared.setName("Shared");
         when(agentMapper.selectBatchIds(any())).thenReturn(List.of(assignee, owner, shared));
 
-        R<List<TeamController.TaskVO>> response = controller.listTasks(TEAM_ID, null, null, null);
+        R<List<TeamController.TaskVO>> response = controller.listTasks(TEAM_ID, null, null, null, null);
 
         assertEquals(List.of("Assignee", "Assignee", "Shared"),
                 response.getData().stream().map(TeamController.TaskVO::assigneeName).toList());
@@ -423,11 +423,11 @@ class TeamControllerTest {
     void crossWorkspaceTeamIsRejectedBeforeTaskBoardRead() {
         when(teamService.getTeam(TEAM_ID, 1L)).thenReturn(null);
 
-        R<List<TeamController.TaskVO>> r = controller.listTasks(TEAM_ID, null, null, null);
+        R<List<TeamController.TaskVO>> r = controller.listTasks(TEAM_ID, null, null, null, null);
 
         assertEquals(500, r.getCode());
         assertEquals("team not found: 1", r.getMsg());
-        verify(taskService, never()).listTasks(anyLong(), any(), any(), any());
+        verify(taskService, never()).listTasks(anyLong(), any(), any(), any(), any());
     }
 
     @Test
@@ -439,7 +439,7 @@ class TeamControllerTest {
         assertRole("delete", "admin", Long.class);
         assertRole("addMember", "admin", Long.class, TeamController.MemberRequest.class);
         assertRole("removeMember", "admin", Long.class, Long.class);
-        assertRole("listTasks", "viewer", Long.class, List.class, Integer.class, Integer.class);
+        assertRole("listTasks", "viewer", Long.class, List.class, Integer.class, Integer.class, Long.class);
         assertRole("getTask", "viewer", Long.class, Long.class);
         assertRole("createTask", "admin", Long.class, TeamController.CreateTaskRequest.class, java.security.Principal.class);
         assertRole("approve", "admin", Long.class, Long.class, java.security.Principal.class);
@@ -449,7 +449,7 @@ class TeamControllerTest {
         assertRole("taskEvents", "viewer", Long.class, Long.class);
         assertRole("events", "viewer", Long.class, Long.class);
         assertRole("comment", "admin", Long.class, Long.class, TeamController.CommentRequest.class, java.security.Principal.class);
-        assertRole("taskStats", "viewer", Long.class);
+        assertRole("taskStats", "viewer", Long.class, Long.class);
     }
 
     @Test

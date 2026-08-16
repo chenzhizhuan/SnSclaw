@@ -1,6 +1,5 @@
 package vip.mate.llm.chatmodel;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -58,12 +57,26 @@ class OpenAiCompatibleChatModelBuilderTest {
         // exercises the HTTP-client-construction path.
         builder = new OpenAiCompatibleChatModelBuilder(
                 modelProviderService,
-                new ObjectMapper(),
                 null,
                 null,
                 null);
         provider = new ModelProviderEntity();
         provider.setProviderId("test-openai-compatible");
+    }
+
+    @Test
+    @DisplayName("Provider error payloads redact credentials and stay bounded")
+    void providerErrorPayloadIsRedactedAndTruncated() {
+        String secret = "Bearer abc.def.ghi";
+        String payload = "{\"authorization\":\"" + secret + "\",\"api_key\":\"sk-private\",\"detail\":\""
+                + "x".repeat(2000) + "\"}";
+
+        String safe = OpenAiCompatibleChatModelBuilder.redactAndTruncate(payload);
+
+        assertFalse(safe.contains("abc.def.ghi"));
+        assertFalse(safe.contains("sk-private"));
+        assertTrue(safe.contains("[REDACTED]"));
+        assertTrue(safe.length() <= 1025);
     }
 
     @AfterEach

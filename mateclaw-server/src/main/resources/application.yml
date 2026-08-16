@@ -113,7 +113,9 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+    # SQL parameter values can contain prompts/model thinking. Keep them out of
+    # logs by default; operators may explicitly opt in for short-lived diagnosis.
+    log-impl: ${MATECLAW_MYBATIS_LOG_IMPL:org.apache.ibatis.logging.nologging.NoLoggingImpl}
 
 # SpringDoc OpenAPI
 # 注意：/swagger-ui*、/v3/api-docs*、/webjars/** 落在 SecurityConfig 的

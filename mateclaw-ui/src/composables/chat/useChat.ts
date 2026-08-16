@@ -2134,8 +2134,10 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     // Cancel queued message first
     messageQueue.clear()
 
-    // Mark as stopped immediately so the UI gives instant feedback
-    streamPhase.value = 'stopped'
+    // Stop is a transition, not an instantaneous terminal state. Keep the
+    // assistant message generating until the server's done envelope arrives,
+    // but expose an explicit phase so the button cannot be clicked repeatedly.
+    streamPhase.value = 'interrupting'
     phaseInfo.value = null
     compactStatus.value = null
 
@@ -2168,12 +2170,27 @@ export function useChat(options: UseChatOptions): UseChatReturn {
       unsubscribeError()
     })
 
-    // Send the backend stop request (fire-and-forget, does not block resetForNewConversation)
+    // SSE remains authoritative for final content/status. An HTTP failure
+    // accelerates local cleanup instead of leaving the UI in "interrupting".
     if (convId) {
       fetchWithAuth(`${baseUrl}/api/v1/chat/${convId}/stop`, {
         method: 'POST',
+      }).then(response => {
+        if (!response.ok) throw new Error(`Stop request failed (${response.status})`)
       }).catch(e => {
         console.warn('[useChat] Stop API failed:', e)
+        if (stopFallbackTimer) {
+          clearTimeout(stopFallbackTimer)
+          stopFallbackTimer = setTimeout(() => {
+            stopFallbackTimer = null
+            if (streamConversationId === convId || !streamConversationId) stream.disconnect()
+            if (currentAssistantId.value === assistantId && assistantId) {
+              setMessageStatus(assistantId, 'stopped')
+              currentAssistantId.value = null
+            }
+            onStreamEnd?.({ conversationId: convId, reason: 'stopped' })
+          }, 250)
+        }
       })
     }
   }

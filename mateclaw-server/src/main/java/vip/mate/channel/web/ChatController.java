@@ -1030,6 +1030,10 @@ public class ChatController {
             return R.fail(403, "无权操作该会话");
         }
         boolean stopped = streamTracker.requestStop(conversationId);
+        // Acknowledge only after the cancellation path had a chance to drain
+        // and persist its partial assistant message. Bound the wait so a
+        // genuinely non-cooperative third-party tool cannot pin the HTTP call.
+        boolean terminationConfirmed = !stopped || streamTracker.awaitTermination(conversationId, 2000L);
 
         // Sweep ghost approvals — workflow.denyAllByConversation owns DB + metadata + memory
         // atomically; we only need to broadcast SSE events on the resulting outcomes.
@@ -1048,6 +1052,7 @@ public class ChatController {
                 conversationId, username, stopped, denied.size(), messagesRewritten);
         return R.ok(Map.of(
                 "stopped", stopped,
+                "terminationConfirmed", terminationConfirmed,
                 "ghostPendingsCleared", denied.size(),
                 "messagesRewritten", messagesRewritten
         ));

@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.Set;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /** Owns team run creation, lifecycle transitions, authorization, and reads. */
@@ -164,6 +165,18 @@ public class TeamRunService {
     /** Backward-compatible array response used until clients migrate to cursor pagination. */
     public List<TeamRunView> listConversationRuns(String conversationId, Long workspaceId) {
         return listRuns(null, conversationId, workspaceId, false);
+    }
+
+    /** Latest run linked to an internal lead conversation, including terminal runs. */
+    public Optional<TeamRunEntity> findLatestConversationRun(String conversationId) {
+        if (conversationId == null || conversationId.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(runMapper.selectOne(Wrappers.<TeamRunEntity>lambdaQuery()
+                .eq(TeamRunEntity::getLeadConversationId, conversationId)
+                .orderByDesc(TeamRunEntity::getCreateTime)
+                .orderByDesc(TeamRunEntity::getId)
+                .last("LIMIT 1")));
     }
 
     private List<TeamRunView> listRuns(Long teamId, String conversationId, Long workspaceId,
