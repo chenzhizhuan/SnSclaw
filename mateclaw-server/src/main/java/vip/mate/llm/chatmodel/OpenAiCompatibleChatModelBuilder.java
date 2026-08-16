@@ -1,6 +1,5 @@
 package vip.mate.llm.chatmodel;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.observation.ObservationRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
@@ -55,19 +54,16 @@ import java.util.regex.Pattern;
 public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
 
     private final ModelProviderService modelProviderService;
-    private final ObjectMapper objectMapper;
     private final ObjectProvider<RestClient.Builder> restClientBuilderProvider;
     private final ObjectProvider<WebClient.Builder> webClientBuilderProvider;
     private final ObjectProvider<ObservationRegistry> observationRegistryProvider;
 
     public OpenAiCompatibleChatModelBuilder(
             ModelProviderService modelProviderService,
-            ObjectMapper objectMapper,
             ObjectProvider<RestClient.Builder> restClientBuilderProvider,
             ObjectProvider<WebClient.Builder> webClientBuilderProvider,
             ObjectProvider<ObservationRegistry> observationRegistryProvider) {
         this.modelProviderService = modelProviderService;
-        this.objectMapper = objectMapper;
         this.restClientBuilderProvider = restClientBuilderProvider;
         this.webClientBuilderProvider = webClientBuilderProvider;
         this.observationRegistryProvider = observationRegistryProvider;
@@ -490,17 +486,39 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
     // ==================== logging ====================
 
     private void logOpenAiRequest(ModelProviderEntity provider, OpenAiApi.ChatCompletionRequest chatRequest) {
-        try {
-            log.info("OpenAI-compatible request: provider={}, body={}",
-                    provider.getProviderId(), objectMapper.writeValueAsString(chatRequest));
-        } catch (Exception e) {
-            log.warn("Failed to serialize OpenAI-compatible request for {}: {}",
-                    provider.getProviderId(), e.getMessage());
-        }
+        // Never log the request body: it contains system prompts, workspace
+        // memory, user content and tool schemas. Besides leaking private
+        // context, serializing it at INFO made long-running team jobs produce
+        // multi-megabyte log lines. Cardinality-only diagnostics are enough to
+        // correlate provider traffic without retaining payloads.
+        log.debug("OpenAI-compatible request: provider={}, model={}, messages={}, tools={}, stream={}",
+                provider.getProviderId(), chatRequest.model(),
+                sizeOf(chatRequest.messages()), sizeOf(chatRequest.tools()), chatRequest.stream());
     }
 
     private void logOpenAiError(ModelProviderEntity provider, WebClientResponseException e) {
-        log.error("OpenAI-compatible error: provider={}, status={}, body={}",
-                provider.getProviderId(), e.getStatusCode(), e.getResponseBodyAsString());
+        String body = e.getResponseBodyAsString();
+        log.error("OpenAI-compatible error: provider={}, status={}, responseBytes={}",
+                provider.getProviderId(), e.getStatusCode(), body == null ? 0 : body.length());
+        if (log.isDebugEnabled() && body != null && !body.isBlank()) {
+            log.debug("OpenAI-compatible error detail: provider={}, body={}",
+                    provider.getProviderId(), redactAndTruncate(body));
+        }
+    }
+
+    private static int sizeOf(java.util.Collection<?> values) {
+        return values == null ? 0 : values.size();
+    }
+
+    /** Defensive scrub for provider error bodies, which may echo request data. */
+    static String redactAndTruncate(String body) {
+        String redacted = body
+                .replaceAll("(?i)(\\\"(?:api[_-]?key|authorization|token)\\\"\\s*:\\s*\\\")[^\\\"]*(\\\")",
+                        "$1[REDACTED]$2")
+                .replaceAll("(?i)((?:api[_-]?key|authorization|token)\\s*[=:]\\s*)[^,}\\s]+",
+                        "$1[REDACTED]")
+                .replaceAll("(?i)(bearer\\s+)[A-Za-z0-9._~+\\-/=]+", "$1[REDACTED]");
+        int max = 1024;
+        return redacted.length() <= max ? redacted : redacted.substring(0, max) + "…";
     }
 }

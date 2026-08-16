@@ -20,6 +20,8 @@ export const useTeamStore = defineStore('team', () => {
   const currentTeam = ref<TeamVO | null>(null)
   const members = ref<TeamMemberVO[]>([])
   const boardLoading = ref(false)
+  /** Null = aggregate history; otherwise the board is scoped to one run. */
+  const taskRunId = ref<string | null>(null)
 
   /** Statuses that mean the board is still moving and worth polling. */
   const ACTIVE_STATUSES = ['pending', 'in_progress', 'in_review', 'blocked']
@@ -76,6 +78,7 @@ export const useTeamStore = defineStore('team', () => {
     completedTasks.value = []
     closedTasks.value = []
     taskStats.value = {}
+    taskRunId.value = null
     await fetchTasks(teamId, generation)
   }
 
@@ -88,6 +91,7 @@ export const useTeamStore = defineStore('team', () => {
     completedTasks.value = []
     closedTasks.value = []
     taskStats.value = {}
+    taskRunId.value = null
     boardLoading.value = false
   }
 
@@ -96,17 +100,18 @@ export const useTeamStore = defineStore('team', () => {
    * loaded size, so a poll/event refresh never collapses a column the user
    * has extended with load-more.
    */
-  async function fetchTasks(teamId: string, expectedGeneration = teamGeneration) {
+  async function fetchTasks(teamId: string, expectedGeneration = teamGeneration,
+                            retryOnTimeout = true) {
     const requestSequence = ++boardRequestSequence
     boardLoading.value = true
     try {
       const completedLimit = Math.max(TERMINAL_PAGE, completedTasks.value.length)
       const closedLimit = Math.max(TERMINAL_PAGE, closedTasks.value.length)
       const [active, completed, closed, stats] = (await Promise.all([
-        teamApi.listTasks(teamId, ACTIVE_STATUSES),
-        teamApi.listTasks(teamId, COMPLETED_STATUSES, { limit: completedLimit, offset: 0 }),
-        teamApi.listTasks(teamId, CLOSED_STATUSES, { limit: closedLimit, offset: 0 }),
-        teamApi.taskStats(teamId),
+        teamApi.listTasks(teamId, ACTIVE_STATUSES, { runId: taskRunId.value ?? undefined }),
+        teamApi.listTasks(teamId, COMPLETED_STATUSES, { limit: completedLimit, offset: 0, runId: taskRunId.value ?? undefined }),
+        teamApi.listTasks(teamId, CLOSED_STATUSES, { limit: closedLimit, offset: 0, runId: taskRunId.value ?? undefined }),
+        teamApi.taskStats(teamId, taskRunId.value ?? undefined),
       ])) as any[]
       if (expectedGeneration !== teamGeneration
         || requestSequence !== boardRequestSequence
@@ -116,6 +121,17 @@ export const useTeamStore = defineStore('team', () => {
       closedTasks.value = closed.data || []
       taskStats.value = stats.data || {}
     } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      const timedOut = (e as { code?: string } | null)?.code === 'ECONNABORTED'
+        || /timeout/i.test(message)
+      if (retryOnTimeout
+        && timedOut
+        && expectedGeneration === teamGeneration
+        && requestSequence === boardRequestSequence
+        && String(currentTeam.value?.team.id ?? '') === teamId) {
+        await fetchTasks(teamId, expectedGeneration, false)
+        return
+      }
       if (expectedGeneration === teamGeneration && requestSequence === boardRequestSequence) {
         console.error('Failed to fetch team tasks', e)
       }
@@ -131,6 +147,7 @@ export const useTeamStore = defineStore('team', () => {
     const res: any = await teamApi.listTasks(teamId, COMPLETED_STATUSES, {
       limit: TERMINAL_PAGE,
       offset: completedTasks.value.length,
+      runId: taskRunId.value ?? undefined,
     })
     if (generation !== teamGeneration || String(currentTeam.value?.team.id ?? '') !== teamId) return
     completedTasks.value = [...completedTasks.value, ...(res.data || [])]
@@ -141,6 +158,7 @@ export const useTeamStore = defineStore('team', () => {
     const res: any = await teamApi.listTasks(teamId, CLOSED_STATUSES, {
       limit: TERMINAL_PAGE,
       offset: closedTasks.value.length,
+      runId: taskRunId.value ?? undefined,
     })
     if (generation !== teamGeneration || String(currentTeam.value?.team.id ?? '') !== teamId) return
     closedTasks.value = [...closedTasks.value, ...(res.data || [])]
@@ -154,6 +172,19 @@ export const useTeamStore = defineStore('team', () => {
   }) {
     await teamApi.create(data)
     await fetchTeams()
+  }
+
+  async function setTaskRunId(teamId: string, runId: string | null) {
+    if (taskRunId.value === runId) {
+      await fetchTasks(teamId)
+      return
+    }
+    taskRunId.value = runId
+    activeTasks.value = []
+    completedTasks.value = []
+    closedTasks.value = []
+    taskStats.value = {}
+    await fetchTasks(teamId)
   }
 
   async function deleteTeam(teamId: string) {
@@ -172,6 +203,7 @@ export const useTeamStore = defineStore('team', () => {
     tasks,
     taskStats,
     boardLoading,
+    taskRunId,
     hasActiveTasks,
     completedTotal,
     closedTotal,
@@ -183,6 +215,7 @@ export const useTeamStore = defineStore('team', () => {
     fetchTasks,
     loadMoreCompleted,
     loadMoreClosed,
+    setTaskRunId,
     createTeam,
     deleteTeam,
   }

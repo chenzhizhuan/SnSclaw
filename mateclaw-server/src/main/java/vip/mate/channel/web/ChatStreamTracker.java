@@ -161,6 +161,16 @@ public class ChatStreamTracker {
         /** 停止标志：requestStop() 设为 true，各图节点和 LLM 调用检查此标志以提前退出 */
         final AtomicBoolean stopRequested = new AtomicBoolean(false);
         /**
+         * Cancellation hooks owned by work that has escaped the Reactor
+         * subscription (most notably synchronous ToolCallback invocations).
+         * Guarded by {@link #lock}; requestStop snapshots and invokes them
+         * outside the lock so a hook may safely deregister itself.
+         */
+        final java.util.Set<Runnable> cancellationHooks = new java.util.HashSet<>();
+        /** Completed only after the run's finalization path has drained. */
+        final java.util.concurrent.CompletableFuture<Void> termination =
+                new java.util.concurrent.CompletableFuture<>();
+        /**
          * 当前活跃的 Flux 数量（原始流 + 审批 Replay 流共享同一个 RunState）。
          * complete() 仅在计数归零时才真正移除 RunState，防止 Replay 仍在运行时被原始流的完成误删。
          */
@@ -549,6 +559,46 @@ public class ChatStreamTracker {
     }
 
     /**
+     * Register cancellation for work performed outside the run's Reactor
+     * subscription. The returned handle is idempotent and must be closed when
+     * that work finishes. If Stop already won the race, the hook is invoked
+     * immediately instead of being registered.
+     */
+    public Runnable registerCancellationHook(String conversationId, Runnable hook) {
+        if (conversationId == null || hook == null) {
+            return () -> { };
+        }
+        RunState state = runs.get(conversationId);
+        if (state == null) {
+            return () -> { };
+        }
+        boolean cancelImmediately;
+        synchronized (state.lock) {
+            cancelImmediately = !isCurrent(state) || state.done || state.stopRequested.get();
+            if (!cancelImmediately) {
+                state.cancellationHooks.add(hook);
+            }
+        }
+        if (cancelImmediately) {
+            invokeCancellationHook(conversationId, hook);
+            return () -> { };
+        }
+        return () -> {
+            synchronized (state.lock) {
+                state.cancellationHooks.remove(hook);
+            }
+        };
+    }
+
+    private void invokeCancellationHook(String conversationId, Runnable hook) {
+        try {
+            hook.run();
+        } catch (Exception e) {
+            log.warn("Cancellation hook failed for {}: {}", conversationId, e.getMessage());
+        }
+    }
+
+    /**
      * Register an emergency-save callback for this run, invoked from {@link #onShutdown()}
      * before the JVM tears down. The callback should snapshot the current accumulator
      * state and persist it as the assistant message (status="interrupted").
@@ -581,12 +631,35 @@ public class ChatStreamTracker {
      */
     public boolean requestStop(String conversationId) {
         RunState state = runs.get(conversationId);
-        if (state == null || state.done) {
-            return false;
+        if (state == null) return false;
+
+        final boolean firstRequest;
+        final Disposable d;
+        final List<Runnable> hooks;
+        synchronized (state.lock) {
+            if (!isCurrent(state) || state.done) return false;
+            // Set the flag before taking the hook snapshot. A tool entering
+            // concurrently will then self-cancel in registerCancellationHook.
+            firstRequest = !state.stopRequested.getAndSet(true);
+            state.currentPhase = "interrupting";
+            state.runningToolName = null;
+            d = state.disposable;
+            hooks = new ArrayList<>(state.cancellationHooks);
+            state.cancellationHooks.clear();
         }
-        // 设置停止标志，图节点和 LLM 调用会检查此标志以提前退出
-        boolean firstRequest = !state.stopRequested.getAndSet(true);
-        Disposable d = state.disposable;
+
+        // Let the UI render an explicit transition before cancellation closes
+        // the stream. This mirrors qwenpaw's cancel envelope instead of making
+        // the Stop button look unresponsive until final persistence finishes.
+        broadcastObject(conversationId, "phase", Map.of(
+                "phase", "interrupting",
+                "timestamp", System.currentTimeMillis()));
+
+        // Disposing the Flux alone cannot stop a synchronous callback already
+        // running on another thread. Cancel those escaped executions first.
+        for (Runnable hook : hooks) {
+            invokeCancellationHook(conversationId, hook);
+        }
         if (d != null && !d.isDisposed()) {
             d.dispose();
             log.info("Stream stopped via requestStop: {}", conversationId);
@@ -602,6 +675,23 @@ public class ChatStreamTracker {
     public boolean isStopRequested(String conversationId) {
         RunState state = runs.get(conversationId);
         return state != null && state.stopRequested.get();
+    }
+
+    /**
+     * Wait briefly for cancellation finalization (partial-message persistence,
+     * done envelope, and lifecycle cleanup). This gives Stop callers the same
+     * acknowledgement semantics as qwenpaw's request_stop(), which awaits the
+     * cancelled task instead of merely sending a signal.
+     */
+    public boolean awaitTermination(String conversationId, long timeoutMillis) {
+        RunState state = runs.get(conversationId);
+        if (state == null || state.done) return true;
+        try {
+            state.termination.get(Math.max(1L, timeoutMillis), TimeUnit.MILLISECONDS);
+            return true;
+        } catch (Exception e) {
+            return state.done;
+        }
     }
 
     /**
@@ -1201,6 +1291,8 @@ public class ChatStreamTracker {
                 return false;
             }
             state.done = true;
+            state.cancellationHooks.clear();
+            state.termination.complete(null);
             oldHeartbeat = state.heartbeatFuture;
             state.heartbeatFuture = null;
         }
@@ -1244,6 +1336,8 @@ public class ChatStreamTracker {
             // 最后一个 Flux：在同一个锁内消费排队消息（取队首）
             consumed = state.messageQueue.poll();
             state.done = true;
+            state.cancellationHooks.clear();
+            state.termination.complete(null);
             oldHeartbeat = state.heartbeatFuture;
             state.heartbeatFuture = null;
         }
@@ -1919,6 +2013,15 @@ public class ChatStreamTracker {
                                 entry.getKey(), ex.getMessage());
                     }
                     try {
+                        state.stopRequested.set(true);
+                        List<Runnable> hooks;
+                        synchronized (state.lock) {
+                            hooks = new ArrayList<>(state.cancellationHooks);
+                            state.cancellationHooks.clear();
+                        }
+                        for (Runnable hook : hooks) {
+                            invokeCancellationHook(entry.getKey(), hook);
+                        }
                         Disposable d = state.disposable;
                         if (d != null && !d.isDisposed()) {
                             d.dispose();
@@ -1928,6 +2031,7 @@ public class ChatStreamTracker {
                                 entry.getKey(), ex.getMessage());
                     }
                 } finally {
+                    state.termination.complete(null);
                     mappingRemoved = runs.remove(entry.getKey(), state);
                     reclaimed++;
                     if (mappingRemoved) {
@@ -2000,6 +2104,15 @@ public class ChatStreamTracker {
                 log.error("[ChatStreamTracker] Emergency save failed for {}: {}",
                         cid, e.getMessage(), e);
             }
+            state.stopRequested.set(true);
+            List<Runnable> hooks;
+            synchronized (state.lock) {
+                hooks = new ArrayList<>(state.cancellationHooks);
+                state.cancellationHooks.clear();
+            }
+            for (Runnable hook : hooks) {
+                invokeCancellationHook(cid, hook);
+            }
             try {
                 Disposable d = state.disposable;
                 if (d != null && !d.isDisposed()) {
@@ -2009,6 +2122,7 @@ public class ChatStreamTracker {
                 log.warn("[ChatStreamTracker] Disposable.dispose failed for {}: {}",
                         cid, e.getMessage());
             }
+            state.termination.complete(null);
         }
     }
 
@@ -2166,9 +2280,18 @@ public class ChatStreamTracker {
             }
         }
         try {
-            state.stopRequested.set(true);
-            state.interruptType = InterruptType.USER_STOP;
-            Disposable d = state.disposable;
+            final Disposable d;
+            final List<Runnable> hooks;
+            synchronized (state.lock) {
+                state.stopRequested.set(true);
+                state.interruptType = InterruptType.USER_STOP;
+                d = state.disposable;
+                hooks = new ArrayList<>(state.cancellationHooks);
+                state.cancellationHooks.clear();
+            }
+            for (Runnable hook : hooks) {
+                invokeCancellationHook(conversationId, hook);
+            }
             if (d != null && !d.isDisposed()) {
                 d.dispose();
             }
@@ -2177,6 +2300,7 @@ public class ChatStreamTracker {
         }
         try {
             state.done = true;
+            state.termination.complete(null);
             stopHeartbeat(conversationId);
         } catch (Exception e) {
             log.warn("forceRecycle: heartbeat stop failed for {}: {}", conversationId, e.getMessage());

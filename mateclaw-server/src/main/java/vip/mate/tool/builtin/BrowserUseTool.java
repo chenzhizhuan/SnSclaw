@@ -248,6 +248,12 @@ public class BrowserUseTool {
         String conversationId = ToolExecutionContext.conversationId(ctx);
         String sessionKey = (conversationId != null && !conversationId.isBlank())
                 ? conversationId : "default";
+        // Closing the per-conversation session aborts Playwright's native
+        // wait/navigation even when a Java thread interrupt alone is not
+        // observed by the driver transport.
+        Runnable removeCancellationHook = streamTracker != null && conversationId != null
+                ? streamTracker.registerCancellationHook(conversationId, () -> doStop(sessionKey))
+                : () -> { };
         log.info("[BrowserUse] action={}, session={}, url={}, selector={}, headed={}, cdpPort={}",
                 action, sessionKey, url, selector, headed, cdpPort);
 
@@ -283,6 +289,8 @@ public class BrowserUseTool {
             } finally {
                 currentToolContext.remove();
             }
+        } finally {
+            removeCancellationHook.run();
         }
     }
 

@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Shared task board service. All status transitions are guarded conditional
@@ -42,6 +44,9 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class TeamTaskService {
+
+    private static final Pattern CHECKPOINT_RANGE = Pattern.compile(
+            "(?i)R(\\d{3})\\s*[-–—]\\s*R(\\d{3})");
 
     /** Execution lease length; renewed by the runner while the member works. */
     static final int LOCK_MINUTES = 60;
@@ -177,6 +182,7 @@ public class TeamTaskService {
                 .eq(TeamTaskEntity::getStatus, TeamTaskStatus.PENDING)
                 .set(TeamTaskEntity::getStatus, TeamTaskStatus.IN_PROGRESS)
                 .set(TeamTaskEntity::getOwnerAgentId, agentId)
+                .set(TeamTaskEntity::getReason, null)
                 .set(TeamTaskEntity::getLockExpiresAt, newLease())) == 1;
         if (assigned) {
             projectTask(taskId);
@@ -325,6 +331,28 @@ public class TeamTaskService {
         return retried;
     }
 
+    /**
+     * Requeue an automatically dispatched task whose member result is unusable.
+     * Unlike a manual retry this deliberately preserves {@code dispatchCount},
+     * so the existing dispatch circuit breaker remains the hard upper bound.
+     */
+    public boolean requeueUnusableResult(Long taskId, String reason) {
+        TeamTaskEntity task = taskMapper.selectById(taskId);
+        boolean requeued = taskMapper.update(null, Wrappers.<TeamTaskEntity>lambdaUpdate()
+                .eq(TeamTaskEntity::getId, taskId)
+                .eq(TeamTaskEntity::getStatus, TeamTaskStatus.IN_PROGRESS)
+                .set(TeamTaskEntity::getStatus, TeamTaskStatus.PENDING)
+                .set(TeamTaskEntity::getOwnerAgentId, null)
+                .set(TeamTaskEntity::getLockExpiresAt, null)
+                .set(TeamTaskEntity::getReason, reason)) == 1;
+        if (requeued) {
+            recordEvent(task == null ? null : task.getTeamId(), taskId,
+                    TeamTaskEventEntity.RETRIED, AUTHOR_SYSTEM, null, reason);
+            projectTask(taskId);
+        }
+        return requeued;
+    }
+
     // ==================== progress / comments ====================
 
     /** Update progress and renew the execution lease in one shot. */
@@ -363,15 +391,25 @@ public class TeamTaskService {
      * @return true when the comment was a blocker that failed the task
      */
     @Transactional
-    public boolean addComment(Long taskId, String authorType, String authorId,
-                              String commentType, String content) {
+    public synchronized boolean addComment(Long taskId, String authorType, String authorId,
+                                            String commentType, String content) {
         TeamTaskEntity task = requireTask(taskId);
+        String normalizedType = commentType == null ? COMMENT_NOTE : commentType;
+        String checkpointKey = checkpointEvidenceKey(content);
+        if (COMMENT_NOTE.equals(normalizedType)
+                && checkpointKey != null
+                && checkpointTerminalTag(task) != null
+                && hasCheckpointEvidence(taskId, checkpointKey)) {
+            log.debug("Skipped duplicate checkpoint evidence {} on team task {}",
+                    checkpointKey, taskId);
+            return false;
+        }
         TeamTaskCommentEntity comment = new TeamTaskCommentEntity();
         comment.setTaskId(taskId);
         comment.setTeamId(task.getTeamId());
         comment.setAuthorType(authorType);
         comment.setAuthorId(authorId);
-        comment.setCommentType(commentType == null ? COMMENT_NOTE : commentType);
+        comment.setCommentType(normalizedType);
         comment.setContent(content);
         commentMapper.insert(comment);
         recordEvent(task.getTeamId(), taskId,
@@ -394,6 +432,46 @@ public class TeamTaskService {
         return commentMapper.selectList(Wrappers.<TeamTaskCommentEntity>lambdaQuery()
                 .eq(TeamTaskCommentEntity::getTaskId, taskId)
                 .orderByAsc(TeamTaskCommentEntity::getCreateTime));
+    }
+
+    /** Persist a note once, using a semantic checkpoint key when present. */
+    @Transactional
+    public synchronized boolean addCommentOnce(Long taskId, String authorType, String authorId,
+                                               String commentType, String content) {
+        String checkpointKey = checkpointEvidenceKey(content);
+        boolean exists = checkpointKey == null
+                ? hasExactComment(taskId, content)
+                : hasCheckpointEvidence(taskId, checkpointKey);
+        if (exists) {
+            return false;
+        }
+        addComment(taskId, authorType, authorId, commentType, content);
+        return true;
+    }
+
+    private boolean hasExactComment(Long taskId, String content) {
+        Long existing = commentMapper.selectCount(Wrappers.<TeamTaskCommentEntity>lambdaQuery()
+                .eq(TeamTaskCommentEntity::getTaskId, taskId)
+                .eq(TeamTaskCommentEntity::getContent, content));
+        return existing != null && existing > 0;
+    }
+
+    private boolean hasCheckpointEvidence(Long taskId, String checkpointKey) {
+        Long existing = commentMapper.selectCount(Wrappers.<TeamTaskCommentEntity>lambdaQuery()
+                .eq(TeamTaskCommentEntity::getTaskId, taskId)
+                .like(TeamTaskCommentEntity::getContent, checkpointKey));
+        return existing != null && existing > 0;
+    }
+
+    static String checkpointEvidenceKey(String content) {
+        if (content == null || content.isBlank()) {
+            return null;
+        }
+        Matcher matcher = Pattern.compile("(?i)\\[checkpoint:(R\\d{3,})]\\s*acknowledged")
+                .matcher(content);
+        return matcher.find()
+                ? "[checkpoint:" + matcher.group(1).toUpperCase() + "] acknowledged"
+                : null;
     }
 
     // ==================== timeline events ====================
@@ -642,6 +720,44 @@ public class TeamTaskService {
                 .orderByAsc(TeamTaskEntity::getCreateTime));
     }
 
+    /**
+     * Locate the team's dedicated long-running checkpoint tracker, even when
+     * the current checkpoint belongs to a later run. Highest priority and
+     * newest creation win when historical tests left more than one candidate.
+     */
+    public java.util.Optional<TeamTaskEntity> findCheckpointTracker(Long teamId) {
+        return java.util.Optional.ofNullable(taskMapper.selectOne(
+                Wrappers.<TeamTaskEntity>lambdaQuery()
+                        .eq(TeamTaskEntity::getTeamId, teamId)
+                        .and(candidate -> candidate
+                                .like(TeamTaskEntity::getSubject, "共享跟踪")
+                                .or().like(TeamTaskEntity::getSubject, "检查点")
+                                .or().like(TeamTaskEntity::getSubject, "checkpoint"))
+                        .orderByDesc(TeamTaskEntity::getPriority)
+                        .orderByDesc(TeamTaskEntity::getCreateTime)
+                        .last("LIMIT 1")));
+    }
+
+    /** Terminal checkpoint tag declared by a long-running tracker, e.g. R300. */
+    public String checkpointTerminalTag(TeamTaskEntity task) {
+        if (task == null) {
+            return null;
+        }
+        String description = task.getDescription() == null ? "" : task.getDescription();
+        int contextStart = description.indexOf("[Plan context]");
+        if (contextStart >= 0) {
+            description = description.substring(0, contextStart);
+        }
+        String text = (task.getSubject() == null ? "" : task.getSubject()) + " " + description;
+        String lower = text.toLowerCase();
+        if (!text.contains("共享跟踪") && !text.contains("检查点")
+                && !lower.contains("checkpoint")) {
+            return null;
+        }
+        Matcher matcher = CHECKPOINT_RANGE.matcher(text);
+        return matcher.find() ? "R" + matcher.group(2) : null;
+    }
+
     public List<TeamTaskEntity> listTasks(Long teamId, List<String> statuses) {
         return listTasks(teamId, statuses, null, null);
     }
@@ -654,8 +770,15 @@ public class TeamTaskService {
      */
     public List<TeamTaskEntity> listTasks(Long teamId, List<String> statuses,
                                           Integer limit, Integer offset) {
+        return listTasks(teamId, statuses, limit, offset, null);
+    }
+
+    /** Board query optionally scoped to one run to avoid mixing history. */
+    public List<TeamTaskEntity> listTasks(Long teamId, List<String> statuses,
+                                          Integer limit, Integer offset, Long runId) {
         return taskMapper.selectList(Wrappers.<TeamTaskEntity>lambdaQuery()
                 .eq(TeamTaskEntity::getTeamId, teamId)
+                .eq(runId != null, TeamTaskEntity::getRunId, runId)
                 .in(statuses != null && !statuses.isEmpty(), TeamTaskEntity::getStatus, statuses)
                 .orderByDesc(TeamTaskEntity::getPriority)
                 .orderByDesc(TeamTaskEntity::getCreateTime)
@@ -666,10 +789,15 @@ public class TeamTaskService {
 
     /** Per-status task counts for the board header, computed in the database. */
     public Map<String, Long> countByStatus(Long teamId) {
+        return countByStatus(teamId, null);
+    }
+
+    public Map<String, Long> countByStatus(Long teamId, Long runId) {
         Map<String, Long> counts = new HashMap<>();
         taskMapper.selectMaps(Wrappers.<TeamTaskEntity>query()
                         .select("status", "count(*) as cnt")
                         .eq("team_id", teamId)
+                        .eq(runId != null, "run_id", runId)
                         .eq("deleted", 0)
                         .groupBy("status"))
                 .forEach(row -> counts.put(String.valueOf(row.get("status")),

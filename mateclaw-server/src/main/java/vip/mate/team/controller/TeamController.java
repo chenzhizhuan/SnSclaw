@@ -142,10 +142,11 @@ public class TeamController {
     public R<List<TaskVO>> listTasks(@PathVariable Long id,
                                      @RequestParam(required = false) List<String> status,
                                      @RequestParam(required = false) Integer limit,
-                                     @RequestParam(required = false) Integer offset) {
+                                     @RequestParam(required = false) Integer offset,
+                                     @RequestParam(required = false) Long runId) {
         return guarded(() -> {
             requireTeam(id);
-            List<TeamTaskEntity> tasks = taskService.listTasks(id, status, limit, offset);
+            List<TeamTaskEntity> tasks = taskService.listTasks(id, status, limit, offset, runId);
             Set<Long> agentIds = tasks.stream()
                     .flatMap(task -> java.util.stream.Stream.of(
                             task.getAssigneeAgentId(), task.getOwnerAgentId()))
@@ -327,10 +328,11 @@ public class TeamController {
     @Operation(summary = "任务状态统计（看板列头）")
     @GetMapping("/{id}/tasks/stats")
     @RequireWorkspaceRole("viewer")
-    public R<Map<String, Long>> taskStats(@PathVariable Long id) {
+    public R<Map<String, Long>> taskStats(@PathVariable Long id,
+                                          @RequestParam(required = false) Long runId) {
         return guarded(() -> {
             requireTeam(id);
-            return R.ok(taskService.countByStatus(id));
+            return R.ok(taskService.countByStatus(id, runId));
         });
     }
 
