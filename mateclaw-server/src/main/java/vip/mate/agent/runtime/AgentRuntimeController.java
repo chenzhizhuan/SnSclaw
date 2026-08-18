@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import vip.mate.workspace.core.annotation.RequireGlobalAdmin;
+import vip.mate.agent.runtime.dsh.DshRuntimeService;
 
 /**
  * Admin-only live runtime surface: the global view of every in-flight agent
@@ -40,6 +41,7 @@ public class AgentRuntimeController {
     private final AuditEventService auditEventService;
     private final ConversationService conversationService;
     private final I18nService i18nService;
+    private final DshRuntimeService dshRuntimeService;
 
     @Operation(summary = "Snapshot of every in-flight agent turn")
     @GetMapping("/snapshot")
@@ -47,6 +49,14 @@ public class AgentRuntimeController {
     public R<AgentRuntimeAggregator.RuntimeSnapshot> snapshot(Authentication auth) {
         requireAdmin(auth);
         return R.ok(aggregator.snapshot());
+    }
+
+    @Operation(summary = "DSH runtime availability and capability diagnostics")
+    @GetMapping("/dsh/diagnostics")
+    @RequireGlobalAdmin
+    public R<Map<String, Object>> dshDiagnostics(Authentication auth) {
+        requireAdmin(auth);
+        return R.ok(dshRuntimeService.diagnostics());
     }
 
     @Operation(summary = "Friendly stop — request the run to wind down at its next checkpoint")

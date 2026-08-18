@@ -131,6 +131,13 @@ springdoc:
 
 # SnSclaw 自定义配置
 mateclaw:
+  # DeepSeek Harness runtime. The executable and Cordis composition are kept
+  # outside the Spring classpath and can be supplied by environment variables.
+  agent:
+    runtime:
+      dsh:
+        command: ${DSH_JSONRPC_AGENT:}
+        cordis-config: ${DSH_CORDIS_CONFIG:}
   server:
     # Public base URL used to build absolute download links for tool-generated
     # files (e.g. https://mateclaw.example.com). Leave empty to fall back to the
