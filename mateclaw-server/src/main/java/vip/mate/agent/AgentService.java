@@ -27,8 +27,10 @@ import vip.mate.workspace.conversation.model.ConversationEntity;
 import vip.mate.workspace.conversation.repository.ConversationMapper;
 
 import java.util.List;
+import java.util.Locale;
 import java.time.Duration;
 import java.util.Map;
+import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -77,6 +79,13 @@ public class AgentService {
      */
     @Autowired(required = false)
     private ProgressLedgerService progressLedgerService;
+
+    /** Runtime SPI coordinator. Native agents remain the default. */
+    @Autowired(required = false)
+    private vip.mate.agent.runtime.contract.AgentRuntimeCoordinator runtimeCoordinator;
+
+    @Autowired(required = false)
+    private vip.mate.agent.runtime.dsh.DshRuntimeService dshRuntimeService;
 
     /**
      * Runtime Agent instance cache. Keyed first by agentId, then by a model
@@ -132,6 +141,16 @@ public class AgentService {
         if (agent.getAgentType() == null) {
             agent.setAgentType("react");
         }
+        if (!StringUtils.hasText(agent.getRuntimeType())) {
+            agent.setRuntimeType("native");
+        } else {
+            agent.setRuntimeType(agent.getRuntimeType().trim().toLowerCase(Locale.ROOT));
+        }
+        if (!"native".equals(agent.getRuntimeType()) && !"dsh".equals(agent.getRuntimeType())) {
+            throw new MateClawException("err.agent.runtime_unsupported", 400,
+                    "Unsupported runtime provider: " + agent.getRuntimeType());
+        }
+        validateDshConfiguration(agent);
         requireUniqueName(agent, null);
         agentMapper.insert(agent);
         publishLifecycle(agent, "spawned");
@@ -155,6 +174,9 @@ public class AgentService {
                 agent.setWorkspaceId(prior.getWorkspaceId());
             }
             requireUniqueName(agent, agent.getId());
+        }
+        if ("dsh".equalsIgnoreCase(agent.getRuntimeType())) {
+            validateDshConfiguration(agent);
         }
         agentMapper.updateById(agent);
         agentInstances.remove(agent.getId());
@@ -299,6 +321,10 @@ public class AgentService {
     public String chat(Long agentId, String message, String conversationId, ChatOrigin origin) {
         clearAutoRecordedForNewTurn(conversationId);
         memoryRecallTracker.trackRecalls(agentId, message);
+        if (isDshAgent(agentId)) {
+            return collectChatResult(chatStructuredStream(agentId, message, conversationId,
+                    "", null, origin != null ? origin : ChatOrigin.EMPTY)).content();
+        }
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
         ChatOriginHolder.set(origin != null ? origin : ChatOrigin.EMPTY);
         try {
@@ -336,6 +362,12 @@ public class AgentService {
     public Flux<String> chatStream(Long agentId, String message, String conversationId, ChatOrigin origin) {
         clearAutoRecordedForNewTurn(conversationId);
         memoryRecallTracker.trackRecalls(agentId, message);
+        if (isDshAgent(agentId)) {
+            return chatStructuredStream(agentId, message, conversationId, "", null,
+                    origin != null ? origin : ChatOrigin.EMPTY)
+                    .filter(delta -> delta.content() != null)
+                    .map(StreamDelta::content);
+        }
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
         // Capture the origin into a request-scoped holder; cleared on Flux
         // termination so the next reactive subscriber doesn't inherit stale state.
@@ -373,6 +405,19 @@ public class AgentService {
                                                    ChatOrigin origin) {
         clearAutoRecordedForNewTurn(conversationId);
         memoryRecallTracker.trackRecalls(agentId, message);
+        if (isDshAgent(agentId)) {
+            AgentEntity dshAgent = getAgent(agentId);
+            return withLifecycleFlux(agentId, message, conversationId,
+                    (msg, convId) -> Flux.using(
+                            () -> runtimeCoordinator.start(dshAgent, convId, convId,
+                                    dshAgent.getModelName(), dshWorkingDirectory(dshAgent),
+                                    dshWorkingDirectory(dshAgent)),
+                            connection -> vip.mate.agent.runtime.RuntimeEventStreamAdapter.adapt(
+                                    connection.prompt(msg)),
+                            connection -> connection.close()),
+                    StreamDelta::content)
+                    .doFinally(signal -> ThinkingLevelHolder.clear());
+        }
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
 
         // 设置请求级思考深度（通过 ThreadLocal 传递到 StateGraph 执行）
@@ -687,6 +732,33 @@ public class AgentService {
         if (runningConversationRegistry != null) {
             runningConversationRegistry.unregister(conversationId);
         }
+    }
+
+    private boolean isDshAgent(Long agentId) {
+        if (runtimeCoordinator == null || agentId == null) return false;
+        AgentEntity entity = getAgent(agentId);
+        return "dsh".equalsIgnoreCase(entity.getRuntimeType());
+    }
+
+    private void validateDshConfiguration(AgentEntity agent) {
+        if (!"dsh".equalsIgnoreCase(agent.getRuntimeType())) return;
+        if (dshRuntimeService == null) {
+            throw new MateClawException("err.agent.runtime_unavailable", 503,
+                    "DSH runtime provider is unavailable");
+        }
+        try {
+            dshRuntimeService.validateAgentConfiguration(agent);
+        } catch (IllegalArgumentException error) {
+            throw new MateClawException("err.agent.runtime_invalid", 400, error.getMessage());
+        }
+    }
+
+    private Path dshWorkingDirectory(AgentEntity agent) {
+        String configured = System.getenv().getOrDefault("DSH_CWD", System.getProperty("user.dir"));
+        if (agent.getWorkspaceBasePath() != null && !agent.getWorkspaceBasePath().isBlank()) {
+            configured = agent.getWorkspaceBasePath().trim();
+        }
+        return Path.of(configured).toAbsolutePath().normalize();
     }
 
     /**

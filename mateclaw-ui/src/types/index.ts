@@ -37,6 +37,8 @@ export interface Agent {
   name: string
   description?: string
   agentType: 'react' | 'plan_execute'
+  runtimeType?: 'native' | 'dsh' | string
+  runtimeConfig?: string | null
   systemPrompt?: string
   modelName?: string
   maxIterations: number

@@ -63,6 +63,13 @@
               <div class="agent-badge-text">
                 <span class="agent-badge-name">{{ currentAgent.name }}</span>
               </div>
+              <span
+                class="agent-runtime-badge"
+                :class="{ 'agent-runtime-badge--dsh': currentAgentRuntimeType === 'dsh' }"
+                :title="currentAgentRuntimeLabel"
+              >
+                {{ currentAgentRuntimeLabel }}
+              </span>
               <span class="status-dot" :class="connectionStatusClass" :title="connectionStatusLabel"></span>
             </div>
           </div>
@@ -873,6 +880,9 @@ const currentAgentRuntimeMode = computed(() => {
   if (!a) return ''
   return a.agentType === 'react' ? t('agents.types.react') : t('agents.types.planExecute')
 })
+
+const currentAgentRuntimeType = computed(() => currentAgent.value?.runtimeType === 'dsh' ? 'dsh' : 'native')
+const currentAgentRuntimeLabel = computed(() => t(`agents.runtime.${currentAgentRuntimeType.value}`))
 
 // Per-conversation last-viewed timestamp store (localStorage-backed, MVP).
 // Keyed by conversationId. Updated when the user opens a conversation; the
@@ -2655,6 +2665,26 @@ function handleCodeCopy(e: MouseEvent) {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
+}
+
+.agent-runtime-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--mc-border);
+  border-radius: 999px;
+  color: var(--mc-text-tertiary);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.agent-runtime-badge--dsh {
+  border-color: rgba(24, 126, 104, 0.28);
+  color: #187e68;
+  background: rgba(24, 126, 104, 0.08);
 }
 
 

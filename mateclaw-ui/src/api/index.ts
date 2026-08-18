@@ -439,6 +439,7 @@ export interface LiveSnapshot {
 
 export const liveApi = {
   snapshot: () => http.get<{ data: LiveSnapshot }>('/admin/agent-runtime/snapshot'),
+  dshDiagnostics: () => http.get<{ data: Record<string, any> }>('/admin/agent-runtime/dsh/diagnostics'),
   stop: (conversationId: string) =>
     http.post(`/admin/agent-runtime/runs/${encodeURIComponent(conversationId)}/stop`),
   recycle: (conversationId: string) =>
