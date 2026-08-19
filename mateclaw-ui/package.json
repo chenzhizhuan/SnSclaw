@@ -3,7 +3,7 @@
   "version": "1.0.2-SNAPSHOT",
   "private": true,
   "type": "module",
-  "description": "智屿 AI 助手 — 面向企业级场景的私有化智能体平台，集成多模态模型、知识库检索、语音交互与自动化工具链（HTTP/SSE 运行时）",
+  "description": "智算方舟 AI 助手 — 面向企业级场景的私有化智能体平台，集成多模态模型、知识库检索、语音交互与自动化工具链（HTTP/SSE 运行时）",
   "author": "SnSclaw",
   "license": "Apache-2.0",
   "homepage": "https://www.sns.app",
