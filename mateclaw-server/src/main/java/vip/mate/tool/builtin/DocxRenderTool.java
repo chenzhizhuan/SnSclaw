@@ -40,7 +40,7 @@ public class DocxRenderTool {
     private final MarkdownDocxRenderer renderer;
     private final GeneratedFileCache cache;
 
-    @Tool(description = """
+    @Tool(returnDirect = true, description = """
         Render a new .docx (Microsoft Word) file from Markdown text and return a
         one-time download URL. Use for creating EDITABLE Word documents the user
         will continue to revise — reports, memos, contracts, letters, resumes.
@@ -105,7 +105,7 @@ public class DocxRenderTool {
      * the markdown locally → calls this tool with the file path → docx is
      * rendered from disk in one IO call. Token cost ≈ 50 (just the path).
      */
-    @Tool(description = """
+    @Tool(returnDirect = true, description = """
         Render a .docx (Microsoft Word) file from a markdown FILE on disk and return
         a one-time download URL. Use this for EDITABLE Word documents only.
 
@@ -172,7 +172,7 @@ public class DocxRenderTool {
      * Empty / missing files abort the render with a clear error so the agent
      * can fix its file list before retrying.
      */
-    @Tool(description = """
+    @Tool(returnDirect = true, description = """
         Render a .docx by concatenating MULTIPLE markdown files in order and return a
         download URL. Use when a report is split into chapters / sections, or when the
         agent assembled the document piece by piece (cover, table of contents, body,

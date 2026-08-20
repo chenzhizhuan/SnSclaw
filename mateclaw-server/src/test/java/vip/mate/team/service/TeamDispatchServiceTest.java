@@ -212,6 +212,28 @@ class TeamDispatchServiceTest {
     }
 
     @Test
+    @DisplayName("a returnDirect generated-file link satisfies a declared deliverable task")
+    void settleGeneratedFileLinkAttachesDeliverable() {
+        TeamTaskEntity running = task(1L, MEMBER_A);
+        running.setStatus(TeamTaskStatus.IN_PROGRESS);
+        running.setMetadata("{\"deliverableRequired\":true}");
+        TeamTaskEntity completed = task(1L, MEMBER_A);
+        completed.setStatus(TeamTaskStatus.COMPLETED);
+        when(taskService.getTask(1L)).thenReturn(running, completed);
+        when(taskService.listDeliverables(running)).thenReturn(List.of());
+        when(taskService.completeTask(eq(1L), isNull(), anyString())).thenReturn(List.of());
+
+        String reply = "文档已生成：[report.docx](/api/v1/files/generated/file-123)（链接 7 天内有效）。";
+        service.settleOutcome(running, reply);
+
+        verify(taskService).addDeliverable(1L, MEMBER_A, "report.docx",
+                "/api/v1/files/generated/file-123");
+        verify(taskService, never()).requeueUnusableResult(any(), anyString());
+        verify(taskService).completeTask(1L, null, reply);
+        verify(announceService).announceTaskSettled(completed);
+    }
+
+    @Test
     @DisplayName("a long-running checkpoint tracker stays active until its terminal round")
     void settleParksCheckpointTracker() {
         TeamTaskEntity running = task(1L, MEMBER_A);
