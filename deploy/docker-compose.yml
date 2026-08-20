@@ -1,0 +1,131 @@
+# ============================================================================
+#  SnSclaw 客户端部署 compose —— 纯镜像拉取版（不含构建）
+#
+#  与源码版的区别：所有 build: 已替换为 image: 指向私有 registry。
+#  部署前置条件：
+#    1. 已安装 docker compose v2（Ubuntu 的 docker.io 包不含此插件）
+#    2. /etc/docker/daemon.json 里已加 "insecure-registries": ["221.237.179.2:5000"]
+#    3. docker login 221.237.179.2:5000 -u admin
+#    4. 同目录下有 .env（由 .env.template 复制并填写）
+#
+#  本包自洽：不依赖任何包外文件，直接整个文件夹上传即可。
+#  启动：./deploy.sh   或   docker compose up -d
+# ============================================================================
+services:
+  postgres:
+    image: 221.237.179.2:5000/snsclaw/postgres:16
+    container_name: snsclaw-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-snsclaw}
+      POSTGRES_USER: ${DB_ADMIN_USERNAME:-snsclaw_admin}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?DB_ADMIN_PASSWORD is required in .env}
+      APP_DB_USERNAME: ${DB_USERNAME:-snsclaw}
+      APP_DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required in .env}
+      TZ: Asia/Shanghai
+    ports:
+      # 宿主 19695 -> 容器 5432（容器内端口不能改，Postgres 固定监听 5432）
+      - "19695:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # ⚠️ 必需：首次启动（空数据卷）时创建低权限应用角色 + snsclaw schema。
+      # 脚本已随本部署包提供，无需另行拷贝。Postgres 不会自动创建非 public
+      # schema，缺此脚本会导致后续 Flyway 建表因权限不足失败。
+      # 注意：仅在数据卷为空时执行一次；卷已存在时补放该文件不会生效。
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USERNAME:-snsclaw_admin} -d ${DB_NAME:-snsclaw}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - snsclaw-net
+
+  searxng:
+    # 定制镜像：上游镜像默认禁用 JSON 输出且启用 Limiter，会静默破坏搜索功能，
+    # 该镜像已烘焙好 settings.yml。仅内部访问，不暴露宿主端口。
+    image: 221.237.179.2:5000/snsclaw/searxng:latest
+    container_name: snsclaw-searxng
+    restart: unless-stopped
+    environment:
+      - SEARXNG_BASE_URL=http://searxng:8080
+      - SEARXNG_SECRET=${SEARXNG_SECRET:?SEARXNG_SECRET is required in .env}
+      - UWSGI_WORKERS=2
+      - UWSGI_THREADS=4
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - snsclaw-net
+
+  snsclaw-server:
+    image: 221.237.179.2:5000/snsclaw/server:v1.0.2
+    container_name: snsclaw-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      searxng:
+        condition: service_healthy
+    # 容器内访问宿主机服务时统一用 host.docker.internal:<端口>。
+    # 本部署不使用本地 GPU 推理，此项留作将来接宿主机服务时备用（保留无副作用）。
+    # 注意：不要写 172.x.x.x 网关 IP —— 那是 Docker 按网络创建顺序自动分配的，换机必变。
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      # 容器间通过服务名互访，与宿主映射端口无关，保持 postgres:5432 不要改
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-snsclaw}
+      DB_USERNAME: ${DB_USERNAME:-snsclaw}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required in .env}
+      # LLM provider 的 API key 不在这里配置，启动后在后台
+      # 设置 → 模型 → 添加供应商 录入，存于 mate_model_provider 表并热加载。
+      SERPER_API_KEY: ${SERPER_API_KEY:-}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required in .env}
+      MATECLAW_CORS_ALLOWED_ORIGINS: ${MATECLAW_CORS_ALLOWED_ORIGINS:-}
+      MATECLAW_PUBLIC_BASE_URL: ${MATECLAW_PUBLIC_BASE_URL:-}
+      SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://searxng:8080}
+      MATECLAW_BROWSER_CDP_URL: ${MATECLAW_BROWSER_CDP_URL:-}
+      MATECLAW_BROWSER_CHROME_PATH: ${MATECLAW_BROWSER_CHROME_PATH:-}
+      MATECLAW_BROWSER_CHANNEL: ${MATECLAW_BROWSER_CHANNEL:-}
+      MATECLAW_BROWSER_ALLOW_PRIVATE_NETWORK: ${PLAYWRIGHT_ALLOW_PRIVATE_NETWORK:-false}
+      MATECLAW_BROWSER_IGNORE_HTTPS_ERRORS: ${PLAYWRIGHT_IGNORE_HTTPS_ERRORS:-false}
+      MATECLAW_BROWSER_DEFAULT_TIMEOUT_SECONDS: ${PLAYWRIGHT_DEFAULT_TIMEOUT_SECONDS:-30}
+      MATECLAW_BROWSER_DEFAULT_NAVIGATION_TIMEOUT_SECONDS: ${PLAYWRIGHT_NAVIGATION_TIMEOUT_SECONDS:-30}
+      MATECLAW_BROWSER_SNAPSHOT_MAX_LENGTH: ${PLAYWRIGHT_SNAPSHOT_MAX_LENGTH:-20000}
+      MATECLAW_OAUTH_OPENAI_DEPLOYMENT_MODE: ${MATECLAW_OAUTH_OPENAI_DEPLOYMENT_MODE:-}
+      MATECLAW_OAUTH_OPENAI_CALLBACK_BIND_HOST: ${MATECLAW_OAUTH_OPENAI_CALLBACK_BIND_HOST:-0.0.0.0}
+      MATE_WIKI_ALLOWED_SOURCE_ROOTS: ${MATE_WIKI_ALLOWED_SOURCE_ROOTS:-}
+      MATE_WIKI_WATCHER_ENABLED: ${MATE_WIKI_WATCHER_ENABLED:-false}
+      MATE_WIKI_WATCHER_INTERVAL_MS: ${MATE_WIKI_WATCHER_INTERVAL_MS:-300000}
+      MATECLAW_SKILL_WORKSPACE_ROOT: ${MATECLAW_SKILL_WORKSPACE_ROOT:-/app/data/skills}
+      MATECLAW_SKILL_UPLOAD_MAX_ENTRY_SIZE_MB: ${MATECLAW_SKILL_UPLOAD_MAX_ENTRY_SIZE_MB:-1}
+      MATECLAW_SKILL_UPLOAD_MAX_TOTAL_SIZE_MB: ${MATECLAW_SKILL_UPLOAD_MAX_TOTAL_SIZE_MB:-50}
+      PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+      PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-}
+    # Chromium 需要真实的 /dev/shm，Docker 默认 64MB 会导致 SIGBUS。
+    shm_size: 2gb
+    ports:
+      # 宿主 19600 -> 容器 18088（容器内端口由镜像固定，不要改）
+      - "19600:18088"
+      # ⚠️ OpenAI ChatGPT OAuth 本地回调。宿主与容器必须同号（回调 URL 写死
+      # localhost:1455）。若不使用 OpenAI OAuth 登录，可整行删除。
+      - "1455:1455"
+    volumes:
+      # /app/data —— wiki 上传、chat 上传、生成文件、workspace、skills 全在这里
+      - server_data:/app/data
+    networks:
+      - snsclaw-net
+
+volumes:
+  postgres_data:
+  server_data:
+
+networks:
+  snsclaw-net:
+    driver: bridge
