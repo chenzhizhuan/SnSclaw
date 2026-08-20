@@ -1,6 +1,6 @@
 ---
 title: DeepSeek Harness Integration
-description: Install DeepSeek Harness and configure it as a digital employee runtime in MateClaw.
+description: Install DeepSeek Harness and configure it as a digital employee runtime in SnSclaw.
 head:
   - - meta
     - name: keywords
@@ -9,14 +9,14 @@ head:
 
 # DeepSeek Harness Integration
 
-This guide connects the official DeepSeek Harness (DSH) to MateClaw and creates a digital employee powered by the DSH runtime.
+This guide connects the official DeepSeek Harness (DSH) to SnSclaw and creates a digital employee powered by the DSH runtime.
 
-In MateClaw, DSH is an **employee runtime**, not an MCP tool and not a regular plugin. MCP supplies tools; DSH owns the external Agent process, the ReAct loop, and the event stream that MateClaw projects into the conversation UI.
+In SnSclaw, DSH is an **employee runtime**, not an MCP tool and not a regular plugin. MCP supplies tools; DSH owns the external Agent process, the ReAct loop, and the event stream that SnSclaw projects into the conversation UI.
 
 ## Architecture
 
 ```text
-MateClaw Chat / SSE
+SnSclaw Chat / SSE
         |
         v
 DSH Runtime Provider
@@ -28,13 +28,13 @@ dsh-jsonrpc-agent
 DeepSeek API + Cordis composition
 ```
 
-MateClaw remains responsible for employees, sessions, permissions, workspaces, message persistence, and UI projection. DSH runs the turn. MateClaw injects the API key from the DeepSeek provider configuration into the DSH child process. Never put secrets in `runtimeConfig`, employee prompts, or the repository.
+SnSclaw remains responsible for employees, sessions, permissions, workspaces, message persistence, and UI projection. DSH runs the turn. SnSclaw injects the API key from the DeepSeek provider configuration into the DSH child process. Never put secrets in `runtimeConfig`, employee prompts, or the repository.
 
 ## Prerequisites
 
 - macOS, Linux, or Windows (commands below use macOS / Linux syntax)
 - JDK 21
-- A running MateClaw backend and frontend
+- A running SnSclaw backend and frontend
 - A DeepSeek API key
 - A built DSH JSON-RPC agent
 - The Cordis configuration from the DSH checkout
@@ -56,11 +56,11 @@ Follow the [official DeepSeek Harness repository](https://github.com/deepseek-ai
 <dsh-root>/python/sdk-runtime/src/deepseek_harness_runtime/runtime/cordis.yml
 ```
 
-Keep the DSH binary outside the MateClaw source tree. Configure its location with environment variables.
+Keep the DSH binary outside the SnSclaw source tree. Configure its location with environment variables.
 
 ## Configure the IDEA backend
 
-Open **Run | Edit Configurations...** in IDEA, select the MateClaw Spring Boot configuration, and add these variables under **Environment variables**:
+Open **Run | Edit Configurations...** in IDEA, select the SnSclaw Spring Boot configuration, and add these variables under **Environment variables**:
 
 ```text
 DSH_JSONRPC_AGENT=/absolute/path/to/dsh-jsonrpc-agent-pkg-macos-arm64
@@ -80,13 +80,13 @@ DSH_CWD=/var/lib/mateclaw/workspace
 
 ## Configure the DeepSeek provider
 
-1. Sign in to MateClaw.
+1. Sign in to SnSclaw.
 2. Open **Settings → Models**.
 3. Configure and enable the **DeepSeek** provider.
 4. Enter the DeepSeek API key and base URL.
 5. Confirm that at least one enabled DeepSeek chat model exists.
 
-The default DSH model is `deepseek-v4-flash`. If the employee has no explicit model, MateClaw uses the global model name and injects credentials from the `deepseek` provider. A custom model must be usable by the DeepSeek provider route in DSH.
+The default DSH model is `deepseek-v4-flash`. If the employee has no explicit model, SnSclaw uses the global model name and injects credentials from the `deepseek` provider. A custom model must be usable by the DeepSeek provider route in DSH.
 
 ## Create a DSH digital employee
 
@@ -177,25 +177,25 @@ chmod +x /absolute/path/to/dsh-jsonrpc-agent-pkg-macos-arm64
 
 ### `dsh.cordis_missing`
 
-`DSH_CORDIS_CONFIG` must point to the actual `cordis.yml`, not only the package directory. If a package directory is provided, MateClaw also checks its `runtime/cordis.yml` child path.
+`DSH_CORDIS_CONFIG` must point to the actual `cordis.yml`, not only the package directory. If a package directory is provided, SnSclaw also checks its `runtime/cordis.yml` child path.
 
 ### The answer appears twice
 
-Use the latest backend version. DSH emits text deltas followed by a final assistant snapshot. MateClaw must project the deltas only and must not append the snapshot again.
+Use the latest backend version. DSH emits text deltas followed by a final assistant snapshot. SnSclaw must project the deltas only and must not append the snapshot again.
 
 ## MCP, plugins, and DSH
 
 | Mechanism | Best for | Replaces DSH? |
 |-----------|----------|--------------|
 | MCP | File, GitHub, database, and other tools | No |
-| Plugin | Extending MateClaw tools, models, channels, or memory | No |
+| Plugin | Extending SnSclaw tools, models, channels, or memory | No |
 | DSH employee runtime | Hosting the DeepSeek Harness Agent loop and process | It is the employee runtime, not a tool |
 
-The recommended composition is: **DSH as the employee runtime, MCP as the tool layer, and MateClaw as the governance and visualization layer**.
+The recommended composition is: **DSH as the employee runtime, MCP as the tool layer, and SnSclaw as the governance and visualization layer**.
 
 ## Security recommendations
 
-- Store API keys only in MateClaw provider configuration or a controlled environment.
+- Store API keys only in SnSclaw provider configuration or a controlled environment.
 - Give DSH a dedicated workspace instead of the whole user home directory.
 - Start with a read-only policy and the smallest possible tool set.
 - Never commit `.sessions/`, logs, or local credential configuration.
