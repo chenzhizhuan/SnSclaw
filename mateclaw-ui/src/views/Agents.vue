@@ -1409,8 +1409,8 @@ async function openEditModal(agent: Agent) {
       // RFC-042: /skills is now paginated; binding dropdown only needs enabled skills,
       // so listEnabled() is both semantically correct and shape-stable (returns array).
       skillApi.listEnabled(),
-      // /tools/available aggregates built-in tools + every MCP-discovered
-      // tool grouped by server, with stale/available flags so the picker
+      // /tools/available aggregates built-in, channel, plugin, and MCP-discovered
+      // tools, with stale/available flags so the picker
       // matches the runtime callback set exactly.
       toolApi.listAvailable(),
       // Options, not the full provider list: /models is admin-only, and a

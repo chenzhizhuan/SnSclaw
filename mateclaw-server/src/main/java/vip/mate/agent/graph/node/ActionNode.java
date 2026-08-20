@@ -406,7 +406,7 @@ public class ActionNode implements NodeAction {
         return names;
     }
 
-    static Set<String> extractLoadedSkillNames(List<AssistantMessage.ToolCall> toolCalls) {
+    public static Set<String> extractLoadedSkillNames(List<AssistantMessage.ToolCall> toolCalls) {
         if (toolCalls == null || toolCalls.isEmpty()) {
             return Set.of();
         }

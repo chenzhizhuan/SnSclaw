@@ -544,17 +544,41 @@ public class ChatStreamTracker {
      */
     public void setDisposable(String conversationId, Disposable disposable) {
         RunState state = runs.get(conversationId);
-        if (state != null) {
+        if (state == null || disposable == null) return;
+        boolean disposeImmediately;
+        synchronized (state.lock) {
+            if (!isCurrent(state)) return;
             state.disposable = disposable;
+            // Stop can win before the asynchronous SSE setup has subscribed
+            // and registered its Disposable. Do not let that late subscription
+            // escape the cancellation request.
+            disposeImmediately = state.done || state.stopRequested.get();
+        }
+        if (disposeImmediately) {
+            disposeSafely(conversationId, disposable);
         }
     }
 
     public void setDisposable(RunHandle handle, Disposable disposable) {
-        if (handle == null) return;
+        if (handle == null || disposable == null) return;
         RunState state = handle.state;
+        boolean disposeImmediately;
         synchronized (state.lock) {
             if (!isCurrent(state)) return;
             state.disposable = disposable;
+            disposeImmediately = state.done || state.stopRequested.get();
+        }
+        if (disposeImmediately) {
+            disposeSafely(state.conversationId, disposable);
+        }
+    }
+
+    private void disposeSafely(String conversationId, Disposable disposable) {
+        try {
+            disposable.dispose();
+        } catch (Exception e) {
+            log.warn("Late stream disposable cancellation failed for {}: {}",
+                    conversationId, e.getMessage());
         }
     }
 

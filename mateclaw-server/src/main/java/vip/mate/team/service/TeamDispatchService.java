@@ -15,6 +15,7 @@ import vip.mate.team.model.AgentTeamEntity;
 import vip.mate.team.model.TeamTaskEntity;
 import vip.mate.team.model.TeamTaskEventEntity;
 import vip.mate.team.model.TeamTaskStatus;
+import vip.mate.tool.document.GeneratedFileCache;
 import vip.mate.workspace.conversation.ConversationService;
 
 import java.util.HashMap;
@@ -28,6 +29,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Dispatches board tasks to their assigned member agents and closes the
@@ -50,6 +53,9 @@ public class TeamDispatchService {
 
     /** Result summaries are capped before persisting to keep the board readable. */
     static final int MAX_RESULT_CHARS = 8000;
+
+    private static final Pattern GENERATED_FILE_MARKDOWN_LINK = Pattern.compile(
+            "\\[([^\\]\\r\\n]{1,200})]\\(((?:https?://[^/\\s)\\]]+)?/api/v1/files/generated/[A-Za-z0-9-]+)\\)");
 
     /** One JDK 21 virtual thread per member-agent run. */
     private static final ExecutorService DISPATCH_EXECUTOR =
@@ -248,7 +254,8 @@ public class TeamDispatchService {
             return;
         }
         if (TeamTaskStatus.IN_PROGRESS.equals(current.getStatus())) {
-            String invalidReason = invalidResultReason(current, reply);
+            boolean attachedGeneratedFile = attachGeneratedFileDeliverable(current, reply);
+            String invalidReason = invalidResultReason(current, reply, attachedGeneratedFile);
             if (invalidReason != null) {
                 int attempts = current.getDispatchCount() == null ? 0 : current.getDispatchCount();
                 if (attempts < TeamTaskService.MAX_DISPATCHES
@@ -316,7 +323,8 @@ public class TeamDispatchService {
         announceService.announceTaskSettled(current);
     }
 
-    private String invalidResultReason(TeamTaskEntity task, String reply) {
+    private String invalidResultReason(TeamTaskEntity task, String reply,
+                                       boolean attachedGeneratedFile) {
         if (reply == null || reply.isBlank()) {
             return "member produced no result";
         }
@@ -325,10 +333,35 @@ public class TeamDispatchService {
                 || normalized.equals("(no output)")) {
             return "member response generation failed";
         }
-        if (requiresDeliverable(task) && taskService.listDeliverables(task).isEmpty()) {
+        if (requiresDeliverable(task) && !attachedGeneratedFile
+                && taskService.listDeliverables(task).isEmpty()) {
             return "required deliverable was not attached";
         }
         return null;
+    }
+
+    private boolean attachGeneratedFileDeliverable(TeamTaskEntity task, String reply) {
+        if (!requiresDeliverable(task) || reply == null || reply.isBlank()) {
+            return false;
+        }
+        Matcher link = GENERATED_FILE_MARKDOWN_LINK.matcher(reply);
+        while (link.find()) {
+            String name = link.group(1).trim();
+            String url = link.group(2).trim();
+            if (!GeneratedFileCache.GENERATED_URL_PATTERN.matcher(url).matches()) {
+                continue;
+            }
+            try {
+                taskService.addDeliverable(task.getId(), task.getAssigneeAgentId(), name, url);
+                log.info("Team task #{} auto-attached generated deliverable from member reply: {}",
+                        task.getTaskNumber(), name);
+                return true;
+            } catch (Exception e) {
+                log.warn("Team task #{} generated deliverable auto-attach failed for {}: {}",
+                        task.getTaskNumber(), name, e.getMessage());
+            }
+        }
+        return false;
     }
 
     private boolean requiresDeliverable(TeamTaskEntity task) {

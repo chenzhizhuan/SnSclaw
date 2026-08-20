@@ -858,6 +858,14 @@ const workerRunContext = computed(() => workerGuard.context.value
   ?? readLegacyWorkerRouteContext(currentConversationId.value, route.query))
 const workerConversationReadOnly = computed(() => workerGuard.readOnly.value)
 
+function workerTranscriptMessageParams() {
+  const query = teamRunRouteQuery.value
+  return {
+    runId: query.teamRunId,
+    taskId: query.taskId,
+  }
+}
+
 // ============ 连接状态 ============
 const connectionStatusClass = computed(() => {
   if (isGenerating.value) return 'status-streaming'
@@ -1682,7 +1690,7 @@ async function refreshCurrentConversationMessages(conversationId: string) {
   if (isGenerating.value) return
   if (streamPhase.value === 'awaiting_approval') return
   try {
-    const res: any = await conversationApi.listMessages(conversationId)
+    const res: any = await conversationApi.listMessages(conversationId, workerTranscriptMessageParams())
     // Stale guard：await 返回后确认仍是当前会话
     if (currentConversationId.value !== conversationId) return
     // 二次 isGenerating 检查：如果 await 期间用户已发新消息，不覆盖本地状态
@@ -1719,9 +1727,9 @@ async function hydrateStateFromRoute() {
       currentConversationId.value = conversationId
       messages.value = []
       try {
-        const res: any = await conversationApi.listMessages(conversationId)
+        const res: any = await conversationApi.listMessages(conversationId, workerTranscriptMessageParams())
         if (currentConversationId.value !== conversationId) return
-      messages.value = extractMessages(res).messages.map((msg: Message) => normalizeMessage(msg, true))
+        messages.value = extractMessages(res).messages.map((msg: Message) => normalizeMessage(msg, true))
       } catch {
         // 消息加载失败，保持空
       }
@@ -1789,7 +1797,7 @@ async function selectConversation(conv: Conversation, routeAgentId = '') {
   markConversationViewed(conv.conversationId, conv.lastActiveTime)
   const requestedConvId = conv.conversationId
   try {
-    const res: any = await conversationApi.listMessages(requestedConvId)
+    const res: any = await conversationApi.listMessages(requestedConvId, workerTranscriptMessageParams())
     // Stale guard：await 返回后确认仍是当前会话，否则丢弃
     if (currentConversationId.value !== requestedConvId) return
     // 点同一个会话时，若已有 SSE 在跑就不要覆盖本地消息状态
