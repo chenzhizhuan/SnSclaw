@@ -133,13 +133,13 @@ DSH 默认模型是 `deepseek-v4-flash`。如果员工没有绑定具体模型�
 后端日志通常位于：
 
 ```text
-logs/mateclaw.log
+logs/snsclaw.log
 ```
 
 重点搜索：
 
 ```bash
-rg "\[DSH\]|MISSING_CREDENTIAL|EMPTY_RESPONSE|id collision" logs/mateclaw.log
+rg "\[DSH\]|MISSING_CREDENTIAL|EMPTY_RESPONSE|id collision" logs/snsclaw.log
 ```
 
 安全诊断接口：
