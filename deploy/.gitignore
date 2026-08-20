@@ -1,0 +1,16 @@
+# 实际配置含明文密码与密钥，绝不入库。
+# 模板 .env.template 应当提交。
+.env
+.env.bak
+.env.*.bak
+
+# manage.sh update 改 tag 前的自动备份
+docker-compose.yml.bak.*
+
+# manage.sh backup 的输出：数据库转储与文件卷归档
+backups/
+*.dump
+*.tar.gz
+
+# 运行期杂项
+*.log
