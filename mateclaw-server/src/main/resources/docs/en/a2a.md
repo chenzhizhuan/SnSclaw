@@ -1,6 +1,6 @@
 # A2A Protocol
 
-MateClaw can expose enabled agents through an A2A JSON-RPC endpoint and can call other A2A peers from agent tools.
+SnSclaw can expose enabled agents through an A2A JSON-RPC endpoint and can call other A2A peers from agent tools.
 
 ## Configuration
 
@@ -14,13 +14,13 @@ mateclaw:
     task-ttl-seconds: 3600
 ```
 
-`base-url` is required for production deployments. If it is empty, MateClaw derives the Agent Card URL from the incoming request, which depends on proxy headers being correct.
+`base-url` is required for production deployments. If it is empty, SnSclaw derives the Agent Card URL from the incoming request, which depends on proxy headers being correct.
 
 ## Inbound
 
 - `GET /.well-known/agent-card.json` and anonymous `GET /api/a2a/card` return the public minimal card without `skills`.
 - Authenticated `GET /api/a2a/card` returns enabled agents in `skills[]`; use the agent id as `message.metadata.skillId`.
-- `POST /api/a2a` requires an existing MateClaw Bearer token and supports `message/send`, `message/stream`, `tasks/get`, and `tasks/cancel`.
+- `POST /api/a2a` requires an existing SnSclaw Bearer token and supports `message/send`, `message/stream`, `tasks/get`, and `tasks/cancel`.
 
 ## Outbound Tool
 
