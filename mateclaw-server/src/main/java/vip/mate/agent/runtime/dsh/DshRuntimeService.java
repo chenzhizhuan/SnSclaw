@@ -3,9 +3,9 @@ package vip.mate.agent.runtime.dsh;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 import vip.mate.agent.model.AgentEntity;
 import vip.mate.agent.runtime.RuntimeEventProjector;
 import vip.mate.agent.runtime.contract.RuntimeEvent;
@@ -16,6 +16,8 @@ import vip.mate.agent.runtime.contract.AgentRuntimeProvider;
 import vip.mate.agent.runtime.contract.RuntimeCapabilities;
 import vip.mate.agent.runtime.contract.RuntimeContextUsage;
 import vip.mate.agent.runtime.contract.RuntimeValidation;
+import vip.mate.agent.runtime.dsh.management.DshRuntimeConfigService;
+import vip.mate.agent.runtime.dsh.management.DshRuntimeConfiguration;
 import vip.mate.agent.AgentService;
 import vip.mate.llm.model.ModelConfigEntity;
 import vip.mate.llm.model.ModelProviderEntity;
@@ -34,6 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Adapter for the official DeepSeek Harness SDK JSON-RPC runtime.
@@ -48,26 +51,30 @@ public class DshRuntimeService implements AgentRuntimeProvider {
     private final ObjectMapper objectMapper;
     private final ModelConfigService modelConfigService;
     private final ModelProviderService modelProviderService;
-    private final String runtimeCommand;
-    private final String cordisConfig;
+    private final DshRuntimeConfigService runtimeConfigService;
 
     public DshRuntimeService(
             ObjectMapper objectMapper,
             ModelConfigService modelConfigService,
             ModelProviderService modelProviderService,
-            @Value("${mateclaw.agent.runtime.dsh.command:}") String configuredCommand,
-            @Value("${mateclaw.agent.runtime.dsh.cordis-config:}") String configuredCordisConfig) {
+            DshRuntimeConfigService runtimeConfigService) {
         this.objectMapper = objectMapper;
         this.modelConfigService = modelConfigService;
         this.modelProviderService = modelProviderService;
-        this.runtimeCommand = configuredCommand == null || configuredCommand.isBlank()
-                ? System.getenv().getOrDefault("DSH_JSONRPC_AGENT", "dsh-jsonrpc-agent")
-                : configuredCommand.trim();
-        this.cordisConfig = resolveCordisConfig(configuredCordisConfig == null || configuredCordisConfig.isBlank()
-                ? System.getenv().getOrDefault("DSH_CORDIS_CONFIG", "")
-                : configuredCordisConfig.trim());
-        log.info("[DSH] runtime configured: command={}, cordisConfig={}", runtimeCommand,
-                cordisConfig.isBlank() ? "<empty>" : cordisConfig);
+        this.runtimeConfigService = runtimeConfigService;
+        DshRuntimeConfiguration configuration = runtimeConfig();
+        log.info("[DSH] runtime configured: command={}, cordisConfig={}", configuration.executablePath(),
+                configuration.cordisConfigPath().isBlank() ? "<empty>" : configuration.cordisConfigPath());
+    }
+
+    private DshRuntimeConfiguration runtimeConfig() {
+        DshRuntimeConfiguration raw = runtimeConfigService.resolve();
+        String command = raw.executablePath();
+        if (command == null || command.isBlank()) command = "dsh-jsonrpc-agent";
+        String cordis = resolveCordisConfig(raw.cordisConfigPath());
+        String cwd = raw.workingDirectory();
+        if (cwd == null || cwd.isBlank()) cwd = System.getProperty("user.dir");
+        return new DshRuntimeConfiguration(command, cordis, cwd, raw.baseUrl(), raw.modelName(), raw.apiKey());
     }
 
     private String resolveCordisConfig(String configuredPath) {
@@ -90,20 +97,21 @@ public class DshRuntimeService implements AgentRuntimeProvider {
 
     @Override
     public RuntimeValidation validate(RuntimeSession session) {
+        DshRuntimeConfiguration configuration = runtimeConfig();
         if (session == null || session.workspaceId() == null) {
             return RuntimeValidation.invalid("dsh.workspace_required", "DSH runtime requires a workspace");
         }
         if (session.workingDirectory() == null || !Files.isDirectory(session.workingDirectory())) {
             return RuntimeValidation.invalid("dsh.working_directory_unavailable", "DSH working directory is unavailable");
         }
-        if (runtimeCommand.isBlank()) {
+        if (configuration.executablePath().isBlank()) {
             return RuntimeValidation.invalid("dsh.command_missing", "DSH runtime command is not configured");
         }
-        Path executable = Path.of(commandLine().get(0));
+        Path executable = Path.of(commandLine(configuration.executablePath()).get(0));
         if (!executable.isAbsolute() || !Files.isExecutable(executable)) {
             return RuntimeValidation.invalid("dsh.command_unavailable", "DSH runtime command is not executable");
         }
-        if (!cordisConfig.isBlank() && !Files.isRegularFile(Path.of(cordisConfig))) {
+        if (!configuration.cordisConfigPath().isBlank() && !Files.isRegularFile(Path.of(configuration.cordisConfigPath()))) {
             return RuntimeValidation.invalid("dsh.cordis_missing", "DSH Cordis configuration is unavailable");
         }
         return RuntimeValidation.success();
@@ -115,15 +123,18 @@ public class DshRuntimeService implements AgentRuntimeProvider {
     }
 
     public Map<String, Object> diagnostics() {
-        Path executable = runtimeCommand.isBlank() ? null : Path.of(commandLine().get(0));
+        DshRuntimeConfiguration configuration = runtimeConfig();
+        Path executable = configuration.executablePath().isBlank() ? null : Path.of(commandLine(configuration.executablePath()).get(0));
         return Map.of(
                 "type", type(),
-                "commandConfigured", !runtimeCommand.isBlank(),
-                "command", runtimeCommand,
+                "commandConfigured", !configuration.executablePath().isBlank(),
+                "command", configuration.executablePath(),
                 "executable", executable == null ? "" : executable.toString(),
                 "executableAvailable", executable != null && Files.isExecutable(executable),
-                "cordisConfig", cordisConfig,
-                "cordisConfigAvailable", !cordisConfig.isBlank() && Files.isRegularFile(Path.of(cordisConfig)),
+                "cordisConfig", configuration.cordisConfigPath(),
+                "cordisConfigAvailable", !configuration.cordisConfigPath().isBlank() && Files.isRegularFile(Path.of(configuration.cordisConfigPath())),
+                "workingDirectory", configuration.workingDirectory(),
+                "apiKeyConfigured", configuration.apiKey() != null && !configuration.apiKey().isBlank(),
                 "capabilities", Map.of(
                         "cancellation", true,
                         "approvals", false,
@@ -155,21 +166,26 @@ public class DshRuntimeService implements AgentRuntimeProvider {
         agent.setId(session.agentId());
         agent.setWorkspaceId(session.workspaceId());
         agent.setModelName(session.modelName());
+        AtomicReference<Process> activeProcess = new AtomicReference<>();
+        AtomicReference<RuntimeContextUsage> latestUsage = new AtomicReference<>(
+                new RuntimeContextUsage(0, 0, 0));
         return new AgentRuntimeConnection() {
             @Override
             public Flux<RuntimeEvent> prompt(String message) {
-                return stream(agent, message, session.conversationId(), session.modelName())
+                return stream(agent, message, session.conversationId(), session.modelName(),
+                        session.workingDirectory(), activeProcess, latestUsage)
                         .map(DshRuntimeService.this::toRuntimeEvent);
             }
 
             @Override
             public reactor.core.publisher.Mono<Void> cancel() {
-                return reactor.core.publisher.Mono.empty();
+                return reactor.core.publisher.Mono.fromRunnable(
+                        () -> cancelProcess(activeProcess.get()));
             }
 
             @Override
             public reactor.core.publisher.Mono<RuntimeContextUsage> contextUsage() {
-                return reactor.core.publisher.Mono.just(new RuntimeContextUsage(0, 0, 0));
+                return reactor.core.publisher.Mono.just(latestUsage.get());
             }
         };
     }
@@ -198,31 +214,45 @@ public class DshRuntimeService implements AgentRuntimeProvider {
 
     public Flux<AgentService.StreamDelta> stream(AgentEntity agent, String message,
                                                    String conversationId, String modelName) {
-        return Flux.create(sink -> {
+        DshRuntimeConfiguration configuration = runtimeConfig();
+        return stream(agent, message, conversationId, modelName,
+                resolveWorkingDirectory(null, configuration), new AtomicReference<>(),
+                new AtomicReference<>(new RuntimeContextUsage(0, 0, 0)));
+    }
+
+    private Flux<AgentService.StreamDelta> stream(AgentEntity agent, String message,
+                                                   String conversationId, String modelName,
+                                                   Path workingDirectory,
+                                                   AtomicReference<Process> processRef,
+                                                   AtomicReference<RuntimeContextUsage> latestUsage) {
+        return Flux.<AgentService.StreamDelta>create(sink -> {
             Process process = null;
             try {
+                if (sink.isCancelled()) return;
+                DshRuntimeConfiguration configuration = runtimeConfig();
                 RuntimeSession session = new RuntimeSession(
                         conversationId,
                         conversationId,
                         agent.getId(),
                         agent.getWorkspaceId(),
                         modelName,
-                        Path.of(System.getenv().getOrDefault("DSH_CWD", System.getProperty("user.dir"))),
+                        workingDirectory,
                         Map.of());
                 // Each prompt runs in a fresh child process. DSH persists its
                 // own session log, so reusing the MateClaw conversation id
                 // would make the next turn look like a conflicting live session.
                 String dshSessionId = conversationId + "-" + UUID.randomUUID();
                 Files.createDirectories(session.workingDirectory());
-                ModelProviderEntity provider = resolveProvider(modelName);
-                String effectiveModelName = resolveModelName(modelName);
+                String requestedModel = modelName == null || modelName.isBlank() ? configuration.modelName() : modelName;
+                ModelProviderEntity provider = resolveProvider(requestedModel);
+                String effectiveModelName = resolveModelName(requestedModel);
                 log.debug("[DSH] model route: requestedModel={}, effectiveModel={}, provider={}, apiKeyConfigured={}, baseUrlConfigured={}",
                         modelName == null || modelName.isBlank() ? "<default>" : modelName,
                         effectiveModelName,
                         provider == null ? "<missing>" : provider.getProviderId(),
                         provider != null && provider.getApiKey() != null && !provider.getApiKey().isBlank(),
                         provider != null && provider.getBaseUrl() != null && !provider.getBaseUrl().isBlank());
-                List<String> command = commandLine();
+                List<String> command = commandLine(configuration.executablePath());
                 ProcessBuilder builder = new ProcessBuilder(command)
                         .directory(session.workingDirectory().toFile())
                         .redirectError(ProcessBuilder.Redirect.PIPE);
@@ -230,33 +260,40 @@ public class DshRuntimeService implements AgentRuntimeProvider {
                 // The packaged binary gives the environment variable precedence
                 // over argv. Set the resolved path explicitly so IDEA/.env
                 // inheritance cannot select a different composition.
-                if (!cordisConfig.isBlank()) {
-                    builder.environment().put("DSH_CORDIS_CONFIG", cordisConfig);
+                if (!configuration.cordisConfigPath().isBlank()) {
+                    builder.environment().put("DSH_CORDIS_CONFIG", configuration.cordisConfigPath());
                 } else {
                     builder.environment().remove("DSH_CORDIS_CONFIG");
                 }
                 log.debug("[DSH] child environment: cordisConfig={}, exists={}",
                         builder.environment().getOrDefault("DSH_CORDIS_CONFIG", "<empty>"),
-                        !cordisConfig.isBlank() && Files.isRegularFile(Path.of(cordisConfig)));
-                if (provider != null) {
-                    if (provider.getApiKey() != null && !provider.getApiKey().isBlank()) {
-                        builder.environment().put("DEEPSEEK_API_KEY", provider.getApiKey());
-                    }
-                    if (provider.getBaseUrl() != null && !provider.getBaseUrl().isBlank()) {
-                        builder.environment().put("DEEPSEEK_BASE_URL", provider.getBaseUrl());
-                    }
+                        !configuration.cordisConfigPath().isBlank() && Files.isRegularFile(Path.of(configuration.cordisConfigPath())));
+                String apiKey = configuration.apiKey();
+                if ((apiKey == null || apiKey.isBlank()) && provider != null) apiKey = provider.getApiKey();
+                if (apiKey != null && !apiKey.isBlank()) {
+                    builder.environment().put("DEEPSEEK_API_KEY", apiKey);
+                }
+                String baseUrl = configuration.baseUrl();
+                if ((baseUrl == null || baseUrl.isBlank()) && provider != null) baseUrl = provider.getBaseUrl();
+                if (baseUrl != null && !baseUrl.isBlank()) {
+                    builder.environment().put("DEEPSEEK_BASE_URL", baseUrl);
                 }
                 process = builder.start();
-                Process activeProcess = process;
-                Thread stderrLogger = new Thread(() -> logProcessStderr(activeProcess),
+                processRef.set(process);
+                if (sink.isCancelled()) {
+                    cancelProcess(process);
+                    return;
+                }
+                Process startedProcess = process;
+                Thread stderrLogger = new Thread(() -> logProcessStderr(startedProcess),
                         "dsh-runtime-stderr-" + conversationId);
                 stderrLogger.setDaemon(true);
                 stderrLogger.start();
-                sink.onCancel(() -> activeProcess.destroyForcibly());
+                sink.onCancel(() -> cancelProcess(startedProcess));
                 try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                        activeProcess.getOutputStream(), StandardCharsets.UTF_8));
+                        process.getOutputStream(), StandardCharsets.UTF_8));
                      BufferedReader reader = new BufferedReader(new InputStreamReader(
-                             activeProcess.getInputStream(), StandardCharsets.UTF_8))) {
+                             process.getInputStream(), StandardCharsets.UTF_8))) {
                     send(writer, request("initialize", "init-" + conversationId, Map.of(
                             "cwd", session.workingDirectory().toString(),
                             "provider", "deepseek-official",
@@ -265,7 +302,7 @@ public class DshRuntimeService implements AgentRuntimeProvider {
                     long sequence = 0;
                     sink.next(RuntimeEventProjector.project(RuntimeEvent.of(
                             conversationId, sequence++, RuntimeEventType.RUNTIME_READY, null,
-                            Map.of("runtimeProvider", "dsh", "runtimeCommand", runtimeCommand))));
+                            Map.of("runtimeProvider", "dsh", "runtimeCommand", configuration.executablePath()))));
 
                     String promptId = "prompt-" + conversationId;
                     send(writer, request("session/prompt", promptId, Map.of(
@@ -305,6 +342,9 @@ public class DshRuntimeService implements AgentRuntimeProvider {
                             logTerminalReason(event);
                             RuntimeEvent mapped = mapEvent(conversationId, sequence++, event);
                             if (mapped != null) {
+                                if (mapped.type() == RuntimeEventType.CONTEXT_USAGE) {
+                                    latestUsage.set(usageFrom(mapped));
+                                }
                                 sink.next(RuntimeEventProjector.project(mapped));
                                 terminal = mapped.terminal();
                             }
@@ -318,7 +358,7 @@ public class DshRuntimeService implements AgentRuntimeProvider {
                         }
                     }
                     if (!terminal) {
-                        int exitCode = activeProcess.waitFor();
+                        int exitCode = process.waitFor();
                         sink.next(RuntimeEventProjector.project(RuntimeEvent.terminal(
                                 conversationId, sequence, RuntimeEventType.FAILED,
                                 Map.of("error", "DSH runtime closed before completion (exit=" + exitCode + ")"))));
@@ -328,8 +368,54 @@ public class DshRuntimeService implements AgentRuntimeProvider {
             } catch (Exception error) {
                 sink.error(new IllegalStateException("DSH runtime unavailable: " + error.getMessage(), error));
                 if (process != null) process.destroyForcibly();
+            } finally {
+                if (process != null) processRef.compareAndSet(process, null);
             }
-        });
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    static Path resolveWorkingDirectory(RuntimeSession session, DshRuntimeConfiguration configuration) {
+        if (session != null && session.workingDirectory() != null) {
+            return session.workingDirectory().toAbsolutePath().normalize();
+        }
+        return Path.of(configuration.workingDirectory()).toAbsolutePath().normalize();
+    }
+
+    static void cancelProcess(Process process) {
+        if (process == null || !process.isAlive()) return;
+
+        // DSH tools can spawn commands such as `sleep` that inherit the
+        // JSON-RPC process' stdout pipe. Close the pipes and terminate the
+        // descendants first; otherwise the parent may die while readLine()
+        // remains blocked until the child exits naturally.
+        try {
+            var descendants = process.descendants();
+            if (descendants != null) {
+                descendants.toList().forEach(DshRuntimeService::cancelProcessHandle);
+            }
+        } catch (Exception ignored) {
+            // The parent teardown below is still the best-effort fallback.
+        }
+        closeQuietly(process.getInputStream());
+        closeQuietly(process.getErrorStream());
+        closeQuietly(process.getOutputStream());
+        process.destroy();
+        if (process.isAlive()) process.destroyForcibly();
+    }
+
+    private static void cancelProcessHandle(ProcessHandle process) {
+        if (process == null || !process.isAlive()) return;
+        process.destroy();
+        if (process.isAlive()) process.destroyForcibly();
+    }
+
+    private static void closeQuietly(java.io.Closeable stream) {
+        if (stream == null) return;
+        try {
+            stream.close();
+        } catch (Exception ignored) {
+            // Cancellation is best effort; the process termination is authoritative.
+        }
     }
 
     private void logProcessStderr(Process process) {
@@ -344,10 +430,34 @@ public class DshRuntimeService implements AgentRuntimeProvider {
         }
     }
 
-    private List<String> commandLine() {
-        String[] parts = runtimeCommand.trim().split("\\s+");
+    static List<String> commandLine(String commandLine) {
         List<String> result = new ArrayList<>();
-        for (String part : parts) if (!part.isBlank()) result.add(part);
+        StringBuilder token = new StringBuilder();
+        char quote = 0;
+        boolean escaped = false;
+        for (char current : commandLine == null ? "".toCharArray() : commandLine.toCharArray()) {
+            if (escaped) {
+                token.append(current);
+                escaped = false;
+            } else if (current == '\\') {
+                escaped = true;
+            } else if (quote != 0) {
+                if (current == quote) quote = 0;
+                else token.append(current);
+            } else if (current == '\'' || current == '"') {
+                quote = current;
+            } else if (Character.isWhitespace(current)) {
+                if (!token.isEmpty()) {
+                    result.add(token.toString());
+                    token.setLength(0);
+                }
+            } else {
+                token.append(current);
+            }
+        }
+        if (escaped) token.append('\\');
+        if (quote != 0) throw new IllegalArgumentException("DSH runtime command has an unterminated quote");
+        if (!token.isEmpty()) result.add(token.toString());
         if (result.isEmpty()) throw new IllegalStateException("DSH runtime command is empty");
         log.debug("[DSH] launching command: {}", result);
         return result;
@@ -386,11 +496,22 @@ public class DshRuntimeService implements AgentRuntimeProvider {
         return modelName == null || modelName.isBlank() ? "deepseek-v4-flash" : modelName;
     }
 
-    private RuntimeEvent mapEvent(String sessionId, long sequence, JsonNode event) {
+    RuntimeEvent mapEvent(String sessionId, long sequence, JsonNode event) {
         String type = event.path("type").asText("");
         JsonNode data = event.path("data");
         if ("assistant/chunk".equals(type)) {
             JsonNode chunk = data.has("chunk") ? data.path("chunk") : data;
+            if ("usage".equals(chunk.path("type").asText())) {
+                JsonNode usage = chunk.path("usage");
+                long inputTokens = usage.path("inputTokens").asLong(0);
+                long outputTokens = usage.path("outputTokens").asLong(0);
+                return RuntimeEvent.of(sessionId, sequence, RuntimeEventType.CONTEXT_USAGE,
+                        null, Map.of(
+                                "promptTokens", inputTokens,
+                                "completionTokens", outputTokens,
+                                "inputTokens", inputTokens,
+                                "outputTokens", outputTokens));
+            }
             String text = firstText(chunk, data);
             if (text != null && !text.isEmpty()) {
                 RuntimeEventType eventType = "reasoning-delta".equals(chunk.path("type").asText())
@@ -430,6 +551,17 @@ public class DshRuntimeService implements AgentRuntimeProvider {
             }
         }
         return null;
+    }
+
+    private RuntimeContextUsage usageFrom(RuntimeEvent event) {
+        return new RuntimeContextUsage(
+                number(event.data().get("inputTokens")),
+                number(event.data().get("outputTokens")),
+                number(event.data().get("contextWindow")));
+    }
+
+    private long number(Object value) {
+        return value instanceof Number number ? Math.max(0, number.longValue()) : 0;
     }
 
     private String firstText(JsonNode primary, JsonNode fallback) {
