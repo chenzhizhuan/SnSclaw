@@ -24,6 +24,7 @@ export default {
     name: 'Name',
     description: 'Description',
     lead: 'Lead',
+    leadPromoteHint: '"{name}" will be switched to the Plan-and-Execute type so it can decompose and dispatch tasks. This change persists — it is not reverted when the team is deleted.',
     membersField: 'Members',
     createIncomplete: 'Name, lead and at least one member are required',
     pickHint: 'Click to select / deselect; the lead cannot double as a member',

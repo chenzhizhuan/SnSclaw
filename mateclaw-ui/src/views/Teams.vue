@@ -284,6 +284,9 @@
                   {{ agent.name }}
                 </button>
               </div>
+              <p v-if="leadWillBePromoted" class="form-hint form-hint--warn">
+                {{ t('teams.leadPromoteHint', { name: leadWillBePromoted }) }}
+              </p>
             </div>
             <div class="form-group">
               <label>{{ t('teams.membersField') }} <i>*</i></label>
@@ -1024,6 +1027,22 @@ const createForm = reactive({
 const memberCandidates = computed(() =>
   agentStore.agents.filter((a) => String(a.id) !== createForm.leadAgentId),
 )
+
+/**
+ * Name of the selected lead when creating the team will change its agent type.
+ * Empty string (falsy) when nothing is selected or the pick is already
+ * plan_execute, so the hint only appears when something actually changes.
+ *
+ * The backend forces the lead onto plan_execute (TeamService.createTeam) because
+ * lead work is decompose-then-dispatch. That edits the shared agent record and is
+ * not reverted when the team is deleted — hence telling the user up front.
+ */
+const leadWillBePromoted = computed(() => {
+  if (!createForm.leadAgentId) return ''
+  const lead = agentStore.agents.find((a) => String(a.id) === createForm.leadAgentId)
+  if (!lead || lead.agentType === 'plan_execute') return ''
+  return lead.name
+})
 
 
 function openCreateDialog() {
@@ -2203,6 +2222,12 @@ async function cancelTask() {
   margin: 0;
   font-size: 12px;
   color: var(--mc-text-tertiary);
+}
+/* Advisory variant: the action will silently change something the user did not
+   ask to change, so it needs to read louder than a neutral hint. */
+.form-hint--warn {
+  margin-top: 8px;
+  color: var(--mc-warning, #d97706);
 }
 .activity-feed {
   display: flex;

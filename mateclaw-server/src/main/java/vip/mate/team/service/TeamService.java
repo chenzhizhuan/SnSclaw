@@ -37,6 +37,13 @@ public class TeamService {
     public static final String STATUS_ACTIVE = "active";
     public static final String STATUS_PAUSED = "paused";
 
+    /**
+     * The graph flavor a team lead must run. Lead work is decompose-then-dispatch,
+     * which is exactly what the plan-and-execute graph provides; a ReAct lead has
+     * no planning phase and cannot drive the board.
+     */
+    private static final String LEAD_AGENT_TYPE = "plan_execute";
+
     private final AgentTeamMapper teamMapper;
     private final AgentTeamMemberMapper memberMapper;
     private final AgentMapper agentMapper;
@@ -56,6 +63,10 @@ public class TeamService {
                 requireNotInAnyTeam(memberId);
             }
         }
+
+        // All validation passed — only now mutate the lead agent, so a rejected
+        // create never leaves a type change behind.
+        promoteLeadToPlanExecute(leadAgentId);
 
         AgentTeamEntity team = new AgentTeamEntity();
         team.setName(name);
@@ -252,6 +263,44 @@ public class TeamService {
         }
     }
 
+
+    /**
+     * Force the lead agent onto the plan-and-execute graph.
+     * <p>
+     * Lead work is "decompose the goal, dispatch the steps, reconcile the
+     * results" — the plan-and-execute runtime is what supplies that. A ReAct
+     * lead has no planning phase, so it cannot produce a task board and the
+     * team never gets off the ground. Rather than fail the create and send the
+     * user off to the agent editor, we promote silently: at this point every
+     * other validation has already passed, so the promotion cannot be orphaned
+     * by a later rejection.
+     * <p>
+     * Scope note: {@code agent_type} lives on {@code mate_agent}, not on the
+     * membership row, so this changes the agent everywhere — including when it
+     * is chatted with outside the team. That is acceptable because
+     * {@link #requireNotInAnyTeam} caps an agent at one team, and a lead is
+     * chosen deliberately. It is <em>not</em> reverted when the team is
+     * deleted; the user can change the type back in the agent editor.
+     * <p>
+     * Members are deliberately left alone — they may legitimately need planning
+     * for a multi-step subtask.
+     */
+    private void promoteLeadToPlanExecute(Long leadAgentId) {
+        AgentEntity lead = agentMapper.selectById(leadAgentId);
+        // requireAgentInWorkspace already proved the row exists; this is a guard
+        // against a concurrent delete between the two reads.
+        if (lead == null || LEAD_AGENT_TYPE.equals(lead.getAgentType())) {
+            return;
+        }
+        String previous = lead.getAgentType();
+        lead.setAgentType(LEAD_AGENT_TYPE);
+        agentMapper.updateById(lead);
+        // No explicit cache eviction here: createTeam ends with
+        // notifyTeamChanged(), whose TeamChangedEvent already drops the cached
+        // graph for every member including the lead (see AgentService.onTeamChanged).
+        log.info("Team lead agent {} promoted from agentType={} to {}",
+                leadAgentId, previous, LEAD_AGENT_TYPE);
+    }
 
     private void requireNotInAnyTeam(Long agentId) {
         // Membership check ignores team status on purpose: an agent parked in a
