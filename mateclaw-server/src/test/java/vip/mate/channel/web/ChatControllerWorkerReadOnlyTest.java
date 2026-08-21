@@ -32,6 +32,7 @@ class ChatControllerWorkerReadOnlyTest {
     @Mock private MemoryOwnerResolver memoryOwnerResolver;
     @Mock private ChatUploadLocationResolver uploadLocationResolver;
     @Mock private OfficePreviewService officePreviewService;
+    @Mock private vip.mate.tts.TtsService ttsService;
     @Mock private Authentication authentication;
 
     private ChatController controller;
@@ -40,7 +41,7 @@ class ChatControllerWorkerReadOnlyTest {
     void setUp() {
         controller = new ChatController(agentService, conversationService, approvalService,
                 streamTracker, objectMapper, completionPublisher, memoryOwnerResolver,
-                uploadLocationResolver, officePreviewService);
+                uploadLocationResolver, officePreviewService, ttsService);
     }
 
     @Test

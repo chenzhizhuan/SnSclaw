@@ -22,11 +22,10 @@ import vip.mate.workspace.core.annotation.RequireGlobalAdmin;
 import vip.mate.agent.runtime.dsh.DshRuntimeService;
 
 /**
- * Admin-only live runtime surface: the global view of every in-flight agent
+ * Admin-only live runtime surface: the workspace view of every in-flight agent
  * turn plus the controls to friendly-stop, force-recycle, or sweep stuck
  * runs. Distinct from {@code /api/v1/subagents/...} which is per-conversation
- * owner-scoped — this controller is intentionally cross-tenant for the
- * operator role.
+ * owner-scoped.
  */
 @Slf4j
 @Tag(name = "Agent Runtime (Live)")
@@ -46,9 +45,12 @@ public class AgentRuntimeController {
     @Operation(summary = "Snapshot of every in-flight agent turn")
     @GetMapping("/snapshot")
     @RequireGlobalAdmin
-    public R<AgentRuntimeAggregator.RuntimeSnapshot> snapshot(Authentication auth) {
+    public R<AgentRuntimeAggregator.RuntimeSnapshot> snapshot(
+            @RequestHeader(value = "X-Workspace-Id", required = false) Long workspaceId,
+            Authentication auth) {
         requireAdmin(auth);
-        return R.ok(aggregator.snapshot());
+        requireWorkspace(workspaceId);
+        return R.ok(aggregator.snapshot(workspaceId));
     }
 
     @Operation(summary = "DSH runtime availability and capability diagnostics")
@@ -63,8 +65,10 @@ public class AgentRuntimeController {
     @PostMapping("/runs/{conversationId}/stop")
     @RequireGlobalAdmin
     public R<Map<String, Object>> stopFriendly(@PathVariable String conversationId,
+                                               @RequestHeader(value = "X-Workspace-Id", required = false) Long workspaceId,
                                                Authentication auth) {
         requireAdmin(auth);
+        requireRunInWorkspace(conversationId, workspaceId);
         boolean ok = streamTracker.requestStop(conversationId);
         recordAudit(auth, "agent-runtime.stop", conversationId, Map.of("result", ok));
         return R.ok(Map.of("stopped", ok));
@@ -74,8 +78,10 @@ public class AgentRuntimeController {
     @PostMapping("/runs/{conversationId}/recycle")
     @RequireGlobalAdmin
     public R<Map<String, Object>> recycle(@PathVariable String conversationId,
+                                          @RequestHeader(value = "X-Workspace-Id", required = false) Long workspaceId,
                                           Authentication auth) {
         requireAdmin(auth);
+        requireRunInWorkspace(conversationId, workspaceId);
         boolean ok = streamTracker.forceRecycle(conversationId);
         if (ok) {
             finalizeRecycledConversation(conversationId);
@@ -88,8 +94,10 @@ public class AgentRuntimeController {
     @PostMapping("/subagents/{subagentId}/interrupt")
     @RequireGlobalAdmin
     public R<Map<String, Object>> interruptSubagent(@PathVariable String subagentId,
+                                                    @RequestHeader(value = "X-Workspace-Id", required = false) Long workspaceId,
                                                     Authentication auth) {
         requireAdmin(auth);
+        requireSubagentInWorkspace(subagentId, workspaceId);
         boolean ok = subagentRegistry.interrupt(subagentId);
         recordAudit(auth, "agent-runtime.subagent.interrupt", subagentId, Map.of("result", ok));
         return R.ok(Map.of("interrupted", ok));
@@ -103,9 +111,12 @@ public class AgentRuntimeController {
     @Operation(summary = "Recycle every run currently flagged as stuck")
     @PostMapping("/sweep")
     @RequireGlobalAdmin
-    public R<Map<String, Object>> sweep(Authentication auth) {
+    public R<Map<String, Object>> sweep(
+            @RequestHeader(value = "X-Workspace-Id", required = false) Long workspaceId,
+            Authentication auth) {
         requireAdmin(auth);
-        AgentRuntimeAggregator.RuntimeSnapshot snap = aggregator.snapshot();
+        requireWorkspace(workspaceId);
+        AgentRuntimeAggregator.RuntimeSnapshot snap = aggregator.snapshot(workspaceId);
         List<String> ids = snap.runs().stream()
                 .filter(r -> r.stuckReason() != null)
                 .map(AgentRuntimeAggregator.RunCard::conversationId)
@@ -161,6 +172,26 @@ public class AgentRuntimeController {
                 .anyMatch("ROLE_ADMIN"::equals);
         if (!isAdmin) {
             throw new MateClawException(403, "admin role required");
+        }
+    }
+
+    private void requireWorkspace(Long workspaceId) {
+        if (workspaceId == null) {
+            throw new MateClawException(400, "workspace id required");
+        }
+    }
+
+    private void requireRunInWorkspace(String conversationId, Long workspaceId) {
+        requireWorkspace(workspaceId);
+        if (!aggregator.runBelongsToWorkspace(conversationId, workspaceId)) {
+            throw new MateClawException(404, "runtime run not found in workspace");
+        }
+    }
+
+    private void requireSubagentInWorkspace(String subagentId, Long workspaceId) {
+        requireWorkspace(workspaceId);
+        if (!aggregator.subagentBelongsToWorkspace(subagentId, workspaceId)) {
+            throw new MateClawException(404, "subagent not found in workspace");
         }
     }
 

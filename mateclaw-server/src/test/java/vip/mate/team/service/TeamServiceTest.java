@@ -22,9 +22,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Pins team creation guards. Any agent type may lead: a plan-execute lead's
- * multi-step plans hand off to the team board through the plan bridge, so the
- * former ReAct-only restriction no longer applies.
+ * Pins team creation guards. Any agent type may be <em>chosen</em> as lead, but
+ * the lead is promoted to {@code plan_execute} on create: lead work is
+ * decompose-then-dispatch, which only the plan-and-execute graph provides.
+ * Members are left untouched — a member may legitimately need planning for a
+ * multi-step subtask.
  */
 class TeamServiceTest {
 
@@ -76,6 +78,56 @@ class TeamServiceTest {
                 org.mockito.ArgumentCaptor.forClass(AgentTeamEntity.class);
         verify(teamMapper).insert(captor.capture());
         assertEquals(1L, captor.getValue().getWorkspaceId());
+    }
+
+    @Test
+    @DisplayName("a ReAct lead is promoted to plan_execute; members keep their own type")
+    void reactLeadIsPromotedAndMembersUntouched() {
+        AgentEntity lead = agent(LEAD_ID, "react");
+        AgentEntity member = agent(MEMBER_ID, "react");
+        when(agentMapper.selectById(LEAD_ID)).thenReturn(lead);
+        when(agentMapper.selectById(MEMBER_ID)).thenReturn(member);
+        when(memberMapper.selectCount(any())).thenReturn(0L);
+
+        service.createTeam(1L, "组", null, LEAD_ID, List.of(MEMBER_ID), "admin");
+
+        org.mockito.ArgumentCaptor<AgentEntity> captor =
+                org.mockito.ArgumentCaptor.forClass(AgentEntity.class);
+        verify(agentMapper).updateById(captor.capture());
+        // Exactly one agent row is rewritten, and it is the lead.
+        assertEquals(LEAD_ID, captor.getValue().getId());
+        assertEquals("plan_execute", captor.getValue().getAgentType());
+        // The member keeps whatever it was configured as.
+        assertEquals("react", member.getAgentType());
+    }
+
+    @Test
+    @DisplayName("a lead that is already plan_execute is not rewritten")
+    void planExecuteLeadIsNotRewritten() {
+        when(agentMapper.selectById(LEAD_ID)).thenReturn(agent(LEAD_ID, "plan_execute"));
+        when(agentMapper.selectById(MEMBER_ID)).thenReturn(agent(MEMBER_ID, "react"));
+        when(memberMapper.selectCount(any())).thenReturn(0L);
+
+        service.createTeam(1L, "组", null, LEAD_ID, List.of(MEMBER_ID), "admin");
+
+        verify(agentMapper, never()).updateById(any(AgentEntity.class));
+    }
+
+    @Test
+    @DisplayName("a rejected create leaves the lead's type alone")
+    void failedCreateDoesNotPromoteLead() {
+        AgentEntity lead = agent(LEAD_ID, "react");
+        AgentEntity member = agent(MEMBER_ID, "react");
+        member.setWorkspaceId(2L);   // cross-workspace member -> create is rejected
+        when(agentMapper.selectById(LEAD_ID)).thenReturn(lead);
+        when(agentMapper.selectById(MEMBER_ID)).thenReturn(member);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.createTeam(1L, "组", null, LEAD_ID, List.of(MEMBER_ID), "admin"));
+
+        // Promotion runs only after every guard passes, so nothing was written.
+        verify(agentMapper, never()).updateById(any(AgentEntity.class));
+        assertEquals("react", lead.getAgentType());
     }
 
     @Test

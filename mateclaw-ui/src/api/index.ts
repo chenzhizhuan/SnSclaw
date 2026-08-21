@@ -96,6 +96,8 @@ export async function fetchAuthenticatedBlob(fileUrl: string): Promise<Blob> {
   const token = localStorage.getItem('token')
   const headers: Record<string, string> = {}
   if (token) headers.Authorization = `Bearer ${token}`
+  const workspaceId = localStorage.getItem('mc-workspace-id')
+  if (workspaceId) headers['X-Workspace-Id'] = workspaceId
   const response = await fetch(fileUrl, { headers })
   if (!response.ok) throw new Error(`Fetch failed: ${response.status}`)
   return response.blob()
