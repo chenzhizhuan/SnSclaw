@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <p>The runtime is intentionally an external process. This keeps the Node
  * plugin graph out of the Spring classpath and lets deployments pin the DSH
- * runtime independently from MateClaw.</p>
+ * runtime independently from SnSclaw.</p>
  */
 @Service
 @Slf4j
@@ -239,7 +239,7 @@ public class DshRuntimeService implements AgentRuntimeProvider {
                         workingDirectory,
                         Map.of());
                 // Each prompt runs in a fresh child process. DSH persists its
-                // own session log, so reusing the MateClaw conversation id
+                // own session log, so reusing the SnSclaw conversation id
                 // would make the next turn look like a conflicting live session.
                 String dshSessionId = conversationId + "-" + UUID.randomUUID();
                 Files.createDirectories(session.workingDirectory());
@@ -332,7 +332,7 @@ public class DshRuntimeService implements AgentRuntimeProvider {
                         String method = payload.path("method").asText();
                         JsonNode params = payload.path("params");
                         if (payload.has("id")) {
-                            send(writer, errorResponse(payload.get("id"), -32601, "MateClaw does not support runtime request: " + method));
+                            send(writer, errorResponse(payload.get("id"), -32601, "SnSclaw does not support runtime request: " + method));
                             continue;
                         }
                         if ("session.event".equals(method)) {

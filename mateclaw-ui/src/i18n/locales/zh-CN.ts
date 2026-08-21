@@ -1472,7 +1472,7 @@ export default {
       type: '类型',
       runtime: '运行时',
       runtimeConfig: 'DSH 配置（JSON）',
-      runtimeNativeHint: '使用 MateClaw 原生 Agent Loop。',
+      runtimeNativeHint: '使用 SnSclaw 原生 Agent Loop。',
       runtimeDshHint: '使用 DeepSeek Harness Loop；启动时会校验工作区和 provider。',
       runtimeConfigHint: '填写 provider 需要的 JSON 配置；留空表示使用默认配置。',
       runtimeReady: 'DSH 运行时已就绪（命令与 Cordis 配置可用）。',

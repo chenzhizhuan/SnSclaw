@@ -36,10 +36,10 @@ class A2aJsonRpcControllerTest {
         A2aJsonRpcController rpc = new A2aJsonRpcController(objectMapper, properties, store, bridge);
         A2aAgentCardService cardService = mock(A2aAgentCardService.class);
         when(cardService.publicCard(any())).thenReturn(Map.of(
-                "name", "MateClaw",
+                "name", "SnSclaw",
                 "supportsAuthenticatedExtendedCard", true));
         when(cardService.authenticatedCard(any(), any())).thenReturn(Map.of(
-                "name", "MateClaw",
+                "name", "SnSclaw",
                 "skills", List.of(Map.of("id", "agent-1", "name", "Agent"))));
         A2aAgentCardController card = new A2aAgentCardController(cardService);
         mvc = MockMvcBuilders.standaloneSetup(rpc, card).build();
