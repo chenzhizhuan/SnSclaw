@@ -177,7 +177,7 @@ function toggle() {
   }
 }
 
-// 按 provider 分组，云端在前，本地在后
+// 按 provider 分组：本地在前，云端在后；云端内部 DeepSeek 置顶、DashScope 置底。
 // v2 R3: when showAllStates is true, keep UNCONFIGURED/REMOVED visible (dimmed +
 // status chip + Fix button) so the user can act in-place. Default behavior
 // (showAllStates=false) preserves the original filter for non-popup contexts.
@@ -229,7 +229,21 @@ const groups = computed<ModelGroup[]>(() => {
     }
   }
 
-  return [...cloud, ...local]
+  // 云端 provider 的展示次序：DeepSeek 置顶，DashScope 置底，其余照旧。
+  // 后端已按 isLocal / isCustom / name 排过序（ModelProviderService.listProvidersInternal），
+  // 这里只把这两端拎出来，中间一律返回 0 以保持后端原次序。
+  const cloudRank = (id: string): number => {
+    if (id === 'deepseek') return -1
+    // DashScope 有两行：正式接口与兼容模式，同为置底。
+    if (id === 'dashscope' || id === 'dashscope-compat') return 1
+    return 0
+  }
+
+  // 稳定排序：Array.prototype.sort 在现代引擎中即为稳定排序，
+  // 因此 rank 相同的（即中间那一批）会保留后端给出的相对顺序。
+  cloud.sort((a, b) => cloudRank(a.provider.id) - cloudRank(b.provider.id))
+
+  return [...local, ...cloud]
 })
 
 function cooldownSeconds(provider: ProviderInfo): number {

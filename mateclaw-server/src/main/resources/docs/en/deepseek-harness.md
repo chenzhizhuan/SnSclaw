@@ -133,13 +133,13 @@ Do not reuse a completed test `conversationId` for a new DSH live session. DSH d
 The backend log is commonly located at:
 
 ```text
-logs/mateclaw.log
+logs/snsclaw.log
 ```
 
 Search for the runtime signals:
 
 ```bash
-rg "\[DSH\]|MISSING_CREDENTIAL|EMPTY_RESPONSE|id collision" logs/mateclaw.log
+rg "\[DSH\]|MISSING_CREDENTIAL|EMPTY_RESPONSE|id collision" logs/snsclaw.log
 ```
 
 The admin-only diagnostics endpoint is:
