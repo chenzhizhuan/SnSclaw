@@ -90,7 +90,7 @@ public class OfficeCliTool {
             - render: render to html|screenshot|svg|pdf. mode is required.
 
             Mutating actions NEVER overwrite the source. The result is returned as a
-            generated-file download link. OfficeCLI must be installed on the MateClaw
+            generated-file download link. OfficeCLI must be installed on the SnSclaw
             server; missing installations return a setup error.
             """)
     public String office_document(
@@ -269,7 +269,7 @@ public class OfficeCliTool {
         json.put("timedOut", result.timedOut());
         if (result.setupMissing()) {
             json.put("setupRequired", true);
-            json.put("message", "OfficeCLI is not installed on the MateClaw server PATH");
+            json.put("message", "OfficeCLI is not installed on the SnSclaw server PATH");
         }
         return json;
     }

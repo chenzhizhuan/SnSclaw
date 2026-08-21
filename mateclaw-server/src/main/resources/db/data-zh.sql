@@ -714,7 +714,7 @@ VALUES (1000000019, 'multi_agent_collaboration', '当任务需要多个 Agent �
 
 MERGE INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
 KEY (id)
-VALUES (1000000020, 'officecli', '使用可选的 iOfficeAI/OfficeCLI 对已有 DOCX/XLSX/PPTX 进行检查、校验、复制编辑、模板合并和视觉渲染。', 'builtin', '🏢', '1.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'office,officecli,docx,xlsx,pptx,render,validate', NOW(), NOW(), 0);
+VALUES (1000000020, 'officecli', '使用可选的 iOfficeAI/OfficeCLI 对已有 DOCX/XLSX/PPTX 进行检查、校验、复制编辑、模板合并和视觉渲染。', 'builtin', '🏢', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'office,officecli,docx,xlsx,pptx,render,validate', NOW(), NOW(), 0);
 
 -- RFC-042 §2.2 — bilingual display names for the 20 builtin skills.
 -- Identical across all four data-*.sql files because name_zh / name_en are
