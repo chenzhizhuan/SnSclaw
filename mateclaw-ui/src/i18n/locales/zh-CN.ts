@@ -24,6 +24,7 @@ export default {
     name: '名称',
     description: '描述',
     lead: 'Lead',
+    leadPromoteHint: '「{name}」将被设为 Plan-and-Execute 类型，以便拆解并派发任务。该变更会保留，团队删除后不会自动改回。',
     membersField: '成员',
     createIncomplete: '请填写名称、Lead 和至少一名成员',
     pickHint: '点击选择 / 取消；Lead 不能同时作为成员',
