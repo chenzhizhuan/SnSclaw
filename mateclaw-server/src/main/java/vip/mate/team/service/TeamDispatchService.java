@@ -17,6 +17,7 @@ import vip.mate.team.model.TeamTaskEventEntity;
 import vip.mate.team.model.TeamTaskStatus;
 import vip.mate.tool.document.GeneratedFileCache;
 import vip.mate.workspace.conversation.ConversationService;
+import vip.mate.workspace.conversation.model.MessageEntity;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -56,6 +57,26 @@ public class TeamDispatchService {
 
     private static final Pattern GENERATED_FILE_MARKDOWN_LINK = Pattern.compile(
             "\\[([^\\]\\r\\n]{1,200})]\\(((?:https?://[^/\\s)\\]]+)?/api/v1/files/generated/[A-Za-z0-9-]+)\\)");
+
+    private static final Set<String> CLARIFICATION_CUES = Set.of(
+            "您希望",
+            "你希望",
+            "是否继续",
+            "请问",
+            "能否",
+            "可以提供",
+            "请提供",
+            "需要您",
+            "需要你",
+            "我应该",
+            "如何处理",
+            "what would you like",
+            "how should i",
+            "could you provide",
+            "please provide",
+            "do you want me",
+            "should i",
+            "would you like");
 
     /** One JDK 21 virtual thread per member-agent run. */
     private static final ExecutorService DISPATCH_EXECUTOR =
@@ -337,7 +358,35 @@ public class TeamDispatchService {
                 && taskService.listDeliverables(task).isEmpty()) {
             return "required deliverable was not attached";
         }
+        if (looksLikeClarificationQuestion(reply)) {
+            return "member asked for clarification instead of producing a result";
+        }
         return null;
+    }
+
+    private boolean looksLikeClarificationQuestion(String reply) {
+        if (reply == null) {
+            return false;
+        }
+        String normalized = reply.strip().replaceAll("\\s+", " ");
+        if (normalized.isBlank() || normalized.length() > 800) {
+            return false;
+        }
+        String lower = normalized.toLowerCase();
+        boolean hasCue = CLARIFICATION_CUES.stream().anyMatch(lower::contains);
+        if (!hasCue) {
+            return false;
+        }
+        return normalized.endsWith("?")
+                || normalized.endsWith("？")
+                || lower.contains("what would you like")
+                || lower.contains("how should i")
+                || lower.contains("could you provide")
+                || lower.contains("please provide")
+                || normalized.contains("请问")
+                || normalized.contains("是否继续")
+                || normalized.contains("如何处理")
+                || normalized.contains("请提供");
     }
 
     private boolean attachGeneratedFileDeliverable(TeamTaskEntity task, String reply) {
@@ -376,8 +425,11 @@ public class TeamDispatchService {
     /** Per-prerequisite and whole-section caps keeping the envelope bounded. */
     static final int MAX_PREREQ_RESULT_CHARS = 1500;
     static final int MAX_PREREQ_SECTION_CHARS = 6000;
+    static final int LEAD_ATTACHMENT_CONTEXT_MESSAGES = 12;
+    static final int MAX_LEAD_ATTACHMENT_ITEM_CHARS = 1200;
+    static final int MAX_LEAD_ATTACHMENT_SECTION_CHARS = 6000;
 
-    /** The full instruction envelope the member receives; it cannot see the lead's conversation. */
+    /** The full instruction envelope the member receives. */
     private String buildDispatchContent(TeamTaskEntity task) {
         StringBuilder sb = new StringBuilder(1024);
         sb.append("[Assigned team task #").append(task.getTaskNumber())
@@ -386,6 +438,7 @@ public class TeamDispatchService {
         if (task.getDescription() != null && !task.getDescription().isBlank()) {
             sb.append("\n").append(task.getDescription()).append('\n');
         }
+        appendLeadAttachmentContext(sb, task);
         appendPrerequisiteResults(sb, task);
         sb.append("""
 
@@ -393,9 +446,61 @@ public class TeamDispatchService {
                 - Execute this task now. Your final reply becomes the task result reported to the team lead, so end with a complete, self-contained summary of what you produced.
                 - Report milestones with team_tasks(action="progress", taskId=%s, percent=..., step=...).
                 - If the output is a document, spreadsheet or presentation, generate a real file (renderDocx / renderXlsx / renderPptx or the docx/pptx/xlsx skills) and register it with team_tasks(action="attach", taskId=%s, name="<file name>", url=<the download link the render tool returned>). Keep the result a summary — do not paste file contents.
-                - If you are missing an input you cannot obtain yourself, call team_tasks(action="comment", taskId=%s, type="blocker", text="what you need") and stop.
+                - If scope is ambiguous but you can make a reasonable assumption, state the assumption and continue.
+                - If you are missing an input you cannot obtain yourself, call team_tasks(action="comment", taskId=%s, type="blocker", text="what you need") and stop. Do not ask the lead or user for clarification in your final reply.
                 """.formatted(task.getId(), task.getId(), task.getId()));
         return sb.toString();
+    }
+
+    /**
+     * Child worker conversations are isolated from the lead transcript, so
+     * upload paths from the lead turn must be copied into the dispatch
+     * envelope explicitly. Only rendered attachment/media rows with local
+     * paths are included; ordinary lead chat text stays out of the member
+     * prompt.
+     */
+    void appendLeadAttachmentContext(StringBuilder sb, TeamTaskEntity task) {
+        String leadConversationId = task.getLeadConversationId();
+        if (leadConversationId == null || leadConversationId.isBlank()) {
+            return;
+        }
+        List<MessageEntity> messages = conversationService.listRecentMessages(
+                leadConversationId, LEAD_ATTACHMENT_CONTEXT_MESSAGES);
+        if (messages == null || messages.isEmpty()) {
+            return;
+        }
+        StringBuilder section = new StringBuilder();
+        for (MessageEntity message : messages) {
+            if (message == null || message.getContentParts() == null
+                    || message.getContentParts().isBlank()) {
+                continue;
+            }
+            String rendered = conversationService.renderMessageContent(message, true);
+            if (rendered == null || rendered.isBlank() || !hasRenderedAttachmentPath(rendered)) {
+                continue;
+            }
+            section.append("- ")
+                    .append(truncate(rendered.strip(), MAX_LEAD_ATTACHMENT_ITEM_CHARS)
+                            .replace("\n", "\n  "))
+                    .append('\n');
+        }
+        if (section.isEmpty()) {
+            return;
+        }
+        sb.append("\n[Lead conversation attachments]\n")
+                .append(truncate(section.toString(), MAX_LEAD_ATTACHMENT_SECTION_CHARS))
+                .append("Use these paths when this task refers to files uploaded in the lead conversation.\n");
+    }
+
+    private static boolean hasRenderedAttachmentPath(String rendered) {
+        if (!rendered.contains("路径:")) {
+            return false;
+        }
+        return rendered.contains("[附件]")
+                || rendered.contains("[图片]")
+                || rendered.contains("[视频]")
+                || rendered.contains("[音频]")
+                || rendered.contains("[3D 模型]");
     }
 
     /**

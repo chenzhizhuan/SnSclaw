@@ -10,6 +10,7 @@ import vip.mate.team.model.TeamTaskEntity;
 import vip.mate.team.model.TeamTaskCommentEntity;
 import vip.mate.team.model.TeamTaskStatus;
 import vip.mate.workspace.conversation.ConversationService;
+import vip.mate.workspace.conversation.model.MessageEntity;
 
 import java.util.List;
 
@@ -19,6 +20,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.startsWith;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.*;
 
 /**
@@ -168,6 +170,26 @@ class TeamDispatchServiceTest {
                 "I inspected the task. Failed to generate a response, please retry.");
 
         verify(taskService).requeueUnusableResult(1L, "member response generation failed");
+        verify(taskService, never()).completeTask(any(), any(), anyString());
+        verify(announceService, never()).announceTaskSettled(any());
+        verify(eventChannel).publishTaskEvent(any(), eq("team_task_retrying"), any());
+    }
+
+    @Test
+    @DisplayName("a clarifying question is requeued instead of being reported as completed")
+    void settleClarifyingQuestionRequeues() {
+        TeamTaskEntity running = task(1L, MEMBER_A);
+        running.setStatus(TeamTaskStatus.IN_PROGRESS);
+        running.setDispatchCount(1);
+        when(taskService.getTask(1L)).thenReturn(running);
+        when(taskService.requeueUnusableResult(1L,
+                "member asked for clarification instead of producing a result"))
+                .thenReturn(true);
+
+        service.settleOutcome(running, "您希望我如何处理？");
+
+        verify(taskService).requeueUnusableResult(1L,
+                "member asked for clarification instead of producing a result");
         verify(taskService, never()).completeTask(any(), any(), anyString());
         verify(announceService, never()).announceTaskSettled(any());
         verify(eventChannel).publishTaskEvent(any(), eq("team_task_retrying"), any());
@@ -335,6 +357,35 @@ class TeamDispatchServiceTest {
                 eq(WORKSPACE_ID),
                 eq("lead-conv"),
                 eq("team_worker"));
+    }
+
+    @Test
+    @DisplayName("member dispatch envelope carries lead conversation upload paths")
+    void runTaskCarriesLeadConversationUploadPaths() {
+        TeamTaskEntity assigned = task(1L, MEMBER_A);
+        assigned.setDescription("请根据刚上传的需求.docx拆解任务");
+        assigned.setStatus(TeamTaskStatus.IN_PROGRESS);
+        TeamTaskEntity done = task(1L, MEMBER_A);
+        done.setStatus(TeamTaskStatus.COMPLETED);
+        MessageEntity uploadTurn = new MessageEntity();
+        uploadTurn.setRole("user");
+        uploadTurn.setContentParts("[{\"type\":\"file\"}]");
+        when(conversationService.listRecentMessages("lead-conv", TeamDispatchService.LEAD_ATTACHMENT_CONTEXT_MESSAGES))
+                .thenReturn(List.of(uploadTurn));
+        when(conversationService.renderMessageContent(uploadTurn, true))
+                .thenReturn("请看附件\n[附件] 需求.docx（路径: /workspace/uploads/lead-conv/需求.docx）");
+        when(taskService.getTask(1L)).thenReturn(assigned, done, done);
+        when(taskService.completeTask(eq(1L), isNull(), anyString())).thenReturn(List.of());
+        when(agentService.chatWithUsage(eq(MEMBER_A), anyString(), anyString()))
+                .thenReturn(AgentService.ChatResult.contentOnly("all done"));
+
+        service.runTask(TEAM_ID, assigned);
+
+        var prompt = forClass(String.class);
+        verify(agentService).chatWithUsage(eq(MEMBER_A), prompt.capture(), startsWith("team-task-"));
+        assertTrue(prompt.getValue().contains("[Lead conversation attachments]"));
+        assertTrue(prompt.getValue().contains("需求.docx"));
+        assertTrue(prompt.getValue().contains("/workspace/uploads/lead-conv/需求.docx"));
     }
 
     @Test
