@@ -1,6 +1,6 @@
 export default {
   app: {
-    title: '智屿 - AI 助手',
+    title: '智算方舟 - AI 助手',
   },
   router: {
     chunkLoadFailed: '页面资源加载失败，请检查网络后重试',
