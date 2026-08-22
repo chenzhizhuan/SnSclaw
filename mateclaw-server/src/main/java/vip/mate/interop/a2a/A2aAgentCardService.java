@@ -45,7 +45,7 @@ public class A2aAgentCardService {
     private Map<String, Object> baseCard(HttpServletRequest request) {
         String rpcUrl = externalBaseUrl(request).replaceAll("/+$", "") + "/api/a2a";
         Map<String, Object> card = new LinkedHashMap<>();
-        card.put("name", "MateClaw");
+        card.put("name", "SnSclaw");
         card.put("description", "A multi-agent runtime exposed through A2A JSON-RPC.");
         card.put("url", rpcUrl);
         card.put("version", "1.0.0");

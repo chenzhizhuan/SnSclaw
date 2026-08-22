@@ -4,7 +4,7 @@ VALUES (1000000029, 'OfficeCliTool', 'OfficeCLI Advanced Documents', 'Inspect, v
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display_name, description=EXCLUDED.description, tool_type=EXCLUDED.tool_type, bean_name=EXCLUDED.bean_name, icon=EXCLUDED.icon, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_skill (id, name, description, skill_type, icon, version, author, config_json, enabled, builtin, tags, create_time, update_time, deleted)
-VALUES (1000000020, 'officecli', 'Use optional iOfficeAI/OfficeCLI for advanced inspection, validation, copy editing, template merge, and visual rendering of existing DOCX/XLSX/PPTX files.', 'builtin', '🏢', '1.0.0', 'MateClaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'office,officecli,docx,xlsx,pptx,render,validate', NOW(), NOW(), 0)
+VALUES (1000000020, 'officecli', 'Use optional iOfficeAI/OfficeCLI for advanced inspection, validation, copy editing, template merge, and visual rendering of existing DOCX/XLSX/PPTX files.', 'builtin', '🏢', '1.0.0', 'SnSclaw', '{"upstream":"mateclaw","entryFile":"SKILL.md"}', TRUE, TRUE, 'office,officecli,docx,xlsx,pptx,render,validate', NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET description=EXCLUDED.description, skill_type=EXCLUDED.skill_type, icon=EXCLUDED.icon, version=EXCLUDED.version, author=EXCLUDED.author, config_json=EXCLUDED.config_json, enabled=EXCLUDED.enabled, builtin=EXCLUDED.builtin, tags=EXCLUDED.tags, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 UPDATE mate_skill SET name_zh = 'OfficeCLI 高级文档', name_en = 'OfficeCLI Advanced Documents' WHERE name = 'officecli';

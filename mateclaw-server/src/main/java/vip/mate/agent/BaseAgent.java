@@ -59,18 +59,39 @@ public abstract class BaseAgent {
     protected String systemPrompt;
 
     /**
-     * Max ReAct iterations (one reasoning + action + observation step counts as one).
-     * Default 150, hard ceiling 150 (enforced in AgentGraphBuilder so per-agent DB
-     * overrides cannot exceed it).
+     * Recommended iteration budget, applied when an agent row leaves
+     * {@code max_iterations} null. One iteration = one reasoning + action +
+     * observation step.
+     *
+     * <p>Deliberately below {@link #MAX_ITERATIONS_HARD_CEILING}: the ceiling is
+     * a safety limit ("never more than this"), not a target. Every iteration is
+     * an LLM call, so the default also bounds what a misbehaving agent costs
+     * before the soft cap stops it. For calibration: simple Q&amp;A finishes in
+     * 1-3 iterations, search-and-summarise in 5-15, multi-step document work in
+     * 20-50. Agents that genuinely need more can be raised per-agent up to the
+     * ceiling.
+     */
+    public static final int MAX_ITERATIONS_DEFAULT = 100;
+
+    /**
+     * Absolute upper bound on iterations. {@code AgentGraphBuilder} clamps
+     * per-agent overrides against it, so a misconfigured row cannot skip the
+     * safety net.
      *
      * <p>Raised from 100 → 150 after the round-4 LLM-review smoke test, where a
      * 10-model research task with browser_use + per-step verification hit the
-     * 100-iter cap with only 4/10 models completed. 150 gives roughly 50 %
-     * headroom for similar multi-step research workflows while still bounding
-     * a runaway agent.
+     * 100-iter cap with only 4/10 models completed (~25 iterations per model).
+     * 150 gives roughly 50 % headroom for similar multi-step research workflows
+     * while still bounding a runaway agent.
      */
     public static final int MAX_ITERATIONS_HARD_CEILING = 150;
-    protected int maxIterations = 150;
+
+    /**
+     * Effective budget for this instance. Seeded to the recommended default;
+     * {@code AgentGraphBuilder} overwrites it from the agent row (0 or negative
+     * meaning "no soft cap").
+     */
+    protected int maxIterations = MAX_ITERATIONS_DEFAULT;
 
     /** 工作区活动目录（限制文件工具访问范围，为空不限制） */
     protected String workspaceBasePath;
