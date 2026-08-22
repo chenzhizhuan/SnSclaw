@@ -412,13 +412,15 @@ public class AgentGraphBuilder {
             // 内置搜索作为首选，search 工具作为补充/兜底
             log.info("内置搜索已开启 (provider={})，search 工具保留作为补充通道", provider.getProviderId());
         }
-        // Default 100 if DB row leaves max_iterations null. Negative or zero is an
-        // explicit opt-in to "no soft cap" — ObservationDispatcher already treats
-        // maxIterations<=0 as "do not enforce", so the agent runs until the LLM
-        // emits a final answer (or returnDirect short-circuits). Positive values
-        // are clamped to the hard ceiling so a misconfigured row can't skip the
-        // safety net unintentionally.
-        int rawMaxIter = entity.getMaxIterations() != null ? entity.getMaxIterations() : 100;
+        // Falls back to the recommended default if the DB row leaves
+        // max_iterations null. Negative or zero is an explicit opt-in to "no soft
+        // cap" — ObservationDispatcher already treats maxIterations<=0 as "do not
+        // enforce", so the agent runs until the LLM emits a final answer (or
+        // returnDirect short-circuits). Positive values are clamped to the hard
+        // ceiling so a misconfigured row can't skip the safety net unintentionally.
+        int rawMaxIter = entity.getMaxIterations() != null
+                ? entity.getMaxIterations()
+                : BaseAgent.MAX_ITERATIONS_DEFAULT;
         int maxIter;
         if (rawMaxIter <= 0) {
             maxIter = 0;
