@@ -364,7 +364,8 @@ async function confirmCreate() {
       systemPrompt: draft.value.systemPrompt,
       tags,
       enabled: true,
-      maxIterations: 10,
+      // Mirrors BaseAgent.MAX_ITERATIONS_DEFAULT.
+      maxIterations: 100,
       // primaryKbId kept as string to preserve Snowflake precision.
       primaryKbId: selectedKbId.value,
     }
