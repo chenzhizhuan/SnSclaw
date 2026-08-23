@@ -7,6 +7,7 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
+import vip.mate.tool.ToolInputValidationException;
 import vip.mate.tool.document.FilenameSanitizer;
 import vip.mate.tool.document.GeneratedFileCache;
 import vip.mate.tool.document.GeneratedFileLink;
@@ -76,7 +77,9 @@ public class DocxRenderTool {
             @Nullable ToolContext ctx) {
 
         if (markdown == null || markdown.isBlank()) {
-            return "错误：markdown 参数为空，无法生成文档。";
+            throw new ToolInputValidationException(
+                    "markdown must not be blank; provide the document content, "
+                            + "or write it to a .md file and call renderDocxFromFile");
         }
 
         String displayName = FilenameSanitizer.sanitize(filename, "document", ".docx") + ".docx";
@@ -90,7 +93,7 @@ public class DocxRenderTool {
             return GeneratedFileLink.resultZh(bytes, displayName, DOCX_MIME, cache, "文档", ctx);
         } catch (Exception e) {
             log.error("[DocxRender] render failed for {}: {}", displayName, e.getMessage(), e);
-            return "渲染失败：" + e.getMessage();
+            throw new IllegalStateException("DOCX rendering failed", e);
         }
     }
 
@@ -142,7 +145,7 @@ public class DocxRenderTool {
         try {
             input = MarkdownInputResolver.readSingle(filePath);
         } catch (ResolveException e) {
-            return "Error: " + e.getMessage();
+            throw new ToolInputValidationException(e.getMessage(), e);
         }
 
         String displayName = FilenameSanitizer.sanitize(filename, "document", ".docx") + ".docx";
@@ -157,7 +160,7 @@ public class DocxRenderTool {
         } catch (Exception e) {
             log.error("[DocxRender] render failed for {} (source: {}): {}",
                     displayName, input.sources().get(0), e.getMessage(), e);
-            return "Render failed: " + e.getMessage();
+            throw new IllegalStateException("DOCX rendering failed", e);
         }
     }
 
@@ -202,7 +205,7 @@ public class DocxRenderTool {
         try {
             input = MarkdownInputResolver.readManyJoined(filePaths);
         } catch (ResolveException e) {
-            return "Error: " + e.getMessage();
+            throw new ToolInputValidationException(e.getMessage(), e);
         }
 
         String displayName = FilenameSanitizer.sanitize(filename, "document", ".docx") + ".docx";
@@ -219,7 +222,7 @@ public class DocxRenderTool {
         } catch (Exception e) {
             log.error("[DocxRender] render failed for {} (sources: {}): {}",
                     displayName, input.sources(), e.getMessage(), e);
-            return "Render failed: " + e.getMessage();
+            throw new IllegalStateException("DOCX rendering failed", e);
         }
     }
 
