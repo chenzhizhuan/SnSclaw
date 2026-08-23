@@ -368,7 +368,8 @@ public class StepExecutionNode implements NodeAction {
                         } else {
                             // 非预批准工具走正常执行器
                             ToolExecutionExecutor.ToolExecutionResult execResult = executor.execute(
-                                    List.of(toolCall), conversationId, agentId, false, "", workspaceBasePath, chatOrigin);
+                                    List.of(toolCall), conversationId, agentId, false, "", workspaceBasePath,
+                                    chatOrigin, loadedSkills);
                             toolResponses.addAll(execResult.responses());
                             events.addAll(execResult.events());
                             if (execResult.hasDirectOutputs()) {
@@ -383,18 +384,10 @@ public class StepExecutionNode implements NodeAction {
                     }
                 } else {
                     // 正常路径：委托 ToolExecutionExecutor（支持并发执行 + 审批 barrier）
-                    List<AssistantMessage.ToolCall> executableToolCalls = new ArrayList<>();
-                    for (AssistantMessage.ToolCall toolCall : allToolCalls) {
-                        String alreadyLoadedSkill = alreadyLoadedSkillName(toolCall, loadedSkills);
-                        if (alreadyLoadedSkill != null) {
-                            toolResponses.add(alreadyLoadedSkillResponse(toolCall, alreadyLoadedSkill));
-                        } else {
-                            executableToolCalls.add(toolCall);
-                        }
-                    }
-                    if (!executableToolCalls.isEmpty()) {
+                    if (!allToolCalls.isEmpty()) {
                         ToolExecutionExecutor.ToolExecutionResult execResult = executor.execute(
-                                executableToolCalls, conversationId, agentId, false, "", workspaceBasePath, chatOrigin);
+                                allToolCalls, conversationId, agentId, false, "", workspaceBasePath,
+                                chatOrigin, loadedSkills);
                         toolResponses.addAll(execResult.responses());
                         events.addAll(execResult.events());
                         if (execResult.hasDirectOutputs()) {
@@ -889,26 +882,6 @@ public class StepExecutionNode implements NodeAction {
 
     private String formatStepResult(int stepIndex, String result) {
         return String.format("步骤%d结果：%s", stepIndex + 1, result);
-    }
-
-    private static String alreadyLoadedSkillName(AssistantMessage.ToolCall toolCall, Set<String> loadedSkills) {
-        if (toolCall == null || loadedSkills == null || loadedSkills.isEmpty()) {
-            return null;
-        }
-        Set<String> requested = ActionNode.extractLoadedSkillNames(List.of(toolCall));
-        if (requested.isEmpty()) {
-            return null;
-        }
-        String skillName = requested.iterator().next();
-        return loadedSkills.contains(skillName) ? skillName : null;
-    }
-
-    private static ToolResponseMessage.ToolResponse alreadyLoadedSkillResponse(
-            AssistantMessage.ToolCall toolCall, String skillName) {
-        String message = "Skill '" + skillName + "' was already loaded earlier in this run. "
-                + "Reuse the SKILL.md content already present in the conversation; "
-                + "do not call load_skill for this skill again.";
-        return new ToolResponseMessage.ToolResponse(toolCall.id(), toolCall.name(), message);
     }
 
     /**

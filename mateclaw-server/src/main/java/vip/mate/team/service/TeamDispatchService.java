@@ -55,6 +55,9 @@ public class TeamDispatchService {
     /** Result summaries are capped before persisting to keep the board readable. */
     static final int MAX_RESULT_CHARS = 8000;
 
+    /** Empty/fallback member runs get one recovery attempt, not three long identical runs. */
+    static final int MAX_RESPONSE_FAILURE_DISPATCHES = 2;
+
     private static final Pattern GENERATED_FILE_MARKDOWN_LINK = Pattern.compile(
             "\\[([^\\]\\r\\n]{1,200})]\\(((?:https?://[^/\\s)\\]]+)?/api/v1/files/generated/[A-Za-z0-9-]+)\\)");
 
@@ -178,6 +181,13 @@ public class TeamDispatchService {
             }
             dispatchedThisRound.add(assignee);
             TeamTaskEntity assigned = taskService.getTask(task.getId());
+            // assignTask clears the persisted reason for a clean running state,
+            // but the worker needs the previous failure feedback or an
+            // automatic retry is just the same prompt sent to the same agent.
+            if (assigned != null && (assigned.getReason() == null || assigned.getReason().isBlank())
+                    && task.getReason() != null && !task.getReason().isBlank()) {
+                assigned.setReason(task.getReason());
+            }
             DISPATCH_EXECUTOR.submit(() -> runTask(teamId, assigned));
         }
     }
@@ -279,10 +289,13 @@ public class TeamDispatchService {
             String invalidReason = invalidResultReason(current, reply, attachedGeneratedFile);
             if (invalidReason != null) {
                 int attempts = current.getDispatchCount() == null ? 0 : current.getDispatchCount();
-                if (attempts < TeamTaskService.MAX_DISPATCHES
+                int maxAttempts = isResponseGenerationFailure(invalidReason)
+                        ? MAX_RESPONSE_FAILURE_DISPATCHES
+                        : TeamTaskService.MAX_DISPATCHES;
+                if (attempts < maxAttempts
                         && taskService.requeueUnusableResult(task.getId(), invalidReason)) {
                     log.warn("Team task #{} produced an unusable result on attempt {}/{}; requeued: {}",
-                            task.getTaskNumber(), attempts, TeamTaskService.MAX_DISPATCHES,
+                            task.getTaskNumber(), attempts, maxAttempts,
                             invalidReason);
                     broadcast(task, "team_task_retrying", Map.of("reason", invalidReason));
                     return;
@@ -364,6 +377,11 @@ public class TeamDispatchService {
         return null;
     }
 
+    private boolean isResponseGenerationFailure(String reason) {
+        return "member produced no result".equals(reason)
+                || "member response generation failed".equals(reason);
+    }
+
     private boolean looksLikeClarificationQuestion(String reply) {
         if (reply == null) {
             return false;
@@ -390,7 +408,10 @@ public class TeamDispatchService {
     }
 
     private boolean attachGeneratedFileDeliverable(TeamTaskEntity task, String reply) {
-        if (!requiresDeliverable(task) || reply == null || reply.isBlank()) {
+        // A render link is a useful task artifact regardless of how the task
+        // was created. The metadata flag controls validation/retry semantics,
+        // not whether an otherwise valid generated file is discoverable in UI.
+        if (reply == null || reply.isBlank()) {
             return false;
         }
         Matcher link = GENERATED_FILE_MARKDOWN_LINK.matcher(reply);
@@ -430,13 +451,20 @@ public class TeamDispatchService {
     static final int MAX_LEAD_ATTACHMENT_SECTION_CHARS = 6000;
 
     /** The full instruction envelope the member receives. */
-    private String buildDispatchContent(TeamTaskEntity task) {
+    String buildDispatchContent(TeamTaskEntity task) {
         StringBuilder sb = new StringBuilder(1024);
         sb.append("[Assigned team task #").append(task.getTaskNumber())
                 .append(" (taskId: ").append(task.getId()).append(")]\n")
                 .append("Subject: ").append(task.getSubject()).append('\n');
         if (task.getDescription() != null && !task.getDescription().isBlank()) {
             sb.append("\n").append(task.getDescription()).append('\n');
+        }
+        if (task.getDispatchCount() != null && task.getDispatchCount() > 1
+                && task.getReason() != null && !task.getReason().isBlank()) {
+            sb.append("\n[Retry feedback]\n")
+                    .append("The previous attempt was rejected: ")
+                    .append(truncate(task.getReason().strip(), 500))
+                    .append(". Correct that failure in this attempt; do not repeat the same empty or fallback response.\n");
         }
         appendLeadAttachmentContext(sb, task);
         appendPrerequisiteResults(sb, task);

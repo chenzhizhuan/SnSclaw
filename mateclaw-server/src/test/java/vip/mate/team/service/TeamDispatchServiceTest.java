@@ -216,6 +216,40 @@ class TeamDispatchServiceTest {
     }
 
     @Test
+    @DisplayName("a second empty member result fails without starting a third long run")
+    void settleEmptyResultFailsAfterSingleRecoveryAttempt() {
+        TeamTaskEntity running = task(1L, MEMBER_A);
+        running.setStatus(TeamTaskStatus.IN_PROGRESS);
+        running.setDispatchCount(TeamDispatchService.MAX_RESPONSE_FAILURE_DISPATCHES);
+        TeamTaskEntity failed = task(1L, MEMBER_A);
+        failed.setStatus(TeamTaskStatus.FAILED);
+        failed.setReason("member produced no result");
+        when(taskService.getTask(1L)).thenReturn(running, failed);
+        when(taskService.failTask(1L, "member produced no result")).thenReturn(true);
+
+        service.settleOutcome(running, "");
+
+        verify(taskService, never()).requeueUnusableResult(any(), anyString());
+        verify(taskService).failTask(1L, "member produced no result");
+        verify(eventChannel).publishTaskEvent(any(), eq("team_task_failed"), any());
+        verify(announceService).announceTaskSettled(failed);
+    }
+
+    @Test
+    @DisplayName("automatic retry tells the worker why its previous attempt was rejected")
+    void retryDispatchContentIncludesPreviousFailure() {
+        TeamTaskEntity retry = task(1L, MEMBER_A);
+        retry.setDispatchCount(2);
+        retry.setReason("member produced no result");
+
+        String content = service.buildDispatchContent(retry);
+
+        assertTrue(content.contains("[Retry feedback]"));
+        assertTrue(content.contains("member produced no result"));
+        assertTrue(content.contains("do not repeat the same empty or fallback response"));
+    }
+
+    @Test
     @DisplayName("a declared deliverable task without an attachment is requeued")
     void settleMissingDeliverableRequeues() {
         TeamTaskEntity running = task(1L, MEMBER_A);

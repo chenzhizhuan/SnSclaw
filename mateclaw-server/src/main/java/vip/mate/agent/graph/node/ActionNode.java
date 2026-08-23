@@ -144,7 +144,8 @@ public class ActionNode implements NodeAction {
 
         // 委托 ToolExecutionExecutor 执行（两阶段：顺序 Guard + 分段并发执行）
         ToolExecutionExecutor.ToolExecutionResult result = executor.execute(
-                toolCalls, conversationId, agentId, isReplay, requesterId, workspaceBasePath, origin);
+                toolCalls, conversationId, agentId, isReplay, requesterId, workspaceBasePath, origin,
+                accessor.loadedSkills());
 
         ToolResponseMessage toolResponseMessage = ToolResponseMessage.builder()
                 .responses(result.responses())
