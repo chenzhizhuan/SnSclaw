@@ -7,7 +7,7 @@
   "icon": "pi:bug",
   "agentType": "react",
   "tags": "code,review,developer",
-  "maxIterations": 10,
+  "maxIterations": 80,
   "defaultSkillSlugs": [
     "systematic-debugging",
     "test-driven-development",

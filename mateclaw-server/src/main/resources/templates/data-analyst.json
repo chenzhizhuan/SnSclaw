@@ -7,7 +7,7 @@
   "icon": "pi:chart-bar-big",
   "agentType": "react",
   "tags": "data,analysis,sql",
-  "maxIterations": 12,
+  "maxIterations": 100,
   "defaultSkillSlugs": [
     "sql_query",
     "xlsx"

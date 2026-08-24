@@ -7,7 +7,7 @@
   "icon": "pi:notes",
   "agentType": "react",
   "tags": "product,prd,requirements",
-  "maxIterations": 12,
+  "maxIterations": 80,
   "defaultSkillSlugs": [
     "ideation",
     "make_plan"
