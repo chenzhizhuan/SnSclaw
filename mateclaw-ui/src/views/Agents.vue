@@ -1694,7 +1694,7 @@ html.dark .seg-count.warn {
 .btn-secondary { padding: 8px 16px; background: var(--mc-bg-elevated); color: var(--mc-text-primary); border: 1px solid var(--mc-border); border-radius: 12px; font-size: 14px; cursor: pointer; }
 .btn-secondary:hover { background: var(--mc-bg-sunken); }
 
-.agents-toolbar { padding: 18px; }
+.agents-toolbar { padding: 18px; margin-bottom: 18px; }
 .filter-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .search-box { display: flex; align-items: center; gap: 8px; background: var(--mc-bg-muted); border: 1px solid var(--mc-border); border-radius: 14px; padding: 10px 12px; flex: 1; max-width: 360px; }
 .search-box svg { color: var(--mc-text-tertiary); flex-shrink: 0; }

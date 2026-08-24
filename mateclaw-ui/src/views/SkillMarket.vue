@@ -2022,7 +2022,7 @@ function getSkillTypeLabel(type: string) {
 .btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* 分类 Tab */
-.category-tabs { display: flex; gap: 8px; flex-wrap: wrap; padding: 14px; }
+.category-tabs { display: flex; gap: 8px; flex-wrap: wrap; padding: 14px; margin-bottom: 18px; }
 .cat-tab { display: flex; align-items: center; gap: 6px; padding: 9px 16px; border: 1px solid var(--mc-border); background: var(--mc-bg-muted); border-radius: 999px; font-size: 13px; color: var(--mc-text-secondary); cursor: pointer; transition: all 0.15s; font-weight: 600; }
 .cat-tab:hover { background: var(--mc-bg-sunken); }
 .cat-tab.active { background: var(--mc-primary-bg); border-color: var(--mc-primary); color: var(--mc-primary); font-weight: 500; }
