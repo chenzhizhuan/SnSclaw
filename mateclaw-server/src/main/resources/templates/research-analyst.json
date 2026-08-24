@@ -7,7 +7,7 @@
   "icon": "pi:book-open",
   "agentType": "plan_execute",
   "tags": "research,analysis,planning",
-  "maxIterations": 20,
+  "maxIterations": 120,
   "defaultSkillSlugs": [
     "arxiv",
     "news",

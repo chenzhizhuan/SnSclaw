@@ -483,6 +483,12 @@ public class ToolExecutionExecutor {
                                         ChatOrigin origin,
                                         Set<String> loadedSkills) {
         ChatOrigin safeOrigin = origin != null ? origin : ChatOrigin.EMPTY;
+        if (isBlank(safeOrigin.conversationId()) && !isBlank(conversationId)) {
+            safeOrigin = safeOrigin.withConversationId(conversationId);
+        }
+        if (isBlank(safeOrigin.workspaceBasePath()) && !isBlank(workspaceBasePath)) {
+            safeOrigin = safeOrigin.withWorkspace(safeOrigin.workspaceId(), workspaceBasePath);
+        }
         // Reset per-turn audit dedupe state. A retried denied tool inside the
         // same turn writes a single audit row; the set is repopulated by the
         // denial branch below.
@@ -1295,6 +1301,10 @@ public class ToolExecutionExecutor {
         }
 
         return GuardDecision.allowed();
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     /**
