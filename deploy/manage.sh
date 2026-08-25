@@ -24,6 +24,48 @@ warn() { echo "${YEL}[warn]${RST} $*"; }
 step() { echo; echo "${CYA}==>${RST} $*"; }
 die()  { echo "${RED}[fail]${RST} $*" >&2; exit 1; }
 
+# 宿主架构 → 镜像 tag 后缀。registry 里同一版本按架构分开存放
+# （server:v1.0.2-amd64 / server:v1.0.2-arm64），compose 用
+# ${IMAGE_ARCH_SUFFIX} 拼到 tag 末尾，靠这里导出。
+#
+# 不用 docker 的 multi-arch manifest 是因为该 registry 上的镜像是单架构
+# 分别 push 的，没有 manifest list 可供自动选择。
+detect_arch_suffix() {
+    local m; m=$(uname -m)
+    case "$m" in
+        x86_64|amd64)  echo "-amd64" ;;
+        aarch64|arm64) echo "-arm64" ;;
+        *) die "未支持的宿主架构：${m}
+     registry 中只有 -amd64 / -arm64 两种镜像。" ;;
+    esac
+}
+IMAGE_ARCH_SUFFIX=$(detect_arch_suffix)
+export IMAGE_ARCH_SUFFIX
+
+# HTTP 状态码探测。curl 并非所有精简系统都预装（Jetson 的 Ubuntu 20.04 就没有），
+# 缺失时回落到 wget，再退一步用 python3。都没有则返回 000。
+_http_probe() {
+    local url="$1"
+    if command -v curl >/dev/null 2>&1; then
+        curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$url" 2>/dev/null || echo 000
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q -S --timeout=5 -O /dev/null "$url" 2>&1 \
+            | awk '/^  HTTP\//{c=$2} END{print (c?c:"000")}'
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 - "$url" <<'PYEOF' 2>/dev/null || echo 000
+import sys,urllib.request,urllib.error
+try:
+    print(urllib.request.urlopen(sys.argv[1],timeout=5).status)
+except urllib.error.HTTPError as e:
+    print(e.code)
+except Exception:
+    print("000")
+PYEOF
+    else
+        echo 000
+    fi
+}
+
 cd "$(dirname "$0")"
 [ -f docker-compose.yml ] || die "当前目录没有 docker-compose.yml"
 docker compose version >/dev/null 2>&1 || die "docker compose (v2) 不可用"
@@ -41,8 +83,7 @@ wait_ready() {
     local port="$1" max="${2:-90}" i code
     echo -n "等待 snsclaw-server 就绪"
     for i in $(seq 1 "$max"); do
-        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 \
-            "http://localhost:${port}/" 2>/dev/null || echo 000)
+        code=$(_http_probe "http://localhost:${port}/")
         if [ "$code" = "200" ]; then
             echo; info "服务已就绪 → http://$(hostname -I 2>/dev/null | awk '{print $1}'):${port}"
             return 0
@@ -66,6 +107,7 @@ cmd_status() {
         || warn "compose 项目未启动"
 
     step "镜像版本"
+    echo "   宿主架构 $(uname -m) → tag 后缀 ${IMAGE_ARCH_SUFFIX}"
     docker compose config 2>/dev/null | grep -E '^\s+image:' | awk '{print "   " $2}'
 
     step "数据卷"
@@ -88,8 +130,7 @@ cmd_status() {
     step "健康检查"
     local port code
     port=$(app_port)
-    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 \
-        "http://localhost:${port}/" 2>/dev/null || echo 000)
+    code=$(_http_probe "http://localhost:${port}/")
     if [ "$code" = "200" ]; then
         info "HTTP ${port} → 200"
     else
@@ -115,33 +156,42 @@ cmd_update() {
     local target="${1:-}"
 
     if [ -n "$target" ]; then
-        # 形如 server:v1.0.3 —— 就地改 compose 里对应服务的 tag
+        # 形如 server:v1.0.3 —— 就地改 compose 里对应服务的 tag。
+        # tag 不要带 -amd64/-arm64 后缀，架构由 IMAGE_ARCH_SUFFIX 自动补。
         local svc="${target%%:*}" tag="${target##*:}"
         [ "$svc" != "$tag" ] || die "格式应为 <服务>:<tag>，例如 server:v1.0.3"
+        case "$tag" in
+            *-amd64|*-arm64)
+                die "tag 不要带架构后缀：写 ${svc}:${tag%-*} 即可，
+     架构后缀（${IMAGE_ARCH_SUFFIX}）由脚本按宿主 $(uname -m) 自动附加。" ;;
+        esac
         grep -q "${REGISTRY}/snsclaw/${svc}:" docker-compose.yml \
             || die "compose 中找不到镜像 ${REGISTRY}/snsclaw/${svc}"
 
-        step "校验 tag 是否存在"
+        step "校验 tag 是否存在（${svc}:${tag}${IMAGE_ARCH_SUFFIX}）"
         # registry 需认证，匿名 curl 只会拿到 401，无法判定 tag 真伪。
         # 改用 docker manifest inspect —— 它会复用 ~/.docker/config.json 里的凭据。
         if docker manifest inspect --insecure \
-                "${REGISTRY}/snsclaw/${svc}:${tag}" >/dev/null 2>&1; then
-            info "tag ${svc}:${tag} 存在"
+                "${REGISTRY}/snsclaw/${svc}:${tag}${IMAGE_ARCH_SUFFIX}" >/dev/null 2>&1; then
+            info "tag ${svc}:${tag}${IMAGE_ARCH_SUFFIX} 存在"
         else
-            die "registry 中查不到 snsclaw/${svc}:${tag}
+            die "registry 中查不到 snsclaw/${svc}:${tag}${IMAGE_ARCH_SUFFIX}
+     本机架构 $(uname -m) 需要 ${IMAGE_ARCH_SUFFIX} 后缀的镜像。
      核对可用 tag：
          curl -u admin:<密码> http://${REGISTRY}/v2/snsclaw/${svc}/tags/list
      （未登录请先： docker login ${REGISTRY} -u admin）"
         fi
 
         cp docker-compose.yml "docker-compose.yml.bak.$(date +%Y%m%d-%H%M%S)"
-        sed -i -E "s|(${REGISTRY}/snsclaw/${svc}):[^[:space:]]+|\1:${tag}|" docker-compose.yml
+        # 只替换版本号部分，保留末尾的 ${IMAGE_ARCH_SUFFIX:-} 占位符不动
+        sed -i -E "s|(${REGISTRY}/snsclaw/${svc}):[^\$[:space:]]+|\1:${tag}|" docker-compose.yml
         info "已更新 compose 中的 tag → ${svc}:${tag}（原文件已备份）"
     fi
 
-    step "拉取镜像"
+    step "拉取镜像（架构 $(uname -m) → ${IMAGE_ARCH_SUFFIX}）"
     docker compose pull || die "拉取失败。网络中断可直接重跑（已下载的层会复用）；
-     若是 tag 不存在，核对： curl -u admin:<密码> http://${REGISTRY}/v2/_catalog"
+     若是 tag 不存在，核对： curl -u admin:<密码> http://${REGISTRY}/v2/_catalog
+     本机需要带 ${IMAGE_ARCH_SUFFIX} 后缀的镜像。"
 
     step "重建容器（数据卷保留）"
     docker compose up -d
@@ -230,6 +280,10 @@ SnSclaw 运维脚本
   ./manage.sh reset                  ⚠️ 删除全部数据，需输入 DELETE 确认
 
 服务名： snsclaw-server | postgres | searxng
+
+多架构：镜像 tag 自动按宿主架构补 -amd64 / -arm64 后缀，
+        x86_64 与 aarch64 机器执行同样的命令即可，无需改配置。
+        update 指定 tag 时不要带架构后缀（写 server:v1.0.3）。
 EOF
 }
 

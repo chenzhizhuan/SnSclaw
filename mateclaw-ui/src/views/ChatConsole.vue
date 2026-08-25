@@ -321,6 +321,7 @@ import { reconstructErrorInfo } from '@/types/chatError'
 import { reconcileMessages, extractMessages } from '@/utils/messageReconcile'
 import {
   buildChatRouteQuery,
+  decideConversationResume,
   readLegacyWorkerRouteContext,
   readTeamRunRouteQuery,
   resolveConversationAgentSelection,
@@ -1361,10 +1362,17 @@ onActivated(async () => {
   }, 1000)
   // 登出已改为 window.location.href（刷新页面），所以切回时不会有跨用户残留
   if (currentConversationId.value && !isEphemeralConversation(currentConversationId.value)) {
+    const cid = currentConversationId.value
     try {
-      const statusRes: any = await conversationApi.getStatus(currentConversationId.value)
-      if (currentConversationId.value && statusRes.data?.streamStatus === 'running') {
-        await reconnectStream(currentConversationId.value)
+      const statusRes: any = await conversationApi.getStatus(cid)
+      if (currentConversationId.value !== cid) return
+      const running = statusRes.data?.streamStatus === 'running'
+      await refreshCurrentConversationMessages(cid, {
+        allowWhileGenerating: !running,
+        preserveGeneratingStatus: running,
+      })
+      if (currentConversationId.value === cid && running) {
+        await reconnectStream(cid)
       }
     } catch {
       // 忽略
@@ -1685,17 +1693,20 @@ async function loadConversations() {
   }
 }
 
-async function refreshCurrentConversationMessages(conversationId: string) {
+async function refreshCurrentConversationMessages(
+  conversationId: string,
+  options: { allowWhileGenerating?: boolean; preserveGeneratingStatus?: boolean } = {},
+) {
   if (!conversationId) return
-  if (isGenerating.value) return
+  if (isGenerating.value && !options.allowWhileGenerating) return
   if (streamPhase.value === 'awaiting_approval') return
   try {
     const res: any = await conversationApi.listMessages(conversationId, workerTranscriptMessageParams())
     // Stale guard：await 返回后确认仍是当前会话
     if (currentConversationId.value !== conversationId) return
     // 二次 isGenerating 检查：如果 await 期间用户已发新消息，不覆盖本地状态
-    if (isGenerating.value) return
-    const fetched = extractMessages(res).messages.map((msg: Message) => normalizeMessage(msg))
+    if (isGenerating.value && !options.allowWhileGenerating) return
+    const fetched = extractMessages(res).messages.map((msg: Message) => normalizeMessage(msg, options.preserveGeneratingStatus))
     // 严格过滤：只保留 conversationId 完全匹配的本地消息，orphan（空 conversationId）直接丢弃
     const currentMessages = messages.value.filter(
       (m: any) => m.conversationId === conversationId
@@ -1726,17 +1737,29 @@ async function hydrateStateFromRoute() {
       // 会话不在已加载列表中（可能来自 Sessions 页面跳转），尝试加载消息
       currentConversationId.value = conversationId
       messages.value = []
+      let liveStreamStatus = ''
       try {
+        if (currentConversationId.value !== conversationId) return
+        const statusRes: any = await conversationApi.getStatus(conversationId)
+        liveStreamStatus = statusRes.data?.streamStatus || ''
+      } catch {
+        // 状态探测失败，仍继续拉历史
+      }
+      const resume = decideConversationResume({
+        currentConversationId: conversationId,
+        targetConversationId: conversationId,
+        liveStreamStatus,
+      })
+      try {
+        if (currentConversationId.value !== conversationId) return
         const res: any = await conversationApi.listMessages(conversationId, workerTranscriptMessageParams())
         if (currentConversationId.value !== conversationId) return
-        messages.value = extractMessages(res).messages.map((msg: Message) => normalizeMessage(msg, true))
+        messages.value = extractMessages(res).messages.map((msg: Message) => normalizeMessage(msg, resume.shouldReconnectStream))
       } catch {
         // 消息加载失败，保持空
       }
       try {
-        if (currentConversationId.value !== conversationId) return
-        const statusRes: any = await conversationApi.getStatus(conversationId)
-        if (currentConversationId.value === conversationId && statusRes.data?.streamStatus === 'running') {
+        if (currentConversationId.value === conversationId && resume.shouldReconnectStream) {
           await reconnectStream(conversationId)
         }
       } catch {
@@ -1767,8 +1790,14 @@ async function selectConversation(conv: Conversation, routeAgentId = '') {
   // 用户之后回到 A：pollActivity / selectConversation 的 /status 探测会自动 reconnect 接回实时流；
   // 若 A 已完成，refreshCurrentConversationMessages 会从 DB 拉完整结果。
   // 点同一个会话则完全不 reset，避免打断正在观察的流。
-  const switchingAway = currentConversationId.value !== conv.conversationId
-  if (switchingAway) {
+  const previousConversationId = currentConversationId.value
+  const switchingAway = previousConversationId !== conv.conversationId
+  const initialResume = decideConversationResume({
+    currentConversationId: previousConversationId,
+    targetConversationId: conv.conversationId,
+    snapshotStreamStatus: conv.streamStatus,
+  })
+  if (initialResume.shouldResetLocalStream) {
     // 换会话先静音：上一会话的朗读继续念到新会话里会让人分不清声音来源
     stopAllTts()
     resetForNewConversation()
@@ -1797,13 +1826,27 @@ async function selectConversation(conv: Conversation, routeAgentId = '') {
   markConversationViewed(conv.conversationId, conv.lastActiveTime)
   const requestedConvId = conv.conversationId
   try {
+    let liveStreamStatus = ''
+    try {
+      const statusRes: any = await conversationApi.getStatus(requestedConvId)
+      if (currentConversationId.value !== requestedConvId) return
+      liveStreamStatus = statusRes?.data?.streamStatus || ''
+    } catch {
+      // 探测失败不阻断主流程，退回侧栏快照
+    }
+    const resume = decideConversationResume({
+      currentConversationId: previousConversationId,
+      targetConversationId: requestedConvId,
+      snapshotStreamStatus: conv.streamStatus,
+      liveStreamStatus,
+    })
     const res: any = await conversationApi.listMessages(requestedConvId, workerTranscriptMessageParams())
     // Stale guard：await 返回后确认仍是当前会话，否则丢弃
     if (currentConversationId.value !== requestedConvId) return
-    // 点同一个会话时，若已有 SSE 在跑就不要覆盖本地消息状态
-    if (switchingAway || !isGenerating.value) {
-      const convRunning = conv.streamStatus === 'running'
-      messages.value = extractMessages(res).messages.map((msg: Message) => normalizeMessage(msg, convRunning))
+    // 点同一个会话且已有真实 SSE 在跑时，不用历史快照覆盖本地流式片段；
+    // 若后端已 idle，则允许快照把 stale generating 历史恢复成终态。
+    if (switchingAway || !isGenerating.value || !resume.shouldReconnectStream) {
+      messages.value = extractMessages(res).messages.map((msg: Message) => normalizeMessage(msg, resume.shouldReconnectStream))
     }
 
     // Hydrate pending approvals：恢复刷新后丢失的审批卡片（RFC-067 §4.9）
@@ -1890,20 +1933,7 @@ async function selectConversation(conv: Conversation, routeAgentId = '') {
       // hydration 失败不影响正常使用
     }
 
-    // 决定是否重连 SSE：
-    // - 快照 streamStatus==='running' → 直接重连
-    // - 否则探测实时状态（兜底处理：渠道消息进入后侧栏快照未刷新时，仍能接入运行中的流）
-    let shouldReconnect = conv.streamStatus === 'running'
-    if (!shouldReconnect) {
-      try {
-        const statusRes: any = await conversationApi.getStatus(requestedConvId)
-        if (currentConversationId.value !== requestedConvId) return
-        shouldReconnect = statusRes?.data?.streamStatus === 'running'
-      } catch {
-        // 探测失败不阻断主流程
-      }
-    }
-    if (currentConversationId.value === requestedConvId && shouldReconnect) {
+    if (currentConversationId.value === requestedConvId && resume.shouldReconnectStream) {
       await reconnectStream(requestedConvId)
     }
   } catch (e) {

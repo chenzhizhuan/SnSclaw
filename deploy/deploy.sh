@@ -16,6 +16,18 @@ die()  { echo "${RED}[fail]${RST} $*" >&2; exit 1; }
 
 cd "$(dirname "$0")"
 
+# 宿主架构 → 镜像 tag 后缀。registry 里同一版本按架构分开存放
+# （server:v1.0.2-amd64 / server:v1.0.2-arm64），compose 里的 image 写成
+# ...:v1.0.2${IMAGE_ARCH_SUFFIX:-}，靠这里导出后拼接。
+case "$(uname -m)" in
+    x86_64|amd64)  IMAGE_ARCH_SUFFIX="-amd64" ;;
+    aarch64|arm64) IMAGE_ARCH_SUFFIX="-arm64" ;;
+    *) die "未支持的宿主架构：$(uname -m)
+     registry 中只有 -amd64 / -arm64 两种镜像。" ;;
+esac
+export IMAGE_ARCH_SUFFIX
+info "宿主架构 $(uname -m) → 使用 ${IMAGE_ARCH_SUFFIX} 镜像"
+
 # --- 1. 前置检查 ---------------------------------------------------------
 command -v docker >/dev/null || die "未安装 docker"
 docker compose version >/dev/null 2>&1 || die "docker compose (v2) 不可用。
@@ -83,12 +95,39 @@ info "磁盘空间充足（${_avail:-?}G 可用）"
 # --- 2. 检查 registry 可达 + 已登录 --------------------------------------
 # 用 manifest 查询做连通性测试，而不是 docker pull —— pull 会真的下载几百 MB。
 # 未登录时给出明确指引而不是唤起交互式 login（脚本可能在非交互环境运行）。
-_probe=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-    "http://$REGISTRY/v2/" 2>/dev/null || echo 000)
+#
+# curl 并非所有精简系统都预装（Jetson 的 Ubuntu 20.04 就没有），缺失时回落到
+# wget，再退一步用 python3。三者都没有就跳过这项探测 —— 后面的
+# docker manifest inspect 同样能发现 registry 不通，不值得为此中断部署。
+_http_probe() {
+    local url="$1"
+    if command -v curl >/dev/null 2>&1; then
+        curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo 000
+    elif command -v wget >/dev/null 2>&1; then
+        # wget 对 401 返回非零退出码，需要从 stderr 里抓状态行
+        wget -q -S --timeout=10 -O /dev/null "$url" 2>&1 \
+            | awk '/^  HTTP\//{c=$2} END{print (c?c:"000")}'
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 - "$url" <<'PYEOF' 2>/dev/null || echo 000
+import sys,urllib.request,urllib.error
+try:
+    print(urllib.request.urlopen(sys.argv[1],timeout=10).status)
+except urllib.error.HTTPError as e:
+    print(e.code)
+except Exception:
+    print("000")
+PYEOF
+    else
+        echo skip
+    fi
+}
+_probe=$(_http_probe "http://$REGISTRY/v2/")
 case "$_probe" in
     401)
-        # registry 活着且要求认证 —— 检查本机是否已存有凭据
-        if ! grep -qs "$REGISTRY" "$HOME/.docker/config.json"; then
+        # registry 活着且要求认证 —— 检查本机是否已存有凭据。
+        # 用 sudo 跑 docker 时凭据在 /root/.docker，不在 $HOME。
+        if ! grep -qs "$REGISTRY" "$HOME/.docker/config.json" \
+           && ! sudo -n grep -qs "$REGISTRY" /root/.docker/config.json 2>/dev/null; then
             die "registry 可达但尚未登录。先执行：
          docker login $REGISTRY -u admin"
         fi
@@ -96,6 +135,9 @@ case "$_probe" in
         ;;
     200)
         info "registry 可达（未启用认证）"
+        ;;
+    skip)
+        warn "无 curl/wget/python3，跳过 registry 连通性探测"
         ;;
     000)
         die "无法连接 registry $REGISTRY。
@@ -146,8 +188,7 @@ docker compose up -d
 echo
 echo -n "等待 snsclaw-server 就绪（首次启动要跑 Flyway 建表，约 1-2 分钟）"
 for i in $(seq 1 90); do
-    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 \
-        "http://localhost:${APP_PORT}/" 2>/dev/null || echo 000)
+    code=$(_http_probe "http://localhost:${APP_PORT}/")
     if [ "$code" = "200" ]; then
         echo
         info "服务已就绪"
