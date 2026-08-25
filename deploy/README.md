@@ -198,13 +198,72 @@ Started MateClawApplication
 curl -u admin:<密码> http://221.237.179.2:5000/v2/_catalog
 curl -u admin:<密码> http://221.237.179.2:5000/v2/snsclaw/server/tags/list
 
-# 更新到指定版本
+# 更新到指定版本（不要带 -amd64 / -arm64 后缀，脚本自动补）
 ./manage.sh update server:v1.0.3
 ```
 
 > 服务端推送时可用 `127.0.0.1:5000`（Docker 默认信任 localhost，无需改
 > daemon.json），但 **compose 里必须写 `221.237.179.2:5000`** —— 那是客户端
 > 视角的地址。
+
+---
+
+## 多架构（x86_64 / ARM64）
+
+同一套部署包可直接用于 x86_64 和 ARM64（NVIDIA Jetson、DGX Spark 等），
+不需要改任何配置。
+
+**机制**：registry 里每个镜像按架构分开存放，tag 带架构后缀：
+
+| 仓库 | amd64 | arm64 |
+|---|---|---|
+| `snsclaw/server` | `v1.0.2-amd64` | `v1.0.2-arm64` |
+| `snsclaw/searxng` | `latest-amd64` | `latest-arm64` |
+| `snsclaw/postgres` | `16-amd64` | `16-arm64` |
+
+`deploy.sh` 和 `manage.sh` 启动时按 `uname -m` 导出 `IMAGE_ARCH_SUFFIX`
+（`x86_64`→`-amd64`，`aarch64`→`-arm64`），compose 里的 image 写成
+`...:v1.0.2${IMAGE_ARCH_SUFFIX:-}`，拼接后即为本机架构对应的镜像。
+
+无后缀的旧 tag（`server:v1.0.2` 等）仍保留在 registry 中指向 amd64 镜像，
+供未升级脚本的老部署继续使用。
+
+**⚠️ 绕过脚本直接敲 `docker compose` 命令时**，该变量为空，会退化成拉取无后缀
+的旧 tag（amd64）。在 ARM 机器上这会拉到错架构镜像，容器启动即报
+`exec format error`。请统一用 `./deploy.sh` / `./manage.sh`，或先手动 export：
+
+```bash
+export IMAGE_ARCH_SUFFIX=-arm64   # 或 -amd64
+docker compose up -d
+```
+
+**架构不匹配的症状**：容器反复重启，日志为
+`exec /usr/local/bin/docker-entrypoint.sh: exec format error`。
+用 `docker image inspect <镜像> -f '{{.Os}}/{{.Architecture}}'` 确认镜像架构。
+
+### 构建并推送新架构的镜像
+
+在目标架构的机器上**原生构建**（交叉编译需 QEMU，很慢且易出问题）：
+
+```bash
+# 1. 构建（在源码根目录，不是 deploy/）
+docker compose build snsclaw-server
+
+# 2. 打架构后缀 tag —— 后缀必须与构建机架构一致
+case $(uname -m) in x86_64) SFX=-amd64;; aarch64) SFX=-arm64;; esac
+docker tag snsclaw-snsclaw-server:latest 221.237.179.2:5000/snsclaw/server:v1.0.2$SFX
+docker tag snsclaw-searxng:latest        221.237.179.2:5000/snsclaw/searxng:latest$SFX
+docker tag postgres:16                   221.237.179.2:5000/snsclaw/postgres:16$SFX
+
+# 3. 推送
+docker login 221.237.179.2:5000 -u admin
+docker push 221.237.179.2:5000/snsclaw/server:v1.0.2$SFX
+docker push 221.237.179.2:5000/snsclaw/searxng:latest$SFX
+docker push 221.237.179.2:5000/snsclaw/postgres:16$SFX
+```
+
+**不要**把新架构的镜像推成无后缀 tag —— 那会覆盖另一架构的镜像，导致对方机器
+拉到错架构。
 
 ---
 
