@@ -17,12 +17,13 @@
 #  SPRING_PROFILES_ACTIVE=mysql (the mysql Spring profile remains supported).
 # ============================================================================
 services:
-  # PostgreSQL 数据库
+  # PostgreSQL 16 database
   #
-  # ⚠️ 密码通过环境变量传入，必须从 .env 文件提供。首次部署前：
+  # ⚠️ Passwords come from environment variables, required in .env. Before first run:
   #   1. cp .env.example .env
-  #   2. 编辑 .env 把 DB_ADMIN_PASSWORD / DB_PASSWORD 改成强密码
-  # 未设置会直接在 `docker compose up` 时报错，避免把默认密码带到生产环境。
+  #   2. Edit .env to set strong passwords for DB_ADMIN_PASSWORD / DB_PASSWORD
+  # Missing values fail `docker compose up` immediately, preventing default credentials
+  # from leaking into production.
   postgres:
     image: postgres:16
     container_name: snsclaw-postgres
@@ -37,11 +38,12 @@ services:
       APP_DB_USERNAME: ${DB_USERNAME:-snsclaw}
       APP_DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required in .env}
       TZ: Asia/Shanghai
-    # No host port on purpose — the DB is only reachable from the compose
-    # network. For ad-hoc inspection use `docker compose exec postgres psql`,
-    # or temporarily add:  ports: ["127.0.0.1:13489:5432"]
     ports:
-      - "13489:5432"
+      # Host port comes from DB_EXPOSED_PORT in .env; 5432 is fixed inside the
+      # container (Postgres' own listen port). Set it to 127.0.0.1:10095 to bind
+      # loopback only, or drop this block entirely — the app reaches the DB over
+      # the compose network either way.
+      - "${DB_EXPOSED_PORT:-10095}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Runs once on first init (empty data dir): creates the restricted app
@@ -55,7 +57,7 @@ services:
     networks:
       - snsclaw-net
 
-  # SearXNG 搜索引擎（keyless 搜索 provider）
+  # SearXNG search engine (keyless search provider)
   #
   # The custom image at docker/searxng/ bakes in settings.yml so the sidecar
   # works out of the box (upstream image ships JSON disabled + Limiter enabled,
@@ -82,7 +84,7 @@ services:
     networks:
       - snsclaw-net
 
-  # SnSclaw 后端服务
+  # SnSclaw backend service
   snsclaw-server:
     build:
       context: .
@@ -143,33 +145,41 @@ services:
       # retry with selector. Results > framework spill threshold (~8000 chars)
       # are further spilt to disk by ToolResultStorage.
       MATECLAW_BROWSER_SNAPSHOT_MAX_LENGTH: ${PLAYWRIGHT_SNAPSHOT_MAX_LENGTH:-20000}
-      # OAuth 模式默认保持 auto：localhost 访问走 LOCAL，IP/域名访问走 DEVICE_CODE。
-      # 本机 Docker 若要强制使用 localhost:1455 回调，可在 .env 显式设为 local。
+      # OAuth mode stays "auto" by default: localhost access uses LOCAL, while
+      # IP/domain access uses DEVICE_CODE. Set it to "local" in .env to force the
+      # localhost:1455 callback for a local Docker run.
       MATECLAW_OAUTH_OPENAI_DEPLOYMENT_MODE: ${MATECLAW_OAUTH_OPENAI_DEPLOYMENT_MODE:-}
       MATECLAW_OAUTH_OPENAI_CALLBACK_BIND_HOST: ${MATECLAW_OAUTH_OPENAI_CALLBACK_BIND_HOST:-0.0.0.0}
-      # Wiki 知识库目录扫描白名单（逗号分隔，留空则禁止所有目录扫描）。
-      # 示例：MATE_WIKI_ALLOWED_SOURCE_ROOTS=/data/wiki,/opt/docs
-      # 记得同步在 volumes 里把宿主机路径挂进容器。
+      # Allow-list of host directories the Wiki may scan (comma-separated). Empty
+      # forbids all directory scanning.
+      # Example: MATE_WIKI_ALLOWED_SOURCE_ROOTS=/data/wiki,/opt/docs
+      # Remember to mount those host paths into the container under volumes too.
       MATE_WIKI_ALLOWED_SOURCE_ROOTS: ${MATE_WIKI_ALLOWED_SOURCE_ROOTS:-}
-      # Wiki 知识源自动同步总开关（运维总闸，默认关）。AND 语义：全局开关与
-      # 每个知识库自己的「自动同步」开关都开，该库才会被定时扫描。
-      # 间隔单位毫秒，默认 5 分钟。
+      # Master switch for Wiki source auto-sync (ops-level kill switch, off by
+      # default). AND semantics: a knowledge base is only scanned on a schedule
+      # when both this global switch and the KB's own "auto sync" flag are on.
+      # Interval is in milliseconds, default 5 minutes.
       MATE_WIKI_WATCHER_ENABLED: ${MATE_WIKI_WATCHER_ENABLED:-false}
       MATE_WIKI_WATCHER_INTERVAL_MS: ${MATE_WIKI_WATCHER_INTERVAL_MS:-300000}
-      # Skill 工作区根目录。放在 /app/data 下，让现有的 server_data 卷一并持久化
-      # 已安装的 skill、运行时积累的 LESSONS.md 以及 skill 运行产物，容器重启不丢。
-      # 内置 skill 仍由 JAR classpath 每次启动现场释放，空卷不会丢内置文件。
+      # Skill workspace root. Kept under /app/data so the existing server_data
+      # volume also persists installed skills, the LESSONS.md they accumulate at
+      # runtime, and their output — none of it lost on container restart.
+      # Built-in skills are still materialised from the JAR classpath on every
+      # boot, so an empty volume never loses them.
       MATECLAW_SKILL_WORKSPACE_ROOT: ${MATECLAW_SKILL_WORKSPACE_ROOT:-/app/data/skills}
-      # Skill ZIP 上传/安装大小上限（MB）。解包过程整包缓存在内存里，
-      # max-total 调多大，单次安装的峰值内存就可能吃多大。
+      # Size limits (MB) for skill ZIP upload / install. Unpacking buffers the
+      # whole archive in memory, so whatever max-total is set to is also the peak
+      # memory a single install can consume.
       MATECLAW_SKILL_UPLOAD_MAX_ENTRY_SIZE_MB: ${MATECLAW_SKILL_UPLOAD_MAX_ENTRY_SIZE_MB:-1}
       MATECLAW_SKILL_UPLOAD_MAX_TOTAL_SIZE_MB: ${MATECLAW_SKILL_UPLOAD_MAX_TOTAL_SIZE_MB:-50}
-      # pip 镜像源配置（可选）。skill 里的 Python 脚本缺包时 pip install 会走这个源。
-      # 留空则用 PyPI 默认源（pypi.org）。pip 原生读 PIP_INDEX_URL / PIP_TRUSTED_HOST
-      # 环境变量，容器内所有进程（JVM、Python 子进程、bash）自动继承，无需额外配置。
-      # HTTP 源会自动从 URL 推导 PIP_TRUSTED_HOST；自签 HTTPS 需手动填。
-      # - 互联网加速：PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
-      # - 局域网私有源：PIP_INDEX_URL=http://192.168.1.100:8080/simple（trusted-host 自动推导）
+      # pip index configuration (optional). Used when a Python script inside a
+      # skill pip-installs a missing package. Empty falls back to PyPI (pypi.org).
+      # pip reads PIP_INDEX_URL / PIP_TRUSTED_HOST natively, and every process in
+      # the container (JVM, Python subprocesses, bash) inherits them — no extra
+      # wiring needed. PIP_TRUSTED_HOST is derived automatically for HTTP indexes;
+      # a self-signed HTTPS index needs it set by hand.
+      #   - Public mirror:  PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+      #   - LAN index:      PIP_INDEX_URL=http://192.168.1.100:8080/simple (trusted-host derived)
       PIP_INDEX_URL: ${PIP_INDEX_URL:-}
       PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-}
     # Chromium needs a real /dev/shm. Docker defaults to 64MB which causes
@@ -177,7 +187,12 @@ services:
     # recommendation for Playwright / headless chrome.
     shm_size: 2gb
     ports:
-      - "13486:18088"   # host:container — app listens on 18088 inside the container
+      # Host port comes from APP_EXPOSED_PORT in .env; 18088 is fixed inside the
+      # container (the Spring Boot server binds it, and the image EXPOSEs it).
+      - "${APP_EXPOSED_PORT:-10000}:18088"
+      # OpenAI ChatGPT OAuth local callback. Host and container must match: the
+      # callback URL hardcodes localhost:1455, so this pair is deliberately not
+      # parameterised. Remove the line entirely if you don't use OAuth login.
       - "1455:1455"
     volumes:
       # server_data covers /app/data — wiki-uploads AND the skill workspace
