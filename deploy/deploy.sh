@@ -71,7 +71,13 @@ info "数据库初始化脚本就位"
 # 解析失败时回落到默认值，不因此中断部署。
 _ports=$(docker compose config 2>/dev/null \
     | grep -E '^\s+published:' | tr -dc '0-9\n' | tr '\n' ' ')
-[ -n "${_ports// /}" ] || _ports="19600 19695 1455"
+# 回落值取自 .env（端口是变量驱动的：${APP_EXPOSED_PORT:-10000}），
+# 而不是硬编码 —— 硬编码会在 .env 改过端口后检查错端口。
+if [ -z "${_ports// /}" ]; then
+    _app=$(grep -E '^APP_EXPOSED_PORT=' .env 2>/dev/null | head -1 | cut -d= -f2- | tr -dc '0-9')
+    _db=$(grep -E '^DB_EXPOSED_PORT=' .env 2>/dev/null | head -1 | cut -d= -f2- | tr -dc '0-9')
+    _ports="${_app:-10000} ${_db:-10095} 1455"
+fi
 for p in $_ports; do
     if ss -tln 2>/dev/null | grep -qE "[:.]${p}\s"; then
         die "端口 $p 已被占用。改 docker-compose.yml 中冒号左侧的宿主端口，
@@ -83,7 +89,12 @@ info "端口空闲：${_ports}"
 # 应用对外端口，供后续就绪探测和提示使用
 APP_PORT=$(docker compose config 2>/dev/null \
     | grep -B2 'target: 18088' | grep 'published:' | tr -dc '0-9')
-[ -n "$APP_PORT" ] || APP_PORT=19600
+# 同上：回落到 .env 的值，再回落到 compose 里的变量默认值
+[ -n "$APP_PORT" ] || APP_PORT=$(grep -E '^APP_EXPOSED_PORT=' .env 2>/dev/null \
+    | head -1 | cut -d= -f2- | tr -dc '0-9')
+[ -n "$APP_PORT" ] || APP_PORT=$(grep -oE '\$\{APP_EXPOSED_PORT:-[0-9]+\}' docker-compose.yml 2>/dev/null \
+    | head -1 | tr -dc '0-9')
+[ -n "$APP_PORT" ] || APP_PORT=10000
 
 # 磁盘空间：镜像解压后约 4.3G + 运行时数据，留 15G 余量
 _avail=$(df -BG --output=avail /var/lib/docker 2>/dev/null | tail -1 | tr -dc '0-9')
