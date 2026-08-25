@@ -10,10 +10,20 @@
 #
 #  本包自洽：不依赖任何包外文件，直接整个文件夹上传即可。
 #  启动：./deploy.sh   或   docker compose up -d
+#
+#  ── 多架构支持 ────────────────────────────────────────────────────────────
+#  registry 里每个镜像按架构分开存放，tag 带 -amd64 / -arm64 后缀：
+#      snsclaw/server:v1.0.2-amd64     snsclaw/server:v1.0.2-arm64
+#  IMAGE_ARCH_SUFFIX 由 deploy.sh / manage.sh 按 uname -m 自动导出，
+#  x86_64 → "-amd64"，aarch64 → "-arm64"。
+#
+#  直接手敲 docker compose 命令（不经脚本）时该变量为空，会退化成拉取
+#  无后缀的旧 tag。为避免拉错架构，请统一用 ./deploy.sh 或 ./manage.sh，
+#  或自行 export IMAGE_ARCH_SUFFIX=-arm64 后再执行。
 # ============================================================================
 services:
   postgres:
-    image: 221.237.179.2:5000/snsclaw/postgres:16
+    image: 221.237.179.2:5000/snsclaw/postgres:16${IMAGE_ARCH_SUFFIX:-}
     container_name: snsclaw-postgres
     restart: unless-stopped
     environment:
@@ -44,7 +54,7 @@ services:
   searxng:
     # 定制镜像：上游镜像默认禁用 JSON 输出且启用 Limiter，会静默破坏搜索功能，
     # 该镜像已烘焙好 settings.yml。仅内部访问，不暴露宿主端口。
-    image: 221.237.179.2:5000/snsclaw/searxng:latest
+    image: 221.237.179.2:5000/snsclaw/searxng:latest${IMAGE_ARCH_SUFFIX:-}
     container_name: snsclaw-searxng
     restart: unless-stopped
     environment:
@@ -61,7 +71,7 @@ services:
       - snsclaw-net
 
   snsclaw-server:
-    image: 221.237.179.2:5000/snsclaw/server:v1.0.2
+    image: 221.237.179.2:5000/snsclaw/server:v1.0.2${IMAGE_ARCH_SUFFIX:-}
     container_name: snsclaw-server
     restart: unless-stopped
     depends_on:
