@@ -34,8 +34,8 @@ services:
       APP_DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required in .env}
       TZ: Asia/Shanghai
     ports:
-      # 宿主 19695 -> 容器 5432（容器内端口不能改，Postgres 固定监听 5432）
-      - "19695:5432"
+      # 宿主端口由 .env 的 DB_EXPOSED_PORT 决定；容器内固定 5432（Postgres 监听端口，改不了）
+      - "${DB_EXPOSED_PORT:-10095}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # ⚠️ 必需：首次启动（空数据卷）时创建低权限应用角色 + snsclaw schema。
@@ -121,10 +121,11 @@ services:
     # Chromium 需要真实的 /dev/shm，Docker 默认 64MB 会导致 SIGBUS。
     shm_size: 2gb
     ports:
-      # 宿主 19600 -> 容器 18088（容器内端口由镜像固定，不要改）
-      - "19600:18088"
+      # 宿主端口由 .env 的 APP_EXPOSED_PORT 决定；容器内固定 18088（镜像内写死，改不了）
+      - "${APP_EXPOSED_PORT:-10000}:18088"
       # ⚠️ OpenAI ChatGPT OAuth 本地回调。宿主与容器必须同号（回调 URL 写死
-      # localhost:1455）。若不使用 OpenAI OAuth 登录，可整行删除。
+      # localhost:1455），所以这一对刻意不做成变量。若不使用 OpenAI OAuth
+      # 登录，可整行删除。
       - "1455:1455"
     volumes:
       # /app/data —— wiki 上传、chat 上传、生成文件、workspace、skills 全在这里
