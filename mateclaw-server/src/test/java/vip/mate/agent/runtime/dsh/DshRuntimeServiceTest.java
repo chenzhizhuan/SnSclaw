@@ -10,10 +10,12 @@ import vip.mate.agent.runtime.contract.RuntimeEventType;
 import vip.mate.agent.runtime.contract.RuntimeSession;
 import vip.mate.agent.runtime.dsh.management.DshRuntimeConfigService;
 import vip.mate.agent.runtime.dsh.management.DshRuntimeConfiguration;
+import vip.mate.llm.model.ModelProviderEntity;
 import vip.mate.llm.service.ModelConfigService;
 import vip.mate.llm.service.ModelProviderService;
 
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -99,6 +101,36 @@ class DshRuntimeServiceTest {
                 DshRuntimeService.commandLine("\"/opt/Deep Seek/dsh-jsonrpc-agent\" --stdio"));
     }
 
+    @Test
+    void childEnvironmentKeepsOnlyRuntimeVariablesAndExplicitCredentials() {
+        RuntimeSession session = session(Path.of("/workspace/project"));
+        DshRuntimeConfiguration configuration = new DshRuntimeConfiguration(
+                "/bin/dsh", "/opt/dsh/cordis.yml", "/workspace/global",
+                "https://configured.example/v1", "model", "configured-key");
+        ModelProviderEntity provider = new ModelProviderEntity();
+        provider.setApiKey("provider-key");
+        provider.setBaseUrl("https://provider.example/v1");
+        Map<String, String> inherited = new HashMap<>();
+        inherited.put("PATH", "/usr/bin");
+        inherited.put("HOME", "/Users/mate");
+        inherited.put("AWS_SECRET_ACCESS_KEY", "must-not-leak");
+        inherited.put("DEEPSEEK_API_KEY", "inherited-key");
+        inherited.put("DSH_CORDIS_CONFIG", "/stale/cordis.yml");
+
+        Map<String, String> environment = DshRuntimeService.childEnvironment(
+                inherited, session, configuration, provider);
+
+        assertEquals("/usr/bin", environment.get("PATH"));
+        assertEquals("/Users/mate", environment.get("HOME"));
+        assertEquals("/workspace/project", environment.get("DSH_CWD"));
+        assertEquals("/opt/dsh/cordis.yml", environment.get("DSH_CORDIS_CONFIG"));
+        assertEquals("configured-key", environment.get("DEEPSEEK_API_KEY"));
+        assertEquals("https://configured.example/v1", environment.get("DEEPSEEK_BASE_URL"));
+        assertFalse(environment.containsKey("AWS_SECRET_ACCESS_KEY"));
+        assertFalse(environment.containsValue("inherited-key"));
+        assertFalse(environment.containsValue("/stale/cordis.yml"));
+    }
+
     private static DshRuntimeService service() {
         return service("/bin/dsh");
     }
@@ -110,5 +142,10 @@ class DshRuntimeServiceTest {
         return new DshRuntimeService(new ObjectMapper(),
                 Mockito.mock(ModelConfigService.class),
                 Mockito.mock(ModelProviderService.class), config);
+    }
+
+    private static RuntimeSession session(Path workingDirectory) {
+        return new RuntimeSession("session-1", "conversation-1", 1L, 2L,
+                "model", workingDirectory, Map.of());
     }
 }

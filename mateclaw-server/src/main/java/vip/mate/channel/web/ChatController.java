@@ -19,6 +19,7 @@ import vip.mate.common.result.R;
 import vip.mate.workspace.core.service.ChatUploadLocationResolver;
 import vip.mate.agent.AgentService;
 import vip.mate.agent.model.AgentEntity;
+import vip.mate.agent.runtime.ConversationTurnGate;
 import vip.mate.approval.ApprovalWorkflowService;
 import vip.mate.approval.MetadataDecision;
 import vip.mate.approval.PendingApproval;
@@ -67,6 +68,9 @@ public class ChatController {
     private final vip.mate.workspace.core.service.ChatUploadLocationResolver uploadLocationResolver;
     private final vip.mate.tool.document.preview.OfficePreviewService officePreviewService;
     private final vip.mate.tts.TtsService ttsService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private ConversationTurnGate turnGate = new ConversationTurnGate();
 
     // Virtual thread per SSE task: matches the app-wide virtual-thread model
     // (spring.threads.virtual.enabled=true) and, unlike a cached platform-thread
@@ -201,6 +205,21 @@ public class ChatController {
             return emitter;
         }
 
+        if (conversationService.conversationExists(conversationId)
+                && !conversationService.isConversationOwner(conversationId, username)) {
+            sendErrorDoneAndComplete(emitter, "无权操作该会话");
+            return emitter;
+        }
+
+        // Reserve before approval consumption, regeneration or stream mutation.
+        // Once registered, RunState protects the setup-to-subscription gap:
+        // autonomous admission checks isRunning while holding this same gate.
+        try (var setupPermit = turnGate.tryAcquire(conversationId)) {
+        if (setupPermit == null || streamTracker.isRunning(conversationId)) {
+            sendErrorDoneAndComplete(emitter, "正在生成回复，请先停止或排队后续消息");
+            return emitter;
+        }
+
         // ---- 审批命令拦截：/approve、/deny 走 SSE 流式 replay ----
         String normalizedMsg = requestMessage.trim().toLowerCase();
         boolean isApprovalCommand = "/approve".equals(normalizedMsg) || "approve".equals(normalizedMsg);
@@ -250,6 +269,7 @@ public class ChatController {
             final String decision = isApprovalCommand ? "approved" : "denied";
 
             streamTracker.register(conversationId);
+            setupPermit.close();
             Long approvalAgentId = parseLongOrNull(pending.getAgentId());
             streamTracker.bindRunMeta(conversationId, approvalAgentId, username);
             registerEmitterCallbacks(emitter, conversationId);
@@ -557,6 +577,7 @@ public class ChatController {
 
         // ---- 正常请求：注册流状态并附着首个订阅者 ----
         streamTracker.register(conversationId);
+        setupPermit.close();
         streamTracker.bindRunMeta(conversationId, agentId, username);
         registerEmitterCallbacks(emitter, conversationId);
         streamTracker.attach(conversationId, emitter);
@@ -1008,6 +1029,7 @@ public class ChatController {
         });
 
         return emitter;
+        }
     }
 
     /**
@@ -1126,6 +1148,10 @@ public class ChatController {
         if (username == null) {
             return R.fail(401, "未登录，请先登录");
         }
+        try (var permit = turnGate.tryAcquire(request.getConversationId())) {
+        if (permit == null || streamTracker.isRunning(request.getConversationId())) {
+            return R.fail(409, "正在生成回复，请先停止或排队后续消息");
+        }
         conversationService.getOrCreateConversation(request.getConversationId(), agentId, username, workspaceId);
         MessageEntity savedUser = conversationService.saveMessage(
                 request.getConversationId(), "user", request.getMessage(), request.getContentParts());
@@ -1137,7 +1163,8 @@ public class ChatController {
                 memoryOrigin(request.getConversationId(), username, requesterUserIdOf(auth), workspaceId,
                         request.getEndUserId()).withOriginMessageId(
                                 savedUser == null ? null : savedUser.getId());
-        AgentService.ChatResult result = agentService.chatWithUsage(agentId, promptText, request.getConversationId(), webOrigin);
+        AgentService.ChatResult result = turnGate.withPermit(permit, () ->
+                agentService.chatWithUsage(agentId, promptText, request.getConversationId(), webOrigin));
         String response = result.content();
         conversationService.saveMessage(request.getConversationId(), "assistant", response, null, "completed",
                 result.promptTokens(), result.completionTokens(),
@@ -1145,6 +1172,7 @@ public class ChatController {
         completionPublisher.publish(agentId, request.getConversationId(), request.getMessage(), response, "web",
                 memoryOwnerResolver.resolve(webOrigin));
         return R.ok(response);
+        }
     }
 
     @Operation(summary = "上传聊天附件")
