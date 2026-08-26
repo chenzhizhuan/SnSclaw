@@ -2438,6 +2438,18 @@ export default {
       otherSessions: '其他实时会话',
       loadError: '团队运行上下文刷新失败。',
     },
+    loading: {
+      connecting: '正在连接现场...',
+      connectingHint: '正在建立实时状态连接。',
+      checking: '正在检查正在工作的员工...',
+      checkingHint: '现场服务已连接，正在读取最新运行状态。',
+      slow: '现场数据仍在返回...',
+      slowHint: '服务响应比平时慢，页面会在数据到达后立即展示。',
+      syncingTeams: '现场已显示，正在整理团队任务信息...',
+      failed: '暂时无法加载现场',
+      failedHint: '现场服务没有返回数据，可以重新尝试。',
+      retry: '重新加载',
+    },
     headline: {
       loading: '正在看看...',
       allQuiet: '一片安静。当前没有员工在工作。',

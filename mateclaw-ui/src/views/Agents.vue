@@ -22,10 +22,10 @@
                 :class="{ 'is-active': view === 'live' }"
                 @click="setView('live')"
               >
-                <span v-if="liveRunning > 0" class="seg-pulse"></span>
+                <span v-if="showLiveBadge" class="seg-pulse"></span>
                 {{ t('agents.views.live') }}
                 <span
-                  v-if="liveRunning > 0"
+                  v-if="showLiveBadge"
                   class="seg-count"
                   :class="{ warn: liveStuck > 0 }"
                 >{{ liveRunning }}</span>
@@ -744,19 +744,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { mcToast } from '@/composables/useMcToast'
 import { mcConfirm } from '@/components/common/useConfirm'
 import { agentApi, agentBindingApi, modelApi, skillApi, toolApi, templateApi, liveApi, wikiApi } from '@/api/index'
 import type { Agent } from '@/types/index'
-import SkillIcon from '@/components/common/SkillIcon.vue'
-import SkillIconPicker from '@/components/common/SkillIconPicker.vue'
-import LivePanel from '@/components/live/LivePanel.vue'
 import { parseAgentsLiveRoute, type AgentsView } from '@/composables/agentsLiveRouteState'
-import PlanBoard from '@/components/agents/PlanBoard.vue'
-import AgentGuideEditor from './Agents/components/AgentGuideEditor.vue'
 import {
   emptyProfile,
   parsePrompt,
@@ -768,12 +763,18 @@ import {
 } from '@/utils/agentPromptProfile'
 import { agentIconColor } from '@/utils/agentIconColor'
 import { filterAgentBindingItems, filterAgentToolGroups } from '@/utils/agentBindingSearch'
+import { planAgentsPageLoads, shouldShowAgentsLiveBadge } from '@/utils/agentsPageLoading'
 import { useSkillName } from '@/composables/useSkillName'
 
 const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
 const { resolveSkillName } = useSkillName()
+const SkillIcon = defineAsyncComponent(() => import('@/components/common/SkillIcon.vue'))
+const SkillIconPicker = defineAsyncComponent(() => import('@/components/common/SkillIconPicker.vue'))
+const LivePanel = defineAsyncComponent(() => import('@/components/live/LivePanel.vue'))
+const PlanBoard = defineAsyncComponent(() => import('@/components/agents/PlanBoard.vue'))
+const AgentGuideEditor = defineAsyncComponent(() => import('./Agents/components/AgentGuideEditor.vue'))
 const agents = ref<Agent[]>([])
 const searchText = ref('')
 const activeFilter = ref('all')
@@ -1201,7 +1202,14 @@ const view = ref<AgentView>(
 )
 const liveRunning = ref(0)
 const liveStuck = ref(0)
+const showLiveBadge = computed(() => shouldShowAgentsLiveBadge({
+  view: view.value,
+  running: liveRunning.value,
+}))
 let livePollTimer: ReturnType<typeof setInterval> | null = null
+let agentsLoaded = false
+let modelOptionsLoaded = false
+let dshDiagnosticsLoaded = false
 
 function setView(next: AgentView) {
   view.value = next
@@ -1231,31 +1239,59 @@ async function loadDshDiagnostics() {
   try {
     const res: any = await liveApi.dshDiagnostics()
     dshDiagnostics.value = res?.data ?? res
+    dshDiagnosticsLoaded = true
   } catch {
     dshDiagnostics.value = null
   }
 }
 
 onMounted(() => {
-  loadAgents()
-  loadDshDiagnostics()
-  // RFC-03 G1: load models once for the per-Agent override dropdown.
-  // Failure is non-fatal — the dropdown just shows only "global default".
-  loadAvailableModels()
-  if (isAdminRole.value) {
-    refreshLiveCounts()
-    livePollTimer = setInterval(refreshLiveCounts, 10_000)
-  }
+  applyViewLoadPlan()
 })
 
 onBeforeUnmount(() => {
-  if (livePollTimer) clearInterval(livePollTimer)
+  stopLiveBadgePolling()
 })
+
+watch(view, () => applyViewLoadPlan())
+
+function applyViewLoadPlan() {
+  const plan = planAgentsPageLoads({ view: view.value, isAdmin: isAdminRole.value })
+  if (plan.loadRoster) ensureAgentsLoaded()
+  if (plan.loadAgentFormLookups) ensureAgentFormLookupsLoaded()
+  if (plan.pollLiveBadge) startLiveBadgePolling()
+  else stopLiveBadgePolling()
+}
+
+function startLiveBadgePolling() {
+  if (livePollTimer) return
+  refreshLiveCounts()
+  livePollTimer = setInterval(refreshLiveCounts, 10_000)
+}
+
+function stopLiveBadgePolling() {
+  if (!livePollTimer) return
+  clearInterval(livePollTimer)
+  livePollTimer = null
+}
+
+function ensureAgentsLoaded() {
+  if (agentsLoaded) return
+  loadAgents()
+}
+
+function ensureAgentFormLookupsLoaded() {
+  if (!dshDiagnosticsLoaded) loadDshDiagnostics()
+  // RFC-03 G1: load models once for the per-Agent override dropdown.
+  // Failure is non-fatal — the dropdown just shows only "global default".
+  if (!modelOptionsLoaded) loadAvailableModels()
+}
 
 async function loadAgents() {
   try {
     const res: any = await agentApi.list()
     agents.value = res.data || []
+    agentsLoaded = true
   } catch {
     mcToast.error(t('agents.messages.loadFailed'))
   }
@@ -1270,6 +1306,7 @@ async function loadAvailableModels() {
       provider: m.provider,
       modelName: m.modelName,
     }))
+    modelOptionsLoaded = true
   } catch {
     // Silent — the picker still works (empty list = only "default" option).
   }
@@ -1282,6 +1319,7 @@ function openCreateModal() {
 }
 
 function openBlankCreateModal() {
+  ensureAgentFormLookupsLoaded()
   showTemplateSelector.value = false
   editingAgent.value = null
   form.value = defaultForm()
@@ -1380,6 +1418,7 @@ async function applyTemplate(id: string) {
 }
 
 async function openEditModal(agent: Agent) {
+  ensureAgentFormLookupsLoaded()
   editingAgent.value = agent
   form.value = {
     name: agent.name,
