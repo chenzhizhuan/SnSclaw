@@ -90,7 +90,7 @@ open "/Applications/SnSclaw.app"                              # 再打开
 |---|---|---|---|
 | `typecheck` | `vue-tsc --noEmit`（mateclaw-ui） | — | 73s |
 | `vite` | `vite build` | `mateclaw-server/src/main/resources/static/` 281 文件 / 19.6 MB | 179s |
-| `maven` | `mvn -B package` | `mateclaw-server/target/mateclaw-server-1.0.2-SNAPSHOT.jar` 405 MB | 87s（`-Fast`）/ 20 min+（全量） |
+| `maven` | `mvn -B package` | `mateclaw-server/target/mateclaw-server-1.0.3-SNAPSHOT.jar` 405 MB | 87s（`-Fast`）/ 20 min+（全量） |
 | `jar` | 拷到 `mateclaw-desktop/resources/app.jar` + BOOT-INF 审计 | app.jar 405 MB | ~15s |
 | `desktop` | `npm run build` + `require("ws")` 外置校验 | `dist-electron/main/index.js` | 45s |
 | `installer` | `electron-builder --win --x64` | `mateclaw-desktop/release/*_Setup.exe` 321 MB | ~2.5 min |
