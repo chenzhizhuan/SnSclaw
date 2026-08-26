@@ -33,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -256,28 +257,14 @@ public class DshRuntimeService implements AgentRuntimeProvider {
                 ProcessBuilder builder = new ProcessBuilder(command)
                         .directory(session.workingDirectory().toFile())
                         .redirectError(ProcessBuilder.Redirect.PIPE);
-                builder.environment().put("DSH_CWD", session.workingDirectory().toString());
-                // The packaged binary gives the environment variable precedence
-                // over argv. Set the resolved path explicitly so IDEA/.env
-                // inheritance cannot select a different composition.
-                if (!configuration.cordisConfigPath().isBlank()) {
-                    builder.environment().put("DSH_CORDIS_CONFIG", configuration.cordisConfigPath());
-                } else {
-                    builder.environment().remove("DSH_CORDIS_CONFIG");
-                }
-                log.debug("[DSH] child environment: cordisConfig={}, exists={}",
-                        builder.environment().getOrDefault("DSH_CORDIS_CONFIG", "<empty>"),
+                Map<String, String> environment = builder.environment();
+                Map<String, String> childEnvironment = childEnvironment(environment, session, configuration, provider);
+                environment.clear();
+                environment.putAll(childEnvironment);
+                log.debug("[DSH] child environment: keys={}, cordisConfig={}, exists={}",
+                        environment.keySet(),
+                        environment.getOrDefault("DSH_CORDIS_CONFIG", "<empty>"),
                         !configuration.cordisConfigPath().isBlank() && Files.isRegularFile(Path.of(configuration.cordisConfigPath())));
-                String apiKey = configuration.apiKey();
-                if ((apiKey == null || apiKey.isBlank()) && provider != null) apiKey = provider.getApiKey();
-                if (apiKey != null && !apiKey.isBlank()) {
-                    builder.environment().put("DEEPSEEK_API_KEY", apiKey);
-                }
-                String baseUrl = configuration.baseUrl();
-                if ((baseUrl == null || baseUrl.isBlank()) && provider != null) baseUrl = provider.getBaseUrl();
-                if (baseUrl != null && !baseUrl.isBlank()) {
-                    builder.environment().put("DEEPSEEK_BASE_URL", baseUrl);
-                }
                 process = builder.start();
                 processRef.set(process);
                 if (sink.isCancelled()) {
@@ -461,6 +448,43 @@ public class DshRuntimeService implements AgentRuntimeProvider {
         if (result.isEmpty()) throw new IllegalStateException("DSH runtime command is empty");
         log.debug("[DSH] launching command: {}", result);
         return result;
+    }
+
+    static Map<String, String> childEnvironment(Map<String, String> inherited,
+                                                RuntimeSession session,
+                                                DshRuntimeConfiguration configuration,
+                                                ModelProviderEntity provider) {
+        Map<String, String> environment = new LinkedHashMap<>();
+        copyIfPresent(inherited, environment, "PATH");
+        copyIfPresent(inherited, environment, "HOME");
+        copyIfPresent(inherited, environment, "USERPROFILE");
+        copyIfPresent(inherited, environment, "TMPDIR");
+        copyIfPresent(inherited, environment, "TEMP");
+        copyIfPresent(inherited, environment, "TMP");
+        copyIfPresent(inherited, environment, "SystemRoot");
+        copyIfPresent(inherited, environment, "WINDIR");
+
+        environment.put("DSH_CWD", session.workingDirectory().toString());
+        putIfPresent(environment, "DSH_CORDIS_CONFIG", configuration.cordisConfigPath());
+        putIfPresent(environment, "DEEPSEEK_API_KEY",
+                firstNonBlank(configuration.apiKey(), provider == null ? null : provider.getApiKey()));
+        putIfPresent(environment, "DEEPSEEK_BASE_URL",
+                firstNonBlank(configuration.baseUrl(), provider == null ? null : provider.getBaseUrl()));
+        return environment;
+    }
+
+    private static void copyIfPresent(Map<String, String> source, Map<String, String> target, String key) {
+        if (source == null) return;
+        putIfPresent(target, key, source.get(key));
+    }
+
+    private static void putIfPresent(Map<String, String> target, String key, String value) {
+        if (value == null || value.isBlank()) return;
+        target.put(key, value);
+    }
+
+    private static String firstNonBlank(String primary, String fallback) {
+        return primary != null && !primary.isBlank() ? primary : fallback;
     }
 
     private ModelProviderEntity resolveProvider(String modelName) {

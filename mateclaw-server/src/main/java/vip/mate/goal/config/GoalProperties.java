@@ -41,6 +41,9 @@ public class GoalProperties {
      */
     private boolean defaultAutoFollowup = true;
 
+    /** Create-time default only; existing goals retain their persisted mode. */
+    private boolean defaultPersistentExecution = true;
+
     /**
      * Runtime hard gate for auto-followup. When false, no goal injects a
      * follow-up regardless of its per-goal {@code autoFollowupEnabled} flag —

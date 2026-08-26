@@ -72,6 +72,9 @@ public class AgentService {
     @Autowired(required = false)
     private vip.mate.agent.runtime.RunningConversationRegistry runningConversationRegistry;
 
+    @Autowired
+    private vip.mate.agent.runtime.ConversationTurnGate turnGate = new vip.mate.agent.runtime.ConversationTurnGate();
+
     /**
      * Optional — clears leftover auto-recorded ledger entries when a new
      * user turn starts. Field-injected so existing test constructors of
@@ -297,6 +300,8 @@ public class AgentService {
      * work already done before the pause.
      */
     private void clearAutoRecordedForNewTurn(String conversationId) {
+        // Autonomous segments resume the same objective; retain authoritative tool progress.
+        if (vip.mate.agent.context.GoalContinuationContext.active()) return;
         if (progressLedgerService == null || conversationId == null || conversationId.isBlank()) {
             return;
         }
@@ -663,6 +668,13 @@ public class AgentService {
      */
     private String withLifecycleSync(Long agentId, String message, String conversationId,
                                      java.util.function.BiFunction<String, String, String> invoke) {
+        try (var permit = acquireTurn(conversationId)) {
+            return invokeWithLifecycleSync(agentId,message,conversationId,invoke);
+        }
+    }
+
+    private String invokeWithLifecycleSync(Long agentId, String message, String conversationId,
+                                     java.util.function.BiFunction<String, String, String> invoke) {
         safeRegister(conversationId, agentId);
         try {
             if (!memoryProperties.isLifecycleMediatorEnabled()) {
@@ -691,11 +703,26 @@ public class AgentService {
     private <T> Flux<T> withLifecycleFlux(Long agentId, String message, String conversationId,
                                           java.util.function.BiFunction<String, String, Flux<T>> invoke,
                                           Function<T, String> contentExtractor) {
+        return Flux.using(() -> acquireTurn(conversationId),
+                permit -> invokeWithLifecycleFlux(agentId,message,conversationId,invoke,contentExtractor),
+                vip.mate.agent.runtime.ConversationTurnGate.Permit::close);
+    }
+
+    private vip.mate.agent.runtime.ConversationTurnGate.Permit acquireTurn(String conversationId) {
+        var permit = turnGate.tryAcquire(conversationId);
+        if (permit == null) throw new MateClawException("err.agent.conversation_busy",409,"Conversation is already running");
+        return permit;
+    }
+
+    private <T> Flux<T> invokeWithLifecycleFlux(Long agentId, String message, String conversationId,
+                                          java.util.function.BiFunction<String, String, Flux<T>> invoke,
+                                          Function<T, String> contentExtractor) {
+        boolean goalContinuation = vip.mate.agent.context.GoalContinuationContext.active();
         safeRegister(conversationId, agentId);
         try {
             if (!memoryProperties.isLifecycleMediatorEnabled()) {
                 return invoke.apply(message, conversationId)
-                        .doFinally(s -> safeUnregister(conversationId));
+                        .doFinally(s -> safeUnregister(conversationId, goalContinuation));
             }
             String ownerKey = memoryOwnerResolver.resolve(ChatOriginHolder.get());
             TurnContext ctx = new TurnContext(agentId, conversationId, conversationId, 0, message, ownerKey);
@@ -711,11 +738,11 @@ public class AgentService {
                     })
                     .doOnComplete(() -> lifecycleMediator.afterLlmCall(ctx, reply.toString()))
                     .doOnError(e -> log.debug("[Memory] Stream error, skipping afterLlmCall: {}", e.getMessage()))
-                    .doFinally(s -> safeUnregister(conversationId));
+                    .doFinally(s -> safeUnregister(conversationId, goalContinuation));
         } catch (Exception e) {
             // If invoke.apply() throws before the Flux is constructed, the
             // doFinally above never runs — clean up here.
-            safeUnregister(conversationId);
+            safeUnregister(conversationId, goalContinuation);
             throw e;
         }
     }
@@ -729,9 +756,14 @@ public class AgentService {
 
     /** C5 helper — null-safe unregister so tests without the registry don't NPE. */
     private void safeUnregister(String conversationId) {
+        safeUnregister(conversationId, vip.mate.agent.context.GoalContinuationContext.active());
+    }
+
+    private void safeUnregister(String conversationId, boolean goalContinuation) {
         if (runningConversationRegistry != null) {
             runningConversationRegistry.unregister(conversationId);
         }
+        if (events != null && !goalContinuation) events.publishEvent(new vip.mate.goal.service.GoalExecutionSignal.TurnFinished(conversationId));
     }
 
     private boolean isDshAgent(Long agentId) {

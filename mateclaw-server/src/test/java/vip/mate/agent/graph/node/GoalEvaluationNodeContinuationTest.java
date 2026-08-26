@@ -176,6 +176,18 @@ class GoalEvaluationNodeContinuationTest {
         assertFalse(out.containsKey(MateClawStateKeys.CURRENT_ITERATION));
     }
 
+    @Test
+    void persistentGoalYieldsToDurableSupervisorInsteadOfSpendingGraphFollowups() throws Exception {
+        Fixture f = new Fixture();
+        GoalEntity persistent = f.goalService.getById(1L);
+        persistent.setPersistentExecution(true);
+        persistent.setStatus(vip.mate.goal.model.GoalStatus.ACTIVE);
+        Map<String,Object> out = f.node().apply(f.state(FinishReason.NORMAL.getValue(),0,0));
+        assertEquals(Boolean.TRUE,out.get(MateClawStateKeys.GOAL_EVALUATED_THIS_RUN));
+        assertFalse(out.containsKey(MateClawStateKeys.GOAL_FOLLOWUP_INJECTED));
+        verify(f.followupService,never()).maybeBuildFollowup(any(),any());
+    }
+
     // ===== Test fixture =====
 
     private static final class Fixture {

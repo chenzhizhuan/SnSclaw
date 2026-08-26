@@ -654,8 +654,32 @@ public class ChatStreamTracker {
      * 取消 Flux 订阅（底层 HTTP 连接也会随之关闭），返回 true 表示确实停止了正在运行的流。
      */
     public boolean requestStop(String conversationId) {
-        RunState state = runs.get(conversationId);
+        // A goal may be between finite segments, with no live RunState to cancel.
+        // Persist the user's intent before looking up that ephemeral state.
+        try {
+            if (applicationContext != null) {
+                applicationContext.publishEvent(new vip.mate.goal.service.GoalExecutionSignal.Stop(conversationId));
+            }
+        } catch (RuntimeException persistenceFailure) {
+            // Still cancel live work, but do not acknowledge a durable Stop that failed.
+            requestStopLive(conversationId);
+            throw persistenceFailure;
+        }
+        return requestStopLive(conversationId);
+    }
+
+    private boolean requestStopLive(String conversationId) {
+        return requestStopLive(runs.get(conversationId));
+    }
+
+    /** Cancel only this generation, without publishing a new user Stop intent. */
+    public boolean cancelRun(RunHandle handle) {
+        return handle != null && requestStopLive(handle.state);
+    }
+
+    private boolean requestStopLive(RunState state) {
         if (state == null) return false;
+        String conversationId = state.conversationId;
 
         final boolean firstRequest;
         final Disposable d;
@@ -738,11 +762,13 @@ public class ChatStreamTracker {
     /**
      * 广播事件到所有订阅者并缓存到 buffer.
      * <p>
-     * Two event categories survive {@code state.done=true}:
+     * Lifecycle event categories survive {@code state.done=true}:
      * <ul>
      *   <li>{@code "done"} — the lifecycle marker itself. If a client missed
      *       this on a broken pipe and reconnects within the 5-minute retention
      *       window, replay surfaces it so the UI exits "生成中" state.</li>
+     *   <li>{@code "goal_continuation"} — durable scheduling is settled after
+     *       the graph segment completes, and remains available on reconnect.</li>
      *   <li>{@code "async_task_*"} — task lifecycle events from
      *       {@code AsyncTaskService} (image/video/music generation). These
      *       routinely fire <em>after</em> the agent's reasoning turn finishes
@@ -764,7 +790,8 @@ public class ChatStreamTracker {
         if (handle == null) return;
         RunState state = handle.state;
         boolean isDone = "done".equals(eventName);
-        boolean isAsyncTask = eventName != null && eventName.startsWith("async_task_");
+        boolean isPostTurnEvent = "goal_continuation".equals(eventName)
+                || (eventName != null && eventName.startsWith("async_task_"));
         boolean isHeartbeat = "heartbeat".equals(eventName);
         List<SseEmitter> targets;
         long eventId = 0L;
@@ -775,10 +802,10 @@ public class ChatStreamTracker {
             if (!isHeartbeat) {
                 state.lastEventAt = System.currentTimeMillis();
             }
-            if (!isDone && !isAsyncTask && !isHeartbeat && state.done) {
+            if (!isDone && !isPostTurnEvent && !isHeartbeat && state.done) {
                 return;
             }
-            if ((isDone || isAsyncTask) || (!isHeartbeat && !skipBuffer)) {
+            if ((isDone || isPostTurnEvent) || (!isHeartbeat && !skipBuffer)) {
                 eventId = EVENT_IDS.nextId();
                 state.buffer.add(new SseEvent(eventId, eventName, jsonData));
                 if (state.buffer.size() > MAX_BUFFER_SIZE) {
@@ -786,7 +813,7 @@ public class ChatStreamTracker {
                 }
             }
             targets = new ArrayList<>(state.subscribers);
-            forwardRelays = !isDone && !isAsyncTask && !isHeartbeat;
+            forwardRelays = !isDone && !isPostTurnEvent && !isHeartbeat;
         }
 
         List<SseEmitter> dead = new ArrayList<>();
@@ -840,7 +867,8 @@ public class ChatStreamTracker {
         RunState state = runs.get(conversationId);
 
         boolean isDone = "done".equals(eventName);
-        boolean isAsyncTask = eventName != null && eventName.startsWith("async_task_");
+        boolean isPostTurnEvent = "goal_continuation".equals(eventName)
+                || (eventName != null && eventName.startsWith("async_task_"));
         boolean isHeartbeat = "heartbeat".equals(eventName);
         // tts_ready 与 done/async_task_* 同类，属生命周期尾部事件：自动朗读的语音
         // 合成要数秒，广播时机紧贴流关闭。走这条分支既直投活跃订阅者、又写入
@@ -856,7 +884,7 @@ public class ChatStreamTracker {
             state.lastEventAt = System.currentTimeMillis();
         }
 
-        if (isDone || isAsyncTask || isTtsReady) {
+        if (isDone || isPostTurnEvent || isTtsReady) {
             if (state == null) return;
             synchronized (state.lock) {
                 long id = EVENT_IDS.nextId();
@@ -880,7 +908,7 @@ public class ChatStreamTracker {
                     }
                 }
             }
-            // done events do not flow through eventRelays; async_task_* should
+            // done events do not flow through eventRelays; post-turn events should
             // also short-circuit since relays exist for delta-style streaming
             // events, not lifecycle markers.
             return;
