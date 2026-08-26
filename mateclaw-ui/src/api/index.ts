@@ -1789,6 +1789,8 @@ export interface Goal {
   description: string
   exitCriteria?: string | null
   status: 'active' | 'paused' | 'completed' | 'abandoned' | 'exhausted'
+  /** Durable continuation; zero budgets are unlimited only in this mode. */
+  persistentExecution?: boolean
   turnBudget: number
   turnsUsed: number
   llmCallBudget: number
@@ -1824,6 +1826,7 @@ export const goalApi = {
     title: string
     description?: string
     exitCriteria?: string
+    persistentExecution?: boolean
     turnBudget?: number
     llmCallBudget?: number
     autoFollowupEnabled?: boolean

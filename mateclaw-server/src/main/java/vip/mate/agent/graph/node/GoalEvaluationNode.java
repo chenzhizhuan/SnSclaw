@@ -184,6 +184,12 @@ public class GoalEvaluationNode implements NodeAction {
                     .build();
         }
 
+        if (Boolean.TRUE.equals(refreshed.getPersistentExecution())
+                && refreshed.getStatus()!=vip.mate.goal.model.GoalStatus.ACTIVE) {
+            return MateClawStateAccessor.output().goalEvaluatedThisRun(true)
+                    .events(List.of(skippedEvent(refreshed.getId(), "goal_no_longer_active"))).build();
+        }
+
         // Decision branches. Each terminal write is wrapped so a DB hiccup
         // (e.g. optimistic-lock conflict exceeding retries, memory sync
         // failure on completion) does not propagate into the chat graph
@@ -226,6 +232,21 @@ public class GoalEvaluationNode implements NodeAction {
                     .goalEvaluationResult(result.toMap())
                     .goalEvaluatedThisRun(true)
                     .events(List.of(skippedEvent(refreshed.getId(), "terminal_write_failed")))
+                    .build();
+        }
+
+        // A persistent goal yields a finite segment. Its durable supervisor owns
+        // the next turn, cooldown and recovery; never consume graph recursion here.
+        if (Boolean.TRUE.equals(refreshed.getPersistentExecution())) {
+            return MateClawStateAccessor.output()
+                    .goalEvaluationResult(result.toMap())
+                    .goalEvaluatedThisRun(true)
+                    .events(List.of(goalEvent("goal_evaluated", Map.of(
+                            "goalId", String.valueOf(refreshed.getId()),
+                            "score", result.score(),
+                            "decision", result.decision(),
+                            "gap", result.gap() == null ? "" : result.gap(),
+                            "goal", goalService.toResponse(refreshed)))))
                     .build();
         }
 
