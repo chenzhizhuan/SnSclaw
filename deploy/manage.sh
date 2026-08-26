@@ -70,12 +70,29 @@ cd "$(dirname "$0")"
 [ -f docker-compose.yml ] || die "当前目录没有 docker-compose.yml"
 docker compose version >/dev/null 2>&1 || die "docker compose (v2) 不可用"
 
-# 应用对外端口，从 compose 解析（避免与 compose 各写一份而失配）
+# 应用对外端口，从 compose 解析（避免与 compose 各写一份而失配）。
+#
+# 三级回落：
+#   1. docker compose config 的 published/target 结构（最准，已展开变量）
+#   2. .env 里的 APP_EXPOSED_PORT —— compose 把宿主端口写成
+#      "${APP_EXPOSED_PORT:-10000}:18088" 时，若 compose config 因故不可用
+#      （daemon 不通、compose 文件报错）第 1 步会拿到空值
+#   3. compose 文件里该变量的默认值
+# 全部失败才回落到 10000。曾经硬编码 19600 —— 那是旧版 compose 的端口，
+# 端口改成变量驱动后会导致就绪探测打错端口、把已就绪的服务误报为失败。
 app_port() {
     local p
     p=$(docker compose config 2>/dev/null \
         | grep -B2 'target: 18088' | grep 'published:' | tr -dc '0-9')
-    echo "${p:-19600}"
+    if [ -z "$p" ] && [ -f .env ]; then
+        p=$(grep -E '^APP_EXPOSED_PORT=' .env 2>/dev/null | head -1 \
+            | cut -d= -f2- | tr -dc '0-9')
+    fi
+    if [ -z "$p" ]; then
+        p=$(grep -oE '\$\{APP_EXPOSED_PORT:-[0-9]+\}' docker-compose.yml 2>/dev/null \
+            | head -1 | tr -dc '0-9')
+    fi
+    echo "${p:-10000}"
 }
 
 # 等待 HTTP 就绪；容器中途退出则立即报错，不干等

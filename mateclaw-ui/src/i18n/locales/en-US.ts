@@ -782,6 +782,18 @@ export default {
       otherSessions: 'Other live sessions',
       loadError: 'Team run context could not be refreshed.',
     },
+    loading: {
+      connecting: 'Connecting to Live...',
+      connectingHint: 'Establishing the real-time status connection.',
+      checking: 'Checking which employees are working...',
+      checkingHint: 'Live is connected and reading the latest run status.',
+      slow: 'Live data is still on its way...',
+      slowHint: 'The service is responding more slowly than usual. Results will appear as soon as they arrive.',
+      syncingTeams: 'Live is ready. Organizing team task details...',
+      failed: 'Live could not be loaded',
+      failedHint: 'The Live service did not return data. You can try again.',
+      retry: 'Reload',
+    },
     headline: {
       loading: 'Looking around...',
       allQuiet: 'All quiet. No one is working right now.',
