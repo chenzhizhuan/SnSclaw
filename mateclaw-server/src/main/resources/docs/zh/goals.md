@@ -310,6 +310,12 @@ snsclaw:
     default-auto-followup: true
     # 运行期总开关；关掉则无论 per-goal 标志如何，都不注入自动延续
     allow-auto-followup: true
+    # 单后端实例同时运行的持久化目标 Segment 上限
+    max-concurrent-segments: 4
+    # 普通 Segment 结算后再次续跑的全局最小间隔（秒）
+    minimum-continuation-interval-seconds: 1
+    # provider 或评估器发生可重试故障后，暂停认领其他目标的时间（秒；0 = 关闭）
+    provider-failure-global-backoff-seconds: 30
     # 新目标默认持续模式；省略预算表示不限（0）
     default-persistent-execution: true
     supervisor-poll-ms: 5000
@@ -330,6 +336,11 @@ snsclaw:
     # 评估 prompt 携带的历史消息条数上限
     evaluator-context-messages: 8
 ```
+
+`minimum-continuation-interval-seconds` 与目标自身的 `followupCooldownSeconds` 取较大值。
+provider 全局退避只保存在当前后端实例内；重启恢复仍以数据库中的 continuation
+`next_run_at` 和每目标失败次数为准。耐久或低配模型测试建议使用并发 `1`、最小间隔
+`300` 秒、provider 全局退避 `300` 秒，再根据日志逐步放量。
 
 ---
 

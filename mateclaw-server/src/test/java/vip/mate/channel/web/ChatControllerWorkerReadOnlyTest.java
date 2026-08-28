@@ -24,6 +24,8 @@ import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.util.Optional;
+
 @ExtendWith(MockitoExtension.class)
 class ChatControllerWorkerReadOnlyTest {
 
@@ -36,6 +38,7 @@ class ChatControllerWorkerReadOnlyTest {
     @Mock private MemoryOwnerResolver memoryOwnerResolver;
     @Mock private ChatUploadLocationResolver uploadLocationResolver;
     @Mock private OfficePreviewService officePreviewService;
+    @Mock private ConversationInputQueueStore inputQueue;
     @Mock private vip.mate.tts.TtsService ttsService;
     @Mock private Authentication authentication;
 
@@ -46,7 +49,7 @@ class ChatControllerWorkerReadOnlyTest {
     void setUp() {
         controller = new ChatController(agentService, conversationService, approvalService,
                 streamTracker, objectMapper, completionPublisher, memoryOwnerResolver,
-                uploadLocationResolver, officePreviewService, ttsService);
+                uploadLocationResolver, officePreviewService, inputQueue, ttsService);
         ReflectionTestUtils.setField(controller, "turnGate", gate);
     }
 
@@ -190,6 +193,49 @@ class ChatControllerWorkerReadOnlyTest {
         try (var next = gate.tryAcquire("idle-conversation")) {
             assertNotNull(next);
         }
+    }
+
+    @Test
+    void approvalCommandConsumesTheRequestedPendingInsteadOfTheOldest() {
+        when(authentication.getName()).thenReturn("alice");
+        when(conversationService.isUserMessageAllowed("multi-approval")).thenReturn(true);
+        var requested = org.mockito.Mockito.mock(vip.mate.approval.PendingApproval.class);
+        when(requested.getPendingId()).thenReturn("pending-newest");
+        when(requested.getConversationId()).thenReturn("multi-approval");
+        when(requested.getStatus()).thenReturn("pending");
+        when(approvalService.getPending("pending-newest")).thenReturn(Optional.of(requested));
+        when(approvalService.resolveAndConsume("pending-newest", "alice"))
+                .thenReturn(vip.mate.approval.ResolveOutcome.alreadyResolved("pending-newest"));
+
+        ChatController.ChatStreamRequest request = new ChatController.ChatStreamRequest();
+        request.setConversationId("multi-approval");
+        request.setMessage("/approve");
+        request.setPendingApprovalId("pending-newest");
+
+        controller.chatStream(request, 1L, authentication);
+
+        verify(approvalService).getPending("pending-newest");
+        verify(approvalService).resolveAndConsume("pending-newest", "alice");
+        verify(approvalService, never()).findPendingByConversation(any());
+    }
+
+    @Test
+    void approvalCommandRejectsPendingFromAnotherConversation() {
+        when(authentication.getName()).thenReturn("alice");
+        when(conversationService.isUserMessageAllowed("owned-conversation")).thenReturn(true);
+        var foreign = org.mockito.Mockito.mock(vip.mate.approval.PendingApproval.class);
+        when(foreign.getConversationId()).thenReturn("foreign-conversation");
+        when(approvalService.getPending("foreign-pending")).thenReturn(Optional.of(foreign));
+
+        ChatController.ChatStreamRequest request = new ChatController.ChatStreamRequest();
+        request.setConversationId("owned-conversation");
+        request.setMessage("/deny");
+        request.setPendingApprovalId("foreign-pending");
+
+        controller.chatStream(request, 1L, authentication);
+
+        verify(approvalService, never()).resolve(any(), any(), any());
+        verify(approvalService, never()).findPendingByConversation(any());
     }
 
     @Test
