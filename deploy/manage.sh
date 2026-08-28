@@ -25,7 +25,7 @@ step() { echo; echo "${CYA}==>${RST} $*"; }
 die()  { echo "${RED}[fail]${RST} $*" >&2; exit 1; }
 
 # 宿主架构 → 镜像 tag 后缀。registry 里同一版本按架构分开存放
-# （server:v1.0.2-amd64 / server:v1.0.2-arm64），compose 用
+# （server:v1.0.3-amd64 / server:v1.0.3-arm64），compose 用
 # ${IMAGE_ARCH_SUFFIX} 拼到 tag 末尾，靠这里导出。
 #
 # 不用 docker 的 multi-arch manifest 是因为该 registry 上的镜像是单架构
