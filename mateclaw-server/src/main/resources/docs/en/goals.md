@@ -312,6 +312,12 @@ snsclaw:
     default-auto-followup: true
     # Runtime master switch; when off, no goal injects a followup regardless of its per-goal flag.
     allow-auto-followup: true
+    # Persistent goal segments that may execute concurrently in one backend instance.
+    max-concurrent-segments: 4
+    # Global minimum delay in seconds before an ordinary segment continues.
+    minimum-continuation-interval-seconds: 1
+    # Pause new claims after a retryable provider/evaluator failure (seconds; 0 disables it).
+    provider-failure-global-backoff-seconds: 30
     # New goals run persistently; omitted budgets mean unlimited (0).
     default-persistent-execution: true
     supervisor-poll-ms: 5000
@@ -333,6 +339,13 @@ snsclaw:
     # Max recent messages included in the evaluator prompt.
     evaluator-context-messages: 8
 ```
+
+The effective continuation delay is the larger of
+`minimum-continuation-interval-seconds` and the goal's `followupCooldownSeconds`.
+The provider-wide backoff is instance-local; restart recovery continues to use the durable
+continuation `next_run_at` and per-goal failure count. For soak tests or constrained model
+capacity, start with concurrency `1`, a `300` second minimum interval, and a `300` second
+provider backoff, then increase load only after reviewing logs.
 
 ---
 
