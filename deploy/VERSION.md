@@ -13,7 +13,7 @@
 
 | 服务 | 镜像 | tag |
 |---|---|---|
-| snsclaw-server | `snsclaw/server` | `v1.0.2` |
+| snsclaw-server | `snsclaw/server` | `v1.0.3` |
 | postgres | `snsclaw/postgres` | `16` |
 | searxng | `snsclaw/searxng` | `latest` |
 
@@ -28,7 +28,7 @@
 - 三容器编排：server / postgres / searxng
 - 端口：19600（应用）、19695（数据库）、1455（OAuth 回调）
 - 脚本三件套：`prepare-host.sh` / `deploy.sh` / `manage.sh`
-- 镜像 tag：`server:v1.0.2`、`searxng:latest`、`postgres:16`
+- 镜像 tag：`server:v1.0.3`、`searxng:latest`、`postgres:16`
 
 已知问题见 README「已知问题」一节。
 
