@@ -68,6 +68,10 @@ services:
   searxng:
     build:
       context: ./docker/searxng
+    # Named explicitly so the image matches container_name. Without this, compose
+    # derives it as <project>-<service>, which varies with the checkout directory
+    # name and would not line up with the container.
+    image: snsclaw-searxng:latest
     container_name: snsclaw-searxng
     restart: unless-stopped
     environment:
@@ -91,6 +95,10 @@ services:
       dockerfile: mateclaw-server/Dockerfile
       args:
         MAVEN_FLAGS: ${MAVEN_FLAGS:-}
+    # Named explicitly so the image matches container_name. Without this, compose
+    # derives <project>-<service> = "snsclaw-snsclaw-server" — the service name
+    # already carries the snsclaw- prefix, so the project name doubled it.
+    image: snsclaw-server:latest
     container_name: snsclaw-server
     restart: unless-stopped
     depends_on:
