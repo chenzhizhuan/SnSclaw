@@ -402,6 +402,10 @@ mateclaw:
     # models (Kimi / GLM / MiniMax) routinely take 90–290 s per LLM turn
     # when the child must produce multi-section structured output.
     parallel-timeout-seconds: 300
+    # Default wall-clock budget for detached delegateAsync children. A caller
+    # may request a different positive timeout up to 86400 seconds; keeping a
+    # default bound prevents abandoned background children from running forever.
+    async-timeout-seconds: 3600
 
 # MateClaw Agent 配置
 mate:
