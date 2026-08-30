@@ -87,7 +87,7 @@ services:
 
   # SnSclaw backend service
   snsclaw-server:
-    image: 221.237.179.2:5000/snsclaw/server:v1.0.3${IMAGE_ARCH_SUFFIX:-}
+    image: 221.237.179.2:5000/snsclaw/server:v1.0.4${IMAGE_ARCH_SUFFIX:-}
     container_name: snsclaw-server
     restart: unless-stopped
     depends_on:

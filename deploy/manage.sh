@@ -7,7 +7,7 @@
 #  常用：
 #    ./manage.sh status              查看状态（容器 / 端口 / 磁盘 / 数据卷）
 #    ./manage.sh update              拉最新镜像并重建（保留数据）
-#    ./manage.sh update server:v1.0.3   指定 tag 更新单个服务
+#    ./manage.sh update server:v1.0.4   指定 tag 更新单个服务
 #    ./manage.sh restart [服务名]    重启（不重建，不拉镜像）
 #    ./manage.sh logs [服务名]       跟踪日志
 #    ./manage.sh backup              备份数据库 + 文件卷
@@ -25,7 +25,7 @@ step() { echo; echo "${CYA}==>${RST} $*"; }
 die()  { echo "${RED}[fail]${RST} $*" >&2; exit 1; }
 
 # 宿主架构 → 镜像 tag 后缀。registry 里同一版本按架构分开存放
-# （server:v1.0.3-amd64 / server:v1.0.3-arm64），compose 用
+# （server:v1.0.4-amd64 / server:v1.0.4-arm64），compose 用
 # ${IMAGE_ARCH_SUFFIX} 拼到 tag 末尾，靠这里导出。
 #
 # 不用 docker 的 multi-arch manifest 是因为该 registry 上的镜像是单架构
@@ -173,10 +173,10 @@ cmd_update() {
     local target="${1:-}"
 
     if [ -n "$target" ]; then
-        # 形如 server:v1.0.3 —— 就地改 compose 里对应服务的 tag。
+        # 形如 server:v1.0.4 —— 就地改 compose 里对应服务的 tag。
         # tag 不要带 -amd64/-arm64 后缀，架构由 IMAGE_ARCH_SUFFIX 自动补。
         local svc="${target%%:*}" tag="${target##*:}"
-        [ "$svc" != "$tag" ] || die "格式应为 <服务>:<tag>，例如 server:v1.0.3"
+        [ "$svc" != "$tag" ] || die "格式应为 <服务>:<tag>，例如 server:v1.0.4"
         case "$tag" in
             *-amd64|*-arm64)
                 die "tag 不要带架构后缀：写 ${svc}:${tag%-*} 即可，
@@ -289,7 +289,7 @@ SnSclaw 运维脚本
 
   ./manage.sh status                 查看状态（容器/镜像/卷/健康/错误/磁盘）
   ./manage.sh update                 按当前 compose 拉镜像并重建（保留数据）
-  ./manage.sh update server:v1.0.3   改 tag 后再更新（自动校验 tag 是否存在）
+  ./manage.sh update server:v1.0.4   改 tag 后再更新（自动校验 tag 是否存在）
   ./manage.sh restart [服务]         重启，不拉镜像
   ./manage.sh start | stop           启停（数据保留）
   ./manage.sh logs [服务]            跟踪日志，默认 snsclaw-server
@@ -300,7 +300,7 @@ SnSclaw 运维脚本
 
 多架构：镜像 tag 自动按宿主架构补 -amd64 / -arm64 后缀，
         x86_64 与 aarch64 机器执行同样的命令即可，无需改配置。
-        update 指定 tag 时不要带架构后缀（写 server:v1.0.3）。
+        update 指定 tag 时不要带架构后缀（写 server:v1.0.4）。
 EOF
 }
 
