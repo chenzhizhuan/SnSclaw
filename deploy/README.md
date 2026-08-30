@@ -48,7 +48,7 @@ vi .env                 # 填 3 项配置
 
 | 服务 | 镜像 | 宿主端口 | 容器端口 |
 |---|---|---|---|
-| snsclaw-server | `snsclaw/server:v1.0.3` | 19600 | 18088 |
+| snsclaw-server | `snsclaw/server:v1.0.4` | 19600 | 18088 |
 | | | 1455 | 1455 |
 | postgres | `snsclaw/postgres:16` | 19695 | 5432 |
 | searxng | `snsclaw/searxng:latest` | 不暴露 | 8080 |
@@ -172,7 +172,7 @@ Started MateClawApplication
 ```bash
 ./manage.sh status                 # 容器/镜像/卷/健康/近期错误/磁盘
 ./manage.sh update                 # 拉镜像并重建（数据保留）
-./manage.sh update server:v1.0.3   # 改 tag 再更新，先校验 tag 存在性
+./manage.sh update server:v1.0.4   # 改 tag 再更新，先校验 tag 存在性
 ./manage.sh restart [服务]         # 重启，不拉镜像
 ./manage.sh start | stop           # 启停
 ./manage.sh logs [服务]            # 跟踪日志，默认 snsclaw-server
@@ -199,7 +199,7 @@ curl -u admin:<密码> http://221.237.179.2:5000/v2/_catalog
 curl -u admin:<密码> http://221.237.179.2:5000/v2/snsclaw/server/tags/list
 
 # 更新到指定版本（不要带 -amd64 / -arm64 后缀，脚本自动补）
-./manage.sh update server:v1.0.3
+./manage.sh update server:v1.0.4
 ```
 
 > 服务端推送时可用 `127.0.0.1:5000`（Docker 默认信任 localhost，无需改
@@ -217,15 +217,15 @@ curl -u admin:<密码> http://221.237.179.2:5000/v2/snsclaw/server/tags/list
 
 | 仓库 | amd64 | arm64 |
 |---|---|---|
-| `snsclaw/server` | `v1.0.3-amd64` | `v1.0.3-arm64` |
+| `snsclaw/server` | `v1.0.4-amd64` | `v1.0.4-arm64` |
 | `snsclaw/searxng` | `latest-amd64` | `latest-arm64` |
 | `snsclaw/postgres` | `16-amd64` | `16-arm64` |
 
 `deploy.sh` 和 `manage.sh` 启动时按 `uname -m` 导出 `IMAGE_ARCH_SUFFIX`
 （`x86_64`→`-amd64`，`aarch64`→`-arm64`），compose 里的 image 写成
-`...:v1.0.3${IMAGE_ARCH_SUFFIX:-}`，拼接后即为本机架构对应的镜像。
+`...:v1.0.4${IMAGE_ARCH_SUFFIX:-}`，拼接后即为本机架构对应的镜像。
 
-无后缀的旧 tag（`server:v1.0.3` 等）仍保留在 registry 中指向 amd64 镜像，
+无后缀的旧 tag（`server:v1.0.4` 等）仍保留在 registry 中指向 amd64 镜像，
 供未升级脚本的老部署继续使用。
 
 **⚠️ 绕过脚本直接敲 `docker compose` 命令时**，该变量为空，会退化成拉取无后缀
@@ -251,13 +251,13 @@ docker compose build snsclaw-server
 
 # 2. 打架构后缀 tag —— 后缀必须与构建机架构一致
 case $(uname -m) in x86_64) SFX=-amd64;; aarch64) SFX=-arm64;; esac
-docker tag server:latest  221.237.179.2:5000/snsclaw/server:v1.0.3$SFX
+docker tag server:latest  221.237.179.2:5000/snsclaw/server:v1.0.4$SFX
 docker tag searxng:latest 221.237.179.2:5000/snsclaw/searxng:latest$SFX
 docker tag postgres:16            221.237.179.2:5000/snsclaw/postgres:16$SFX
 
 # 3. 推送
 docker login 221.237.179.2:5000 -u admin
-docker push 221.237.179.2:5000/snsclaw/server:v1.0.3$SFX
+docker push 221.237.179.2:5000/snsclaw/server:v1.0.4$SFX
 docker push 221.237.179.2:5000/snsclaw/searxng:latest$SFX
 docker push 221.237.179.2:5000/snsclaw/postgres:16$SFX
 ```
