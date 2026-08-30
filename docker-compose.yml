@@ -68,6 +68,7 @@ services:
   searxng:
     build:
       context: ./docker/searxng
+    image: searxng:latest
     container_name: snsclaw-searxng
     restart: unless-stopped
     environment:
@@ -91,6 +92,7 @@ services:
       dockerfile: mateclaw-server/Dockerfile
       args:
         MAVEN_FLAGS: ${MAVEN_FLAGS:-}
+    image: server:latest
     container_name: snsclaw-server
     restart: unless-stopped
     depends_on:
