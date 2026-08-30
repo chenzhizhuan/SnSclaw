@@ -179,6 +179,10 @@ Both modes use **structured output** — the evaluator returns a typed object (c
 
 **Completion is deterministic.** Only when **every criterion passes** is the goal done. 19 of 20 passed (a 0.95 score) is still "continue" — miss one and one is missing, no fuzzy threshold.
 
+::: warning Verify deliverable evidence for long tasks
+An async child task's `status=succeeded` and `progress=100` are lifecycle terminal signals, not evidence that a criterion passed. For files, long-form writing, test cases, and similar deliverables, make criteria reproducible: for example, “the target file exists and can be read back,” “body text contains at least N characters,” or “at least N independent scenarios can be enumerated.” If a write or execution tool failed, only an outline was produced, or work remains pending, keep that criterion unpassed.
+:::
+
 **Three ways to add a checklist:**
 
 - **At creation** — pass `criteria: ["DNS resolves", "SSL valid", "tests green"]` to the `setGoal` tool, or `criteria` to `POST /api/v1/goals`. Skips the bootstrap round.
