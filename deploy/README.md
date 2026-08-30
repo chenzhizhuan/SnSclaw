@@ -251,8 +251,8 @@ docker compose build snsclaw-server
 
 # 2. 打架构后缀 tag —— 后缀必须与构建机架构一致
 case $(uname -m) in x86_64) SFX=-amd64;; aarch64) SFX=-arm64;; esac
-docker tag snsclaw-server:latest  221.237.179.2:5000/snsclaw/server:v1.0.3$SFX
-docker tag snsclaw-searxng:latest 221.237.179.2:5000/snsclaw/searxng:latest$SFX
+docker tag server:latest  221.237.179.2:5000/snsclaw/server:v1.0.3$SFX
+docker tag searxng:latest 221.237.179.2:5000/snsclaw/searxng:latest$SFX
 docker tag postgres:16            221.237.179.2:5000/snsclaw/postgres:16$SFX
 
 # 3. 推送
