@@ -163,7 +163,7 @@ SnSclaw 就是这个东西。
 - **员工 Runtime Contract**：provider registry、session factory、能力声明与统一事件流，让 native / 外部 runtime 共用会话、工作空间、工具治理和 UI 投影
 - **DeepSeek Harness Runtime**：认证 JSON-RPC 子进程桥、思考/文本/工具/生命周期事件、宿主工具策略、受管理安装配置与环境隔离
 - **持久目标执行**：有界 segment + 数据库调度队列 + supervisor + lease / attempt / 输入排队，服务重启后恢复未完成目标
-- **A2A 互联**：MateClaw 同时成为 A2A server 和 client，支持 Agent Card、流式任务、查询/取消以及受限出站调用
+- **A2A 互联**：SnSclaw 同时成为 A2A server 和 client，支持 Agent Card、流式任务、查询/取消以及受限出站调用
 - **运行时可靠性与边界**：Team 交付完成门、checkpoint 恢复、长回答、审批输入、生成文件和管理视图的工作空间隔离全面加固
 - 可选 OfficeCLI 文档引擎、ACP prompt timeout 与插件工具发现补齐扩展运行时的日常能力
 

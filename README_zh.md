@@ -4,7 +4,7 @@
   <img src="mateclaw-ui/public/logo/mateclaw_logo_s.png" alt="SnSclaw Logo" width="120">
 </p>
 
-# 太一（SnSclaw）
+# 数脑思（SnSclaw）
 
 <p align="center"><b>你的超级大脑</b></p>
 

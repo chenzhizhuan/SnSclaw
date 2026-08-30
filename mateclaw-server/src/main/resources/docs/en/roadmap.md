@@ -163,7 +163,7 @@ Full story: [v2.1.0 release notes](./releases/2.1.0.md); guides: [Team Runs](./t
 - **Employee Runtime Contract**: provider registry, session factory, capability declarations, and normalized events let native and external runtimes share conversations, workspaces, tool governance, and UI projection
 - **DeepSeek Harness Runtime**: authenticated JSON-RPC process bridge, thinking/text/tool/lifecycle events, host tool policy, managed installation and configuration, and child-environment isolation
 - **Durable Goal execution**: bounded segments + database scheduler + supervisor + leases / attempts / accepted-input queue recover unfinished goals after backend restarts
-- **A2A interoperability**: MateClaw acts as both A2A server and client with Agent Cards, streamed tasks, get/cancel, and constrained outbound calls
+- **A2A interoperability**: SnSclaw acts as both A2A server and client with Agent Cards, streamed tasks, get/cancel, and constrained outbound calls
 - **Runtime reliability and boundaries**: Team delivery gates, checkpoint recovery, long-form output, approval-time input, generated files, and workspace-scoped administration are hardened
 - Optional OfficeCLI, ACP prompt timeout, and plugin-tool discovery round out external-runtime operations
 

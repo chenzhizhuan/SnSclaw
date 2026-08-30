@@ -121,7 +121,7 @@ head:
 
 - **`delegateToAgent`** —— 同步委派。把一个子任务交给指定员工，等它跑完、拿到最终结果再返回。可选 `inheritParentContext`：把父会话最近的上下文一起带给子员工，省去重复交代背景。
 - **`delegateParallel`** —— 扇出委派。同时派给多个子员工，各自在隔离会话里跑，结果统一收集回来。
-- **`delegateAsync`** —— 后台委派。立刻返回一个 `task_id`，子员工在后台跑；之后用 **`taskOutput`** 取结果。后台任务默认有 3600 秒执行预算，可通过 `mateclaw.delegation.async-timeout-seconds` 配置，或在单次调用中用 `timeoutSeconds` 调整（最大 86400 秒）；超时后 MateClaw 会停止子会话并持久化失败结果，避免遗留孤儿任务。`taskOutput` 带**归属闸门**——只有最初发起委派的**同一个会话 + 同一个用户**才能读到结果，防止跨会话/跨用户泄露。
+- **`delegateAsync`** —— 后台委派。立刻返回一个 `task_id`，子员工在后台跑；之后用 **`taskOutput`** 取结果。后台任务默认有 3600 秒执行预算，可通过 `mateclaw.delegation.async-timeout-seconds` 配置，或在单次调用中用 `timeoutSeconds` 调整（最大 86400 秒）；超时后 SnSclaw 会停止子会话并持久化失败结果，避免遗留孤儿任务。`taskOutput` 带**归属闸门**——只有最初发起委派的**同一个会话 + 同一个用户**才能读到结果，防止跨会话/跨用户泄露。
 
 #### 异步长任务：调度、轮询与验收
 
