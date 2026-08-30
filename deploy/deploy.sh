@@ -17,8 +17,8 @@ die()  { echo "${RED}[fail]${RST} $*" >&2; exit 1; }
 cd "$(dirname "$0")"
 
 # 宿主架构 → 镜像 tag 后缀。registry 里同一版本按架构分开存放
-# （server:v1.0.3-amd64 / server:v1.0.3-arm64），compose 里的 image 写成
-# ...:v1.0.3${IMAGE_ARCH_SUFFIX:-}，靠这里导出后拼接。
+# （server:v1.0.4-amd64 / server:v1.0.4-arm64），compose 里的 image 写成
+# ...:v1.0.4${IMAGE_ARCH_SUFFIX:-}，靠这里导出后拼接。
 case "$(uname -m)" in
     x86_64|amd64)  IMAGE_ARCH_SUFFIX="-amd64" ;;
     aarch64|arm64) IMAGE_ARCH_SUFFIX="-arm64" ;;
