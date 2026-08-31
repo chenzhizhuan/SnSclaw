@@ -662,6 +662,13 @@ class GoalServiceTest {
     }
 
     @Test
+    void findLatestByConversation_returnsNull_forBlankInput() {
+        assertNull(service.findLatestByConversation(""));
+        assertNull(service.findLatestByConversation(null));
+        verify(goalMapper, never()).selectOne(any());
+    }
+
+    @Test
     void getById_throws404_whenMissing() {
         when(goalMapper.selectById(1L)).thenReturn(null);
         MateClawException ex = assertThrows(MateClawException.class, () -> service.getById(1L));

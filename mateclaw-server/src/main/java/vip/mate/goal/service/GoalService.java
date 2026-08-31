@@ -35,6 +35,9 @@ public interface GoalService {
     /** Active goal for the conversation, or null. Used by buildInitialState. */
     GoalEntity findActiveByConversation(String conversationId);
 
+    /** Most recently created goal for the conversation, regardless of status, or null. */
+    GoalEntity findLatestByConversation(String conversationId);
+
     /** Paged list filtered by status / owner. */
     List<GoalEntity> list(String status, String username, int limit);
 
