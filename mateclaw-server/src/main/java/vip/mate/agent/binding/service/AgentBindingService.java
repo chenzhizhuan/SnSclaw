@@ -769,6 +769,7 @@ public class AgentBindingService implements AgentBindingResolver {
             "read_file",
             "send_file",
             "write_file",
+            "append_file",
             "edit_file",
             "execute_shell_command",
             // Inline code execution — an agent-wide capability alongside shell.

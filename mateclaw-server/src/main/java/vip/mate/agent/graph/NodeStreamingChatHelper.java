@@ -2509,9 +2509,39 @@ public class NodeStreamingChatHelper {
                     acc.id,
                     acc.type != null ? acc.type : "function",
                     acc.name,
-                    sanitizeToolCallArguments(acc.name, acc.arguments.toString())));
+                    toolCallArgumentsForExecution(acc.name, acc.arguments.toString())));
         }
         return result;
+    }
+
+    /**
+     * Finalize a streamed tool call for local execution.
+     *
+     * <p>Blank arguments are a common zero-argument representation and remain
+     * normalized to an empty object. Invalid non-blank JSON, however, must be
+     * preserved until {@code ToolExecutionExecutor} sees it; replacing it with
+     * {@code {}} loses the distinction between a truncated stream and a real
+     * empty call and can execute the wrong operation. The outgoing-history
+     * normalization path still calls {@link #sanitizeToolCallArguments} before
+     * a later provider request.</p>
+     */
+    private static String toolCallArgumentsForExecution(String toolName, String arguments) {
+        if (arguments == null || arguments.isBlank()) {
+            return "{}";
+        }
+        try {
+            TOOL_ARG_JSON_MAPPER.readTree(arguments);
+            return arguments;
+        } catch (Exception e) {
+            log.warn("Tool '{}' arguments are not valid JSON after stream aggregation "
+                            + "(len={}, head={}); preserving the payload for safe executor rejection. "
+                            + "Parse error: {}",
+                    toolName,
+                    arguments.length(),
+                    arguments.substring(0, Math.min(80, arguments.length())),
+                    e.getMessage());
+            return arguments;
+        }
     }
 
     /**
