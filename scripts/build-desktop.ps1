@@ -409,11 +409,11 @@ if (Should-Run 'maven') {
     }
     if (-not $ok) { Die 'static 拷贝到 target/classes 失败' $EXIT.staticSync }
     W "  拷贝 $(Get-FileCount $TGT_STATIC) 个文件 [OK]"
-    $MVN_ARGS  = @('-B','package','-DskipTests','-Dmaven.test.skip=true','-Dmaven.main.skip=true')
+    $MVN_ARGS  = @('-B','package','-DskipTests','-Dmaven.test.skip=true','-Dmaven.main.skip=true','-pl','mateclaw-server','-am')
     $mvAttempts = 4
   } else {
     Wr "STEP maven  全量重编译（mvn -B package，$MavenAttempts 次重试）"
-    $MVN_ARGS  = @('-B','package','-DskipTests','-Dmaven.test.skip=true')
+    $MVN_ARGS  = @('-B','package','-DskipTests','-Dmaven.test.skip=true','-pl','mateclaw-server','-am')
     $mvAttempts = $MavenAttempts
   }
   $mvok = $false
@@ -435,7 +435,7 @@ if (Should-Run 'maven') {
     $e2 = Join-Path $LogDir "all-mvn-err-$TS-$ma.log"
     [GC]::Collect(); Start-Sleep -Seconds $(if($ma -eq 1){3}else{5})
     $t1 = Get-Date
-    $mc = Invoke-Exe -FilePath $MVN -ArgList $MVN_ARGS -Cwd $SRV -OutLog $o -ErrLog $e2
+    $mc = Invoke-Exe -FilePath $MVN -ArgList $MVN_ARGS -Cwd $Root -OutLog $o -ErrLog $e2
     W "    exit=$mc  dur=$([math]::Round(((Get-Date)-$t1).TotalSeconds,1))s"
     if ($mc -eq 0 -and (Test-Path -LiteralPath $SRV_JAR) -and
         (Get-Item $SRV_JAR).Length -gt ($MinJarSizeMB * 1MB)) {
@@ -448,6 +448,20 @@ if (Should-Run 'maven') {
     }
     if ($mvok) { break }
     Tail $o 15; Tail $e2 10 '    ! '
+    if (Test-Path -LiteralPath $o) {
+      $mvOut = Get-Content -LiteralPath $o -Raw -Encoding UTF8 -EA 0
+      if ($mvOut -match 'Could not resolve dependencies|Could not find artifact') {
+        $missing = ([regex]::Matches($mvOut, 'Could not find artifact ([^\s]+)') |
+                    ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique) -join ', '
+        W ''
+        W '  依赖解析失败 —— 重试无用，直接中止。'
+        if ($missing) { W "  缺失构件: $missing" }
+        W '  常见原因: 根 pom 的 <revision> 升版后，兄弟模块尚未安装到本地仓库。'
+        W '  本脚本已使用 -pl mateclaw-server -am 从仓库根构建；若仍失败，'
+        W '  请在仓库根手动执行: mvn -B install -DskipTests'
+        Die '依赖解析失败' $EXIT.maven
+      }
+    }
     if ($ma -lt $mvAttempts) { Start-Sleep -Seconds 30 }
   }
   if (-not $mvok) { Die "Maven $mvAttempts 次后均失败" $EXIT.maven }
