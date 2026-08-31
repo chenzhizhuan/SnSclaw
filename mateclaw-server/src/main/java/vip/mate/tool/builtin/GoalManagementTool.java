@@ -192,7 +192,24 @@ public class GoalManagementTool {
         if (!properties.isEnabled()) return errorJson("Goal subsystem is disabled");
         GoalEntity goal = resolveActive(ctx);
         if (goal == null) {
-            return successJson(Map.of("active", false));
+            ChatOrigin origin = ChatOrigin.from(ctx);
+            GoalEntity latest = origin != null && origin.conversationId() != null
+                    ? goalService.findLatestByConversation(origin.conversationId()) : null;
+            if (latest == null) {
+                return successJson(Map.of(
+                        "active", false,
+                        "recoverable", false,
+                        "reason", "no_goal_on_conversation"));
+            }
+            boolean recoverable = latest.getStatus() == GoalStatus.PAUSED;
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("active", false);
+            out.put("goalId", String.valueOf(latest.getId()));
+            out.put("title", latest.getTitle());
+            out.put("status", latest.getStatus().getValue());
+            out.put("recoverable", recoverable);
+            out.put("reason", "latest_goal_" + latest.getStatus().getValue());
+            return successJson(out);
         }
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("active", true);

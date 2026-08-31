@@ -181,6 +181,18 @@ public class GoalServiceImpl implements GoalService {
     }
 
     @Override
+    public GoalEntity findLatestByConversation(String conversationId) {
+        if (conversationId == null || conversationId.isBlank()) {
+            return null;
+        }
+        return goalMapper.selectOne(new LambdaQueryWrapper<GoalEntity>()
+                .eq(GoalEntity::getConversationId, conversationId)
+                .orderByDesc(GoalEntity::getCreateTime)
+                .orderByDesc(GoalEntity::getId)
+                .last("LIMIT 1"));
+    }
+
+    @Override
     public List<GoalEntity> list(String status, String username, int limit) {
         LambdaQueryWrapper<GoalEntity> w = new LambdaQueryWrapper<GoalEntity>()
                 .orderByDesc(GoalEntity::getCreateTime);
