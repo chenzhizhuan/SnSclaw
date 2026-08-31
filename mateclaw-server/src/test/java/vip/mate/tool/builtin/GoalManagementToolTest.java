@@ -166,6 +166,33 @@ class GoalManagementToolTest {
     }
 
     @Test
+    void getGoalStatus_completedLatestExplainsTerminalState() {
+        when(goalService.findActiveByConversation("conv-1")).thenReturn(null);
+        GoalEntity completed = goal(GoalStatus.COMPLETED);
+        when(goalService.findLatestByConversation("conv-1")).thenReturn(completed);
+
+        String result = tool.getGoalStatus(ctxWith("conv-1", 10L, "alice"));
+
+        assertTrue(result.contains("\"active\":false"));
+        assertTrue(result.contains("\"status\":\"completed\""));
+        assertTrue(result.contains("\"recoverable\":false"));
+        assertTrue(result.contains("latest_goal_completed"));
+    }
+
+    @Test
+    void getGoalStatus_pausedLatestIsResumable() {
+        when(goalService.findActiveByConversation("conv-1")).thenReturn(null);
+        GoalEntity paused = goal(GoalStatus.PAUSED);
+        when(goalService.findLatestByConversation("conv-1")).thenReturn(paused);
+
+        String result = tool.getGoalStatus(ctxWith("conv-1", 10L, "alice"));
+
+        assertTrue(result.contains("\"status\":\"paused\""));
+        assertTrue(result.contains("\"recoverable\":true"));
+        assertTrue(result.contains("latest_goal_paused"));
+    }
+
+    @Test
     void getGoalStatus_active_carriesProgressSummary() {
         GoalEntity g = goal(GoalStatus.ACTIVE);
         g.setProgressSummary("missing DNS");

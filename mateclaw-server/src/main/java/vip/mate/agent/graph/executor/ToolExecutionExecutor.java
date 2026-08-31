@@ -85,7 +85,7 @@ public class ToolExecutionExecutor {
     static final int MAX_TOOL_CALLS_PER_RESPONSE = 16;
 
     private static final Set<String> DEFAULT_UNSAFE_TOOLS = Set.of(
-            "browser_use", "BrowserUseTool", "write_file", "edit_file"
+            "browser_use", "BrowserUseTool", "write_file", "append_file", "edit_file"
     );
 
     /**
@@ -614,7 +614,7 @@ public class ToolExecutionExecutor {
                 } catch (Exception jsonEx) {
                     log.warn("[ToolExecutor] Tool {} arguments invalid/truncated JSON (len={}): {}",
                             toolName, arguments.length(), jsonEx.getMessage());
-                    String truncationError = normalizeToolExecutionError(jsonEx);
+                    String truncationError = incompleteToolArgumentsError(toolName);
                     events.add(GraphEventPublisher.toolComplete(toolCall.id(), toolName, truncationError, false));
                     allResponses.add(new ToolResponseMessage.ToolResponse(
                             toolCall.id(), responseName, truncationError));
@@ -728,6 +728,17 @@ public class ToolExecutionExecutor {
                 barrier != null ? barrier.toolName : null,
                 List.copyOf(directOutputs),
                 rawEvidenceRef.get());
+    }
+
+    private static String incompleteToolArgumentsError(String toolName) {
+        var error = OBJECT_MAPPER.createObjectNode();
+        error.put("error", true);
+        error.put("code", "TOOL_ARGUMENTS_INCOMPLETE");
+        error.put("recoverable", true);
+        error.put("toolName", toolName == null ? "" : toolName);
+        error.put("message", "Tool arguments were incomplete or invalid JSON; the tool was not executed.");
+        error.put("hint", "Retry with a smaller payload. For file updates, prefer edit_file or append_file instead of rewriting the whole file.");
+        return error.toString();
     }
 
     private static String requestedSkillName(String arguments) {

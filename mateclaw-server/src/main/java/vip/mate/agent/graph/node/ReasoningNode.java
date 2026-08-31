@@ -148,7 +148,7 @@ public class ReasoningNode implements NodeAction {
             "(?i)(word|docx|pdf|pptx|xlsx|markdown|\\bmd\\b|下载|附件|文档|文件|保存|落盘|导出)");
     private static final List<String> ARTIFACT_DELIVERY_TOOL_PREFIXES = List.of(
             "renderDocx", "renderPdf", "renderPptx", "renderXlsx", "send_file", "sendFile",
-            "write_file", "local_write_file", "edit_file", "local_edit_file");
+            "write_file", "append_file", "local_write_file", "edit_file", "local_edit_file");
 
     /** Continuation nudge appended to the prompt when the model returns an empty turn. */
     private static final String EMPTY_COMPLETION_NUDGE =
