@@ -16,6 +16,7 @@ import vip.mate.agent.prompt.PromptLoader;
 import vip.mate.llm.model.ModelConfigEntity;
 import vip.mate.llm.service.ModelConfigService;
 import vip.mate.memory.MemoryProperties;
+import vip.mate.memory.service.StructuredMemoryCandidate;
 import vip.mate.memory.service.StructuredMemoryService;
 import vip.mate.workspace.conversation.ConversationService;
 import vip.mate.workspace.conversation.model.MessageEntity;
@@ -147,16 +148,15 @@ public class MemoryNudgeService {
 
             int saved = 0;
             for (JsonNode entry : root) {
-                String type = entry.path("type").asText("");
-                String key = entry.path("key").asText("");
-                String content = entry.path("content").asText("");
-                if (type.isBlank() || key.isBlank() || content.isBlank()) continue;
+                var candidate = StructuredMemoryCandidate.fromJson(entry);
+                if (candidate.isEmpty() || !candidate.get().isAdmissible(java.time.LocalDate.now())) continue;
 
                 try {
-                    structuredMemoryService.remember(agentId, type, key, content, "nudge", ownerKey);
+                    structuredMemoryService.remember(agentId, candidate.get(), "nudge", ownerKey);
                     saved++;
                 } catch (Exception e) {
-                    log.debug("[Nudge] Failed to save entry {}/{}: {}", type, key, e.getMessage());
+                    log.debug("[Nudge] Failed to save entry {}/{}: {}",
+                            candidate.get().type(), candidate.get().key(), e.getMessage());
                 }
             }
 
