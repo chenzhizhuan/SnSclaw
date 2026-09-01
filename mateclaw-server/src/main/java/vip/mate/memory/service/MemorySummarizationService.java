@@ -48,10 +48,6 @@ public class MemorySummarizationService {
     private final ObjectMapper objectMapper;
     private final StructuredMemoryService structuredMemoryService;
 
-    /** Typed-memory categories the summarizer may route entries into. */
-    private static final java.util.Set<String> STRUCTURED_TYPES =
-            java.util.Set.of("user", "feedback", "project", "reference");
-
     /** Per-(agent, owner) 锁，防止并发写入 */
     private final ConcurrentHashMap<String, ReentrantLock> agentLocks = new ConcurrentHashMap<>();
 
@@ -232,20 +228,18 @@ public class MemorySummarizationService {
         }
         int written = 0;
         for (JsonNode entry : entriesNode) {
-            String type = entry.path("type").asText("").trim().toLowerCase();
-            String key = entry.path("key").asText("").trim();
-            String content = entry.path("content").asText("").trim();
-            if (!STRUCTURED_TYPES.contains(type) || key.isEmpty() || content.isEmpty()) {
+            var candidate = StructuredMemoryCandidate.fromJson(entry);
+            if (candidate.isEmpty() || !candidate.get().isAdmissible(LocalDate.now())) {
                 log.debug("[Memory] Skipping invalid structured entry (type={}, key={}) for agent={}",
-                        type, key, agentId);
+                        entry.path("type").asText(""), entry.path("key").asText(""), agentId);
                 continue;
             }
             try {
-                structuredMemoryService.remember(agentId, type, key, content, "auto-summary", ownerKey);
+                structuredMemoryService.remember(agentId, candidate.get(), "auto-summary", ownerKey);
                 written++;
             } catch (Exception e) {
                 log.warn("[Memory] Failed to write structured entry '{}' (type={}) for agent={}: {}",
-                        key, type, agentId, e.getMessage());
+                        candidate.get().key(), candidate.get().type(), agentId, e.getMessage());
             }
         }
         if (written > 0) {
