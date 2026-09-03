@@ -71,7 +71,9 @@ public class CronJobLifecycleService {
         run.setConversationId(conversationId);
         run.setStatus("running");
         run.setTriggerType(triggerType != null ? triggerType : "scheduled");
-        run.setStartedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        run.setStartedAt(now);
+        run.setHeartbeatAt(now);
         run.setDeliveryStatus("NONE");
         runMapper.insert(run);
 
@@ -130,6 +132,7 @@ public class CronJobLifecycleService {
         String message = error != null && error.getMessage() != null ? error.getMessage() : "unknown error";
         runMapper.update(null, new LambdaUpdateWrapper<CronJobRunEntity>()
                 .eq(CronJobRunEntity::getId, run.getId())
+                .eq(CronJobRunEntity::getStatus, "running")
                 .set(CronJobRunEntity::getStatus, "failed")
                 .set(CronJobRunEntity::getFinishedAt, LocalDateTime.now())
                 .set(CronJobRunEntity::getErrorMessage, StrUtil.maxLength(message, 1000)));
@@ -148,7 +151,9 @@ public class CronJobLifecycleService {
         run.setConversationId(null);
         run.setStatus("running");
         run.setTriggerType(triggerType != null ? triggerType : "scheduled");
-        run.setStartedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        run.setStartedAt(now);
+        run.setHeartbeatAt(now);
         run.setDeliveryStatus("NONE");
         runMapper.insert(run);
         return run;
@@ -162,12 +167,16 @@ public class CronJobLifecycleService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markRunSucceeded(CronJobRunEntity run, String description) {
-        runMapper.update(null, new LambdaUpdateWrapper<CronJobRunEntity>()
+        int updated = runMapper.update(null, new LambdaUpdateWrapper<CronJobRunEntity>()
                 .eq(CronJobRunEntity::getId, run.getId())
+                .eq(CronJobRunEntity::getStatus, "running")
                 .set(CronJobRunEntity::getStatus, "succeeded")
                 .set(CronJobRunEntity::getFinishedAt, LocalDateTime.now())
                 .set(CronJobRunEntity::getErrorMessage,
                         description != null ? StrUtil.maxLength(description, 1000) : null));
+        if (updated == 0) {
+            log.warn("[CronLifecycle] Run {} lost its running fence before system completion", run.getId());
+        }
     }
 
     /**
@@ -205,11 +214,17 @@ public class CronJobLifecycleService {
 
         int totalTokens = chatResult != null
                 ? chatResult.promptTokens() + chatResult.completionTokens() : 0;
-        runMapper.update(null, new LambdaUpdateWrapper<CronJobRunEntity>()
+        int updated = runMapper.update(null, new LambdaUpdateWrapper<CronJobRunEntity>()
                 .eq(CronJobRunEntity::getId, run.getId())
+                .eq(CronJobRunEntity::getStatus, "running")
                 .set(CronJobRunEntity::getStatus, "succeeded")
                 .set(CronJobRunEntity::getFinishedAt, LocalDateTime.now())
                 .set(totalTokens > 0, CronJobRunEntity::getTokenUsage, totalTokens));
+        if (updated == 0) {
+            log.warn("[CronLifecycle] Run {} lost its running fence before completion; dropping late result",
+                    run.getId());
+            return;
+        }
 
         if (silent) {
             // No-op run: persist a short marker so the tasks_<wsId>

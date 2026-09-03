@@ -42,6 +42,7 @@ import vip.mate.wiki.service.WikiProcessingService;
 public class CronJobRunner {
 
     private final CronJobLifecycleService lifecycle;
+    private final CronRunHeartbeatService heartbeat;
     private final AgentService agentService;
     private final CronChatOriginFactory originFactory;
     private final vip.mate.cron.CronConversationResolver conversationResolver;
@@ -144,14 +145,16 @@ public class CronJobRunner {
         try {
             ChatOrigin origin = originFactory.from(
                     job, conversationId, started.originMessageId());
-            chatResult = runAgent(job, userMessage, origin, conversationId);
+            try (CronRunHeartbeatService.Lease ignored = heartbeat.begin(run.getId())) {
+                chatResult = runAgent(job, userMessage, origin, conversationId);
+            }
             result = new AssistantMessage(chatResult.content());
         } catch (Exception e) {
             log.error("[CronRunner] runAgent failed for job {}: {}", job.getId(), e.getMessage(), e);
             try {
                 lifecycle.markRunFailed(run, e);
             } catch (Exception markErr) {
-                // CronRunStaleCleanup will sweep status='running' rows older than 30 min.
+                // CronRunStaleCleanup will recover a run after its heartbeat expires.
                 log.warn("[CronRunner] markRunFailed itself failed for run {}: {} (stale-cleanup will recover)",
                         run.getId(), markErr.getMessage());
             }
