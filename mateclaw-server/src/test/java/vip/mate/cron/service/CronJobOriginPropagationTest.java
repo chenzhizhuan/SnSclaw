@@ -17,6 +17,7 @@ import vip.mate.workspace.conversation.ConversationService;
 import vip.mate.workspace.conversation.model.MessageEntity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -36,8 +37,9 @@ class CronJobOriginPropagationTest {
     @Test
     void lifecycleReturnsThePersistedUserMessageIdWithoutSavingTwice() {
         ConversationService conversations = mock(ConversationService.class);
+        CronJobRunMapper runMapper = mock(CronJobRunMapper.class);
         CronJobLifecycleService lifecycle = new CronJobLifecycleService(
-                mock(CronJobRunMapper.class), conversations,
+                runMapper, conversations,
                 mock(ConversationCompletionPublisher.class),
                 mock(ApplicationEventPublisher.class), mock(I18nService.class));
         CronJobEntity job = job();
@@ -50,6 +52,8 @@ class CronJobOriginPropagationTest {
                 job, "do work", "scheduled", CONVERSATION_ID);
 
         assertEquals(MESSAGE_ID, result.originMessageId());
+        assertEquals(result.run().getStartedAt(), result.run().getHeartbeatAt(),
+                "a new run must be live before the first scheduled heartbeat");
         verify(conversations, times(1)).saveMessage(CONVERSATION_ID, "user", "do work");
     }
 
@@ -59,6 +63,8 @@ class CronJobOriginPropagationTest {
         AgentService agentService = mock(AgentService.class);
         CronChatOriginFactory originFactory = mock(CronChatOriginFactory.class);
         CronConversationResolver resolver = mock(CronConversationResolver.class);
+        CronRunHeartbeatService heartbeat = mock(CronRunHeartbeatService.class);
+        CronRunHeartbeatService.Lease lease = mock(CronRunHeartbeatService.Lease.class);
         CronJobEntity job = job();
         CronJobRunEntity run = new CronJobRunEntity();
         run.setId(55L);
@@ -68,16 +74,47 @@ class CronJobOriginPropagationTest {
         when(lifecycle.startRun(job, "do work", "scheduled", CONVERSATION_ID))
                 .thenReturn(new CronJobLifecycleService.StartResult(run, MESSAGE_ID));
         when(originFactory.from(job, CONVERSATION_ID, MESSAGE_ID)).thenReturn(origin);
+        when(heartbeat.begin(55L)).thenReturn(lease);
         when(agentService.chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID), eq(origin)))
                 .thenReturn(AgentService.ChatResult.contentOnly("done"));
-        CronJobRunner runner = new CronJobRunner(lifecycle, agentService, originFactory, resolver,
+        CronJobRunner runner = new CronJobRunner(lifecycle, heartbeat, agentService, originFactory, resolver,
                 mock(WikiProcessingService.class), new ObjectMapper());
 
         runner.executeJob(job);
 
         verify(originFactory).from(job, CONVERSATION_ID, MESSAGE_ID);
+        verify(heartbeat).begin(55L);
+        verify(lease).close();
         verify(agentService).chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID), eq(origin));
         verify(agentService, never()).chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID));
+    }
+
+    @Test
+    void runnerClosesHeartbeatWhenAgentFails() {
+        CronJobLifecycleService lifecycle = mock(CronJobLifecycleService.class);
+        CronRunHeartbeatService heartbeat = mock(CronRunHeartbeatService.class);
+        CronRunHeartbeatService.Lease lease = mock(CronRunHeartbeatService.Lease.class);
+        AgentService agentService = mock(AgentService.class);
+        CronChatOriginFactory originFactory = mock(CronChatOriginFactory.class);
+        CronConversationResolver resolver = mock(CronConversationResolver.class);
+        CronJobEntity job = job();
+        CronJobRunEntity run = new CronJobRunEntity();
+        run.setId(55L);
+        ChatOrigin origin = ChatOrigin.cron(CONVERSATION_ID, WORKSPACE_ID, null, null, null);
+        when(resolver.resolve(job)).thenReturn(CONVERSATION_ID);
+        when(lifecycle.startRun(job, "do work", "scheduled", CONVERSATION_ID))
+                .thenReturn(new CronJobLifecycleService.StartResult(run, MESSAGE_ID));
+        when(originFactory.from(job, CONVERSATION_ID, MESSAGE_ID)).thenReturn(origin);
+        when(heartbeat.begin(55L)).thenReturn(lease);
+        when(agentService.chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID), eq(origin)))
+                .thenThrow(new IllegalStateException("provider timeout"));
+        CronJobRunner runner = new CronJobRunner(lifecycle, heartbeat, agentService, originFactory, resolver,
+                mock(WikiProcessingService.class), new ObjectMapper());
+
+        runner.executeJob(job);
+
+        verify(lease).close();
+        verify(lifecycle).markRunFailed(eq(run), any(IllegalStateException.class));
     }
 
     private static CronJobEntity job() {
