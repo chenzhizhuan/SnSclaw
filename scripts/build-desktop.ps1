@@ -107,7 +107,7 @@ New-Item -ItemType Directory -Force -Path $LogDir -Confirm:$false -WhatIf:$false
 [IO.File]::WriteAllText($MAST, "=== ALL @ $(Get-Date -F 'yyyy-MM-dd HH:mm:ss') ===`r`n", [Text.Encoding]::UTF8)
 
 # 日志写入用 UTF8 无 BOM；读取一律带 -Encoding UTF8，否则 PS 5.1 按 ANSI 码页
-# 解码，中文产物名（SnSclaw_..._Setup.exe）会乱码。
+# 解码，中文产物名（智屿_..._Setup.exe）会乱码。
 function W { param([string]$s) Write-Host $s; [IO.File]::AppendAllText($MAST, "$s`r`n", [Text.Encoding]::UTF8) }
 function Wr { param([string]$s) W ''; W ('=' * 63); W "  $s"; W ('=' * 63) }
 function Tail {
@@ -395,6 +395,16 @@ if (Should-Run 'vite') {
 # region 4  maven
 # ===========================================================================
 if (Should-Run 'maven') {
+  # Auto-install plugin-api to local repo before packaging server.
+  # Prevents "Could not find artifact mateclaw-plugin-api" when ${revision} changes.
+  if (-not $Fast) {
+    Wr 'Installing plugin-api to local Maven repo'
+    $pluginInstall = @('-B','-q','install','-N','-DskipTests','-Dmaven.test.skip=true')
+    $null = Invoke-Exe -FilePath $MVN -ArgList $pluginInstall -Cwd $Root
+    $pluginInstall = @('-B','-q','install','-pl','mateclaw-plugin-api','-DskipTests','-Dmaven.test.skip=true')
+    $null = Invoke-Exe -FilePath $MVN -ArgList $pluginInstall -Cwd $Root
+    W '  [OK] plugin-api installed'
+  }
   if ($Fast) {
     Wr "STEP maven  -Fast：manual static sync + repackage（跳过 javac）"
     if (Test-Path -LiteralPath $TGT_STATIC) {
