@@ -1244,6 +1244,28 @@ public class ReasoningNode implements NodeAction {
                     .build();
         }
 
+        // Compatibility safety net for providers/adapters that return the
+        // runtime's reserved error placeholder as an HTTP-successful content
+        // response. Without this guard the long-form completion gate treats
+        // the placeholder as a short draft and can repeat it until the graph's
+        // iteration cap. Cron and other synchronous callers consume the
+        // resulting structured ERROR_FALLBACK; they do not need to infer from
+        // user-facing text.
+        if (isRuntimeErrorPlaceholder(result.text())) {
+            String errorText = result.text();
+            log.error("[ReasoningNode] Runtime error placeholder returned as normal content; failing turn");
+            return reasonOutput()
+                    .needsToolCall(false)
+                    .shouldSummarize(false)
+                    .finalAnswer(errorText)
+                    .llmCallCount(nextLlmCallCount)
+                    .finishReason(FinishReason.ERROR_FALLBACK)
+                    .contentStreamed(true)
+                    .thinkingStreamed(result.thinking() != null && !result.thinking().isEmpty())
+                    .mergeUsage(state, result)
+                    .build();
+        }
+
         if (result.partial()) {
             int partialChars = result.text() != null ? result.text().length() : 0;
             log.warn("[ReasoningNode] Partial LLM result ({} chars), treating as final answer", partialChars);
@@ -1427,6 +1449,10 @@ public class ReasoningNode implements NodeAction {
                     .events(buildEvents(phaseEvent, iterStartEvent, iterEndEvent))
                     .build();
         }
+    }
+
+    static boolean isRuntimeErrorPlaceholder(String text) {
+        return text != null && text.stripLeading().startsWith("[错误]");
     }
 
     private static String evidenceWarning(List<String> unsupportedReferences) {

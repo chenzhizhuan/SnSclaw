@@ -28,7 +28,6 @@ import vip.mate.workspace.conversation.repository.ConversationMapper;
 
 import java.util.List;
 import java.util.Locale;
-import java.time.Duration;
 import java.util.Map;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
@@ -524,23 +523,7 @@ public class AgentService {
      * {@code _usage_final} event for token and model attribution.
      */
     private ChatResult collectChatResult(Flux<StreamDelta> stream) {
-        StringBuilder content = new StringBuilder();
-        final int[] usage = {0, 0};
-        final String[] modelInfo = {null, null};
-        stream.doOnNext(delta -> {
-            if (delta.isEvent() && "_usage_final".equals(delta.eventType())) {
-                Map<String, Object> data = delta.eventData();
-                usage[0] = ((Number) data.getOrDefault("promptTokens", 0)).intValue();
-                usage[1] = ((Number) data.getOrDefault("completionTokens", 0)).intValue();
-                Object model = data.get("runtimeModelName");
-                Object provider = data.get("runtimeProviderId");
-                if (model != null) modelInfo[0] = model.toString();
-                if (provider != null) modelInfo[1] = provider.toString();
-            } else if (delta.content() != null) {
-                content.append(delta.content());
-            }
-        }).blockLast(Duration.ofMinutes(10));
-        return new ChatResult(content.toString(), usage[0], usage[1], modelInfo[0], modelInfo[1]);
+        return ChatResultCollector.collect(stream);
     }
 
     /**
@@ -970,10 +953,15 @@ public class AgentService {
      * post-approval replays).
      */
     public record ChatResult(String content, int promptTokens, int completionTokens,
-                              String runtimeModel, String runtimeProvider) {
+                              String runtimeModel, String runtimeProvider, String finishReason) {
+
+        public ChatResult(String content, int promptTokens, int completionTokens,
+                          String runtimeModel, String runtimeProvider) {
+            this(content, promptTokens, completionTokens, runtimeModel, runtimeProvider, null);
+        }
 
         public static ChatResult contentOnly(String content) {
-            return new ChatResult(content != null ? content : "", 0, 0, null, null);
+            return new ChatResult(content != null ? content : "", 0, 0, null, null, null);
         }
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.stereotype.Component;
 import vip.mate.agent.AgentService;
 import vip.mate.agent.context.ChatOrigin;
+import vip.mate.agent.graph.state.FinishReason;
 import vip.mate.cron.CronChatOriginFactory;
 import vip.mate.cron.model.CronJobEntity;
 import vip.mate.dashboard.model.CronJobRunEntity;
@@ -168,6 +169,10 @@ public class CronJobRunner {
 
         // T2 — short tx
         try {
+            if (FinishReason.ERROR_FALLBACK.getValue().equals(chatResult.finishReason())) {
+                lifecycle.finishRunFailed(run, result, conversationId, chatResult);
+                return;
+            }
             lifecycle.finishRunAndPublish(job, run, userMessage, result, conversationId, silent, chatResult);
         } catch (Exception e) {
             log.error("[CronRunner] T2 finishRunAndPublish failed for job {}: {}", job.getId(), e.getMessage(), e);

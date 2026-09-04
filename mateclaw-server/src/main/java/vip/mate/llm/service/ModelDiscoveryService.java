@@ -695,7 +695,13 @@ public class ModelDiscoveryService {
         requestBody.put("model", modelId);
         requestBody.put("messages", List.of(Map.of("role", "user", "content", "请回复：连接正常")));
         requestBody.put("max_tokens", 10);
-        requestBody.put("temperature", 0);
+        Object probeTemperature;
+        if (ModelFamily.detect(modelId).fixedTemperatureOne()) {
+            probeTemperature = 1.0d;
+        } else {
+            probeTemperature = 0;
+        }
+        requestBody.put("temperature", probeTemperature);
         return requestBody;
     }
 

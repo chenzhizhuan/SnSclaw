@@ -100,4 +100,13 @@ class ModelDiscoveryServiceTestPromptTest {
         Map<String, Object> requestBodyFromNull = ModelDiscoveryService.buildTestPromptRequestBody("gpt-4-turbo", null);
         assertEquals(requestBody, requestBodyFromNull);
     }
+
+    @Test
+    @DisplayName("Kimi smoke test uses the same fixed temperature required by runtime")
+    void kimiForCoding_usesTemperatureOne() {
+        Map<String, Object> requestBody = ModelDiscoveryService.buildTestPromptRequestBody(
+                "kimi-for-coding", Map.of("temperature", 0.2));
+
+        assertEquals(1.0d, requestBody.get("temperature"));
+    }
 }
