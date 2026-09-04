@@ -139,6 +139,41 @@ public class CronJobLifecycleService {
     }
 
     /**
+     * T-fail — terminal graph failure that arrived as structured stream metadata
+     * rather than a thrown exception. Persist the diagnostic assistant message
+     * for conversation coherence, but never publish success, memory, or delivery
+     * events for an {@code error_fallback} result.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void finishRunFailed(CronJobRunEntity run, AssistantMessage result,
+                                String conversationId, AgentService.ChatResult chatResult) {
+        String convId = conversationId != null ? conversationId : run.getConversationId();
+        String text = result != null && result.getText() != null ? result.getText() : "";
+        int totalTokens = chatResult != null
+                ? chatResult.promptTokens() + chatResult.completionTokens() : 0;
+        int updated = runMapper.update(null, new LambdaUpdateWrapper<CronJobRunEntity>()
+                .eq(CronJobRunEntity::getId, run.getId())
+                .eq(CronJobRunEntity::getStatus, "running")
+                .set(CronJobRunEntity::getStatus, "failed")
+                .set(CronJobRunEntity::getFinishedAt, LocalDateTime.now())
+                .set(CronJobRunEntity::getErrorMessage, StrUtil.maxLength(text, 1000))
+                .set(totalTokens > 0, CronJobRunEntity::getTokenUsage, totalTokens));
+        if (updated == 0) {
+            log.warn("[CronLifecycle] Run {} lost its running fence before graph failure; dropping late result",
+                    run.getId());
+            return;
+        }
+
+        if (chatResult != null) {
+            conversationService.saveMessage(convId, "assistant", text, null, "error",
+                    chatResult.promptTokens(), chatResult.completionTokens(),
+                    chatResult.runtimeModel(), chatResult.runtimeProvider());
+        } else {
+            conversationService.saveMessage(convId, "assistant", text, null, "error");
+        }
+    }
+
+    /**
      * Insert a {@code running} run row for a task type that does not produce
      * a conversation (e.g. {@code wiki_process}). No header / user message is
      * saved and no conversation row is touched, because there is no recipient
