@@ -26,6 +26,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
@@ -554,6 +555,7 @@ public class NodeStreamingChatHelper {
         // ("credit balance is too low") use these phrases in 402-class responses.
         // Chinese provider patterns (Zhipu 1113, DashScope, general) — same hard
         // failure semantics: retrying the same provider won't refill the balance.
+        String lowerMsg = msg.toLowerCase(Locale.ROOT);
         if (msg.contains("402") || msg.contains("insufficient_quota")
                 || msg.contains("credit balance is too low")
                 || msg.contains("billing_error") || msg.contains("billing_hard_limit_reached")
@@ -562,7 +564,13 @@ public class NodeStreamingChatHelper {
                 || msg.contains("余额不足") || msg.contains("请充值")
                 || msg.contains("\"code\":\"1113\"") || msg.contains("\"code\":1113")
                 || msg.contains("AccountBalanceNotEnough")
-                || msg.contains("balance not enough")) {
+                || msg.contains("balance not enough")
+                || lowerMsg.contains("invalidsubscription")
+                || lowerMsg.contains("subscription has expired")
+                || lowerMsg.contains("arrearage")
+                || lowerMsg.contains("account is in good standing")
+                || lowerMsg.contains("insufficient_balance")
+                || lowerMsg.contains("insufficient balance")) {
             return ErrorType.BILLING;
         }
         // RFC-009 P3.2: MODEL_NOT_FOUND — provider rejects the requested model id.

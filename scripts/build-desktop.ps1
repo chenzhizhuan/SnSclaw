@@ -395,6 +395,16 @@ if (Should-Run 'vite') {
 # region 4  maven
 # ===========================================================================
 if (Should-Run 'maven') {
+  # Auto-install plugin-api to local repo before packaging server.
+  # Prevents "Could not find artifact mateclaw-plugin-api" when ${revision} changes.
+  if (-not $Fast) {
+    Wr 'Installing plugin-api to local Maven repo'
+    $pluginInstall = @('-B','-q','install','-N','-DskipTests','-Dmaven.test.skip=true')
+    $null = Invoke-Exe -FilePath $MVN -ArgList $pluginInstall -Cwd $Root
+    $pluginInstall = @('-B','-q','install','-pl','mateclaw-plugin-api','-DskipTests','-Dmaven.test.skip=true')
+    $null = Invoke-Exe -FilePath $MVN -ArgList $pluginInstall -Cwd $Root
+    W '  [OK] plugin-api installed'
+  }
   if ($Fast) {
     Wr "STEP maven  -Fast：manual static sync + repackage（跳过 javac）"
     if (Test-Path -LiteralPath $TGT_STATIC) {

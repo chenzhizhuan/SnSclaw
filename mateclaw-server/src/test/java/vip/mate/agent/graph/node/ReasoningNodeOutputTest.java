@@ -191,6 +191,26 @@ class ReasoningNodeOutputTest {
     }
 
     @Test
+    @DisplayName("runtime error placeholder cannot satisfy or continue a long-form request")
+    void longFormTextRequest_runtimeErrorPlaceholderFailsImmediately() throws Exception {
+        String internalError = "[错误] Bad request: account subscription expired";
+        NodeStreamingChatHelper.StreamResult result = new NodeStreamingChatHelper.StreamResult(
+                internalError, "", new AssistantMessage(internalError),
+                List.of(), false, 100, 0);
+        when(streamingHelper.streamCall(any(), any(), anyString(), anyString())).thenReturn(result);
+
+        Map<String, Object> state = baseStateMap();
+        state.put(USER_MESSAGE, "请输出不少于 8000 字的技术报告");
+        state.put(MAX_ITERATIONS, 150);
+        Map<String, Object> output = createNode().apply(new OverAllState(state));
+
+        assertEquals(false, output.get(CONTINUE_REASONING));
+        assertEquals("error_fallback", output.get(FINISH_REASON));
+        assertEquals(internalError, output.get(FINAL_ANSWER));
+        assertNull(output.get("long_form_draft"));
+    }
+
+    @Test
     @DisplayName("long-form continuation persists all chunks as one final answer")
     void longFormTextRequest_combinesContinuationChunksInFinalAnswer() throws Exception {
         String firstChunk = "甲".repeat(6000);
