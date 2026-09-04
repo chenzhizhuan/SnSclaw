@@ -117,6 +117,39 @@ class CronJobOriginPropagationTest {
         verify(lifecycle).markRunFailed(eq(run), any(IllegalStateException.class));
     }
 
+    @Test
+    void runnerTreatsStructuredGraphErrorAsFailedTerminalState() {
+        CronJobLifecycleService lifecycle = mock(CronJobLifecycleService.class);
+        CronRunHeartbeatService heartbeat = mock(CronRunHeartbeatService.class);
+        CronRunHeartbeatService.Lease lease = mock(CronRunHeartbeatService.Lease.class);
+        AgentService agentService = mock(AgentService.class);
+        CronChatOriginFactory originFactory = mock(CronChatOriginFactory.class);
+        CronConversationResolver resolver = mock(CronConversationResolver.class);
+        CronJobEntity job = job();
+        CronJobRunEntity run = new CronJobRunEntity();
+        run.setId(55L);
+        ChatOrigin origin = ChatOrigin.cron(CONVERSATION_ID, WORKSPACE_ID, null, null, null);
+        AgentService.ChatResult failed = new AgentService.ChatResult(
+                "[错误] account expired", 12, 3, "model-a", "provider-a", "error_fallback");
+        when(resolver.resolve(job)).thenReturn(CONVERSATION_ID);
+        when(lifecycle.startRun(job, "do work", "scheduled", CONVERSATION_ID))
+                .thenReturn(new CronJobLifecycleService.StartResult(run, MESSAGE_ID));
+        when(originFactory.from(job, CONVERSATION_ID, MESSAGE_ID)).thenReturn(origin);
+        when(heartbeat.begin(55L)).thenReturn(lease);
+        when(agentService.chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID), eq(origin)))
+                .thenReturn(failed);
+        CronJobRunner runner = new CronJobRunner(lifecycle, heartbeat, agentService, originFactory, resolver,
+                mock(WikiProcessingService.class), new ObjectMapper());
+
+        runner.executeJob(job);
+
+        verify(lifecycle).finishRunFailed(eq(run), any(org.springframework.ai.chat.messages.AssistantMessage.class),
+                eq(CONVERSATION_ID), eq(failed));
+        verify(lifecycle, never()).finishRunAndPublish(eq(job), eq(run), anyString(),
+                any(org.springframework.ai.chat.messages.AssistantMessage.class), eq(CONVERSATION_ID),
+                any(Boolean.class), eq(failed));
+    }
+
     private static CronJobEntity job() {
         CronJobEntity job = new CronJobEntity();
         job.setId(JOB_ID);

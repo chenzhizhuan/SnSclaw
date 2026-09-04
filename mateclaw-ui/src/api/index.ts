@@ -1013,6 +1013,12 @@ export const teamApi = {
   ) => http.post(`/teams/${id}/tasks`, data),
   listTaskEvents: (id: string, taskId: string) => http.get(`/teams/${id}/tasks/${taskId}/events`),
   approveTask: (id: string, taskId: string) => http.post(`/teams/${id}/tasks/${taskId}/approve`),
+  approveWorkerTool: (id: string, taskId: string, pendingId: string) =>
+    http.post(`/teams/${id}/tasks/${taskId}/worker/approve`, { pendingId }),
+  denyWorkerTool: (id: string, taskId: string, pendingId: string) =>
+    http.post(`/teams/${id}/tasks/${taskId}/worker/deny`, { pendingId }),
+  feedbackWorker: (id: string, taskId: string, message: string) =>
+    http.post(`/teams/${id}/tasks/${taskId}/worker/feedback`, { message }),
   rejectTask: (id: string, taskId: string, reason?: string) =>
     http.post(`/teams/${id}/tasks/${taskId}/reject`, { reason }),
   retryTask: (id: string, taskId: string) => http.post(`/teams/${id}/tasks/${taskId}/retry`),
