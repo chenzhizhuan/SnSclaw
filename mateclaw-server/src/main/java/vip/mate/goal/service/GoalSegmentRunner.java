@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.Disposable;
 import vip.mate.agent.AgentService;
 import vip.mate.agent.context.ChatOrigin;
+import vip.mate.agent.context.ExecutionAttribution;
 import vip.mate.agent.context.GoalContinuationContext;
 import vip.mate.agent.runtime.ConversationTurnGate;
 import vip.mate.approval.ApprovalWorkflowService;
@@ -126,7 +127,10 @@ public class GoalSegmentRunner {
             String guidance=recovered ? "The previous execution was interrupted by a runtime restart. "
                     + "Inspect the workspace, progress ledger and existing async handles before acting. "
                     + "Do not replay side effects whose outcome is unknown; request review if their outcome cannot be verified.\n" : "";
-            ChatOrigin origin=ChatOrigin.web(convId,goal.getCreatedBy(),goal.getWorkspaceId(),null).withAgent(goal.getAgentId());
+            ChatOrigin origin=ChatOrigin.web(convId,goal.getCreatedBy(),goal.getWorkspaceId(),null).withAgent(goal.getAgentId())
+                    .withExecutionAttribution(new ExecutionAttribution(goal.getId(),
+                            claimedRun == null ? null : claimedRun.attempt().id(), null, null,
+                            claimedRun == null ? null : claimedRun.attempt().leaseToken()));
             SegmentResult result;
             ConversationInputQueueStore.QueuedInput queued=claimNextInput(convId,claimedRun);
             do {

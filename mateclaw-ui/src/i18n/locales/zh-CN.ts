@@ -1,4 +1,17 @@
 export default {
+  executionEvidence: {
+    scope: '执行目录 / 检查范围',
+    title: '执行证据', observationOnly: '仅展示运行时观察记录。工具返回或命令退出不代表目标或任务已验证。覆盖范围仅限已记录的来源。',
+    refresh: '刷新', loadMore: '加载更多', empty: '暂无执行证据记录。',
+    accessError: '请登录或获取查看此证据的权限。', loadError: '无法加载执行证据，请刷新重试。',
+    stateLabel: '尝试状态', resultLabel: '证据结果', effectLabel: '效果结果', validityLabel: '有效性',
+    source: '来源', observedAt: '观察时间', expiresAt: '过期时间', details: '记录详情', id: '证据 ID', attemptId: '尝试 ID', artifactRef: '产物引用', digest: '产物摘要',
+    kind: { TOOL_RETURNED: '工具已返回', COMMAND_EXIT: '命令已退出', ARTIFACT_SNAPSHOT: '产物快照', CHECK_RESULT: '检查结果' },
+    state: { STARTED: '已开始', SUCCEEDED: '已成功', FAILED: '已失败', CANCELLED: '已取消', UNKNOWN: '未知', BLOCKED: '已阻止' },
+    result: { OBSERVED: '已观察', PASS: '检查通过', FAIL: '失败', UNKNOWN: '未知' },
+    effect: { NONE: '无', CONFIRMED: '已确认', UNCERTAIN: '不确定' },
+    validity: { UNKNOWN: '未知', UNAVAILABLE: '不可用', STALE: '已过期', VALID: '有效' },
+  },
   app: {
     title: '智算方舟 - AI 助手',
   },

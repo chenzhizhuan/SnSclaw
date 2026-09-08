@@ -64,7 +64,7 @@ class TeamWorkerInterventionServiceTest {
         when(taskService.stageToolReplayResult(101L, "pending-42", "tool completed")).thenReturn(true);
         when(approvalService.restoreChatOrigin(null)).thenReturn(ChatOrigin.EMPTY);
         when(agentService.chatWithReplayWithUsage(eq(201L), any(), eq("worker-101"),
-                eq("{\"name\":\"shell\"}"), eq(ChatOrigin.EMPTY)))
+                eq("{\"name\":\"shell\"}"), eq(ChatOrigin.EMPTY.withApprovalId("pending-42"))))
                 .thenReturn(AgentService.ChatResult.contentOnly("tool completed"));
 
         service.approve(7L, 101L, "pending-42", "alice");

@@ -3,6 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { VideoPause } from '@element-plus/icons-vue'
 import type { TeamRun, TeamRunTask } from '@/api'
+import ExecutionEvidenceList from '@/components/execution/ExecutionEvidenceList.vue'
 import TeamRunTaskEvidence from './TeamRunTaskEvidence.vue'
 import TeamRunOutcome from './TeamRunOutcome.vue'
 import TeamRunDeliverables from './TeamRunDeliverables.vue'
@@ -139,6 +140,7 @@ async function viewAttentionTask(taskId: string) {
           <dd v-else class="run-detail__result">{{ t('teamRuns.noResult') }}</dd>
         </div>
       </dl>
+      <ExecutionEvidenceList v-if="selectedTask.conversationId" :conversation-id="selectedTask.conversationId" :team-task-id="selectedTask.id" />
       <div v-if="canSendFeedback" class="run-detail__feedback">
         <label :for="`worker-feedback-${selectedTask.id}`">{{ t('teamRuns.workerFeedback') }}</label>
         <textarea

@@ -5,6 +5,7 @@ import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.lang.Nullable;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Immutable value object that travels alongside an agent invocation describing
@@ -76,8 +77,21 @@ public record ChatOrigin(
          * from "this is an external/anonymous identifier" (RFC: identity typing).
          */
         @Nullable Long requesterUserId,
-        @Nullable Long originMessageId
+        @Nullable Long originMessageId,
+        @Nullable ExecutionAttribution executionAttribution
 ) {
+
+    public ChatOrigin(@Nullable Long agentId, @Nullable String conversationId,
+                      @Nullable String requesterId, @Nullable Long workspaceId,
+                      @Nullable String workspaceBasePath, @Nullable Long channelId,
+                      @Nullable ChannelTarget channelTarget, boolean cronOrigin,
+                      @Nullable String senderName, @Nullable String channelType,
+                      @Nullable String chatId, @Nullable String baseUrl,
+                      @Nullable Long requesterUserId, @Nullable Long originMessageId) {
+        this(agentId, conversationId, requesterId, workspaceId, workspaceBasePath,
+                channelId, channelTarget, cronOrigin, senderName, channelType,
+                chatId, baseUrl, requesterUserId, originMessageId, null);
+    }
 
     public ChatOrigin(@Nullable Long agentId, @Nullable String conversationId,
                       @Nullable String requesterId, @Nullable Long workspaceId,
@@ -149,27 +163,27 @@ public record ChatOrigin(
     public ChatOrigin withAgent(@Nullable Long newAgentId) {
         return new ChatOrigin(newAgentId, conversationId, requesterId,
                 workspaceId, workspaceBasePath, channelId, channelTarget, cronOrigin,
-                senderName, channelType, chatId, baseUrl, requesterUserId, originMessageId);
+                senderName, channelType, chatId, baseUrl, requesterUserId, originMessageId, executionAttribution);
     }
 
     public ChatOrigin withWorkspace(@Nullable Long newWorkspaceId,
                                     @Nullable String newWorkspaceBasePath) {
         return new ChatOrigin(agentId, conversationId, requesterId,
                 newWorkspaceId, newWorkspaceBasePath, channelId, channelTarget, cronOrigin,
-                senderName, channelType, chatId, baseUrl, requesterUserId, originMessageId);
+                senderName, channelType, chatId, baseUrl, requesterUserId, originMessageId, executionAttribution);
     }
 
     public ChatOrigin withConversationId(@Nullable String newConversationId) {
         return new ChatOrigin(agentId, newConversationId, requesterId,
                 workspaceId, workspaceBasePath, channelId, channelTarget, cronOrigin,
-                senderName, channelType, chatId, baseUrl, requesterUserId, originMessageId);
+                senderName, channelType, chatId, baseUrl, requesterUserId, originMessageId, Objects.equals(conversationId, newConversationId) ? executionAttribution : null);
     }
 
     /** Carry a request-derived public base URL (see {@link #baseUrl()}). */
     public ChatOrigin withBaseUrl(@Nullable String newBaseUrl) {
         return new ChatOrigin(agentId, conversationId, requesterId,
                 workspaceId, workspaceBasePath, channelId, channelTarget, cronOrigin,
-                senderName, channelType, chatId, newBaseUrl, requesterUserId, originMessageId);
+                senderName, channelType, chatId, newBaseUrl, requesterUserId, originMessageId, executionAttribution);
     }
 
     /**
@@ -183,13 +197,26 @@ public record ChatOrigin(
                                   @Nullable String newChatId) {
         return new ChatOrigin(agentId, conversationId, requesterId,
                 workspaceId, workspaceBasePath, channelId, channelTarget, cronOrigin,
-                newSenderName, newChannelType, newChatId, baseUrl, requesterUserId, originMessageId);
+                newSenderName, newChannelType, newChatId, baseUrl, requesterUserId, originMessageId, executionAttribution);
     }
 
     public ChatOrigin withOriginMessageId(@Nullable Long newOriginMessageId) {
         return new ChatOrigin(agentId, conversationId, requesterId,
                 workspaceId, workspaceBasePath, channelId, channelTarget, cronOrigin,
-                senderName, channelType, chatId, baseUrl, requesterUserId, newOriginMessageId);
+                senderName, channelType, chatId, baseUrl, requesterUserId, newOriginMessageId, executionAttribution);
+    }
+
+    public ChatOrigin withApprovalId(String pendingId) {
+        ExecutionAttribution attribution = executionAttribution == null
+                ? new ExecutionAttribution(null, null, null, pendingId, null)
+                : executionAttribution.withApproval(pendingId);
+        return withExecutionAttribution(attribution);
+    }
+
+    public ChatOrigin withExecutionAttribution(ExecutionAttribution attribution) {
+        return new ChatOrigin(agentId, conversationId, requesterId, workspaceId, workspaceBasePath,
+                channelId, channelTarget, cronOrigin, senderName, channelType, chatId, baseUrl,
+                requesterUserId, originMessageId, attribution);
     }
 
     // ---------------- Spring AI ToolContext interop ----------------
