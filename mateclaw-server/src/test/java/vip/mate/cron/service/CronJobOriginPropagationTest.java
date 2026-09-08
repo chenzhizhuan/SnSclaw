@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 import vip.mate.agent.AgentService;
 import vip.mate.agent.context.ChatOrigin;
+import vip.mate.agent.context.ExecutionAttribution;
 import vip.mate.cron.CronChatOriginFactory;
 import vip.mate.cron.CronConversationResolver;
 import vip.mate.cron.model.CronJobEntity;
@@ -75,7 +76,7 @@ class CronJobOriginPropagationTest {
                 .thenReturn(new CronJobLifecycleService.StartResult(run, MESSAGE_ID));
         when(originFactory.from(job, CONVERSATION_ID, MESSAGE_ID)).thenReturn(origin);
         when(heartbeat.begin(55L)).thenReturn(lease);
-        when(agentService.chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID), eq(origin)))
+        when(agentService.chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID), eq(origin.withExecutionAttribution(new ExecutionAttribution(null, null, 55L, null, "cron:55")))))
                 .thenReturn(AgentService.ChatResult.contentOnly("done"));
         CronJobRunner runner = new CronJobRunner(lifecycle, heartbeat, agentService, originFactory, resolver,
                 mock(WikiProcessingService.class), new ObjectMapper());
@@ -85,7 +86,7 @@ class CronJobOriginPropagationTest {
         verify(originFactory).from(job, CONVERSATION_ID, MESSAGE_ID);
         verify(heartbeat).begin(55L);
         verify(lease).close();
-        verify(agentService).chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID), eq(origin));
+        verify(agentService).chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID), eq(origin.withExecutionAttribution(new ExecutionAttribution(null, null, 55L, null, "cron:55"))));
         verify(agentService, never()).chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID));
     }
 
@@ -106,7 +107,7 @@ class CronJobOriginPropagationTest {
                 .thenReturn(new CronJobLifecycleService.StartResult(run, MESSAGE_ID));
         when(originFactory.from(job, CONVERSATION_ID, MESSAGE_ID)).thenReturn(origin);
         when(heartbeat.begin(55L)).thenReturn(lease);
-        when(agentService.chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID), eq(origin)))
+        when(agentService.chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID), eq(origin.withExecutionAttribution(new ExecutionAttribution(null, null, 55L, null, "cron:55")))))
                 .thenThrow(new IllegalStateException("provider timeout"));
         CronJobRunner runner = new CronJobRunner(lifecycle, heartbeat, agentService, originFactory, resolver,
                 mock(WikiProcessingService.class), new ObjectMapper());
@@ -136,7 +137,7 @@ class CronJobOriginPropagationTest {
                 .thenReturn(new CronJobLifecycleService.StartResult(run, MESSAGE_ID));
         when(originFactory.from(job, CONVERSATION_ID, MESSAGE_ID)).thenReturn(origin);
         when(heartbeat.begin(55L)).thenReturn(lease);
-        when(agentService.chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID), eq(origin)))
+        when(agentService.chatWithUsage(eq(AGENT_ID), anyString(), eq(CONVERSATION_ID), eq(origin.withExecutionAttribution(new ExecutionAttribution(null, null, 55L, null, "cron:55")))))
                 .thenReturn(failed);
         CronJobRunner runner = new CronJobRunner(lifecycle, heartbeat, agentService, originFactory, resolver,
                 mock(WikiProcessingService.class), new ObjectMapper());

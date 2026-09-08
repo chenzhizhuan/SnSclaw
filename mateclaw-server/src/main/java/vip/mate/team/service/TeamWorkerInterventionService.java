@@ -61,7 +61,7 @@ public class TeamWorkerInterventionService {
                 }
                 heartbeat = dispatchService.startLeaseHeartbeat(taskId);
                 conversationService.removeApprovalPlaceholders(intervention.conversationId());
-                ChatOrigin origin = approvalService.restoreChatOrigin(claimedPending.getChatOrigin());
+                ChatOrigin origin = approvalService.restoreChatOrigin(claimedPending.getChatOrigin()).withApprovalId(claimedPending.getPendingId());
                 AgentService.ChatResult result;
                 try {
                     result = turnGate.withPermit(permit, () -> agentService.chatWithReplayWithUsage(

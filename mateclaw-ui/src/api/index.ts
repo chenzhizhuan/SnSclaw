@@ -63,9 +63,9 @@ http.interceptors.response.use(
       // 403 = authorization failure (e.g. workspace permission denied) → keep session, surface error to caller
       if (data.code === 401) {
         handleAuthFailure()
-        return Promise.reject(new Error(data.msg || 'Unauthorized'))
+        return Promise.reject(Object.assign(new Error(data.msg || 'Unauthorized'), { code: data.code }))
       }
-      return Promise.reject(new Error(data.msg || 'Request failed'))
+      return Promise.reject(Object.assign(new Error(data.msg || 'Request failed'), { code: data.code }))
     }
     return data
   },

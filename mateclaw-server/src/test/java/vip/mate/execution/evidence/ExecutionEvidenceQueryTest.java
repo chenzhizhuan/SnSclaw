@@ -1,0 +1,111 @@
+package vip.mate.execution.evidence;
+
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import vip.mate.config.JacksonConfig;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import vip.mate.auth.service.AuthService;
+import vip.mate.exception.MateClawException;
+import vip.mate.execution.evidence.model.*;
+import vip.mate.execution.evidence.service.*;
+import vip.mate.team.service.TeamWorkerConversationGovernanceService;
+import vip.mate.tool.document.GeneratedFileCache;
+import vip.mate.workspace.conversation.ConversationService;
+import vip.mate.workspace.conversation.model.ConversationEntity;
+import vip.mate.workspace.core.service.WorkspaceService;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+class ExecutionEvidenceQueryTest {
+    private final ExecutionEvidenceStore store = mock(ExecutionEvidenceStore.class);
+    private final ConversationService conversations = mock(ConversationService.class);
+    private final TeamWorkerConversationGovernanceService teams = mock(TeamWorkerConversationGovernanceService.class);
+    private final GeneratedFileCache files = mock(GeneratedFileCache.class);
+    private ExecutionEvidenceQueryService queries;
+    private final long id = 1999999999999999999L;
+    private final Instant now = Instant.parse("2026-09-07T00:00:00Z");
+
+    @BeforeEach void setup() {
+        queries = new ExecutionEvidenceQueryService(store, conversations, teams, files,
+                mock(AuthService.class), mock(WorkspaceService.class), new ExecutionEvidenceProperties(), new SimpleMeterRegistry());
+        var conversation = new ConversationEntity();
+        conversation.setConversationId("conv"); conversation.setWorkspaceId(1L); conversation.setDeleted(0);
+        when(conversations.findByConversationId("conv")).thenReturn(conversation);
+        when(conversations.isConversationOwner("conv", "owner")).thenReturn(true);
+        when(store.findAttempt(1L)).thenReturn(Optional.of(new ExecutionAttempt(1L,
+                new ExecutionIdentity(1L, "conv", "native", null, "call", "call", 1, "provider", "tool",
+                        null, null, null, null, null, null, "fence"),
+                AttemptState.SUCCEEDED, EffectOutcome.UNCERTAIN, now, now)));
+    }
+
+    @Test void deniesUnscopedAnonymousAndWrongWorkspaceBeforeReadingEvidence() {
+        assertEquals(404, assertThrows(MateClawException.class, () -> list("stranger", 1L, "conv", null, 20)).getCode());
+        assertEquals(404, assertThrows(MateClawException.class, () -> list("owner", 2L, "conv", null, 20)).getCode());
+        assertThrows(MateClawException.class, () -> list(null, 1L, "conv", null, 20));
+        assertThrows(MateClawException.class, () -> list("owner", 1L, "", null, 20));
+        verifyNoInteractions(store);
+    }
+
+    @Test void detailDoesNotLeakCrossWorkspaceOrForeignConversation() {
+        when(store.findById(id)).thenReturn(Optional.of(evidence(id)));
+        assertEquals(404, assertThrows(MateClawException.class, () -> queries.detail("stranger", 1L, id)).getCode());
+        assertEquals(404, assertThrows(MateClawException.class, () -> queries.detail("owner", 2L, id)).getCode());
+        assertEquals(404, assertThrows(MateClawException.class, () -> queries.detail("owner", 1L, 42L)).getCode());
+    }
+
+    @Test void limitsAndCursorPreserveFullPrecisionAndNeverClaimVerification() {
+        when(store.list(eq(1L), eq("conv"), isNull(), isNull(), eq(2), isNull(), isNull()))
+                .thenReturn(List.of(evidence(id), evidence(id - 1)));
+        var page = list("owner", 1L, "conv", null, 1);
+        assertEquals(id, page.items().getFirst().id());
+        assertEquals("UNKNOWN", page.items().getFirst().validity());
+        assertNotNull(page.nextCursor());
+        when(store.list(eq(1L), eq("conv"), eq(now), eq(id), eq(2), isNull(), isNull()))
+                .thenReturn(List.of(evidence(id - 1)));
+        var next = list("owner", 1L, "conv", page.nextCursor(), 1);
+        assertEquals(id - 1, next.items().getFirst().id());
+        assertNull(next.nextCursor());
+        assertThrows(MateClawException.class, () -> list("owner", 1L, "conv", "invalid-cursor", 1));
+    }
+
+    @Test void canonicalTeamTranscriptReaderCanQueryWorkerEvidence() {
+        when(teams.canReadTranscript("conv", null, null, "reviewer")).thenReturn(true);
+        when(store.list(eq(1L), eq("conv"), isNull(), isNull(), eq(21), isNull(), isNull())).thenReturn(List.of(evidence(id)));
+        assertEquals(1, list("reviewer", 1L, "conv", null, null).items().size());
+    }
+
+    @Test void jsonUsesStringIdentifiersAndMissingArtifactsAreUnavailable() throws Exception {
+        var builder = Jackson2ObjectMapperBuilder.json();
+        new JacksonConfig().longToStringCustomizer().customize(builder);
+        var mapper = builder.build();
+        when(store.findById(id)).thenReturn(Optional.of(evidence(id)));
+        var json = mapper.readTree(mapper.writeValueAsString(queries.detail("owner", 1L, id)));
+        assertTrue(json.get("id").isTextual());
+        assertEquals(Long.toString(id), json.get("id").asText());
+        var artifact = new EvidenceObservation("artifact:missing", EvidenceKind.ARTIFACT_SNAPSHOT,
+                EvidenceResult.OBSERVED, SourceLevel.PLATFORM_OBSERVED, null, null, null, null, null,
+                null, "missing", "digest", "file metadata", null, now, now.minusSeconds(1));
+        when(store.findById(id)).thenReturn(Optional.of(new ExecutionEvidence(id, 1L, 1L, "conv", artifact)));
+        var unavailable = queries.detail("owner", 1L, id);
+        assertEquals("UNAVAILABLE", unavailable.validity());
+        assertNull(unavailable.artifactRef());
+        assertNull(unavailable.artifactDigest());
+    }
+
+    private ExecutionEvidenceQueryService.Page list(String user, Long workspace, String conversation, String cursor, Integer limit) {
+        return queries.list(user, workspace, conversation, cursor, limit, null, null);
+    }
+
+    private ExecutionEvidence evidence(long evidenceId) {
+        return new ExecutionEvidence(evidenceId, 1L, 1L, "conv", new EvidenceObservation("callback", EvidenceKind.TOOL_RETURNED,
+                EvidenceResult.OBSERVED, SourceLevel.PLATFORM_OBSERVED, null, null, null, null, null, null,
+                null, null, "Tool callback returned", null, now, null));
+    }
+}

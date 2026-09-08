@@ -131,6 +131,16 @@ springdoc:
 
 # SnSclaw 自定义配置
 mateclaw:
+  execution-evidence:
+    # Observe receipts only. Enforcement requires managed verification scopes and is not available yet.
+    mode: observe
+    retention-days: 90
+    max-summary-bytes: 2048
+    max-observations: 32
+    default-list-limit: 20
+    max-list-limit: 100
+    cleanup-interval-ms: 60000
+    cleanup-max-batches: 10
   a2a:
     enabled: ${MATECLAW_A2A_ENABLED:false}
     # Public base URL for Agent Cards. Production deployments should set this

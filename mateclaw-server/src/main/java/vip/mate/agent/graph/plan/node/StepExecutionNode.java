@@ -362,7 +362,7 @@ public class StepExecutionNode implements NodeAction {
                             // (instead of leaking into the next LLM round).
                             ToolResponseMessage.ToolResponse response = executor.executePreApproved(
                                     toolCall, storedArguments, events, conversationId, workspaceBasePath,
-                                    stepDirectOutputs);
+                                    stepDirectOutputs, chatOrigin);
                             toolResponses.add(response);
                             preApprovedPayload = ""; // 只消费一次
                         } else {
