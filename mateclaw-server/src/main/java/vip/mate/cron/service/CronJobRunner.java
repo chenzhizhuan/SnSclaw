@@ -8,6 +8,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.stereotype.Component;
 import vip.mate.agent.AgentService;
 import vip.mate.agent.context.ChatOrigin;
+import vip.mate.agent.context.ExecutionAttribution;
 import vip.mate.agent.graph.state.FinishReason;
 import vip.mate.cron.CronChatOriginFactory;
 import vip.mate.cron.model.CronJobEntity;
@@ -146,6 +147,8 @@ public class CronJobRunner {
         try {
             ChatOrigin origin = originFactory.from(
                     job, conversationId, started.originMessageId());
+            origin = origin.withExecutionAttribution(new ExecutionAttribution(null, null, run.getId(), null,
+                    "cron:" + run.getId()));
             try (CronRunHeartbeatService.Lease ignored = heartbeat.begin(run.getId())) {
                 chatResult = runAgent(job, userMessage, origin, conversationId);
             }

@@ -15,6 +15,7 @@ import vip.mate.tool.mcp.runtime.ProgressAwareMcpToolCallback;
 import vip.mate.agent.AgentToolSet;
 import vip.mate.agent.GraphEventPublisher;
 import vip.mate.agent.context.ChatOrigin;
+import vip.mate.execution.evidence.service.ExecutionEvidenceRecorder;
 import vip.mate.agent.context.StructuredTruncator;
 import vip.mate.agent.graph.state.DirectToolOutput;
 import vip.mate.agent.graph.state.SourceEvidenceLedger;
@@ -483,6 +484,9 @@ public class ToolExecutionExecutor {
                                         ChatOrigin origin,
                                         Set<String> loadedSkills) {
         ChatOrigin safeOrigin = origin != null ? origin : ChatOrigin.EMPTY;
+        if (!isReplay && safeOrigin.executionAttribution() != null) {
+            safeOrigin = safeOrigin.withApprovalId(null);
+        }
         if (isBlank(safeOrigin.conversationId()) && !isBlank(conversationId)) {
             safeOrigin = safeOrigin.withConversationId(conversationId);
         }
@@ -701,7 +705,7 @@ public class ToolExecutionExecutor {
             // 4. 分类: concurrencySafe
             boolean safe = isConcurrencySafe(toolName);
             preparedCalls.add(new PreparedToolCall(toolCall, responseName, callback, arguments, safe, allResponses.size(),
-                    conversationId, requesterId, workspaceBasePath, safeOrigin, rawEvidenceRef));
+                    conversationId, requesterId, workspaceBasePath, safeOrigin, UUID.randomUUID().toString(), rawEvidenceRef));
             // 占位，Phase 2 填充
             allResponses.add(null);
         }
@@ -791,6 +795,15 @@ public class ToolExecutionExecutor {
             List<GraphEventPublisher.GraphEvent> events,
             String conversationId, String workspaceBasePath,
             List<DirectToolOutput> directOutputs) {
+        return executePreApproved(toolCall, storedArguments, events, conversationId, workspaceBasePath,
+                directOutputs, ChatOrigin.EMPTY);
+    }
+
+    public ToolResponseMessage.ToolResponse executePreApproved(
+            AssistantMessage.ToolCall toolCall, String storedArguments,
+            List<GraphEventPublisher.GraphEvent> events,
+            String conversationId, String workspaceBasePath,
+            List<DirectToolOutput> directOutputs, ChatOrigin origin) {
         String toolName = resolveToolName(toolCall.name());
         String callArguments = storedArguments != null ? storedArguments : toolCall.arguments();
 
@@ -826,10 +839,11 @@ public class ToolExecutionExecutor {
             // Origin is method-local (see thread-safety note on execute());
             // the legacy ThreadLocal that used to carry it across executePreApproved
             // calls was a cross-conversation footgun and has been removed.
-            ChatOrigin replayOrigin = ChatOrigin.EMPTY
-                    .withConversationId(conversationId)
-                    .withWorkspace(null, workspaceBasePath);
-            String result = callback.call(callArguments, toolContextWithScopedCatalog(replayOrigin));
+            ChatOrigin replayOrigin = (origin == null ? ChatOrigin.EMPTY : origin)
+                    .withConversationId(conversationId);
+            replayOrigin = replayOrigin.withWorkspace(replayOrigin.workspaceId(), workspaceBasePath);
+            String result = invokeObserved(callback, callArguments, toolContextWithScopedCatalog(replayOrigin),
+                    UUID.randomUUID().toString(), toolCall.id());
             throwIfStopRequested(conversationId);
             int rawLen = result != null ? result.length() : 0;
 
@@ -1077,7 +1091,7 @@ public class ToolExecutionExecutor {
                     toolContext = new ToolContext(ctxMap);
                 }
 
-                result = pc.callback.call(pc.arguments, toolContext);
+                result = invokeObserved(pc.callback, pc.arguments, toolContext, pc.invocationKey, pc.toolCall.id());
                 throwIfStopRequested(pc.conversationId);
             } finally {
                 if (progressToken != null) {
@@ -1772,6 +1786,18 @@ public class ToolExecutionExecutor {
         return new ToolContext(context);
     }
 
+    private ExecutionEvidenceRecorder executionEvidenceRecorder;
+
+    public void setExecutionEvidenceRecorder(ExecutionEvidenceRecorder recorder) {
+        this.executionEvidenceRecorder = recorder;
+    }
+
+    private String invokeObserved(ToolCallback callback, String arguments, ToolContext context,
+                                  String invocationKey, String providerCallId) {
+        return executionEvidenceRecorder == null ? callback.call(arguments, context)
+                : executionEvidenceRecorder.invoke(callback, arguments, context, invocationKey, providerCallId);
+    }
+
     // ==================== 内部数据类 ====================
 
     private record PreparedToolCall(
@@ -1785,6 +1811,7 @@ public class ToolExecutionExecutor {
             String requesterId,
             String workspaceBasePath,
             ChatOrigin origin,
+            String invocationKey,
             /**
              * Shared reference (one per execute() invocation) where each
              * concurrent {@code executeSingleTool} merges a {@link SourceEvidenceLedger}

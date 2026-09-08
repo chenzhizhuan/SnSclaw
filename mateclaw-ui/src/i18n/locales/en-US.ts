@@ -1,4 +1,17 @@
 export default {
+  executionEvidence: {
+    scope: 'Working directory / check scope',
+    title: 'Execution evidence', observationOnly: 'Runtime observations only. A tool return or command exit does not verify the goal or task. Coverage is limited to recorded sources.',
+    refresh: 'Refresh', loadMore: 'Load more', empty: 'No execution evidence recorded.',
+    accessError: 'You need to sign in or have permission to view this evidence.', loadError: 'Could not load execution evidence. Try refreshing.',
+    stateLabel: 'Attempt state', resultLabel: 'Evidence result', effectLabel: 'Effect outcome', validityLabel: 'Validity',
+    source: 'Source', observedAt: 'Observed at', expiresAt: 'Expires at', details: 'Record details', id: 'Evidence ID', attemptId: 'Attempt ID', artifactRef: 'Artifact reference', digest: 'Artifact digest',
+    kind: { TOOL_RETURNED: 'Tool returned', COMMAND_EXIT: 'Command exited', ARTIFACT_SNAPSHOT: 'Artifact snapshot', CHECK_RESULT: 'Check result' },
+    state: { STARTED: 'Started', SUCCEEDED: 'Succeeded', FAILED: 'Failed', CANCELLED: 'Cancelled', UNKNOWN: 'Unknown', BLOCKED: 'Blocked' },
+    result: { OBSERVED: 'Observed', PASS: 'Check passed', FAIL: 'Failed', UNKNOWN: 'Unknown' },
+    effect: { NONE: 'None', CONFIRMED: 'Confirmed', UNCERTAIN: 'Uncertain' },
+    validity: { UNKNOWN: 'Unknown', UNAVAILABLE: 'Unavailable', STALE: 'Stale', VALID: 'Valid' },
+  },
   app: {
     title: 'SnSclaw - AI Assistant',
   },

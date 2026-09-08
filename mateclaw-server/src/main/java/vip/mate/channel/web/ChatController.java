@@ -347,7 +347,7 @@ public class ChatController {
                     }
                     // Carry the request-thread base URL so any file a replayed
                     // tool generates gets an absolute download link.
-                    replayOrigin = replayOrigin.withBaseUrl(requestBaseUrl);
+                    replayOrigin = replayOrigin.withBaseUrl(requestBaseUrl).withApprovalId(finalConsumed.getPendingId());
                     Disposable disposable = agentService.chatWithReplayStream(
                             replayAgentId, replayPrompt, conversationId, finalConsumed.getToolCallPayload(), username, replayOrigin)
                             .doOnNext(delta -> {

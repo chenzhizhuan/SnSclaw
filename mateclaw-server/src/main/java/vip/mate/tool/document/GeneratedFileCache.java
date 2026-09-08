@@ -10,6 +10,13 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import vip.mate.agent.context.ChatOrigin;
+import vip.mate.execution.evidence.service.ExecutionObservationSink;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
+import java.util.HexFormat;
+import java.util.Arrays;
+import java.time.Instant;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -163,7 +170,25 @@ public class GeneratedFileCache {
     }
 
     public String put(byte[] bytes, String filename, String mimeType, @Nullable ToolContext ctx) {
-        return put(bytes, filename, mimeType, Owner.from(ctx));
+        String id = put(bytes, filename, mimeType, Owner.from(ctx));
+        ExecutionObservationSink sink = ExecutionObservationSink.from(ctx);
+        if (sink != null && !sink.metadataOnly()) {
+            Entry durable = loadFromDisk(id);
+            Owner owner = Owner.from(ctx);
+            if (durable != null && owner.workspaceId() != null && owner.conversationId() != null
+                    && owner.workspaceId().equals(durable.workspaceId())
+                    && owner.conversationId().equals(durable.conversationId())
+                    && Objects.equals(owner.ownerUserId(), durable.ownerUserId())
+                    && Arrays.equals(bytes, durable.bytes())) {
+                try {
+                    String digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(durable.bytes()));
+                    sink.artifact(id, digest, durable.bytes().length, durable.mimeType(), Instant.ofEpochMilli(durable.expireAt()));
+                } catch (NoSuchAlgorithmException e) {
+                    throw new IllegalStateException("SHA-256 is unavailable", e);
+                }
+            }
+        }
+        return id;
     }
 
     public String put(byte[] bytes, String filename, String mimeType, @Nullable Owner owner) {
@@ -357,6 +382,23 @@ public class GeneratedFileCache {
         } catch (IOException e) {
             // Best-effort: an in-memory entry still serves the current process.
             log.warn("Could not persist generated file id={}: {}", id, e.toString());
+        }
+    }
+
+    /** Bounded metadata-only probe. Availability does not imply that current content is verified. */
+    public boolean isDurablyAvailable(String id, Long workspaceId, String conversationId) {
+        if (id == null || !ID_RE.matcher(id).matches()) return false;
+        Path bin = storageDir.resolve(id).normalize();
+        Path meta = storageDir.resolve(id + META_SUFFIX).normalize();
+        try {
+            if (!bin.startsWith(storageDir) || !Files.isRegularFile(bin)
+                    || !Files.isRegularFile(meta) || Files.size(meta) > 16_384) return false;
+            Metadata stored = parseMeta(Files.readString(meta), id);
+            return stored.expireAt() > System.currentTimeMillis()
+                    && Objects.equals(workspaceId, stored.workspaceId())
+                    && Objects.equals(conversationId, stored.conversationId());
+        } catch (Exception unavailable) {
+            return false;
         }
     }
 
