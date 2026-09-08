@@ -400,9 +400,11 @@ if (Should-Run 'maven') {
   if (-not $Fast) {
     Wr 'Installing plugin-api to local Maven repo'
     $pluginInstall = @('-B','-q','install','-N','-DskipTests','-Dmaven.test.skip=true')
-    $null = Invoke-Exe -FilePath $MVN -ArgList $pluginInstall -Cwd $Root
+    $null = Invoke-Exe -FilePath $MVN -ArgList $pluginInstall -Cwd $Root `
+      -OutLog (Join-Path $LogDir "mvn-plugin-out-$TS.log") -ErrLog (Join-Path $LogDir "mvn-plugin-err-$TS.log")
     $pluginInstall = @('-B','-q','install','-pl','mateclaw-plugin-api','-DskipTests','-Dmaven.test.skip=true')
-    $null = Invoke-Exe -FilePath $MVN -ArgList $pluginInstall -Cwd $Root
+    $null = Invoke-Exe -FilePath $MVN -ArgList $pluginInstall -Cwd $Root `
+      -OutLog (Join-Path $LogDir "mvn-plugin2-out-$TS.log") -ErrLog (Join-Path $LogDir "mvn-plugin2-err-$TS.log")
     W '  [OK] plugin-api installed'
   }
   if ($Fast) {
