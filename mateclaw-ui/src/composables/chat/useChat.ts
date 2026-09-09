@@ -2119,6 +2119,36 @@ export function useChat(options: UseChatOptions): UseChatReturn {
   // backend to return a 'done' event. This ensures onStreamEnd fires and message/conversation
   // state is updated correctly.
   // A 3-second fallback timeout guards against 'done' never arriving due to network issues.
+  const finalizeStoppedLocally = (convId: string, assistantId: string | null) => {
+    // A fallback from an older turn must never tear down a newer conversation.
+    if (streamConversationId !== convId && streamConversationId) return
+
+    stream.disconnect()
+
+    if (currentAssistantId.value === assistantId && assistantId) {
+      const stoppedAt = Date.now()
+      currentSegments.value.forEach((segment: MessageSegment) => {
+        if (segment.status === 'running') {
+          segment.status = 'completed'
+          segment.endTimestamp ??= stoppedAt
+        }
+      })
+      setMessageStatus(assistantId, 'stopped')
+      // Persist the frozen segment snapshot before dropping the active id;
+      // otherwise thinking/tool/delegation rows keep animating forever.
+      flushSegmentsToMessage(true)
+      currentAssistantId.value = null
+    }
+
+    streamPhase.value = 'stopped'
+    phaseInfo.value = null
+    compactStatus.value = null
+    lifecycleStage.value = null
+    messageQueue.clear()
+    expirePendingApprovals('stopped')
+    onStreamEnd?.({ conversationId: convId, reason: 'stopped' })
+  }
+
   const stopGeneration = async () => {
     // Freeze identifiers and install the fallback timer before any await, so a concurrent
     // resetForNewConversation cannot clear context out from under us.
@@ -2151,18 +2181,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     stopFallbackTimer = setTimeout(() => {
       stopFallbackTimer = null
       console.warn('[useChat] Stop fallback: done event not received within 3s, force cleanup')
-      // Only disconnect if the stream still belongs to the old conversation — avoids killing a new session's stream
-      if (streamConversationId === convId || !streamConversationId) {
-        stream.disconnect()
-      }
-      if (currentAssistantId.value === assistantId && assistantId) {
-        setMessageStatus(assistantId, 'stopped')
-        currentAssistantId.value = null
-      }
-      onStreamEnd?.({
-        conversationId: convId,
-        reason: 'stopped',
-      })
+      finalizeStoppedLocally(convId, assistantId)
     }, 3000)
 
     // Cancel the fallback timer when the done/error event arrives
@@ -2188,12 +2207,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
           clearTimeout(stopFallbackTimer)
           stopFallbackTimer = setTimeout(() => {
             stopFallbackTimer = null
-            if (streamConversationId === convId || !streamConversationId) stream.disconnect()
-            if (currentAssistantId.value === assistantId && assistantId) {
-              setMessageStatus(assistantId, 'stopped')
-              currentAssistantId.value = null
-            }
-            onStreamEnd?.({ conversationId: convId, reason: 'stopped' })
+            finalizeStoppedLocally(convId, assistantId)
           }, 250)
         }
       })

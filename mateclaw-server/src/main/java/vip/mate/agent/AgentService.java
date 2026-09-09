@@ -324,11 +324,11 @@ public class AgentService {
      */
     public String chat(Long agentId, String message, String conversationId, ChatOrigin origin) {
         clearAutoRecordedForNewTurn(conversationId);
-        memoryRecallTracker.trackRecalls(agentId, message);
         if (isDshAgent(agentId)) {
             return collectChatResult(chatStructuredStream(agentId, message, conversationId,
                     "", null, origin != null ? origin : ChatOrigin.EMPTY)).content();
         }
+        trackMemoryRecalls(agentId, message, origin);
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
         ChatOriginHolder.set(origin != null ? origin : ChatOrigin.EMPTY);
         try {
@@ -365,13 +365,13 @@ public class AgentService {
 
     public Flux<String> chatStream(Long agentId, String message, String conversationId, ChatOrigin origin) {
         clearAutoRecordedForNewTurn(conversationId);
-        memoryRecallTracker.trackRecalls(agentId, message);
         if (isDshAgent(agentId)) {
             return chatStructuredStream(agentId, message, conversationId, "", null,
                     origin != null ? origin : ChatOrigin.EMPTY)
                     .filter(delta -> delta.content() != null)
                     .map(StreamDelta::content);
         }
+        trackMemoryRecalls(agentId, message, origin);
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
         // Capture the origin into a request-scoped holder; cleared on Flux
         // termination so the next reactive subscriber doesn't inherit stale state.
@@ -408,7 +408,7 @@ public class AgentService {
                                                    String requesterId, String thinkingLevel,
                                                    ChatOrigin origin) {
         clearAutoRecordedForNewTurn(conversationId);
-        memoryRecallTracker.trackRecalls(agentId, message);
+        trackMemoryRecalls(agentId, message, origin);
         if (isDshAgent(agentId)) {
             AgentEntity dshAgent = getAgent(agentId);
             return withLifecycleFlux(agentId, message, conversationId,
@@ -468,7 +468,7 @@ public class AgentService {
 
     public String execute(Long agentId, String goal, String conversationId, ChatOrigin origin) {
         clearAutoRecordedForNewTurn(conversationId);
-        memoryRecallTracker.trackRecalls(agentId, goal);
+        trackMemoryRecalls(agentId, goal, origin);
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
         ChatOriginHolder.set(origin != null ? origin : ChatOrigin.EMPTY);
         try {
@@ -495,7 +495,7 @@ public class AgentService {
 
     public String chatWithReplay(Long agentId, String userMessage, String conversationId,
                                   String toolCallPayload, ChatOrigin origin) {
-        memoryRecallTracker.trackRecalls(agentId, userMessage);
+        trackMemoryRecalls(agentId, userMessage, origin);
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
         ChatOriginHolder.set(origin != null ? origin : ChatOrigin.EMPTY);
         try {
@@ -543,7 +543,7 @@ public class AgentService {
     public Flux<StreamDelta> chatWithReplayStream(Long agentId, String userMessage, String conversationId,
                                                    String toolCallPayload, String requesterId,
                                                    ChatOrigin origin) {
-        memoryRecallTracker.trackRecalls(agentId, userMessage);
+        trackMemoryRecalls(agentId, userMessage, origin);
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
         ChatOrigin captured = origin != null ? origin : ChatOrigin.EMPTY;
         return Flux.defer(() -> {
@@ -753,6 +753,13 @@ public class AgentService {
         if (runtimeCoordinator == null || agentId == null) return false;
         AgentEntity entity = getAgent(agentId);
         return "dsh".equalsIgnoreCase(entity.getRuntimeType());
+    }
+
+    private void trackMemoryRecalls(Long agentId, String message, ChatOrigin origin) {
+        String ownerKey = memoryProperties.isLifecycleMediatorEnabled()
+                ? memoryOwnerResolver.resolve(origin != null ? origin : ChatOrigin.EMPTY)
+                : null;
+        memoryRecallTracker.trackRecalls(agentId, message, ownerKey);
     }
 
     private void validateDshConfiguration(AgentEntity agent) {
