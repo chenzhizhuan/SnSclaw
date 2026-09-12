@@ -5,7 +5,7 @@
       <img src="/logo/snsclaw_logo_s.png" alt="SnSclaw" class="hero-logo" />
       <div class="hero-copy">
         <!-- <h1 class="hero-title">SnS<span class="hero-accent">claw</span></h1> -->
-        <h1 class="hero-title">智算方舟</h1>
+        <h1 class="hero-title">智屿</h1>
         <div class="hero-version">v{{ appVersion }}</div>
         <p class="hero-desc">{{ t('settings.about.heroDesc') }}</p>
       </div>
