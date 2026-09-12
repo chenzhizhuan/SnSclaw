@@ -30,6 +30,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -197,6 +199,26 @@ public class ExecutionEvidenceStore {
 
     public Optional<ExecutionAttempt> findAttempt(Long id) {
         return jdbc.query("SELECT * FROM mate_execution_attempt WHERE id=? AND deleted=0", this::attempt, id).stream().findFirst();
+    }
+
+    /** Load one page of attempts without allowing cross-conversation reads. */
+    public Map<Long, ExecutionAttempt> findAttempts(Long workspaceId, String conversationId, List<Long> ids) {
+        scope(workspaceId, conversationId);
+        Objects.requireNonNull(ids, "Attempt IDs required");
+        if (ids.size() > properties.getMaxListLimit())
+            throw new IllegalArgumentException("Attempt batch exceeds page limit");
+        if (ids.isEmpty()) return Map.of();
+        if (ids.stream().anyMatch(Objects::isNull))
+            throw new IllegalArgumentException("Attempt ID required");
+        var distinct = ids.stream().distinct().toList();
+        var args = new ArrayList<Object>(List.of(workspaceId, conversationId));
+        args.addAll(distinct);
+        String placeholders = String.join(",", Collections.nCopies(distinct.size(), "?"));
+        var result = new LinkedHashMap<Long, ExecutionAttempt>();
+        jdbc.query("SELECT * FROM mate_execution_attempt WHERE workspace_id=? AND conversation_id=?"
+                        + " AND deleted=0 AND id IN (" + placeholders + ")", this::attempt, args.toArray())
+                .forEach(attempt -> result.put(attempt.id(), attempt));
+        return result;
     }
 
     /** Internal lookup for source authorization; callers must authorize before exposing the result. */
