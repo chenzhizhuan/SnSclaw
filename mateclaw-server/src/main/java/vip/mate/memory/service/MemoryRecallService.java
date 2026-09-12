@@ -59,14 +59,14 @@ public class MemoryRecallService {
         recordRecall(agentId, filename, snippetText, userQueryHash, null, MemoryScope.TEAM);
     }
 
-    /** Owner-aware recall ledger write. Shared legacy rows keep a null owner key. */
+    /** Owner-aware recall ledger write. Shared rows use the canonical empty owner key. */
     public void recordRecall(Long agentId, String filename, String snippetText, String userQueryHash,
                              String ownerKey, String scope) {
         if (agentId == null || filename == null || filename.isBlank()) {
             return;
         }
         String effectiveScope = normalizeScope(scope);
-        String effectiveOwner = MemoryScope.PERSONAL.equals(effectiveScope) ? ownerKey : null;
+        String effectiveOwner = MemoryScope.PERSONAL.equals(effectiveScope) ? ownerKey : "";
         if (MemoryScope.PERSONAL.equals(effectiveScope)
                 && (effectiveOwner == null || effectiveOwner.isBlank())) {
             return;
@@ -80,80 +80,89 @@ public class MemoryRecallService {
                 ? snippetText.substring(0, 200)
                 : snippetText;
 
-        LambdaQueryWrapper<MemoryRecallEntity> existingQuery = new LambdaQueryWrapper<MemoryRecallEntity>()
-                        .eq(MemoryRecallEntity::getAgentId, agentId)
-                        .eq(MemoryRecallEntity::getFilename, filename)
-                        .eq(MemoryRecallEntity::getScope, effectiveScope)
-                        .eq(MemoryRecallEntity::getDeleted, 0);
-        applyOwnerIdentity(existingQuery, effectiveOwner, effectiveScope);
-        MemoryRecallEntity existing = recallMapper.selectOne(existingQuery.last("LIMIT 1"));
-
         LocalDateTime now = LocalDateTime.now();
 
-        if (existing != null) {
-            existing.setRecallCount(existing.getRecallCount() + 1);
-            existing.setDailyCount(existing.getDailyCount() + 1);
-            existing.setLastRecalledAt(now);
-            existing.setSnippetPreview(preview);
+        // Update-first makes the hot path a single atomic SQL increment. The
+        // unique identity migration closes the insert race across threads and
+        // nodes; the loser retries this same atomic increment.
+        if (incrementExisting(agentId, filename, effectiveOwner, effectiveScope, preview, now) > 0) {
+            mergeQueryHash(agentId, filename, effectiveOwner, effectiveScope, userQueryHash);
+            return;
+        }
 
+        try {
+            MemoryRecallEntity entity = new MemoryRecallEntity();
+            entity.setAgentId(agentId);
+            entity.setFilename(filename);
+            entity.setSnippetPreview(preview);
+            entity.setRecallCount(1);
+            entity.setDailyCount(1);
+            entity.setLastRecalledAt(now);
+            entity.setPromoted(false);
+            entity.setScore(0.0);
+            entity.setOwnerKey(effectiveOwner);
+            entity.setScope(effectiveScope);
+            entity.setCreateTime(now);
+            entity.setUpdateTime(now);
+            entity.setDeleted(0);
             if (userQueryHash != null) {
-                List<String> hashes = parseQueryHashes(existing.getQueryHashes());
-                if (!hashes.contains(userQueryHash) && hashes.size() < MAX_QUERY_HASHES) {
-                    hashes.add(userQueryHash);
-                }
-                existing.setQueryHashes(toJson(hashes));
+                entity.setQueryHashes(toJson(List.of(userQueryHash)));
             }
-
-            recallMapper.updateById(existing);
-        } else {
-            // 防并发：trackRecalls 和 trackActiveRetrieval 可能同时插入同一 filename
-            try {
-                MemoryRecallEntity entity = new MemoryRecallEntity();
-                entity.setAgentId(agentId);
-                entity.setFilename(filename);
-                entity.setSnippetPreview(preview);
-                entity.setRecallCount(1);
-                entity.setDailyCount(1);
-                entity.setLastRecalledAt(now);
-                entity.setPromoted(false);
-                entity.setScore(0.0);
-                entity.setOwnerKey(effectiveOwner);
-                entity.setScope(effectiveScope);
-                entity.setCreateTime(now);
-                entity.setUpdateTime(now);
-                entity.setDeleted(0);
-
-                if (userQueryHash != null) {
-                    entity.setQueryHashes(toJson(List.of(userQueryHash)));
-                }
-
-                recallMapper.insert(entity);
-            } catch (org.springframework.dao.DuplicateKeyException e) {
-                // 并发插入冲突，重新查询后更新（不递归，避免 StackOverflow）
-                log.debug("[MemoryRecall] Concurrent insert for {}, falling back to update", filename);
-                LambdaQueryWrapper<MemoryRecallEntity> retryQuery = new LambdaQueryWrapper<MemoryRecallEntity>()
-                                .eq(MemoryRecallEntity::getAgentId, agentId)
-                                .eq(MemoryRecallEntity::getFilename, filename)
-                                .eq(MemoryRecallEntity::getScope, effectiveScope)
-                                .eq(MemoryRecallEntity::getDeleted, 0);
-                applyOwnerIdentity(retryQuery, effectiveOwner, effectiveScope);
-                MemoryRecallEntity retry = recallMapper.selectOne(retryQuery.last("LIMIT 1"));
-                if (retry != null) {
-                    retry.setRecallCount(retry.getRecallCount() + 1);
-                    retry.setDailyCount(retry.getDailyCount() + 1);
-                    retry.setLastRecalledAt(now);
-                    retry.setSnippetPreview(preview);
-                    if (userQueryHash != null) {
-                        List<String> hashes = parseQueryHashes(retry.getQueryHashes());
-                        if (!hashes.contains(userQueryHash) && hashes.size() < MAX_QUERY_HASHES) {
-                            hashes.add(userQueryHash);
-                        }
-                        retry.setQueryHashes(toJson(hashes));
-                    }
-                    recallMapper.updateById(retry);
-                }
+            recallMapper.insert(entity);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            log.debug("[MemoryRecall] Concurrent insert for {}, retrying atomic update", filename);
+            if (incrementExisting(agentId, filename, effectiveOwner, effectiveScope, preview, now) > 0) {
+                mergeQueryHash(agentId, filename, effectiveOwner, effectiveScope, userQueryHash);
+            } else {
+                log.warn("[MemoryRecall] Duplicate insert lost but active row was not found: agent={}, file={}, owner={}",
+                        agentId, filename, effectiveOwner);
             }
         }
+    }
+
+    private int incrementExisting(Long agentId, String filename, String ownerKey, String scope,
+                                  String preview, LocalDateTime now) {
+        LambdaUpdateWrapper<MemoryRecallEntity> update = new LambdaUpdateWrapper<MemoryRecallEntity>()
+                .eq(MemoryRecallEntity::getAgentId, agentId)
+                .eq(MemoryRecallEntity::getFilename, filename)
+                .eq(MemoryRecallEntity::getScope, scope)
+                .eq(MemoryRecallEntity::getOwnerKey, ownerKey)
+                .eq(MemoryRecallEntity::getDeleted, 0)
+                .setSql("recall_count = COALESCE(recall_count, 0) + 1")
+                .setSql("daily_count = COALESCE(daily_count, 0) + 1")
+                .set(MemoryRecallEntity::getLastRecalledAt, now)
+                .set(MemoryRecallEntity::getSnippetPreview, preview);
+        return recallMapper.update(null, update);
+    }
+
+    /** Best-effort optimistic merge; counters remain atomic even under hash contention. */
+    private void mergeQueryHash(Long agentId, String filename, String ownerKey, String scope,
+                                String userQueryHash) {
+        if (userQueryHash == null) return;
+        for (int attempt = 0; attempt < 3; attempt++) {
+            MemoryRecallEntity current = recallMapper.selectOne(
+                    new LambdaQueryWrapper<MemoryRecallEntity>()
+                            .eq(MemoryRecallEntity::getAgentId, agentId)
+                            .eq(MemoryRecallEntity::getFilename, filename)
+                            .eq(MemoryRecallEntity::getScope, scope)
+                            .eq(MemoryRecallEntity::getOwnerKey, ownerKey)
+                            .eq(MemoryRecallEntity::getDeleted, 0)
+                            .last("LIMIT 1"));
+            if (current == null) return;
+            List<String> hashes = parseQueryHashes(current.getQueryHashes());
+            if (hashes.contains(userQueryHash) || hashes.size() >= MAX_QUERY_HASHES) return;
+            hashes.add(userQueryHash);
+            String previous = current.getQueryHashes();
+            LambdaUpdateWrapper<MemoryRecallEntity> cas = new LambdaUpdateWrapper<MemoryRecallEntity>()
+                    .eq(MemoryRecallEntity::getId, current.getId())
+                    .eq(MemoryRecallEntity::getDeleted, 0)
+                    .set(MemoryRecallEntity::getQueryHashes, toJson(hashes));
+            if (previous == null) cas.isNull(MemoryRecallEntity::getQueryHashes);
+            else cas.eq(MemoryRecallEntity::getQueryHashes, previous);
+            if (recallMapper.update(null, cas) > 0) return;
+        }
+        log.debug("[MemoryRecall] Query-hash merge contended for agent={}, file={}, owner={}",
+                agentId, filename, ownerKey);
     }
 
     /**
@@ -402,18 +411,6 @@ public class MemoryRecallService {
             return scope;
         }
         return MemoryScope.TEAM;
-    }
-
-    private static void applyOwnerIdentity(LambdaQueryWrapper<MemoryRecallEntity> query,
-                                           String ownerKey, String scope) {
-        if (MemoryScope.PERSONAL.equals(scope)) {
-            query.eq(MemoryRecallEntity::getOwnerKey, ownerKey);
-        } else {
-            // V137 left legacy shared recall rows with NULL while newer rows may
-            // use the workspace-file empty-string sentinel. Treat both as shared.
-            query.and(w -> w.isNull(MemoryRecallEntity::getOwnerKey)
-                    .or().eq(MemoryRecallEntity::getOwnerKey, ""));
-        }
     }
 
 }

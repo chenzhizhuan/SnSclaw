@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DuplicateKeyException;
 import vip.mate.memory.MemoryProperties;
 import vip.mate.memory.identity.MemoryScope;
 import vip.mate.memory.model.MemoryRecallEntity;
@@ -20,13 +21,13 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -77,7 +78,7 @@ class MemoryRecallOwnerIsolationTest {
     }
 
     @Test
-    @DisplayName("legacy recordRecall overload remains shared and ownerless")
+    @DisplayName("legacy recordRecall overload remains shared with canonical empty owner")
     void legacyRecordRecallRemainsShared() {
         MemoryRecallMapper mapper = mock(MemoryRecallMapper.class);
         when(mapper.selectOne(any())).thenReturn(null);
@@ -87,8 +88,40 @@ class MemoryRecallOwnerIsolationTest {
 
         ArgumentCaptor<MemoryRecallEntity> inserted = ArgumentCaptor.forClass(MemoryRecallEntity.class);
         verify(mapper).insert(inserted.capture());
-        assertNull(inserted.getValue().getOwnerKey());
+        assertEquals("", inserted.getValue().getOwnerKey());
         assertEquals(MemoryScope.TEAM, inserted.getValue().getScope());
+    }
+
+    @Test
+    @DisplayName("existing recall uses an atomic SQL increment without inserting")
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void existingRecallIsIncrementedAtomically() {
+        MemoryRecallMapper mapper = mock(MemoryRecallMapper.class);
+        when(mapper.update(any(), any())).thenReturn(1);
+        MemoryRecallService service = new MemoryRecallService(mapper, new MemoryProperties(), new ObjectMapper());
+
+        service.recordRecall(7L, "MEMORY.md", "shared memory", null);
+
+        ArgumentCaptor<com.baomidou.mybatisplus.core.conditions.Wrapper<MemoryRecallEntity>> wrapper =
+                ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.Wrapper.class);
+        verify(mapper).update(eq(null), wrapper.capture());
+        assertTrue(wrapper.getValue().getSqlSet().contains("recall_count = COALESCE(recall_count, 0) + 1"));
+        assertTrue(wrapper.getValue().getSqlSet().contains("daily_count = COALESCE(daily_count, 0) + 1"));
+        verify(mapper, never()).insert(any(MemoryRecallEntity.class));
+    }
+
+    @Test
+    @DisplayName("duplicate insert race retries the atomic update")
+    void duplicateInsertRetriesIncrement() {
+        MemoryRecallMapper mapper = mock(MemoryRecallMapper.class);
+        when(mapper.update(any(), any())).thenReturn(0, 1);
+        when(mapper.insert(any(MemoryRecallEntity.class))).thenThrow(new DuplicateKeyException("raced"));
+        MemoryRecallService service = new MemoryRecallService(mapper, new MemoryProperties(), new ObjectMapper());
+
+        service.recordRecall(7L, "MEMORY.md", "shared memory", null);
+
+        verify(mapper, times(2)).update(any(), any());
+        verify(mapper).insert(any(MemoryRecallEntity.class));
     }
 
     @Test

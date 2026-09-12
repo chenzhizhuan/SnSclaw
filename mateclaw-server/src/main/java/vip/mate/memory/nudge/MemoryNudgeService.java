@@ -85,17 +85,21 @@ public class MemoryNudgeService {
         }
 
         try {
-            doNudge(agentId, conversationId, ownerKey);
-            lastNudgeTimes.put(cooldownKey, Instant.now());
+            if (doNudge(agentId, conversationId, ownerKey)) {
+                lastNudgeTimes.put(cooldownKey, Instant.now());
+            }
         } catch (Exception e) {
             log.warn("[Nudge] Failed for agent={}, conv={}: {}",
                     agentId, conversationId, e.getMessage());
         }
     }
 
-    private void doNudge(Long agentId, String conversationId, String ownerKey) {
+    private boolean doNudge(Long agentId, String conversationId, String ownerKey) {
         // 1. Load recent messages
         List<MessageEntity> messages = conversationService.listMessages(conversationId);
+        if (messages == null || messages.isEmpty()) {
+            return false;
+        }
         int maxReview = properties.getNudgeMaxMessages();
         List<MessageEntity> recent = messages.size() > maxReview
                 ? messages.subList(messages.size() - maxReview, messages.size())
@@ -103,12 +107,12 @@ public class MemoryNudgeService {
 
         if (recent.size() < 4) {
             log.debug("[Nudge] Not enough messages to review ({}), skipping", recent.size());
-            return;
+            return false;
         }
 
         // 2. Build transcript
         String transcript = buildTranscript(recent);
-        if (transcript.isBlank()) return;
+        if (transcript.isBlank()) return false;
 
         // 3. Load existing structured memories for dedup (owner-scoped)
         String existingMemories = structuredMemoryService.buildMemoryBlock(agentId, ownerKey);
@@ -131,11 +135,11 @@ public class MemoryNudgeService {
             llmResponse = callLlmWithRetry(chatModel, prompt, 2);
             if (llmResponse == null) {
                 log.warn("[Nudge] LLM returned null after retries for agent={}", agentId);
-                return;
+                return false;
             }
         } catch (Exception e) {
             log.warn("[Nudge] LLM call failed for agent={}: {}", agentId, e.getMessage());
-            return;
+            return false;
         }
 
         // 6. Parse and apply
@@ -143,7 +147,7 @@ public class MemoryNudgeService {
             JsonNode root = parseJsonResponse(llmResponse);
             if (root == null || !root.isArray()) {
                 log.debug("[Nudge] No entries extracted for agent={}", agentId);
-                return;
+                return false;
             }
 
             int saved = 0;
@@ -163,9 +167,11 @@ public class MemoryNudgeService {
             if (saved > 0) {
                 log.info("[Nudge] Extracted {} entries for agent={}", saved, agentId);
             }
+            return true;
 
         } catch (Exception e) {
             log.warn("[Nudge] Failed to parse nudge response for agent={}: {}", agentId, e.getMessage());
+            return false;
         }
     }
 
