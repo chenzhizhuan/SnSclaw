@@ -17,6 +17,7 @@ import vip.mate.workspace.core.service.WorkspaceService;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,10 +40,12 @@ class ExecutionEvidenceQueryTest {
         conversation.setConversationId("conv"); conversation.setWorkspaceId(1L); conversation.setDeleted(0);
         when(conversations.findByConversationId("conv")).thenReturn(conversation);
         when(conversations.isConversationOwner("conv", "owner")).thenReturn(true);
-        when(store.findAttempt(1L)).thenReturn(Optional.of(new ExecutionAttempt(1L,
+        var attempt = new ExecutionAttempt(1L,
                 new ExecutionIdentity(1L, "conv", "native", null, "call", "call", 1, "provider", "tool",
                         null, null, null, null, null, null, "fence"),
-                AttemptState.SUCCEEDED, EffectOutcome.UNCERTAIN, now, now)));
+                AttemptState.SUCCEEDED, EffectOutcome.UNCERTAIN, now, now);
+        when(store.findAttempt(1L)).thenReturn(Optional.of(attempt));
+        when(store.findAttempts(1L, "conv", List.of(1L))).thenReturn(Map.of(1L, attempt));
     }
 
     @Test void deniesUnscopedAnonymousAndWrongWorkspaceBeforeReadingEvidence() {
@@ -97,6 +100,39 @@ class ExecutionEvidenceQueryTest {
         assertEquals("UNAVAILABLE", unavailable.validity());
         assertNull(unavailable.artifactRef());
         assertNull(unavailable.artifactDigest());
+    }
+
+    @Test void emptyPageDoesNotLoadAttempts() {
+        when(store.list(eq(1L), eq("conv"), isNull(), isNull(), eq(21), isNull(), isNull()))
+                .thenReturn(List.of());
+        assertTrue(list("owner", 1L, "conv", null, null).items().isEmpty());
+        verify(store, never()).findAttempts(any(), any(), any());
+        verify(store, never()).findAttempt(any());
+    }
+
+    @Test void repeatedAttemptIsLoadedOnceAndLookaheadIsExcluded() {
+        when(store.list(eq(1L), eq("conv"), isNull(), isNull(), eq(3), isNull(), isNull()))
+                .thenReturn(List.of(evidence(id), evidence(id - 1),
+                        new ExecutionEvidence(id - 2, 1L, 999L, "conv", evidence(id).observation())));
+        var page = list("owner", 1L, "conv", null, 2);
+        assertEquals(List.of(id, id - 1), page.items().stream().map(ExecutionEvidenceQueryService.View::id).toList());
+        assertNotNull(page.nextCursor());
+        verify(store).findAttempts(1L, "conv", List.of(1L));
+        verify(store, never()).findAttempt(any());
+    }
+
+    @Test void missingOrMismatchedBatchAttemptFailsClosed() {
+        when(store.list(eq(1L), eq("conv"), isNull(), isNull(), eq(21), isNull(), isNull()))
+                .thenReturn(List.of(evidence(id)));
+        when(store.findAttempts(1L, "conv", List.of(1L))).thenReturn(Map.of());
+        assertEquals(404, assertThrows(MateClawException.class,
+                () -> list("owner", 1L, "conv", null, null)).getCode());
+        var foreign = new ExecutionAttempt(1L, new ExecutionIdentity(2L, "other", "native", null,
+                "call", "call", 1, "provider", "tool", null, null, null, null, null, null, "fence"),
+                AttemptState.SUCCEEDED, EffectOutcome.UNCERTAIN, now, now);
+        when(store.findAttempts(1L, "conv", List.of(1L))).thenReturn(Map.of(1L, foreign));
+        assertEquals(404, assertThrows(MateClawException.class,
+                () -> list("owner", 1L, "conv", null, null)).getCode());
     }
 
     private ExecutionEvidenceQueryService.Page list(String user, Long workspace, String conversation, String cursor, Integer limit) {

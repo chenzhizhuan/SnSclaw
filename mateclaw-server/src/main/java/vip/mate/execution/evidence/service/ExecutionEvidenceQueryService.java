@@ -15,6 +15,7 @@ import vip.mate.workspace.core.service.WorkspaceService;
 import io.micrometer.core.instrument.MeterRegistry;
 import vip.mate.exception.MateClawException;
 import vip.mate.execution.evidence.model.ExecutionEvidence;
+import vip.mate.execution.evidence.model.ExecutionAttempt;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -64,7 +65,10 @@ public class ExecutionEvidenceQueryService {
                     before.id(), bounded + 1, goalId, teamTaskId);
             boolean hasMore = rows.size() > bounded;
             List<ExecutionEvidence> page = rows.stream().limit(bounded).toList();
-            return new Page(page.stream().map(row -> view(username, row)).toList(),
+            if (page.isEmpty()) return new Page(List.of(), null);
+            var attempts = store.findAttempts(canonicalWorkspace, conversationId,
+                    page.stream().map(ExecutionEvidence::attemptId).distinct().toList());
+            return new Page(page.stream().map(row -> view(username, row, attempts.get(row.attemptId()))).toList(),
                     hasMore ? encode(page.getLast()) : null);
         } finally {
             metrics.timer("mateclaw.execution.evidence.query.latency").record(
@@ -77,7 +81,7 @@ public class ExecutionEvidenceQueryService {
         ExecutionEvidence row = store.findById(id).orElseThrow(this::hidden);
         Long canonicalWorkspace = authorize(username, workspaceId, row.conversationId());
         if (!canonicalWorkspace.equals(row.workspaceId())) throw hidden();
-        return view(username, row);
+        return view(username, row, store.findAttempt(row.attemptId()).orElseThrow(this::hidden));
     }
 
     private Long authorize(String username, Long workspaceId, String conversationId) {
@@ -90,8 +94,8 @@ public class ExecutionEvidenceQueryService {
         return conversation.getWorkspaceId();
     }
 
-    private View view(String username, ExecutionEvidence row) {
-        var attempt = store.findAttempt(row.attemptId()).orElseThrow(this::hidden);
+    private View view(String username, ExecutionEvidence row, ExecutionAttempt attempt) {
+        if (attempt == null || !Objects.equals(attempt.id(), row.attemptId())) throw hidden();
         if (!Objects.equals(attempt.identity().workspaceId(), row.workspaceId())
                 || !Objects.equals(attempt.identity().conversationId(), row.conversationId())) throw hidden();
         var evidence = row.observation();

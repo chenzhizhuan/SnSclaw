@@ -523,6 +523,10 @@ mate:
     soul-update-interval: 20                   # 20 writes trigger one SOUL.md LLM update (0 = off)
     provider-retry-attempts: 1                 # 1 = no retry (enable when external providers added)
     provider-metrics-enabled: false            # actuator dependency now present; enable when external providers added
+    provider-prefetch-timeout-ms: 1500          # per-provider recall deadline; 0 = unlimited
+    provider-prefetch-total-budget-ms: 2500     # deadline for the complete recall chain; 0 = unlimited
+    provider-circuit-failure-threshold: 3       # consecutive recall failures before opening the circuit
+    provider-circuit-cooldown-seconds: 30       # open-circuit delay before one half-open probe
     # Phase 3: fact projection
     fact:
       projection-enabled: true

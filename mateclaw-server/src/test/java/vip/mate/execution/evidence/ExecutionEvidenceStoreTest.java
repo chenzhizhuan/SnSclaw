@@ -1,6 +1,15 @@
 package vip.mate.execution.evidence;
 
 import org.junit.jupiter.api.BeforeEach;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import vip.mate.execution.evidence.service.ExecutionEvidenceQueryService;
+import vip.mate.workspace.conversation.ConversationService;
+import vip.mate.workspace.conversation.model.ConversationEntity;
+import vip.mate.team.service.TeamWorkerConversationGovernanceService;
+import vip.mate.tool.document.GeneratedFileCache;
+import vip.mate.auth.service.AuthService;
+import vip.mate.workspace.core.service.WorkspaceService;
+import static org.mockito.Mockito.*;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -26,6 +35,7 @@ import java.time.Instant;
 import java.util.concurrent.Callable;
 import org.springframework.dao.DuplicateKeyException;
 import java.util.List;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import static org.assertj.core.api.Assertions.*;
@@ -36,9 +46,61 @@ class ExecutionEvidenceStoreTest {
     @BeforeEach void setup() {
         var source = new DriverManagerDataSource("jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", "");
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/h2/V191__execution_evidence_ledger.sql")).execute(source);
-        jdbc = new JdbcTemplate(source);
+        jdbc = spy(new JdbcTemplate(source));
         store = new ExecutionEvidenceStore(jdbc, new DataSourceTransactionManager(source), new ExecutionEvidenceProperties());
     }
+    @Test void fullPageUsesTwoLedgerQueriesAndPreservesOrder() {
+        for (int i = 0; i < 100; i++) {
+            var attempt = store.begin(identity("page-" + i));
+            store.finish(attempt.id(), "owner", AttemptState.SUCCEEDED, EffectOutcome.UNCERTAIN,
+                    List.of(observation("result-" + i)));
+        }
+        var conversations = mock(ConversationService.class);
+        var conversation = new ConversationEntity();
+        conversation.setWorkspaceId(1L);
+        conversation.setConversationId("conversation");
+        when(conversations.findByConversationId("conversation")).thenReturn(conversation);
+        when(conversations.isConversationOwner("conversation", "owner")).thenReturn(true);
+        var queries = new ExecutionEvidenceQueryService(store, conversations,
+                mock(TeamWorkerConversationGovernanceService.class), mock(GeneratedFileCache.class),
+                mock(AuthService.class), mock(WorkspaceService.class), new ExecutionEvidenceProperties(),
+                new SimpleMeterRegistry());
+        clearInvocations(jdbc);
+
+        var page = queries.list("owner", 1L, "conversation", null, 100, null, null);
+
+        assertThat(page.items()).hasSize(100);
+        assertThat(page.nextCursor()).isNull();
+        assertThat(page.items()).allSatisfy(row -> {
+            assertThat(row.state()).isEqualTo(AttemptState.SUCCEEDED);
+            assertThat(row.toolName()).isEqualTo("shell");
+        });
+        assertThat(page.items().getFirst().summary()).isEqualTo("result-99");
+        assertThat(page.items().getLast().summary()).isEqualTo("result-0");
+        long selects = mockingDetails(jdbc).getInvocations().stream()
+                .filter(call -> call.getMethod().getName().equals("query") && call.getMethod().isVarArgs())
+                .filter(call -> call.getArgument(0) instanceof String sql && sql.startsWith("SELECT"))
+                .count();
+        assertThat(selects).isEqualTo(2);
+    }
+
+    @Test void batchAttemptsAreScopedBoundedAndExcludeDeletedRows() {
+        var first = store.begin(identity("first"));
+        var second = store.begin(identity("second"));
+        var foreign = store.begin(new ExecutionIdentity(2L, "other", "native", null, "foreign", "foreign",
+                1, null, "shell", null, null, null, null, null, null, "owner"));
+        jdbc.update("UPDATE mate_execution_attempt SET deleted=1 WHERE id=?", second.id());
+        assertThat(store.findAttempts(1L, "conversation", List.of(first.id(), first.id(), second.id(), foreign.id())))
+                .containsOnlyKeys(first.id());
+        assertThat(store.findAttempts(1L, "other", List.of(first.id()))).isEmpty();
+        assertThat(store.findAttempts(2L, "conversation", List.of(first.id()))).isEmpty();
+        clearInvocations(jdbc);
+        assertThat(store.findAttempts(1L, "conversation", List.of())).isEmpty();
+        assertThatThrownBy(() -> store.findAttempts(1L, "conversation", Collections.nCopies(101, first.id())))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(jdbc);
+    }
+
     private ExecutionIdentity identity(String invocation) {
         return new ExecutionIdentity(1L,"conversation","native","session",invocation,invocation,1,"provider-id","shell",null,null,null,null,null,null,"owner");
     }
