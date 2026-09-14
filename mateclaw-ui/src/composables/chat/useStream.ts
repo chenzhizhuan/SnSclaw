@@ -85,6 +85,13 @@ export type SSEEventType =
   // carries preTokens/postTokens/messagesSummarized/tailKept/etc.
   | 'compact_status'
   | 'context_usage'
+  // Client-generated, NOT a server event: the SSE connection closed without a
+  // terminal envelope (`done` / `error`). Raised by connect()'s read loop when
+  // the response body ends mid-turn — the backend's 10-minute Utf8SseEmitter
+  // cap, a proxy idle timeout, or a network blip. Callers use it to re-attach
+  // to the still-running backend stream instead of freezing the turn (and
+  // letting the tracker reclaim + cancel the run as an orphan).
+  | 'stream_closed'
 
 export interface SSEEvent {
   type: SSEEventType
@@ -224,6 +231,22 @@ export function useStream(options: UseStreamOptions): UseStreamReturn {
   let streamTimeoutTimer: ReturnType<typeof setTimeout> | null = null
   // 提高到 120 秒（后端心跳每 10 秒一次，任何心跳都会重置此计时器）
   const STREAM_TIMEOUT_MS = 120_000
+  /**
+   * Monotonic id of the current connection attempt. A read loop that finishes
+   * after a newer connect() started must not report its own closure — the newer
+   * connection owns the shared handler state now.
+   */
+  let connectSeq = 0
+  /**
+   * The server sent a terminal envelope (`done` / `error`) on this connection.
+   * An EOF without one means the socket was cut mid-turn (10-minute emitter cap,
+   * proxy idle timeout, network blip) and the caller may want to re-attach.
+   */
+  let sawTerminalEvent = false
+  /** disconnect()/abort() was called locally — a closed socket is expected. */
+  let abortedLocally = false
+  /** The local no-data watchdog aborted the socket; the backend may still run. */
+  let timedOutLocally = false
   
   // 事件处理器存储
   const eventHandlers = new Map<SSEEventType, Set<(data: any) => void>>()
@@ -246,6 +269,11 @@ export function useStream(options: UseStreamOptions): UseStreamReturn {
 
   // 触发事件
   const emit = (event: SSEEvent) => {
+    // A server terminal envelope ends the turn; its absence at EOF is exactly
+    // what makes a silent cut detectable (see the `stream_closed` emit in read()).
+    if (event.type === 'done' || event.type === 'error') {
+      sawTerminalEvent = true
+    }
     // De-dup by server-assigned id. Events without an id (legacy / heartbeat)
     // bypass — they're either idempotent or carry their own dedup logic.
     if (event.id) {
@@ -286,6 +314,22 @@ export function useStream(options: UseStreamOptions): UseStreamReturn {
     }
   }
 
+  /**
+   * Deliver a client-generated lifecycle event to its typed handlers only.
+   * It never touches the wire, the id / lastEventId bookkeeping, or the global
+   * (`onEvent`) bus — global listeners model *server* events, so a synthetic
+   * event must not show up there (id-only consumers iterate that bus).
+   */
+  const deliverLocalEvent = (event: SSEEvent) => {
+    eventHandlers.get(event.type)?.forEach(handler => {
+      try {
+        handler(event.data)
+      } catch (e) {
+        console.error('Stream event handler error:', e)
+      }
+    })
+  }
+
   // 处理 SSE 数据
   const processChunk = (chunk: string) => {
     const events = parser.parse(chunk)
@@ -303,6 +347,13 @@ export function useStream(options: UseStreamOptions): UseStreamReturn {
   const connect = async (body?: any) => {
     // 断开已有连接
     disconnect()
+
+    // This attempt owns the lifecycle flags; the previous attempt's read loop
+    // must not report a closure (or a watchdog timeout) for the new connection.
+    const attemptSeq = ++connectSeq
+    sawTerminalEvent = false
+    abortedLocally = false
+    timedOutLocally = false
 
     parser = new SSEParser()
     error.value = null
@@ -405,15 +456,15 @@ export function useStream(options: UseStreamOptions): UseStreamReturn {
         if (streamTimeoutTimer) clearTimeout(streamTimeoutTimer)
         streamTimeoutTimer = setTimeout(() => {
           if (isReceiving.value && abortController) {
+            // No server data at all (not even a heartbeat) for STREAM_TIMEOUT_MS.
+            // Abort the socket and let the read loop report it as a silent cut so
+            // the caller can re-attach to the still-running backend stream —
+            // failing the turn outright here marked long runs as failed even
+            // though the backend was alive. If the backend is really gone, the
+            // re-attach fails fast with an `error` event instead.
+            console.warn('[useStream] no data for %dms — treating as a stream cut', STREAM_TIMEOUT_MS)
+            timedOutLocally = true
             abortController.abort()
-            const timeoutInfo: ChatErrorInfo = {
-              category: 'timeout',
-              rawMessage: 'Stream timeout: no data received',
-              retryable: true,
-              timestamp: Date.now(),
-            }
-            error.value = Object.assign(new Error('Stream timeout'), { errorInfo: timeoutInfo })
-            emit({ type: 'error', data: { message: 'Stream timeout', errorInfo: timeoutInfo } })
           }
         }, STREAM_TIMEOUT_MS)
       }
@@ -424,6 +475,8 @@ export function useStream(options: UseStreamOptions): UseStreamReturn {
 
       // 读取循环
       const read = async () => {
+        // Set only when the loop ends cleanly (EOF) without a terminal envelope.
+        let endedSilently = false
         try {
           while (true) {
             const { done, value } = await reader.read()
@@ -446,10 +499,15 @@ export function useStream(options: UseStreamOptions): UseStreamReturn {
           // flush 剩余事件
           const flushEvents = parser.flush()
           flushEvents.forEach(emit)
+
+          // EOF with no `done` / `error`: the connection was cut mid-turn.
+          endedSilently = !sawTerminalEvent
           
         } catch (e) {
           if (e instanceof Error && e.name === 'AbortError') {
-            // 用户主动中止，不是错误
+            // User/teardown abort → nothing to report. A *watchdog* abort is
+            // different: the backend may still be running, so report it as a cut.
+            endedSilently = timedOutLocally && !abortedLocally
             return
           }
           throw e
@@ -457,6 +515,17 @@ export function useStream(options: UseStreamOptions): UseStreamReturn {
           isReceiving.value = false
           isConnected.value = false
           reader.releaseLock()
+          // Only the newest connection may speak for the handler state, and only
+          // an unrequested, terminal-less close counts as a cut.
+          if (endedSilently && !abortedLocally && attemptSeq === connectSeq) {
+            deliverLocalEvent({
+              type: 'stream_closed',
+              data: {
+                conversationId: incomingConv,
+                reason: timedOutLocally ? 'no-data' : 'eof',
+              },
+            })
+          }
         }
       }
 
@@ -495,6 +564,7 @@ export function useStream(options: UseStreamOptions): UseStreamReturn {
 
   // 断开连接
   const disconnect = () => {
+    abortedLocally = true
     if (streamTimeoutTimer) {
       clearTimeout(streamTimeoutTimer)
       streamTimeoutTimer = null

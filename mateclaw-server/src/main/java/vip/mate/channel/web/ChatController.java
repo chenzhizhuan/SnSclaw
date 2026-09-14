@@ -82,6 +82,24 @@ public class ChatController {
     private final ExecutorService sseExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     /**
+     * Chat SSE async timeout (ms). Servlet semantics: {@code <= 0} means "no
+     * timeout at all". Default 600000 (10 minutes) — enough for interactive
+     * turns, but it is a **wall-clock cap on the whole connection** that
+     * heartbeats cannot extend, so a longer agent turn is cut mid-flight (the
+     * browser re-attaches automatically; see useStream's `stream_closed`).
+     * Long-task deployments should raise it.
+     */
+    @org.springframework.beans.factory.annotation.Value("${mateclaw.webchat.sse-timeout-ms:600000}")
+    private long sseTimeoutMs = 600_000L;
+
+    /** Startup banner: see ChatStreamTracker#logStaleRunPolicy. */
+    @jakarta.annotation.PostConstruct
+    void logSseTimeout() {
+        log.info("[SSE] chat stream emitter timeout={}ms{}", sseTimeoutMs,
+                sseTimeoutMs <= 0 ? " (no wall-clock cap)" : "");
+    }
+
+    /**
      * SSE 流式对话（支持断线重连）
      * <p>
      * 正常请求：保存用户消息，启动 Flux 生产者，通过 StreamTracker 广播事件。
@@ -95,9 +113,11 @@ public class ChatController {
             Authentication auth) {
 
         String conversationId = request.getConversationId() != null ? request.getConversationId() : "default";
-        // SSE 超时设为 10 分钟，覆盖 servlet 默认的 30s，避免长回答被中断
+        // SSE 超时默认 10 分钟（覆盖 servlet 默认的 30s），可由
+        // mateclaw.webchat.sse-timeout-ms 调整（<=0 = 不做 wall-clock 上限）。
+        // 注意这是**整条连接的 wall-clock 上限**，心跳延长不了它：长任务部署要调大。
         // RFC-058 PR-1: Utf8SseEmitter 显式声明 charset=UTF-8，防止中文在 Windows 中文 Chrome / 部分代理处乱码
-        SseEmitter emitter = new Utf8SseEmitter(10 * 60 * 1000L);
+        SseEmitter emitter = new Utf8SseEmitter(sseTimeoutMs);
 
         // Resolve the public base URL on THIS (request) thread. Every agent run
         // below is dispatched to sseExecutor / reactive callbacks that run off

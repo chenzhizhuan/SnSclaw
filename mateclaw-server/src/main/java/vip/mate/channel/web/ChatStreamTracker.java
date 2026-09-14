@@ -265,6 +265,13 @@ public class ChatStreamTracker {
          */
         volatile Long subscribersZeroSince;
 
+        /**
+         * Latches the one-time "kept the orphaned run alive" log line when the
+         * keep-alive policy applies; the sweep runs every
+         * {@link #STALE_RUN_SWEEP_INTERVAL_MS} and must not log once per pass.
+         */
+        volatile boolean orphanKeepNoticed;
+
         /** Bound agent identifier; null while not yet resolved. */
         volatile Long agentId;
 
@@ -2055,6 +2062,51 @@ public class ChatStreamTracker {
     private int orphanGraceSeconds = 120;
 
     /**
+     * Orphan policy switch.
+     * <p>
+     * {@code true} (default = upstream #587): a still-running turn whose
+     * subscriber list has been empty past {@link #orphanGraceSeconds} is
+     * reclaimed — subscribers closed and the Flux disposed, which also cancels
+     * whatever the run drives (for {@code runtime_type=dsh} that kills the DSH
+     * child process mid-task, losing the turn).
+     * <p>
+     * {@code false}: the run is allowed to outlive its subscribers. A closed
+     * browser tab or a dropped connection then costs the live view, not the
+     * task — the original request keeps accumulating the assistant reply and
+     * persists it on completion, and a later re-attach / page refresh picks the
+     * finished message up. Runs kept this way stay bounded by
+     * {@link #orphanRunCapMinutes} and by {@link #idleTimeoutMinutes}.
+     * <p>
+     * Long-agent-turn deployments (DSH-backed tasks, consulting pipelines) want
+     * {@code false}: those turns routinely run past any interactive grace window
+     * and a single tool call can stay silent for minutes.
+     */
+    @org.springframework.beans.factory.annotation.Value("${mateclaw.webchat.orphan-reclaim:true}")
+    private boolean orphanReclaimEnabled = true;
+
+    /**
+     * Absolute wall-clock ceiling (minutes) for an orphaned run kept alive by
+     * {@code mateclaw.webchat.orphan-reclaim=false}. Reached → the run is
+     * reclaimed exactly like the #587 policy would (emergency save + dispose),
+     * so a wedged agent cannot burn tokens forever once nobody is watching.
+     * Ignored when {@code orphan-reclaim=true}. Default 60.
+     */
+    @org.springframework.beans.factory.annotation.Value("${mateclaw.webchat.orphan-run-cap-minutes:60}")
+    private int orphanRunCapMinutes = 60;
+
+    /**
+     * Startup banner for the stale-run policy. None of these values is visible
+     * in the admin UI, and Spring's relaxed env binding is easy to get wrong
+     * (a misnamed variable silently falls back to the default), so log the
+     * effective policy once at boot.
+     */
+    @jakarta.annotation.PostConstruct
+    void logStaleRunPolicy() {
+        log.info("[SSE] stale-run policy: idle={}min, orphanGrace={}s, orphanReclaim={}, orphanRunCap={}min",
+                idleTimeoutMinutes, orphanGraceSeconds, orphanReclaimEnabled, orphanRunCapMinutes);
+    }
+
+    /**
      * Test hook — backdates the {@code lastEventAt} timestamp on an
      * existing RunState so {@link #cleanupStaleRuns()} can be exercised
      * deterministically without sleeping for minutes. Package-private on
@@ -2113,13 +2165,25 @@ public class ChatStreamTracker {
         this.orphanGraceSeconds = seconds;
     }
 
+    /** Test hook — switch the orphan policy in pure-unit tests that bypass Spring. */
+    void setOrphanReclaimEnabledForTesting(boolean enabled) {
+        this.orphanReclaimEnabled = enabled;
+    }
+
+    /** Test hook — override the orphan run cap in pure-unit tests that bypass Spring. */
+    void setOrphanRunCapMinutesForTesting(int minutes) {
+        this.orphanRunCapMinutes = minutes;
+    }
+
     /**
      * 定期清理过期的 RunState，防止内存泄漏。
      * - 已完成超过 {@link #DONE_RETENTION_MS} 的 → 移除
      * - 自 {@link RunState#lastEventAt} 算起静默超过
      *   {@link #idleTimeoutMinutes} 分钟的 → 强制移除（视为卡死）
      * - 订阅者清零超过 {@link #orphanGraceSeconds} 且仍在运行的孤儿 →
-     *   移除（webchat 无重连端点，运行对调用方不可见不可达，见 #587）
+     *   按 {@link #orphanReclaimEnabled} 决定：默认回收（webchat 无重连端点，
+     *   运行对调用方不可见不可达，见 #587）；关闭时保留运行（只断视图、不杀任务），
+     *   由 {@link #orphanRunCapMinutes} 的 wall-clock 上限兜底
      */
     @org.springframework.scheduling.annotation.Scheduled(
             fixedDelay = STALE_RUN_SWEEP_INTERVAL_MS)
@@ -2147,13 +2211,39 @@ public class ChatStreamTracker {
                     } else if (!state.done && state.subscribers.isEmpty()
                             && orphanSince != null && orphanMs > orphanGraceMs) {
                         // Orphan: subscriber list empty longer than the grace window
-                        // while the agent Flux is still running. Invisible + (for
-                        // webchat) unreachable, so reclaim it instead of letting it
-                        // burn tokens until the idle sweep (issue #587). A run that's
-                        // actively producing events is NOT exempt — the whole point is
-                        // nobody is watching those events.
-                        reason = "orphaned: no subscribers for " + (orphanMs / 1000)
-                                + "s (grace " + orphanGraceSeconds + "s); run still active";
+                        // while the agent Flux is still running.
+                        if (orphanReclaimEnabled) {
+                            // Upstream #587: invisible + (for webchat) unreachable, so
+                            // reclaim it instead of letting it burn tokens until the
+                            // idle sweep. A run that's actively producing events is
+                            // NOT exempt — the whole point is nobody is watching them.
+                            reason = "orphaned: no subscribers for " + (orphanMs / 1000)
+                                    + "s (grace " + orphanGraceSeconds + "s); run still active";
+                        } else if (age > (long) orphanRunCapMinutes * 60_000L) {
+                            // Keep-alive policy: a run may outlive its subscribers so a
+                            // long agent turn (e.g. a DSH child process) is not killed
+                            // mid-task, but the absolute wall-clock cap still reclaims a
+                            // wedged one.
+                            reason = "orphaned past the run cap: no subscribers for "
+                                    + (orphanMs / 1000) + "s, run age " + (age / 1000)
+                                    + "s (cap " + orphanRunCapMinutes + "min)";
+                        } else {
+                            if (!state.orphanKeepNoticed) {
+                                state.orphanKeepNoticed = true;
+                                log.info("[SSE] Keeping orphaned run alive "
+                                                + "(mateclaw.webchat.orphan-reclaim=false): conversation={}, "
+                                                + "no subscribers for {}s, run age {}s, cap {}min",
+                                        entry.getKey(), orphanMs / 1000, age / 1000, orphanRunCapMinutes);
+                            }
+                            // Keep-alive must NOT disable the idle backstop: an orphaned
+                            // run that stopped producing events entirely is wedged, not
+                            // merely unwatched, so the idle rule still fires.
+                            if (idleMs > idleThresholdMs) {
+                                reason = "idle for " + (idleMs / 1000) + "s (threshold "
+                                        + idleTimeoutMinutes + "min); total wall-clock age "
+                                        + (age / 1000) + "s (orphaned, kept alive)";
+                            }
+                        }
                     } else if (idleMs > idleThresholdMs) {
                         reason = "idle for " + (idleMs / 1000) + "s (threshold "
                                 + idleTimeoutMinutes + "min); total wall-clock age "

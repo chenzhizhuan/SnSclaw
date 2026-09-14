@@ -45,7 +45,8 @@ class ChatControllerDurableQueueTest {
         ChatController controller = new ChatController(agents, conversations, approvals, streams,
                 new ObjectMapper(), mock(ConversationCompletionPublisher.class),
                 mock(MemoryOwnerResolver.class), mock(ChatUploadLocationResolver.class),
-                mock(OfficePreviewService.class), queue);
+                mock(OfficePreviewService.class), queue,
+                mock(vip.mate.tts.TtsService.class));
         ChatController.InterruptRequest request = new ChatController.InterruptRequest();
         request.setMessage("follow-up");
         request.setAgentId(2L);

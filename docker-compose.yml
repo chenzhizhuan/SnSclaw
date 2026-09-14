@@ -184,6 +184,44 @@ services:
       #   - LAN index:      PIP_INDEX_URL=http://192.168.1.100:8080/simple (trusted-host derived)
       PIP_INDEX_URL: ${PIP_INDEX_URL:-}
       PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-}
+      # Webchat SSE: how long a RUNNING agent turn may stay with zero SSE
+      # subscribers before ChatStreamTracker's stale-run sweeper reacts
+      # (mateclaw.webchat.orphan-grace-sec, upstream default 120s).
+      # With MATECLAW_WEBCHAT_ORPHAN_RECLAIM=false below, passing this grace no
+      # longer reclaims anything — it only (a) emits the one-time
+      # "[SSE] Keeping orphaned run alive" log and (b) lets the absolute
+      # orphan-run cap start applying. 1800 was a round-1 stopgap before the
+      # keep-alive policy existed; back to the upstream default now.
+      #
+      # Subscribers legitimately vanish mid-turn: the user switches browser
+      # tabs, the network blips, or the SSE connection hits the 10-minute
+      # Utf8SseEmitter hard timeout in ChatController. Reclaiming DISPOSES the
+      # run — and for runtime_type=dsh that kills the child DSH process
+      # mid-task (DshRuntimeService.cancelProcess) with no way to resume, so a
+      # long turn dies half-finished ("interrupted_shutdown" in mate_message).
+      # DSH turns sit silent for minutes inside a single tool call and
+      # consulting_design_team runs well past the 10-minute SSE cap, so the
+      # 120s default was killing real work. 1800s lets an orphaned turn run to
+      # completion; a run that emits no events at all is still reclaimed by
+      # mateclaw.sse.idle-timeout-minutes (30 min).
+      #
+      # NOTE: SystemEnvironmentPropertySource maps this env name to the
+      # property literally — hyphens become underscores
+      # (MATECLAW_WEBCHAT_ORPHANGRACESEC would NOT bind).
+      MATECLAW_WEBCHAT_ORPHAN_GRACE_SEC: ${MATECLAW_WEBCHAT_ORPHAN_GRACE_SEC:-120}
+      # --- 长任务根治（见 platform/DSH-BRIDGE-DIAGNOSIS.md 第十一节）---
+      # 1) 单条 SSE 连接的 wall-clock 上限。心跳延长不了它，到点必断流（前端会自动
+      #    重连，但缓存了旧页面的客户端不会）。默认 600000（10 分钟）；长任务调大。
+      MATECLAW_WEBCHAT_SSE_TIMEOUT_MS: ${MATECLAW_WEBCHAT_SSE_TIMEOUT_MS:-7200000}
+      # 2) 无人订阅的运行不再被"孤儿回收"杀掉：只断视图、不杀任务，运行照常完成并把
+      #    完整回复落库（runtime_type=dsh 的 DSH 子进程因此不会被 destroyForcibly）。
+      #    默认 true = 上游 #587 行为；本部署置 false 启用保活。
+      MATECLAW_WEBCHAT_ORPHAN_RECLAIM: ${MATECLAW_WEBCHAT_ORPHAN_RECLAIM:-false}
+      # 3) 保活策略下的绝对 wall-clock 上限（分钟）：卡死的运行仍会被回收。
+      MATECLAW_WEBCHAT_ORPHAN_RUN_CAP_MINUTES: ${MATECLAW_WEBCHAT_ORPHAN_RUN_CAP_MINUTES:-120}
+      # 4) 静默兜底：完全没有事件超过这么久视为卡死（心跳不算活动）。DSH 单个长工具
+      #    调用可能静默十几分钟，故从默认 30 分钟提到 90 分钟。
+      MATECLAW_SSE_IDLE_TIMEOUT_MINUTES: ${MATECLAW_SSE_IDLE_TIMEOUT_MINUTES:-120}
     # Chromium needs a real /dev/shm. Docker defaults to 64MB which causes
     # SIGBUS / "Target page closed" errors under load. 2GB is the usual
     # recommendation for Playwright / headless chrome.
