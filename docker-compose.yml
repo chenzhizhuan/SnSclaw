@@ -222,6 +222,8 @@ services:
       # 4) 静默兜底：完全没有事件超过这么久视为卡死（心跳不算活动）。DSH 单个长工具
       #    调用可能静默十几分钟，故从默认 30 分钟提到 90 分钟。
       MATECLAW_SSE_IDLE_TIMEOUT_MINUTES: ${MATECLAW_SSE_IDLE_TIMEOUT_MINUTES:-120}
+      # DSH 工作根：建用户时在其下创建以用户名命名的目录，DSH 员工默认以此为工作目录。
+      MATECLAW_AGENT_RUNTIME_DSH_WORKSPACE_ROOT: ${MATECLAW_AGENT_RUNTIME_DSH_WORKSPACE_ROOT:-/app/data/workspace}
     # Chromium needs a real /dev/shm. Docker defaults to 64MB which causes
     # SIGBUS / "Target page closed" errors under load. 2GB is the usual
     # recommendation for Playwright / headless chrome.

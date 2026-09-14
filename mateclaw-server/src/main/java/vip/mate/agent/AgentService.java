@@ -90,6 +90,13 @@ public class AgentService {
     private vip.mate.agent.runtime.dsh.DshRuntimeService dshRuntimeService;
 
     /**
+     * DSH 工作目录解析：员工级显式路径优先，其次落到创建者的用户目录。
+     * 可选注入以兼容既有测试构造器；缺失时退回旧逻辑。
+     */
+    @Autowired(required = false)
+    private vip.mate.agent.runtime.dsh.DshWorkspaceDirectoryService dshWorkspaceDirectoryService;
+
+    /**
      * Runtime Agent instance cache. Keyed first by agentId, then by a model
      * key, so a conversation that pins a non-default model gets its own graph
      * variant instead of mutating the one every other conversation shares.
@@ -776,6 +783,10 @@ public class AgentService {
     }
 
     private Path dshWorkingDirectory(AgentEntity agent) {
+        if (dshWorkspaceDirectoryService != null) {
+            return dshWorkspaceDirectoryService.resolveForAgent(agent);
+        }
+        // 兜底：服务未装配（如测试上下文）时保留旧行为。
         String configured = System.getenv().getOrDefault("DSH_CWD", System.getProperty("user.dir"));
         if (agent.getWorkspaceBasePath() != null && !agent.getWorkspaceBasePath().isBlank()) {
             configured = agent.getWorkspaceBasePath().trim();
