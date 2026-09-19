@@ -275,6 +275,15 @@ export const skillApi = {
    * re-resolve the skill.
    */
   listFiles: (id: string | number) => http.get(`/skills/${id}/files`),
+  uploadFile: (id: string | number, file: File, path: string, overwrite = false) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('path', path)
+    form.append('overwrite', String(overwrite))
+    return http.post(`/skills/${id}/files/upload`, form, { timeout: 120000 })
+  },
+  downloadFile: (id: string | number, path: string): Promise<Blob> =>
+    http.get(`/skills/${id}/files/download`, { params: { path }, responseType: 'blob' }) as unknown as Promise<Blob>,
   getFileContent: (id: string | number, path: string) =>
     http.get(`/skills/${id}/files/content`, { params: { path } }),
   saveFileContent: (id: string | number, path: string, content: string) =>
@@ -1786,6 +1795,7 @@ export interface GoalCriterion {
 }
 
 export interface Goal {
+  jsonAcceptanceRequired?: boolean
   id: string
   conversationId: string
   agentId: string
@@ -1842,6 +1852,9 @@ export const goalApi = {
 
   findActive: (conversationId: string) =>
     http.get<Goal | null>(`/goals/by-conversation/${encId(conversationId)}`),
+
+  history: (conversationId: string, beforeId?: string) =>
+    http.get<Goal[]>(`/goals/by-conversation/${encId(conversationId)}/history`, { params: { beforeId, limit: 20 } }),
 
   get: (id: string) => http.get<Goal>(`/goals/${id}`),
 

@@ -89,6 +89,12 @@ public class AgentService {
     @Autowired(required = false)
     private vip.mate.agent.runtime.dsh.DshRuntimeService dshRuntimeService;
 
+    @Autowired
+    private vip.mate.agent.runtime.dsh.DshConversationHistory dshConversationHistory;
+
+    @Autowired(required = false)
+    private vip.mate.goal.service.GoalApprovalReplayStream goalApprovalReplay;
+
     /**
      * DSH 工作目录解析：员工级显式路径优先，其次落到创建者的用户目录。
      * 可选注入以兼容既有测试构造器；缺失时退回旧逻辑。
@@ -424,7 +430,8 @@ public class AgentService {
                                     dshAgent.getModelName(), dshWorkingDirectory(dshAgent),
                                     dshWorkingDirectory(dshAgent)),
                             connection -> vip.mate.agent.runtime.RuntimeEventStreamAdapter.adapt(
-                                    connection.prompt(msg)),
+                                    connection.prompt(dshConversationHistory.enrich(
+                                            convId, message, msg, origin))),
                             connection -> connection.close()),
                     StreamDelta::content)
                     .doFinally(signal -> ThinkingLevelHolder.clear());
@@ -553,6 +560,22 @@ public class AgentService {
         trackMemoryRecalls(agentId, userMessage, origin);
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
         ChatOrigin captured = origin != null ? origin : ChatOrigin.EMPTY;
+        if (goalApprovalReplay != null && goalApprovalReplay.applies(captured)) {
+            return Flux.using(() -> acquireTurn(conversationId), permit ->
+                    goalApprovalReplay.replay(captured, toolCallPayload, fresh -> {
+                        ChatOrigin previous = ChatOriginHolder.get();
+                        ChatOriginHolder.set(fresh);
+                        try {
+                            return vip.mate.agent.context.GoalContinuationContext.call(true, () ->
+                                    invokeWithLifecycleFlux(agentId, userMessage, conversationId,
+                                            (msg, convId) -> agent.chatWithReplayStream(msg, convId, toolCallPayload,
+                                                    requesterId != null ? requesterId : ""), StreamDelta::content));
+                        } finally {
+                            if (previous == ChatOrigin.EMPTY) ChatOriginHolder.clear();
+                            else ChatOriginHolder.set(previous);
+                        }
+                    }), vip.mate.agent.runtime.ConversationTurnGate.Permit::close);
+        }
         return Flux.defer(() -> {
                     ChatOriginHolder.set(captured);
                     return withLifecycleFlux(agentId, userMessage, conversationId,

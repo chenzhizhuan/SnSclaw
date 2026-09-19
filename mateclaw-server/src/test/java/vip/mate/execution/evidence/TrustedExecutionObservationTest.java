@@ -14,6 +14,9 @@ import vip.mate.i18n.I18nService;
 import vip.mate.tool.builtin.ShellExecuteTool;
 import vip.mate.tool.document.GeneratedFileCache;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.Executors;
@@ -87,6 +90,31 @@ class TrustedExecutionObservationTest {
         var missing = new ExecutionObservationSink(false);
         new GeneratedFileCache(bad).put("report".getBytes(), "report.txt", "text/plain", context(missing));
         assertTrue(missing.observations().isEmpty());
+    }
+
+    @Test void snapshotDigestKeepsMatchingHotCacheAfterCallerMutations() throws Exception {
+        var sink = new ExecutionObservationSink(false);
+        var cache = new GeneratedFileCache(root.resolve("cache"));
+        byte[] input = "registered report".getBytes(StandardCharsets.UTF_8);
+        String id = cache.put(input, "report.txt", "text/plain", context(sink));
+        String recordedDigest = sink.observations().getFirst().artifactDigest();
+        input[0] = 'X';
+        cache.get(id).orElseThrow().bytes()[1] = 'Y';
+        byte[] downloaded = cache.get(id).orElseThrow().bytes();
+        assertEquals(recordedDigest, HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(downloaded)));
+        assertArrayEquals(new GeneratedFileCache(root.resolve("cache")).get(id).orElseThrow().bytes(), downloaded);
+    }
+
+    @Test void laterSuccessfulProcessCannotEraseEarlierFailureInSameInvocation() {
+        var sink = new ExecutionObservationSink(false);
+        var ctx = context(sink);
+        shell().execute_shell_command("exit 7", 5, ctx);
+        shell().execute_shell_command("exit 0", 5, ctx);
+        assertEquals(AttemptState.FAILED, sink.state());
+        assertEquals(2, sink.observations().size());
+        assertEquals(EvidenceResult.FAIL, sink.observations().getFirst().result());
+        assertEquals(EvidenceResult.OBSERVED, sink.observations().getLast().result());
+        assertNotEquals(sink.observations().getFirst().sourceKey(), sink.observations().getLast().sourceKey());
     }
 
     private ShellExecuteTool shell() {

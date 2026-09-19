@@ -100,6 +100,7 @@ class ExecutionEvidenceQueryTest {
         assertEquals("UNAVAILABLE", unavailable.validity());
         assertNull(unavailable.artifactRef());
         assertNull(unavailable.artifactDigest());
+        verifyNoInteractions(files);
     }
 
     @Test void emptyPageDoesNotLoadAttempts() {
@@ -133,6 +134,77 @@ class ExecutionEvidenceQueryTest {
         when(store.findAttempts(1L, "conv", List.of(1L))).thenReturn(Map.of(1L, foreign));
         assertEquals(404, assertThrows(MateClawException.class,
                 () -> list("owner", 1L, "conv", null, null)).getCode());
+    }
+
+    @Test void detailDetectsChangedPersistedArtifact(@org.junit.jupiter.api.io.TempDir java.nio.file.Path root) throws Exception {
+        var cache = new GeneratedFileCache(root);
+        byte[] bytes = "original report".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        String artifactId = cache.put(bytes, "report.txt", "text/plain", new GeneratedFileCache.Owner(1L, 1L, "conv"));
+        String digest = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+        var observation = new EvidenceObservation("artifact:" + artifactId, EvidenceKind.ARTIFACT_SNAPSHOT,
+                EvidenceResult.OBSERVED, SourceLevel.PLATFORM_OBSERVED, null, null, null, null, null,
+                null, artifactId, digest, "registered file", null, Instant.now(), Instant.now().plusSeconds(3600));
+        when(store.findById(id)).thenReturn(Optional.of(new ExecutionEvidence(id, 1L, 1L, "conv", observation)));
+        var auth = mock(AuthService.class);
+        var admin = new vip.mate.auth.model.UserEntity();
+        admin.setId(1L); admin.setRole("admin");
+        when(auth.findByUsername("owner")).thenReturn(admin);
+        var properties = new ExecutionEvidenceProperties();
+        queries = new ExecutionEvidenceQueryService(store, conversations, teams, cache, auth,
+                mock(WorkspaceService.class), properties, new SimpleMeterRegistry());
+        assertEquals("UNKNOWN", queries.detail("owner", 1L, id).validity());
+        java.nio.file.Files.writeString(root.resolve(artifactId), "externally replaced");
+        assertEquals("STALE", queries.detail("owner", 1L, id).validity());
+        when(store.list(eq(1L), eq("conv"), isNull(), isNull(), eq(21), isNull(), isNull()))
+                .thenReturn(List.of(new ExecutionEvidence(id, 1L, 1L, "conv", observation)));
+        assertEquals("UNKNOWN", list("owner", 1L, "conv", null, 20).items().getFirst().validity(),
+                "pagination must remain metadata-only");
+        properties.setArtifactVersionCheckMaxBytes(0);
+        assertEquals("UNKNOWN", queries.detail("owner", 1L, id).validity());
+    }
+
+    @Test void jsonChecksAreSourceAuthorizedAndDoNotInspectUnavailableFiles() {
+        when(store.findById(id)).thenReturn(Optional.of(evidence(id)));
+        assertThrows(MateClawException.class, () -> queries.checkJson("stranger", 1L, id, List.of("report")));
+        assertThrows(MateClawException.class, () -> queries.checkJson("owner", 2L, id, List.of("report")));
+        assertEquals("UNAVAILABLE", queries.checkJson("owner", 1L, id, List.of("report")).status());
+        var artifact = new EvidenceObservation("artifact:private", EvidenceKind.ARTIFACT_SNAPSHOT,
+                EvidenceResult.OBSERVED, SourceLevel.PLATFORM_OBSERVED, null, null, null, null, null,
+                null, "private", "digest", "private metadata", null, now, null);
+        when(store.findById(id)).thenReturn(Optional.of(new ExecutionEvidence(id, 1L, 1L, "conv", artifact)));
+        assertEquals("UNAVAILABLE", queries.checkJson("owner", 1L, id, List.of("report")).status());
+        verifyNoInteractions(files);
+    }
+
+    @Test void jsonCheckUsesRealDurableBytesWithoutPromotingEvidence(@org.junit.jupiter.api.io.TempDir java.nio.file.Path root) throws Exception {
+        var cache = new GeneratedFileCache(root);
+        byte[] bytes = "{\"report\":true}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        String artifactId = cache.put(bytes, "report.json", "application/json", new GeneratedFileCache.Owner(1L, 1L, "conv"));
+        String digest = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+        var observation = new EvidenceObservation("artifact:" + artifactId, EvidenceKind.ARTIFACT_SNAPSHOT,
+                EvidenceResult.OBSERVED, SourceLevel.PLATFORM_OBSERVED, null, null, null, null, null,
+                null, artifactId, digest, "registered file", null, Instant.now(), Instant.now().plusSeconds(3600));
+        when(store.findById(id)).thenReturn(Optional.of(new ExecutionEvidence(id, 1L, 1L, "conv", observation)));
+        var auth = mock(AuthService.class);
+        var user = new vip.mate.auth.model.UserEntity(); user.setId(1L); user.setRole("user");
+        when(auth.findByUsername("owner")).thenReturn(user);
+        var workspaces = mock(WorkspaceService.class);
+        when(workspaces.hasPermissionCached(1L, 1L, "viewer")).thenReturn(true);
+        var properties = new ExecutionEvidenceProperties();
+        queries = new ExecutionEvidenceQueryService(store, conversations, teams, cache, auth,
+                workspaces, properties, new SimpleMeterRegistry());
+        var result = queries.checkJson("owner", 1L, id, List.of("report"));
+        assertEquals("MATCH", result.status());
+        assertFalse(result.acceptanceEligible());
+        assertEquals("UNKNOWN", queries.detail("owner", 1L, id).validity());
+        assertEquals("MISSING_FIELDS", queries.checkJson("owner", 1L, id, List.of("appendix")).status());
+        properties.setArtifactVersionCheckMaxBytes(0);
+        assertEquals("UNKNOWN", queries.checkJson("owner", 1L, id, List.of("report")).status());
+        properties.setArtifactVersionCheckMaxBytes(1024);
+        java.nio.file.Files.writeString(root.resolve(artifactId), "{\"report\":false}");
+        assertEquals("STALE", queries.checkJson("owner", 1L, id, List.of("report")).status());
+        when(workspaces.hasPermissionCached(1L, 1L, "viewer")).thenReturn(false);
+        assertEquals("UNAVAILABLE", queries.checkJson("owner", 1L, id, List.of("report")).status());
     }
 
     private ExecutionEvidenceQueryService.Page list(String user, Long workspace, String conversation, String cursor, Integer limit) {
