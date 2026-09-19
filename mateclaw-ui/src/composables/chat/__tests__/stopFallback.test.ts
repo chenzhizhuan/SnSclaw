@@ -15,6 +15,7 @@ const streamMock = vi.hoisted(() => {
       handlers.set(event, listeners)
       return () => listeners.delete(handler)
     }),
+    onEvent: vi.fn(() => () => {}),
   }
 })
 

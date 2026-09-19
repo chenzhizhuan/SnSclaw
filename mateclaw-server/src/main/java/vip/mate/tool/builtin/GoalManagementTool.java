@@ -166,7 +166,7 @@ public class GoalManagementTool {
                 true, "manual", 0, 0L,
                 java.util.List.of(), null);
         try {
-            GoalEntity completed = goalService.markCompleted(goal.getId(), synthetic);
+            GoalEntity completed = goalService.markRuntimeCompleted(goal.getId(), synthetic, ChatOrigin.from(ctx));
             // Broadcast a goal_completed event with the same shape as the
             // GoalEvaluationNode auto-completed path, so the frontend
             // handler doesn't need to branch on which path completed it.
@@ -222,6 +222,7 @@ public class GoalManagementTool {
         out.put("evalLlmCallsUsed", goal.getEvalLlmCallsUsed());
         out.put("totalLlmCallsUsed", goal.totalLlmCallsUsed());
         out.put("llmCallBudget", goal.getLlmCallBudget());
+        out.put("jsonAcceptanceRequired", goal.isJsonAcceptanceRequired());
         out.put("completionScore", goal.getCompletionScore());
         out.put("progressSummary", goal.getProgressSummary());
         out.put("autoFollowupEnabled", goal.getAutoFollowupEnabled());

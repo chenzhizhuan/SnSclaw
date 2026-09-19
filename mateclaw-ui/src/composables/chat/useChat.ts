@@ -98,6 +98,8 @@ export interface UseChatOptions {
    * The caller should perform history reconcile / persistence in this callback.
    */
   onStreamEnd?: (meta: StreamEndMeta) => void
+  /** A legacy queued message was saved as text but needs a fresh request. */
+  onQueuedInputSkipped?: (reason: string) => void
 }
 
 /** Metadata emitted when a stream ends */
@@ -220,7 +222,7 @@ export function buildChatStreamRequestBody(content: string, options: SendMessage
 }
 
 export function useChat(options: UseChatOptions): UseChatReturn {
-  const { baseUrl, token, onStreamEnd } = options
+  const { baseUrl, token, onStreamEnd, onQueuedInputSkipped } = options
   const thinkingLevelRef = options.thinkingLevel
 
   /**
@@ -485,6 +487,24 @@ export function useChat(options: UseChatOptions): UseChatReturn {
   ]
   const ASYNC_TOOL_NAMES = new Set(['music_generate', 'video_generate', 'image_generate', 'model3d_generate'])
   let reconnectingForAsyncTasks = false
+
+  // ===== Silent stream-cut auto re-attach =====
+  // One SSE connection is capped at 10 minutes by the backend (Utf8SseEmitter in
+  // ChatController) and proxies/nets can drop it sooner. Such a cut carries no
+  // protocol signal: no `done`, no `error`, the reader just sees EOF — useStream
+  // reports it as the synthetic `stream_closed` event. Re-attaching with
+  // reconnect=true replays only the events we have not seen (dedup state is
+  // preserved) and clears ChatStreamTracker's orphan clock, so a long DSH turn
+  // keeps streaming instead of freezing the UI and being reclaimed + cancelled
+  // a couple of minutes later.
+  const MAX_CUT_REATTACH_ATTEMPTS = 6
+  let cutReattachAttempts = 0
+  /**
+   * Identity of the turn allowed to auto re-attach. Bumped whenever a new turn
+   * (or an explicit user reconnect) starts, so a deferred re-attach can never
+   * hijack the connection of a newer turn.
+   */
+  let streamSessionToken = 0
 
   function extractTaskId(result: unknown): string | null {
     if (typeof result !== 'string') return null
@@ -817,13 +837,18 @@ export function useChat(options: UseChatOptions): UseChatReturn {
       currentAssistantId.value = null
     }
 
-    streamPhase.value = data.status === 'awaiting_approval' ? 'awaiting_approval'
+    streamPhase.value = errorFired ? 'idle'
+      : data.status === 'awaiting_approval' ? 'awaiting_approval'
       : data.status === 'stopped' ? 'stopped' : 'completed'
     if (data.status !== 'awaiting_approval') {
       phaseInfo.value = null
       compactStatus.value = null
       lifecycleStage.value = null
-      expirePendingApprovals(data.status === 'stopped' ? 'stopped' : 'completed')
+      // An error may be followed by a protocol-level done event. Its status
+      // does not resolve an approval or turn the failed request into success.
+      if (!errorFired) {
+        expirePendingApprovals(data.status === 'stopped' ? 'stopped' : 'completed')
+      }
     }
 
     // Safety cleanup for queue state (no-op if queued_input_started already handled it)
@@ -839,13 +864,15 @@ export function useChat(options: UseChatOptions): UseChatReturn {
       : data.status === 'interrupted' ? 'interrupted'
       : data.status === 'awaiting_approval' ? 'awaiting_approval'
       : 'completed'
-    onStreamEnd?.({
-      conversationId: data.conversationId || streamConversationId,
-      reason,
-      assistantMessageId: data.assistantMessageId,
-      persisted: data.persisted,
-      messageCount: data.messageCount,
-    })
+    if (!errorFired) {
+      onStreamEnd?.({
+        conversationId: data.conversationId || streamConversationId,
+        reason,
+        assistantMessageId: data.assistantMessageId,
+        persisted: data.persisted,
+        messageCount: data.messageCount,
+      })
+    }
 
     // Re-attach SSE if any generative task is still in flight, so the eventual
     // async_task_completed event reaches us live (otherwise the user has to
@@ -854,7 +881,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     const reconnectableStatus = !data.status
       || data.status === 'completed'
       || data.status === 'idle'
-    if (reconnectableStatus
+    if (!errorFired && reconnectableStatus
         && !reconnectingForAsyncTasks
         && pendingAsyncTaskIds.size > 0
         && streamConversationId) {
@@ -911,7 +938,8 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     lifecycleStage.value = null
     // Clear queue on error to avoid stale state
     messageQueue.clear()
-    expirePendingApprovals('failed')
+    // The approval may still be pending after a rejected request. The view
+    // reconciles it against the server's pending list in onStreamEnd.
 
     if (errorFired) return
     errorFired = true
@@ -922,6 +950,75 @@ export function useChat(options: UseChatOptions): UseChatReturn {
       persisted: data.persisted,
       messageCount: data.messageCount,
     })
+  })
+
+  // ===== Silent stream cut → transparent re-attach =====
+
+  /**
+   * The connection kept dying before the turn finished. Surface it instead of
+   * leaving the bubble spinning forever; the backend run may still be alive
+   * (mateclaw.webchat.orphan-grace-sec keeps it going), so a manual refresh or
+   * reconnect can still pick it up.
+   */
+  const failTurnAfterRepeatedCuts = (convId: string) => {
+    if (currentAssistantId.value) {
+      const msg = getMessage(currentAssistantId.value)
+      if (msg) {
+        updateMessage(currentAssistantId.value, {
+          ...msg,
+          status: 'failed',
+          errorInfo: {
+            category: 'timeout',
+            rawMessage: '连接反复中断，已停止自动重连',
+            retryable: true,
+            timestamp: Date.now(),
+          },
+        } as any)
+      } else {
+        setMessageStatus(currentAssistantId.value, 'failed')
+      }
+      currentAssistantId.value = null
+    }
+    streamPhase.value = 'failed'
+    error.value = new Error('连接反复中断，已停止自动重连')
+    onStreamEnd?.({ conversationId: convId, reason: 'error' })
+  }
+
+  // Any real server event proves the (re-attached) connection is making
+  // progress, so only *consecutive* silent cuts count against the cap.
+  // (`stream_closed` is client-generated and never reaches this global bus.)
+  stream.onEvent((event) => {
+    if (event.type !== 'heartbeat') {
+      cutReattachAttempts = 0
+    }
+  })
+
+  stream.on('stream_closed', (data) => {
+    const convId = data?.conversationId || streamConversationId
+    if (!convId || convId !== streamConversationId) return
+    // Terminal or user-driven phases: this turn is not ours to resume.
+    if (!isGenerating.value) return
+    if (streamPhase.value === 'interrupting' || streamPhase.value === 'stopped') return
+
+    if (cutReattachAttempts >= MAX_CUT_REATTACH_ATTEMPTS) {
+      console.warn('[useChat] giving up after %d consecutive stream cuts', cutReattachAttempts)
+      failTurnAfterRepeatedCuts(convId)
+      return
+    }
+    cutReattachAttempts += 1
+    const attempt = cutReattachAttempts
+    const token = streamSessionToken
+    // Defer one tick: the closing connection tears down shared useStream state in
+    // its own finally block, which would otherwise clear the fresh connection's
+    // abort controller / watchdog timer.
+    setTimeout(() => {
+      if (token !== streamSessionToken) return
+      if (convId !== streamConversationId || !isGenerating.value) return
+      console.info(`[useChat] stream cut mid-turn — re-attaching (attempt ${attempt})`)
+      streamPhase.value = 'reconnecting'
+      stream.connect({ conversationId: convId, reconnect: true })
+        .catch(() => { /* connect() already surfaced an 'error' event */ })
+    }, 0)
   })
 
   // ===== Agent event handlers =====
@@ -1830,6 +1927,19 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     lifecycleStage.value = { stage: 'connecting', since: Date.now() }
   })
 
+  stream.on('queued_input_skipped', (data) => {
+    if (isStaleEvent(data)) return
+    // The server saved this legacy queued input as user text without running
+    // it. Remove only that queue entry; later queued inputs may still run.
+    const queued = messageQueue.dequeue()
+    const content = data.message || queued?.content || ''
+    if (content) {
+      createUserMessage(content, queued?.contentParts, data.conversationId || streamConversationId)
+    }
+    streamPhase.value = messageQueue.hasQueued.value ? 'queued' : 'idle'
+    onQueuedInputSkipped?.(data.reason || '')
+  })
+
   // ===== Async task completion events (video / image / music generation) =====
   stream.on('async_task_completed', (data) => {
     if (isStaleEvent(data)) return
@@ -2006,6 +2116,9 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     error.value = null
     errorFired = false
     streamConversationId = conversationId
+    // New turn: any pending cut re-attach belongs to the previous turn.
+    streamSessionToken += 1
+    cutReattachAttempts = 0
     streamPhase.value = thinkingLevelRef?.value === 'off' ? 'streaming' : 'thinking'
     phaseInfo.value = null
     // Begin pre-token lifecycle. Subsequent stream_started / context_prepared /
@@ -2236,6 +2349,9 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     if (stopFallbackTimer) { clearTimeout(stopFallbackTimer); stopFallbackTimer = null }
     streamPhase.value = 'reconnecting'
     streamConversationId = conversationId
+    // Explicit user reconnect: it owns the turn from here on.
+    streamSessionToken += 1
+    cutReattachAttempts = 0
     error.value = null
     errorFired = false
     phaseInfo.value = null
@@ -2336,6 +2452,8 @@ export function useChat(options: UseChatOptions): UseChatReturn {
   /** Fully reset stream context — call when switching or creating a conversation to prevent state pollution */
   const resetForNewConversation = () => {
     stream.disconnect()
+    streamSessionToken += 1
+    cutReattachAttempts = 0
     streamConversationId = ''
     currentAssistantId.value = null
     currentSegments.value = []

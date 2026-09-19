@@ -33,6 +33,13 @@ public class AuthService {
     private final UserMapper userMapper;
     private final BCryptPasswordEncoder passwordEncoder;
 
+    /**
+     * DSH 工作目录服务：建用户时在 DSH 工作根下创建以用户名命名的目录。
+     * 字段注入以避免构造器环依赖；缺失时退化为"不建目录"而不影响建用户。
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private vip.mate.agent.runtime.dsh.DshWorkspaceDirectoryService dshWorkspaceDirectoryService;
+
     @Value("${mateclaw.jwt.secret:SnSclaw-Secret-Key-2024-Very-Long-String}")
     private String jwtSecret;
 
@@ -86,6 +93,11 @@ public class AuthService {
             user.setRole("user");
         }
         userMapper.insert(user);
+        // 建用户即在 DSH 工作根下建同名目录（如 /app/data/workspace/wangfan02）。
+        // 幂等且失败只告警：建用户不因目录创建失败而失败。
+        if (dshWorkspaceDirectoryService != null) {
+            dshWorkspaceDirectoryService.ensureUserDirectoryQuietly(user.getUsername());
+        }
         user.setPassword(null);
         return user;
     }
