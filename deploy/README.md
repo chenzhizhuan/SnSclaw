@@ -53,7 +53,7 @@ vi .env                 # 填 3 项配置
 | postgres | `snsclaw/postgres:16` | 19695 | 5432 |
 | searxng | `snsclaw/searxng:latest` | 不暴露 | 8080 |
 
-镜像仓库地址 `221.237.179.2:5000`。
+镜像仓库地址 `221.237.179.2:13400`。
 
 **容器端口不可改**（由镜像固定），只改 compose 里冒号左侧的宿主端口。
 例外：**1455 必须宿主与容器同号** —— OpenAI OAuth 回调 URL 写死了
@@ -195,15 +195,15 @@ Started MateClawApplication
 
 ```bash
 # 查看 registry 实际内容
-curl -u admin:<密码> http://221.237.179.2:5000/v2/_catalog
-curl -u admin:<密码> http://221.237.179.2:5000/v2/snsclaw/server/tags/list
+curl -u admin:<密码> http://221.237.179.2:13400/v2/_catalog
+curl -u admin:<密码> http://221.237.179.2:13400/v2/snsclaw/server/tags/list
 
 # 更新到指定版本（不要带 -amd64 / -arm64 后缀，脚本自动补）
 ./manage.sh update server:v1.0.5
 ```
 
 > 服务端推送时可用 `127.0.0.1:5000`（Docker 默认信任 localhost，无需改
-> daemon.json），但 **compose 里必须写 `221.237.179.2:5000`** —— 那是客户端
+> daemon.json），但 **compose 里必须写 `221.237.179.2:13400`** —— 那是客户端
 > 视角的地址。
 
 ---
@@ -251,15 +251,15 @@ docker compose build snsclaw-server
 
 # 2. 打架构后缀 tag —— 后缀必须与构建机架构一致
 case $(uname -m) in x86_64) SFX=-amd64;; aarch64) SFX=-arm64;; esac
-docker tag server:latest  221.237.179.2:5000/snsclaw/server:v1.0.5$SFX
-docker tag searxng:latest 221.237.179.2:5000/snsclaw/searxng:latest$SFX
-docker tag postgres:16            221.237.179.2:5000/snsclaw/postgres:16$SFX
+docker tag server:latest  221.237.179.2:13400/snsclaw/server:v1.0.5$SFX
+docker tag searxng:latest 221.237.179.2:13400/snsclaw/searxng:latest$SFX
+docker tag postgres:16            221.237.179.2:13400/snsclaw/postgres:16$SFX
 
 # 3. 推送
-docker login 221.237.179.2:5000 -u admin
-docker push 221.237.179.2:5000/snsclaw/server:v1.0.5$SFX
-docker push 221.237.179.2:5000/snsclaw/searxng:latest$SFX
-docker push 221.237.179.2:5000/snsclaw/postgres:16$SFX
+docker login 221.237.179.2:13400 -u admin
+docker push 221.237.179.2:13400/snsclaw/server:v1.0.5$SFX
+docker push 221.237.179.2:13400/snsclaw/searxng:latest$SFX
+docker push 221.237.179.2:13400/snsclaw/postgres:16$SFX
 ```
 
 **不要**把新架构的镜像推成无后缀 tag —— 那会覆盖另一架构的镜像，导致对方机器
@@ -328,7 +328,7 @@ Ubuntu 的 `docker.io` 包不含 compose 插件：
 
 **镜像拉取中途 `connection reset by peer`**
 网络不稳定。重跑即可，已下载的层会复用。若反复失败，先用 curl 验证链路：
-`curl -u admin:<密码> http://221.237.179.2:5000/v2/_catalog`
+`curl -u admin:<密码> http://221.237.179.2:13400/v2/_catalog`
 
 **应用连不上数据库 / Flyway 报权限错误**
 `docker/postgres/init/10-app-role.sh` 未随包上传，或在数据卷已存在后才补上。
