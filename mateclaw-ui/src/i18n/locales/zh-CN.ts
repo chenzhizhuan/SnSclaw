@@ -83,7 +83,7 @@ export default {
     validity: { UNKNOWN: '未知', UNAVAILABLE: '不可用', STALE: '已过期', VALID: '有效' },
   },
   app: {
-    title: '智算方舟 - AI 助手',
+    title: 'SnSclaw - AI 助手',
   },
   router: {
     chunkLoadFailed: '页面资源加载失败，请检查网络后重试',

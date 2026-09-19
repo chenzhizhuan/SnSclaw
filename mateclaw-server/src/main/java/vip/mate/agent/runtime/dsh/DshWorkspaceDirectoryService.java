@@ -18,7 +18,7 @@ import java.nio.file.Path;
  *
  * <p>职责有两个：</p>
  * <ol>
- *   <li>{@link #ensureUserDirectory(String)} —— 智算方舟建用户时调用，
+ *   <li>{@link #ensureUserDirectory(String)} —— SnSclaw建用户时调用，
  *       在 DSH 工作根下创建以**用户名**命名的目录（如 {@code /app/data/workspace/wangfan02}）；</li>
  *   <li>{@link #resolveForAgent(AgentEntity)} —— DSH 员工启动前解析其工作目录。</li>
  * </ol>
