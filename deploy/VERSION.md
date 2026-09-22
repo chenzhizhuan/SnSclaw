@@ -9,11 +9,11 @@
 |---|---|
 | 部署包版本 | 1.0.0 |
 | 更新日期 | 2026-08-21 |
-| registry | `221.237.179.2:5000` |
+| registry | `221.237.179.2:13400` |
 
 | 服务 | 镜像 | tag |
 |---|---|---|
-| snsclaw-server | `snsclaw/server` | `v1.0.4` |
+| snsclaw-server | `snsclaw/server` | `v1.0.5` |
 | postgres | `snsclaw/postgres` | `16` |
 | searxng | `snsclaw/searxng` | `latest` |
 
@@ -28,7 +28,7 @@
 - 三容器编排：server / postgres / searxng
 - 端口：19600（应用）、19695（数据库）、1455（OAuth 回调）
 - 脚本三件套：`prepare-host.sh` / `deploy.sh` / `manage.sh`
-- 镜像 tag：`server:v1.0.4`、`searxng:latest`、`postgres:16`
+- 镜像 tag：`server:v1.0.5`、`searxng:latest`、`postgres:16`
 
 已知问题见 README「已知问题」一节。
 

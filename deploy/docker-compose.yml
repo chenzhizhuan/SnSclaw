@@ -25,7 +25,7 @@ services:
   # Missing values fail `docker compose up` immediately, preventing default credentials
   # from leaking into production.
   postgres:
-    image: 221.237.179.2:5000/snsclaw/postgres:16${IMAGE_ARCH_SUFFIX:-}
+    image: 221.237.179.2:13400/snsclaw/postgres:16${IMAGE_ARCH_SUFFIX:-}
     container_name: snsclaw-postgres
     restart: unless-stopped
     environment:
@@ -68,7 +68,7 @@ services:
   searxng:
     # 定制镜像：上游镜像默认禁用 JSON 输出且启用 Limiter，会静默破坏搜索功能，
     # 该镜像已烘焙好 settings.yml。仅内部访问，不暴露宿主端口。
-    image: 221.237.179.2:5000/snsclaw/searxng:latest${IMAGE_ARCH_SUFFIX:-}
+    image: 221.237.179.2:13400/snsclaw/searxng:latest${IMAGE_ARCH_SUFFIX:-}
     container_name: snsclaw-searxng
     restart: unless-stopped
     environment:
@@ -87,7 +87,7 @@ services:
 
   # SnSclaw backend service
   snsclaw-server:
-    image: 221.237.179.2:5000/snsclaw/server:v1.0.4${IMAGE_ARCH_SUFFIX:-}
+    image: 221.237.179.2:13400/snsclaw/server:v1.0.5${IMAGE_ARCH_SUFFIX:-}
     container_name: snsclaw-server
     restart: unless-stopped
     depends_on:
