@@ -23,7 +23,7 @@
 - `src/qwenpaw/app/chats/session.py::SafeJSONSession.load_session_state` 从 JSON 恢复状态时未在该入口判定业务数据是否过期。
 - `ToolResultPruningConfig` 区分近期和较早的工具结果大小；`ScrollContextConfig.history_retention_days` 默认 30 天，管理持久历史保留。这些是上下文容量与存储管理机制，不能视为“查询数据在此时间内仍然有效”的承诺。
 
-借鉴其持久历史与活动上下文分离的思路，在 MateClaw 修复模型入口。本次未修改 QwenPaw 仓库。
+借鉴其持久历史与活动上下文分离的思路，在 SnSclaw 修复模型入口。本次未修改 QwenPaw 仓库。
 
 ## 当前修复
 

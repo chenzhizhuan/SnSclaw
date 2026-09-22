@@ -2053,7 +2053,7 @@ public class NodeStreamingChatHelper {
         if (lowerError.contains("unsupported parameter") || lowerError.contains("unsupported_parameter")
                 || lowerError.contains("unsupported value") || lowerError.contains("unsupported_value")) {
             if (lowerError.contains("max_tokens") && lowerError.contains("max_completion_tokens")) {
-                return "模型不支持 max_tokens，请改用 max_completion_tokens。请更新 MateClaw，并检查模型及提供商生成参数配置。";
+                return "模型不支持 max_tokens，请改用 max_completion_tokens。请更新 SnSclaw，并检查模型及提供商生成参数配置。";
             }
             for (String parameter : java.util.List.of("max_completion_tokens", "max_tokens", "temperature", "top_p",
                     "reasoning_effort", "stream_options", "parallel_tool_calls", "tool_choice", "response_format")) {
