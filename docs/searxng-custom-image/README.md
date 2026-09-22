@@ -1,7 +1,7 @@
 # SearXNG 定制镜像源码
 
 这两个文件是 `snsclaw-searxng` 镜像的构建源码，**不是部署必需品** —— 部署时
-直接拉取 registry 里已构建好的 `221.237.179.2:5000/snsclaw/searxng:v1`。
+直接拉取 registry 里已构建好的 `221.237.179.2:13400/snsclaw/searxng:v1`。
 
 放在这里供日后需要修改搜索行为时参考。
 
@@ -22,8 +22,8 @@
 
 ```bash
 cd docs/searxng-custom-image
-docker build -t 221.237.179.2:5000/snsclaw/searxng:v2 .
-docker push 221.237.179.2:5000/snsclaw/searxng:v2
+docker build -t 221.237.179.2:13400/snsclaw/searxng:v2 .
+docker push 221.237.179.2:13400/snsclaw/searxng:v2
 ```
 
 推送后记得同步修改 `deploy/docker-compose.yml` 里 searxng 服务的镜像 tag。

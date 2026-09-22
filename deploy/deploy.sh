@@ -7,7 +7,7 @@
 # ============================================================================
 set -euo pipefail
 
-REGISTRY="221.237.179.2:5000"
+REGISTRY="221.237.179.2:13400"
 RED=$'\033[31m'; GRN=$'\033[32m'; YEL=$'\033[33m'; RST=$'\033[0m'
 
 info() { echo "${GRN}[ok]${RST}   $*"; }
@@ -17,8 +17,8 @@ die()  { echo "${RED}[fail]${RST} $*" >&2; exit 1; }
 cd "$(dirname "$0")"
 
 # 宿主架构 → 镜像 tag 后缀。registry 里同一版本按架构分开存放
-# （server:v1.0.4-amd64 / server:v1.0.4-arm64），compose 里的 image 写成
-# ...:v1.0.4${IMAGE_ARCH_SUFFIX:-}，靠这里导出后拼接。
+# （server:v1.0.5-amd64 / server:v1.0.5-arm64），compose 里的 image 写成
+# ...:v1.0.5${IMAGE_ARCH_SUFFIX:-}，靠这里导出后拼接。
 case "$(uname -m)" in
     x86_64|amd64)  IMAGE_ARCH_SUFFIX="-amd64" ;;
     aarch64|arm64) IMAGE_ARCH_SUFFIX="-arm64" ;;
