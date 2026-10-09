@@ -96,6 +96,23 @@ class GoalEvaluationServiceTest {
     }
 
     @Test
+    void enabledOrdinaryGoalHasBoundedReasoningHeadroomWhileOffAndManagedKeepLegacyLimit() {
+        stubChatResponse("{\"criterionVerdicts\":[],\"summary\":\"pending\"}");
+        var decisions = new vip.mate.decision.config.DecisionProperties(); svc.setDecisionProperties(decisions);
+        svc.evaluate(goalWithCriteria(), List.of(), "answer");
+        decisions.setMode(vip.mate.decision.api.DecisionMode.OFF);
+        svc.evaluate(goalWithCriteria(), List.of(), "answer");
+        decisions.setMode(vip.mate.decision.api.DecisionMode.SHADOW);
+        var managed = goalWithCriteria(); managed.setJsonAcceptanceRequired(true);
+        svc.evaluate(managed, List.of(), "answer");
+        var prompts = org.mockito.ArgumentCaptor.forClass(Prompt.class);
+        verify(chatModel, org.mockito.Mockito.times(3)).call(prompts.capture());
+        assertEquals(4096, prompts.getAllValues().get(0).getOptions().getMaxTokens());
+        assertEquals(2000, prompts.getAllValues().get(1).getOptions().getMaxTokens());
+        assertEquals(2000, prompts.getAllValues().get(2).getOptions().getMaxTokens());
+    }
+
+    @Test
     void blankEvidenceVerdictCannotCompleteOrInflateProgress() {
         stubChatResponse("""
                 {"criterionVerdicts":[

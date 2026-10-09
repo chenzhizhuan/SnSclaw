@@ -32,6 +32,9 @@ public class PlanSummaryNode implements NodeAction {
     private final ChatModel chatModel;
     private final PlanningService planningService;
     private final NodeStreamingChatHelper streamingHelper;
+    private vip.mate.goal.service.GoalService goalService;
+
+    public void setGoalService(vip.mate.goal.service.GoalService goalService) { this.goalService = goalService; }
 
     public PlanSummaryNode(ChatModel chatModel, PlanningService planningService,
                            NodeStreamingChatHelper streamingHelper) {
@@ -76,7 +79,9 @@ public class PlanSummaryNode implements NodeAction {
                             + "直接回答用户的原始问题，不要罗列步骤。"
                             + "如果对话上下文中包含用户的特殊要求（如风格、语言、格式等），请在总结中体现。"
                             + "若执行结果中包含交付物下载链接，请在回答中原样列出这些链接。"
-                            + "若某些步骤未完成，如实说明未完成的部分及原因。"),
+                            + "若某些步骤未完成，如实说明未完成的部分及原因。"
+                            + "计划步骤完成不等于持久目标通过验收；只有目标工具返回或 getGoalStatus 确认的状态才可宣称。"
+                            + vip.mate.goal.service.GoalLifecycleHints.current(goalService, conversationId)),
                     new UserMessage(userContent.toString())
             ));
 

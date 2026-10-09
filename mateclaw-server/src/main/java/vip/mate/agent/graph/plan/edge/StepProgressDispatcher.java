@@ -21,12 +21,23 @@ import java.util.List;
  * @author SnSclaw
  */
 public class StepProgressDispatcher implements EdgeAction {
+    private final vip.mate.goal.service.GoalService goals;
+    public StepProgressDispatcher() { this(null); }
+    public StepProgressDispatcher(vip.mate.goal.service.GoalService goals) { this.goals = goals; }
+
 
     @Override
     @SuppressWarnings("unchecked")
     public String apply(OverAllState state) {
         // 审批暂停态或步骤执行失败中止态：直接结束当前图 tick
         String currentPhase = state.value(MateClawStateKeys.CURRENT_PHASE, "");
+        if ("plan_aborted".equals(currentPhase) && goals != null) {
+            String conversation = state.value(MateClawStateKeys.CONVERSATION_ID, "");
+            if (!conversation.isBlank()) {
+                var goal = goals.findActiveByConversation(conversation);
+                if (goal != null) goals.suspendRuntime(goal.getId(), "PLAN_ABORTED");
+            }
+        }
         if ("awaiting_approval".equals(currentPhase) || "plan_aborted".equals(currentPhase)) {
             return StateGraph.END;
         }

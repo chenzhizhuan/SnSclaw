@@ -390,4 +390,20 @@ class ChatUploadLocationResolverTest {
                 .isEqualTo(writeDir.resolve("1777_a.png"));
         assertThat(r.resolveExistingFile("c-e2e", "nope.png")).isNull();
     }
+
+    @Test
+    @DisplayName("attachment uploaded before conversation creation remains readable after workspace binding")
+    void preConversationUploadIsFoundInDefaultRoot() throws Exception {
+        when(conversationMapper.selectOne(any(Wrapper.class))).thenReturn(null);
+        ChatUploadLocationResolver r = resolver(tempDir.resolve("chat-uploads"), true);
+        Path writeDir = r.resolveWriteDir("new-conversation");
+        Files.createDirectories(writeDir);
+        Path image = Files.writeString(writeDir.resolve("123_image.png"), "img");
+
+        stubConversation("new-conversation", 7L, null);
+        when(workspaceService.getById(7L)).thenReturn(workspace(7L, tempDir.resolve("workspace").toString()));
+        r.invalidate("new-conversation");
+
+        assertThat(r.resolveExistingFile("new-conversation", "123_image.png")).isEqualTo(image);
+    }
 }

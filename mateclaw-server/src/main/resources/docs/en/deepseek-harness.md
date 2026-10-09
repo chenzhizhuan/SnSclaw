@@ -1,208 +1,65 @@
 ---
 title: DeepSeek Harness Integration
-description: Install DeepSeek Harness and configure it as a digital employee runtime in SnSclaw.
-head:
-  - - meta
-    - name: keywords
-      content: DeepSeek Harness,DSH,digital employee,Agent runtime,JSON-RPC,Cordis
+description: Configure, verify, upgrade, and recover the managed DeepSeek Harness SDK runtime.
 ---
 
 # DeepSeek Harness Integration
 
-This guide connects the official DeepSeek Harness (DSH) to SnSclaw and creates a digital employee powered by the DSH runtime.
+DSH is an employee runtime. SnSclaw launches the official `dsh --profile sdk` process and translates its JSON-RPC session events into conversation output. Configure the DeepSeek provider in **Settings → Models**, then select **DSH / DeepSeek Harness** when creating a digital employee with a workspace.
 
-In SnSclaw, DSH is an **employee runtime**, not an MCP tool and not a regular plugin. MCP supplies tools; DSH owns the external Agent process, the ReAct loop, and the event stream that SnSclaw projects into the conversation UI.
+## Requirements and installation
 
-## Architecture
+The managed installer requires **Node.js 22**, npm, and registry access. It supports macOS arm64 and Linux x64 candidates. Actual package installation and Java adapter/model checks have passed on macOS arm64 with Node 22.20.0 and npm 11.6.2. Linux x64 remains pending actual verification; Windows/WSL has not been verified.
 
-```text
-SnSclaw Chat / SSE
-        |
-        v
-DSH Runtime Provider
-        |
-        v  JSON-RPC over stdin/stdout
-dsh-jsonrpc-agent
-        |
-        v
-DeepSeek API + Cordis composition
-```
+Use the DSH management console to install the pinned **`0.2.0-rc.1`** target. The reviewed alternative is **`0.1.7-rc.2`**. Installation uses checked-in dependency locks and `npm ci` in a separate candidate directory; it does not resolve a moving `latest` tag or modify global npm packages. Both are prereleases.
 
-SnSclaw remains responsible for employees, sessions, permissions, workspaces, message persistence, and UI projection. DSH runs the turn. SnSclaw injects the API key from the DeepSeek provider configuration into the DSH child process. Never put secrets in `runtimeConfig`, employee prompts, or the repository.
+Run **Verify**, **Test connection**, and **Test task**. These mean different things: configuration checks, an SDK `initialize` handshake, and a real model task requiring the answer `OK`. A successful handshake alone does not establish model access. The wire server version `0.0.1` is not the npm package version; managed provenance records the pinned package separately. An external executable remains unverified unless independently checked.
 
-## Prerequisites
+## SDK configuration
 
-- macOS, Linux, or Windows (commands below use macOS / Linux syntax)
-- JDK 21
-- A running SnSclaw backend and frontend
-- A DeepSeek API key
-- A built DSH JSON-RPC agent
-- The Cordis configuration from the DSH checkout
+Use an absolute executable path to `node_modules/.bin/dsh`, profile `sdk`, an existing working directory, and a dedicated home root. Optional patch paths are an ordered JSON array of absolute files. SnSclaw assigns a separate `DSH_HOME` for each workspace/employee pair and launches arguments directly, without a shell.
 
-Check the runtime files:
+| Managed key | Purpose |
+| --- | --- |
+| `dsh.executable_path` | Absolute SDK CLI executable |
+| `dsh.profile` | Must be `sdk` |
+| `dsh.working_directory` | Default workspace directory |
+| `dsh.home_root` | Root for isolated runtime homes |
+| `dsh.patch_paths` | Ordered JSON array of patch files, for example `[]` |
 
-```bash
-"$DSH_JSONRPC_AGENT" --help
-test -x "$DSH_JSONRPC_AGENT"
-test -f "$DSH_CORDIS_CONFIG"
-```
+Legacy `dsh-jsonrpc-agent`/Cordis entrypoint configuration requires migration. Clear `dsh.cordis_config_path` and the old `DSH_CORDIS_CONFIG` environment setting; replace the executable with the SDK CLI. Do not put a shell command or extra arguments in the executable field. `DSH_JSONRPC_AGENT` remains a compatibility environment name for an executable path, not an instruction to use the old binary.
 
-## Install DSH
+Keep credentials in the provider configuration or dedicated protected runtime settings. SnSclaw passes them to the child environment. For the official DeepSeek host, the adapter maps its ordinary API root to the Messages API `/anthropic` route required by these packages. Arbitrary custom endpoints still need a compatible Messages API.
 
-Follow the [official DeepSeek Harness repository](https://github.com/deepseek-ai/deepseek-harness) for the current build instructions. The build must provide these two paths:
+SnSclaw sends an explicit model output cap through `initialize.maxTokens`: the configured positive cap, defaulting to 4096, limited to half the known context window. This does not replace DSH's context management.
 
-```text
-<dsh-root>/dist-exe/dsh-jsonrpc-agent-pkg-<platform>
-<dsh-root>/python/sdk-runtime/src/deepseek_harness_runtime/runtime/cordis.yml
-```
+## Upgrade and rollback
 
-Keep the DSH binary outside the SnSclaw source tree. Configure its location with environment variables.
+Managed upgrades prepare a separate package generation, block new DSH turns, and wait up to 60 seconds for current turns to drain. They copy runtime homes and configured patch files, check the candidate handshake and a new model task in each affected home, then atomically select the executable/configuration/home generation together. Original homes and the previous generation remain available. Failure before activation keeps the previous selection. Native turns are not part of the DSH admission gate.
 
-## Configure the IDEA backend
+The home copier rejects symlinks and special files instead of following them. Customized homes containing such files require explicit migration. Generation records and package locations are retained; active home contents remain mutable during normal use.
 
-Open **Run | Edit Configurations...** in IDEA, select the SnSclaw Spring Boot configuration, and add these variables under **Environment variables**:
+Rollback is available for a completed operation while its candidate generation is still active. It copies and checks the retained previous home/configuration before switching. It does **not** merge sessions created after the upgrade or reverse database changes. Keep retained generations and backups until acceptance is complete.
 
-```text
-DSH_JSONRPC_AGENT=/absolute/path/to/dsh-jsonrpc-agent-pkg-macos-arm64
-DSH_CORDIS_CONFIG=/absolute/path/to/cordis.yml
-DSH_CWD=/absolute/path/to/mateclaw-workspace
-```
+Candidate checks start new sessions. They do not prove that every historic DSH session can be reopened or migrated. Actual persisted **V3 → V4 history migration has not been verified**.
 
-Example:
+DSH uses its profile-managed tools and does not provide SnSclaw host approval integration. Member file isolation blocks this runtime. Rollback does not undo tool writes to workspace files or delete SnSclaw chat records.
 
-```text
-DSH_JSONRPC_AGENT=/opt/deepseek-harness/dist-exe/dsh-jsonrpc-agent-pkg-macos-arm64
-DSH_CORDIS_CONFIG=/opt/deepseek-harness/python/sdk-runtime/src/deepseek_harness_runtime/runtime/cordis.yml
-DSH_CWD=/var/lib/mateclaw/workspace
-```
+## Conversations and diagnostics
 
-`DSH_CWD` must be readable and writable by the backend process. Use absolute paths in the IDEA run configuration. Restart the backend after changing them; Spring Boot does not hot-reload process environment variables.
+Each SnSclaw turn uses a fresh SDK session ID. SnSclaw replays bounded completed user/assistant text history; this is not restoration of DSH tool state. Do not reuse an existing persisted SDK ID as a fresh session. Completion is based on the SDK terminal event, not merely on an enqueue receipt or idle status.
 
-## Configure the DeepSeek provider
+The admin API is under `/api/v1/admin/dsh`: `GET /status`, `POST /verify`, `/test-connection`, `/test-task`, `/upgrades`, and `GET /upgrades/{id}`. Upgrade requests carry an exact `targetVersion`, the current `expectedRevision`, and an `idempotencyKey`; rollback is `POST /upgrades/{id}/rollback` with revision and idempotency key. Poll the operation record for results. Logs and status must not expose credentials.
 
-1. Sign in to SnSclaw.
-2. Open **Settings → Models**.
-3. Configure and enable the **DeepSeek** provider.
-4. Enter the DeepSeek API key and base URL.
-5. Confirm that at least one enabled DeepSeek chat model exists.
+## Recovering an orphaned runtime
 
-SnSclaw resolves the model through its model configuration, using the global default when none is specified. If configuration resolution is unavailable, an explicitly requested model name is retained; `deepseek-v4-flash` is the fallback only when that name is also empty. Dedicated DSH credentials and endpoint settings take precedence; otherwise, SnSclaw reads the selected model's provider configuration, falling back to the `deepseek` provider as needed. A custom model must be usable by the DeepSeek provider route in DSH.
+`dsh.orphaned_runtime_requires_recovery` means a lease belongs to a JVM that is no longer alive. Admission deliberately remains blocked: its DSH process or tool descendants may still be writing the runtime home.
 
-SnSclaw explicitly sends the model's maximum output tokens through SDK `initialize.maxTokens`, avoiding DSH's 256000 default. An unset or invalid output cap defaults to 4096. The cap is also limited to half the known context window to reserve space for input. The model's configured window takes precedence over the global conversation window. For a 128000-token window, an 8192 output cap stays 8192; an oversized 256000 cap becomes 64000.
+1. Stop DSH traffic and identify the lease under the managed install root's `leases/` directory (default root: `~/.mateclaw/runtimes/deepseek-harness`).
+2. Verify the recorded JVM owner is gone, identify and stop its orphaned DSH processes **and tool descendants**, and confirm no process is writing the affected home.
+3. Back up the affected state, then remove only the confirmed stale lease. Do not remove live leases or blindly delete the leases directory.
+4. Inspect the durable upgrade operation and active generation, then retry verification before admitting work.
 
-This is a static output bound, not a live token count of the complete DSH request. SDK initialization has no direct context-window field; DSH's internal context capacity and compaction remain controlled by its runtime/Cordis configuration. Long tool histories can still exceed the window. Upgrade older DSH versions that do not support `initialize.maxTokens`.
+A backend restart alone is not orphan-process cleanup. Do not delete a stale lease merely to bypass the error.
 
-## Create a DSH digital employee
-
-Open **Digital Employees → New**:
-
-1. Enter the employee name, role, and goal.
-2. Select **DSH / DeepSeek Harness** as the runtime.
-3. Set a workspace; when blank, `DSH_CWD` is used.
-4. Use a JSON object for `runtimeConfig`, for example:
-
-```json
-{
-  "mode": "qa",
-  "workspace": "default",
-  "policy": "read-only"
-}
-```
-
-5. Save the employee and open its chat.
-
-Runtime configuration describes employee policy only. Do not put `DEEPSEEK_API_KEY`, cookies, bearer tokens, or sensitive local paths in it.
-
-## Verification checklist
-
-Send this message in the DSH employee conversation:
-
-```text
-Reply with exactly: DSH_RUNTIME_OK
-```
-
-Success means:
-
-- The employee header shows `DSH Harness`.
-- Thinking state and text deltas appear in the chat.
-- The log contains `provider=deepseek` and `apiKeyConfigured=true`.
-- The log contains a `turn/end` event with `kind=completed`.
-- The UI does not show “no output for this run”.
-- The same conversation is not used to start two different DSH live sessions.
-
-You can continue chatting in the same SnSclaw conversation. Each turn uses a fresh DSH process and runtime session ID to avoid persisted-log `id collision`. SnSclaw supplies up to 40 recent completed user/assistant text messages from that conversation, within a 4096 estimated-token history budget. The current message is sent once and is not truncated by this history budget. Older history may be omitted and a boundary message may be marked `[truncated]`. Saved text history remains available after a backend restart; internal DSH tool state is not restored. Scheduled tasks do not replay conversation history.
-
-To verify multi-turn context, send “My name is Alex”, then “What is my name?” in the same conversation. A new conversation must not inherit that information through this history mechanism.
-
-## Logs and diagnostics
-
-The backend log is commonly located at:
-
-```text
-logs/snsclaw.log
-```
-
-Search for the runtime signals:
-
-```bash
-rg "\[DSH\]|MISSING_CREDENTIAL|EMPTY_RESPONSE|id collision" logs/snsclaw.log
-```
-
-The admin-only diagnostics endpoint is:
-
-```http
-GET /api/v1/admin/agent-runtime/dsh/diagnostics
-```
-
-It returns command, executable, Cordis, and capability status without returning the API key.
-
-## Troubleshooting
-
-### `MISSING_CREDENTIAL`
-
-Check that:
-
-1. The DeepSeek provider is enabled under Settings → Models.
-2. The API key was saved successfully.
-3. The employee uses DSH rather than configuring the DSH binary as an MCP command.
-4. The backend was restarted with the updated IDEA configuration.
-
-`apiKeyConfigured=false` in the log means the credential did not reach the DSH child process.
-
-### `EMPTY_RESPONSE`
-
-Check model availability and the base URL. Verify with a short fixed prompt before adding tools or skills.
-
-### `dsh.command_unavailable`
-
-`DSH_JSONRPC_AGENT` must point to an executable file:
-
-```bash
-chmod +x /absolute/path/to/dsh-jsonrpc-agent-pkg-macos-arm64
-```
-
-### `dsh.cordis_missing`
-
-`DSH_CORDIS_CONFIG` must point to the actual `cordis.yml`, not only the package directory. If a package directory is provided, SnSclaw also checks its `runtime/cordis.yml` child path.
-
-### The answer appears twice
-
-Use the latest backend version. DSH emits text deltas followed by a final assistant snapshot. SnSclaw must project the deltas only and must not append the snapshot again.
-
-## MCP, plugins, and DSH
-
-| Mechanism | Best for | Replaces DSH? |
-|-----------|----------|--------------|
-| MCP | File, GitHub, database, and other tools | No |
-| Plugin | Extending SnSclaw tools, models, channels, or memory | No |
-| DSH employee runtime | Hosting the DeepSeek Harness Agent loop and process | It is the employee runtime, not a tool |
-
-The recommended composition is: **DSH as the employee runtime, MCP as the tool layer, and SnSclaw as the governance and visualization layer**.
-
-## Security recommendations
-
-- Store API keys only in SnSclaw provider configuration or a controlled environment.
-- Give DSH a dedicated workspace instead of the whole user home directory.
-- Start with a read-only policy and the smallest possible tool set.
-- Never commit `.sessions/`, logs, or local credential configuration.
-- In production, restrict the DSH child process filesystem, network, and credential access.
+> AI生成

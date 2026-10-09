@@ -57,7 +57,7 @@ const { t } = useI18n()
 const groups = [
   { key: 'im', types: ['telegram', 'discord', 'slack', 'qq'] },
   { key: 'enterprise', types: ['wecom', 'weixin', 'feishu', 'dingtalk'] },
-  { key: 'web', types: ['web', 'webchat', 'webhook'] },
+  { key: 'web', types: ['web', 'webchat'] },
 ]
 
 function pick(type: string) {

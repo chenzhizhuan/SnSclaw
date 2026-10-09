@@ -5,6 +5,7 @@ import vip.mate.agent.graph.state.MateClawStateKeys;
 
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 /**
  * Graph 事件发布工具
@@ -114,19 +115,20 @@ public final class GraphEventPublisher {
     }
 
     public static GraphEvent toolComplete(String toolCallId, String toolName, String result, boolean success) {
+        return toolComplete(toolCallId, toolName, result, success, null);
+    }
+
+    public static GraphEvent toolComplete(String toolCallId, String toolName, String result, boolean success,
+                                          Map<String, Object> structuredContent) {
         long ts = System.currentTimeMillis();
-        // Carry the full tool result; transport-layer chunking lives in
-        // ChatStreamTracker.broadcastChunked, which splits oversize payloads
-        // into ordered tool_result_chunk events when they exceed the 8 KB
-        // single-event budget. The previous unconditional 500-char truncation
-        // here destroyed data that the front-end could otherwise render in full.
-        return new GraphEvent(EVENT_TOOL_COMPLETE, Map.of(
-                "toolCallId", toolCallId != null ? toolCallId : "",
-                "toolName", toolName,
-                "result", result != null ? result : "",
-                "success", success,
-                "timestamp", ts
-        ), ts);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("toolCallId", toolCallId != null ? toolCallId : "");
+        data.put("toolName", toolName);
+        data.put("result", result != null ? result : "");
+        data.put("success", success);
+        data.put("timestamp", ts);
+        if (success && structuredContent != null) data.put("structuredContent", structuredContent);
+        return new GraphEvent(EVENT_TOOL_COMPLETE, data, ts);
     }
 
     public static GraphEvent planCreated(Long planId, List<String> steps) {

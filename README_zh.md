@@ -38,7 +38,7 @@
 >
 > 多用户工作空间。敏感操作走审批。完整审计日志。Spring Boot Actuator 健康监控。单个渠道挂掉不影响其他渠道的错误隔离。一个 JAR 包跑在自己的环境里；持久化数据由你掌控，任务所需内容只会发送到你主动配置的模型、渠道或工具服务。
 >
-> **底下是一套真正的 Agent Runtime。** 员工不再焊死在一套推理循环上：可以用原生 StateGraph 运行 ReAct、Plan-and-Execute、Goal 与 Team Run，也可以通过认证 JSON-RPC 把 DeepSeek Harness 作为受管理的外部循环。两条路径最终进入同一套会话、工作空间边界、Tool Guard、事件投影与生命周期控制。
+> **底下是一套真正的 Agent Runtime。** 员工不再焊死在一套推理循环上：可以用原生 StateGraph 运行 ReAct、Plan-and-Execute、Goal 与 Team Run，也可以通过 SDK JSON-RPC 把 DeepSeek Harness 作为受管理的外部循环。两条路径最终进入同一套会话、工作空间边界、Tool Guard、事件投影与生命周期控制。
 
 大多数 AI 工具一到厂商抽风那天就两手一摊。关一次标签页就忘了你是谁。给你一个聊天框，就敢叫产品。
 
@@ -86,7 +86,7 @@ SnSclaw 的 **LLM Wiki** 把它消化成结构化页面，页面之间自己长�
 你雇佣员工，不是开聊天框。每位有**角色**、**目标**、**背景故事**、运行时、像素艺术头像与专属配色——6 个内置模板（通用助手 · 产品助理 · 研究分析师 · 客服助理 · 数据分析师 · 代码审查员）开箱可用。即使更换执行引擎，员工身份和治理边界仍保持不变。
 
 ### Agent Runtime：Native 或 DSH（2.2.0+）
-`AgentRuntimeProvider` contract 把员工与实际执行回合的引擎分开。**Native Runtime** 在 SnSclaw 内运行 ReAct、Plan-and-Execute、Persistent Goal 与 Team Run；**DSH Runtime** 把 `dsh-jsonrpc-agent` 作为认证子进程管理，并将思考、文本、工具调用、用量、完成与取消统一映射为 runtime event。DSH 掌管外部 Agent loop，SnSclaw 继续掌管 session、workspace、凭证、工具、审批、消息和 UI 投影。启动前会校验 runtime 可用性与能力；控制台可完成 DSH 的安装、配置、校验、连接测试和启停。[配置 DeepSeek Harness →](https://claw.mate.vip/docs/zh/deepseek-harness)
+`AgentRuntimeProvider` contract 将员工与执行引擎分离。**Native Runtime** 在 SnSclaw 内运行 ReAct、Plan-and-Execute、持久化 Goal 与 Team Run；**DSH Runtime** 启动官方 `dsh --profile sdk` CLI，统一映射思考、文本、工具、用量、完成与取消事件，并规范为 runtime event。受管理安装固定 `0.2.0-rc.1`（另选 `0.1.7-rc.2`），要求 Node.js 22，使用受审查的 npm 锁文件；升级复制 home、检查候选并切换保留的代次，回滚恢复旧 home/配置，不合并升级后的新会话。启动前会校验 runtime 可用性与能力；控制台可完成 DSH 的安装、校验、连接测试和启停。[配置 DeepSeek Harness →](https://claw.mate.vip/docs/zh/deepseek-harness)
 
 ### 持久长任务：检查点、重启、继续（2.2.0+）
 Persistent Goal 把需要数小时的工作拆成有界、可恢复的执行段。数据库会保存目标清单、continuation 状态、attempt、冷却、lease，以及员工忙碌期间已经接收的用户输入。单后端实例重启后，supervisor 会先核对被中断的 attempt，读取持久检查点和已有产物，再调度下一段安全工作，不要求用户重新描述任务。
@@ -335,3 +335,5 @@ cd ../mateclaw-ui && npm install && npm run dev
 ## 许可证
 
 [Apache License 2.0](LICENSE)。没有星号。
+
+> AI生成

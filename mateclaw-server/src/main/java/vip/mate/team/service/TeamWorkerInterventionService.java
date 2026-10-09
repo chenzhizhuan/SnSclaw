@@ -1,5 +1,8 @@
 package vip.mate.team.service;
 
+import vip.mate.decision.api.DecisionRecordingException;
+import vip.mate.team.model.TeamTaskStatus;
+
 import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -68,6 +71,8 @@ public class TeamWorkerInterventionService {
                             intervention.agentId(), REPLAY_PROMPT, intervention.conversationId(),
                             claimedPending.getToolCallPayload(), origin));
                 } catch (RuntimeException error) {
+                    DecisionRecordingException recording = DecisionRecordingException.find(error);
+                    if (recording != null) throw recording;
                     taskService.parkToolReplayUncertain(taskId, pendingId,
                             "Approved tool replay failed and its outcome is uncertain: "
                                     + safeMessage(error));
@@ -168,6 +173,8 @@ public class TeamWorkerInterventionService {
                 result = turnGate.withPermit(permit, () -> agentService.chatWithUsage(
                         intervention.agentId(), feedback, intervention.conversationId(), origin));
             } catch (RuntimeException error) {
+                DecisionRecordingException recording = DecisionRecordingException.find(error);
+                if (recording != null) throw recording;
                 taskService.failTask(taskId, "worker feedback failed: " + safeMessage(error));
                 throw error;
             }
@@ -275,7 +282,10 @@ public class TeamWorkerInterventionService {
                     "team_task_awaiting_approval", Map.of("pendingId", next.getPendingId()));
             return;
         }
-        dispatchService.settleOutcome(intervention.task(), reply);
+        var original = intervention.task();
+        var snapshot = new WorkerDecisionAdapter.Snapshot(original.getId(), intervention.agentId(),
+                original.getDispatchCount(), intervention.conversationId(), TeamTaskStatus.IN_PROGRESS);
+        dispatchService.settleOutcome(original, reply, snapshot);
         dispatchService.requestDispatch(intervention.task().getTeamId());
     }
 

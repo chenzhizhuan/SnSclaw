@@ -236,6 +236,30 @@ public class TtsService {
         return voices;
     }
 
+    /** Preview unsaved settings without fallback or persisting a chat attachment. */
+    public TtsResult preview(String providerId, String voice, Double speed, String text) {
+        SystemSettingsDTO config = systemSettingService.getAllSettings();
+        TtsProvider provider = providerRegistry.getById(providerId == null ? "" : providerId);
+        if (provider == null || !provider.isAvailable(config)) {
+            return TtsResult.failure("所选 TTS 提供商未配置或不可用");
+        }
+        if (voice != null && !voice.isBlank() && !provider.availableVoices().contains(voice)) {
+            return TtsResult.failure("所选音色不属于该提供商");
+        }
+        if (speed != null && (!Double.isFinite(speed) || speed < 0.5 || speed > 2.0)) {
+            return TtsResult.failure("试听语速必须在 0.5 到 2.0 之间");
+        }
+        if (text == null || text.isBlank() || text.length() > 200) {
+            return TtsResult.failure("试听文本必须为 1 到 200 个字符");
+        }
+        // Empty selection previews the provider default, not the previously saved voice.
+        SystemSettingsDTO previewConfig = new SystemSettingsDTO();
+        org.springframework.beans.BeanUtils.copyProperties(config, previewConfig);
+        previewConfig.setTtsDefaultVoice("");
+        return provider.synthesize(TtsRequest.builder().text(text).voice(voice)
+                .speed(speed == null ? 1.0 : speed).format("mp3").build(), previewConfig);
+    }
+
     // ==================== 内部逻辑 ====================
 
     private TtsResult synthesizeWithFallback(TtsRequest request, SystemSettingsDTO config) {
@@ -256,7 +280,10 @@ public class TtsService {
         if (Boolean.TRUE.equals(config.getTtsFallbackEnabled())) {
             for (TtsProvider fb : providerRegistry.fallbackCandidates(config, primary.id())) {
                 log.info("[TTS] Trying fallback provider: {}", fb.id());
-                result = fb.synthesize(request, config);
+                // Voice and model IDs are scoped to the original provider.
+                TtsRequest fallbackRequest = TtsRequest.builder()
+                        .text(request.getText()).speed(request.getSpeed()).format(request.getFormat()).build();
+                result = fb.synthesize(fallbackRequest, config);
                 if (result.isSuccess()) {
                     return result;
                 }

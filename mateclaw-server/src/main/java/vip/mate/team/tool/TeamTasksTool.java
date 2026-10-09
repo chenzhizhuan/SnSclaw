@@ -1,5 +1,7 @@
 package vip.mate.team.tool;
 
+import vip.mate.decision.api.DecisionRecordingException;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ToolContext;
@@ -156,8 +158,12 @@ public class TeamTasksTool {
                         + "comment, attach, cancel, retry.";
             };
         } catch (IllegalArgumentException | IllegalStateException e) {
+            DecisionRecordingException recording = DecisionRecordingException.find(e);
+            if (recording != null) throw recording;
             return "Error: " + e.getMessage();
         } catch (Exception e) {
+            DecisionRecordingException recording = DecisionRecordingException.find(e);
+            if (recording != null) throw recording;
             log.warn("team_tasks {} failed for team={} agent={}: {}",
                     action, team.getId(), agentId, e.getMessage());
             return "Error: team_tasks failed — " + e.getMessage();

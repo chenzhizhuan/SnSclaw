@@ -37,4 +37,26 @@ class GoalJsonProtocolPromptTest {
         assertNotNull(legacy);
         assertEquals("base instructions", legacy.get(MateClawStateKeys.SYSTEM_PROMPT));
     }
+    @ParameterizedTest @ValueSource(booleans = {false, true})
+    void pausedGoalIsVisibleWithoutBecomingAnActiveGoal(boolean plan) {
+        var conversations = mock(ConversationService.class);
+        var client = mock(ChatClient.class);
+        BaseAgent agent = plan ? new StateGraphPlanExecuteAgent(client, conversations, null, null, null, null)
+                : new StateGraphReActAgent(client, conversations, null, null, null);
+        var goals = mock(GoalService.class);
+        var goal = new GoalEntity(); goal.setId(9L);
+        goal.setStatus(vip.mate.goal.model.GoalStatus.PAUSED);
+        goal.setDescription("PRIVATE_GOAL_DESCRIPTION");
+        when(goals.findLatestByConversation("conv")).thenReturn(goal);
+        ReflectionTestUtils.setField(agent, "goalService", goals);
+        ReflectionTestUtils.setField(agent, "systemPrompt", "base instructions");
+        Map<String, Object> state = ReflectionTestUtils.invokeMethod(agent, "buildInitialState", "resume", "conv");
+        assertNotNull(state);
+        String prompt = state.get(MateClawStateKeys.SYSTEM_PROMPT).toString();
+        assertTrue(prompt.contains("paused"));
+        assertTrue(prompt.contains("resumeGoal"));
+        assertFalse(prompt.contains("PRIVATE_GOAL_DESCRIPTION"));
+        assertFalse(state.containsKey(MateClawStateKeys.ACTIVE_GOAL));
+    }
+
 }

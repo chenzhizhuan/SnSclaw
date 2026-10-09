@@ -42,6 +42,13 @@ public class GoalManagementTool {
     private final GoalProperties properties;
     private final ObjectMapper objectMapper;
     private final ChatStreamTracker streamTracker;
+    private vip.mate.decision.config.DecisionProperties decisionProperties;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setDecisionProperties(vip.mate.decision.config.DecisionProperties properties) {
+        this.decisionProperties = properties;
+    }
+
 
     @Tool(description = """
             Set a persistent goal for the current conversation. The agent will \
@@ -54,7 +61,7 @@ public class GoalManagementTool {
             @ToolParam(description = "Short title under 80 chars; shown in UI hover.") String title,
             @ToolParam(description = "Full description of what success looks like.",
                     required = false) String description,
-            @ToolParam(description = "Exit criteria the evaluator scores against (e.g. 'tests pass + deployed').",
+            @ToolParam(description = "Preserve the user's actual deliverable and acceptance conditions. Creating, waiting, or asking a question is not a substitute for delivering the requested result.",
                     required = false) String exitCriteria,
             @ToolParam(description = "Optional evaluation-turn cap. Persistent goals default to unlimited (0); positive values pause execution at the cap. Legacy goals default to 20.",
                     required = false) Integer turnBudget,
@@ -62,7 +69,7 @@ public class GoalManagementTool {
                     + "Omit to use the system default.",
                     required = false) Boolean autoFollowup,
             @ToolParam(description = "Optional initial checklist: a list of short, individually verifiable "
-                    + "acceptance criteria. Omit to let the system derive the checklist on first evaluation.",
+                    + "acceptance criteria faithful to the requested final deliverable, not intermediate setup actions. When exitCriteria is supplied, it is authoritative in enabled decision modes. Omit to let the system derive the checklist on first evaluation.",
                     required = false) java.util.List<String> criteria,
             @Nullable ToolContext ctx) {
 
@@ -90,7 +97,15 @@ public class GoalManagementTool {
         req.setExitCriteria(exitCriteria);
         if (turnBudget != null) req.setTurnBudget(turnBudget);
         if (autoFollowup != null) req.setAutoFollowupEnabled(autoFollowup);
-        if (criteria != null && !criteria.isEmpty()) {
+        // One authoritative definition: do not let a competing model-generated checklist
+        // add setup/waiting actions to an explicitly supplied delivery condition.
+        if (decisionProperties != null
+                && decisionProperties.modeFor(vip.mate.decision.api.DecisionType.GOAL_CONTINUATION)
+                    != vip.mate.decision.api.DecisionMode.OFF
+                && exitCriteria != null && !exitCriteria.isBlank()) {
+            req.setCriteria(java.util.List.of(new vip.mate.goal.model.GoalCriterion(
+                    "", exitCriteria.trim(), false, "")));
+        } else if (criteria != null && !criteria.isEmpty()) {
             java.util.List<vip.mate.goal.model.GoalCriterion> items = new java.util.ArrayList<>();
             for (String text : criteria) {
                 if (text != null && !text.isBlank()) {
@@ -262,6 +277,39 @@ public class GoalManagementTool {
             return successJson(Map.of("goalId", String.valueOf(paused.getId()),
                     "status", paused.getStatus().getValue(), "waitingForInput", true,
                     "reason", paused.getProgressSummary() == null ? "" : paused.getProgressSummary()));
+        } catch (MateClawException error) {
+            return errorJson(error.getMessage());
+        }
+    }
+
+    @Tool(description = """
+            Resume the latest paused goal on this conversation ONLY when the user explicitly
+            asks to resume or supplies the missing input and asks to continue. This does not
+            complete the goal or bypass approval, evidence, or budget checks. Report resumed
+            only after this tool returns status=active; never claim completion from prose.
+            """)
+    @vip.mate.tool.ConcurrencyUnsafe("mutates goal state; serialize with status reads and other lifecycle tools")
+    public String resumeGoal(@Nullable ToolContext ctx) {
+        if (!properties.isEnabled()) return errorJson("Goal subsystem is disabled");
+        ChatOrigin origin = ChatOrigin.from(ctx);
+        if (origin == null || origin.conversationId() == null || origin.conversationId().isBlank()
+                || origin.agentId() == null || origin.workspaceId() == null
+                || origin.requesterId() == null || origin.requesterId().isBlank()) {
+            return errorJson("resumeGoal requires a bound conversation, agent, workspace and requester");
+        }
+        GoalEntity goal = goalService.findLatestByConversation(origin.conversationId());
+        if (goal == null || goal.getStatus() != GoalStatus.PAUSED
+                || !origin.conversationId().equals(goal.getConversationId())
+                || !origin.agentId().equals(goal.getAgentId())
+                || !origin.workspaceId().equals(goal.getWorkspaceId())
+                || !origin.requesterId().equals(goal.getCreatedBy())) {
+            return errorJson("No owned paused goal bound to this conversation and agent");
+        }
+        try {
+            GoalEntity resumed = goalService.resume(goal.getId(), origin.requesterId());
+            broadcastGoalEvent(resumed.getConversationId(), "goal_updated", resumed);
+            return successJson(Map.of("goalId", String.valueOf(resumed.getId()),
+                    "status", resumed.getStatus().getValue(), "completed", false));
         } catch (MateClawException error) {
             return errorJson(error.getMessage());
         }

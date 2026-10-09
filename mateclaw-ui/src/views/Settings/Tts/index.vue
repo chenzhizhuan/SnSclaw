@@ -27,7 +27,7 @@
           <div class="setting-hint">{{ t('settings.hints.ttsProvider') }}</div>
         </div>
         <div class="setting-control">
-          <select v-model="settings.ttsProvider" class="form-input" :disabled="!settings.ttsEnabled">
+          <select v-model="settings.ttsProvider" @change="onProviderChange" class="form-input" :disabled="!settings.ttsEnabled">
             <option value="auto">{{ t('settings.ttsProviderOptions.auto') }}</option>
             <option value="edge-tts">Edge TTS ({{ t('settings.ttsProviderTags.free') }})</option>
             <option value="dashscope">DashScope (CosyVoice)</option>
@@ -35,6 +35,29 @@
           </select>
         </div>
       </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <div class="setting-label">{{ t('settings.ttsVoiceLabel') }}</div>
+          <div class="setting-hint">{{ t('settings.ttsVoiceHint') }}</div>
+          <div v-if="settings.ttsProvider === 'auto' && activeProvider" class="setting-hint">
+            {{ t('settings.ttsAutoVoiceProvider', { provider: activeProviderLabel }) }}
+          </div>
+        </div>
+        <div class="setting-control voice-control">
+          <select v-model="settings.ttsDefaultVoice" :aria-label="t('settings.ttsVoiceLabel')"
+            class="form-input" :disabled="!settings.ttsEnabled || voicesLoading || !voiceOptions.length">
+            <option value="">{{ t('settings.ttsVoiceDefault') }}</option>
+            <option v-for="voice in voiceOptions" :key="voice.voice" :value="voice.voice">
+              {{ voiceLabel(voice.voice) }}
+            </option>
+          </select>
+          <button class="btn-secondary" :disabled="!settings.ttsEnabled || !canPreview || previewState === 'loading'"
+            @click="previewVoice">{{ t(previewState === 'loading' ? 'settings.ttsPreviewLoading' : previewState === 'playing' ? 'settings.ttsPreviewStop' : 'settings.ttsPreview') }}</button>
+        </div>
+      </div>
+      <p v-if="voiceError" class="voice-error" role="alert">{{ voiceError }}</p>
+      <p v-if="voiceOptions.length && !canPreview" class="setting-hint">{{ t('settings.ttsVoiceUnavailable') }}</p>
 
       <!-- Fallback 开关 -->
       <div class="setting-item">
@@ -141,9 +164,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { settingsApi } from '@/api'
+import { http, settingsApi } from '@/api'
 
 const { t } = useI18n()
 const savedTip = ref('')
@@ -157,11 +180,89 @@ const settings = reactive({
   ttsSpeed: 1.0,
 })
 
+interface VoiceOption { voice: string; provider: string; providerLabel: string; available: boolean; isDefault: boolean }
+const voices = ref<VoiceOption[]>([])
+const voicesLoading = ref(true)
+const voiceError = ref('')
+const previewState = ref<'idle' | 'loading' | 'playing'>('idle')
+const activeProvider = computed(() => settings.ttsProvider === 'auto'
+  ? voices.value.find(v => v.available)?.provider : settings.ttsProvider)
+const voiceOptions = computed(() => voices.value.filter(v => v.provider === activeProvider.value))
+const activeProviderLabel = computed(() => voiceOptions.value[0]?.providerLabel || '')
+const canPreview = computed(() => !voicesLoading.value && voiceOptions.value.some(v => v.available))
+const edgeNames: Record<string, string> = {
+  longxiaochun_v2: '龙小淳', longxiaoxia_v2: '龙小夏', longshu_v2: '龙书',
+  longhua_v2: '龙华', longwan_v2: '龙婉', longcheng_v2: '龙橙',
+  'zh-CN-XiaoxiaoNeural': '晓晓', 'zh-CN-YunxiNeural': '云希',
+  'zh-CN-YunjianNeural': '云健', 'zh-CN-XiaoyiNeural': '晓伊', 'zh-CN-YunyangNeural': '云扬',
+}
+function voiceLabel(id: string) { return edgeNames[id] ? `${edgeNames[id]} · ${id}` : id }
+let audio: HTMLAudioElement | null = null
+let audioUrl: string | null = null
+let previewVersion = 0
+let previewAbort: AbortController | null = null
+function stopPreview() {
+  ++previewVersion
+  previewAbort?.abort()
+  previewAbort = null
+  if (audio) { audio.pause(); audio.onended = null; audio.onerror = null }
+  audio = null
+  if (audioUrl) URL.revokeObjectURL(audioUrl)
+  audioUrl = null
+  previewState.value = 'idle'
+}
+function onProviderChange() {
+  settings.ttsDefaultVoice = ''
+  voiceError.value = ''
+  stopPreview()
+}
+watch(() => [settings.ttsDefaultVoice, settings.ttsSpeed, settings.ttsEnabled], stopPreview)
+onBeforeUnmount(stopPreview)
+
+async function previewVoice() {
+  if (previewState.value === 'playing') { stopPreview(); return }
+  stopPreview()
+  const version = previewVersion
+  previewAbort = new AbortController()
+  previewState.value = 'loading'
+  voiceError.value = ''
+  try {
+    const blob = await http.post('/tts/preview', {
+      provider: activeProvider.value, voice: settings.ttsDefaultVoice,
+      speed: settings.ttsSpeed, text: t('settings.ttsPreviewText'),
+    }, { responseType: 'blob', timeout: 70000, signal: previewAbort.signal }) as unknown as Blob
+    if (version !== previewVersion) return
+    audioUrl = URL.createObjectURL(blob)
+    audio = new Audio(audioUrl)
+    audio.onended = stopPreview
+    audio.onerror = () => { stopPreview(); voiceError.value = t('settings.ttsPreviewFailed') }
+    await audio.play()
+    if (version === previewVersion) previewState.value = 'playing'
+  } catch (error: any) {
+    let message = error?.message || t('settings.ttsPreviewFailed')
+    if (error?.response?.data instanceof Blob) {
+      try { message = JSON.parse(await error.response.data.text()).msg || message } catch { /* Keep network error. */ }
+    }
+    if (version !== previewVersion) return
+    stopPreview()
+    voiceError.value = message
+  }
+}
+
 onMounted(async () => {
-  await loadSettings()
+  try {
+    await Promise.all([loadSettings(), loadVoices()])
+  } catch (error) {
+    voiceError.value = error instanceof Error ? error.message : t('settings.ttsPreviewFailed')
+  }
 })
+async function loadVoices() {
+  try { voices.value = await http.get('/tts/voices') as unknown as VoiceOption[] }
+  finally { voicesLoading.value = false }
+}
 
 async function loadSettings() {
+  stopPreview()
   const res: any = await settingsApi.get()
   const data = res.data || {}
   settings.ttsEnabled = data.ttsEnabled ?? false
@@ -217,6 +318,8 @@ function showSavedTip(message: string) {
 .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
 .toggle-switch input:disabled + .toggle-slider { opacity: 0.5; cursor: not-allowed; }
 
+.voice-control { flex-direction: column; gap: 8px; align-items: stretch; }
+.voice-error { color: var(--mc-danger, #c0392b); font-size: 13px; }
 .speed-control { gap: 10px; }
 .speed-slider { width: 140px; accent-color: var(--mc-primary); }
 .speed-value { font-size: 13px; font-weight: 600; color: var(--mc-text-primary); min-width: 36px; text-align: right; }

@@ -54,6 +54,10 @@ public interface GoalService {
 
     GoalEntity pause(Long id, String username);
 
+    /** Stop unchanged runtime work after a deterministic blocker; OFF retains legacy scheduling. */
+    boolean suspendRuntime(Long id, String reasonCode);
+
+
     /** Pause a persistent active goal until essential user input or permission is provided. */
     GoalEntity waitForInput(Long id, String reason, String username);
     GoalEntity resume(Long id, String username);

@@ -204,7 +204,7 @@ const wizardType = ref<string>('')
 // existing channels (where 3-step would feel like ceremony).
 const WIZARD_TYPES = new Set([
   'telegram', 'discord', 'slack', 'qq',
-  'web', 'webchat', 'webhook',
+  'web', 'webchat',
   'wecom', 'weixin', 'dingtalk', 'feishu',
 ])
 

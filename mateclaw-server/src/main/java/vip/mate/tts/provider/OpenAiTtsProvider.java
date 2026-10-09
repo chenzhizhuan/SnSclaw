@@ -86,7 +86,8 @@ public class OpenAiTtsProvider implements TtsProvider {
             String model = request.getModel() != null && !request.getModel().isBlank()
                     ? request.getModel() : DEFAULT_MODEL;
             String voice = request.getVoice() != null && !request.getVoice().isBlank()
-                    ? request.getVoice() : DEFAULT_VOICE;
+                    ? request.getVoice() : (availableVoices().contains(config.getTtsDefaultVoice() == null
+                    ? "" : config.getTtsDefaultVoice()) ? config.getTtsDefaultVoice() : DEFAULT_VOICE);
 
             ObjectNode body = objectMapper.createObjectNode();
             body.put("model", model);

@@ -52,6 +52,19 @@ class PlanGenerationAutoGoalTest {
     }
 
     @Test
+    void enabledGoalUsesOriginalDeliveryInsteadOfRelaxedPlanSteps() {
+        when(goalService.create(any(), any())).thenReturn(new GoalEntity());
+        var adapter = mock(vip.mate.goal.service.GoalDecisionAdapter.class);
+        when(adapter.enabled()).thenReturn(true);
+        var node = node(); node.setGoalDecisionAdapter(adapter);
+        node.maybeAutoCreateGoal(accessor(true, "计算实际良率，不得猜分母"),
+                List.of("说明缺分母无法计算也算完成", "输出缺输入说明"));
+        var cap = ArgumentCaptor.forClass(GoalCreateRequest.class);
+        verify(goalService).create(cap.capture(), any());
+        assertEquals(List.of("计算实际良率，不得猜分母"), cap.getValue().getCriteria().stream().map(c -> c.text()).toList());
+    }
+
+    @Test
     void multiStepPlan_createsGoal_seededWithStepCriteria() {
         GoalEntity created = new GoalEntity();
         created.setId(99L);

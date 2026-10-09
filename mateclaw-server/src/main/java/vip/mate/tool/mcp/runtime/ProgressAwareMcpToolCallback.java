@@ -11,7 +11,6 @@ import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.ai.tool.metadata.ToolMetadata;
 
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * MCP tool callback wrapper that injects {@code _meta.progressToken} into
@@ -20,8 +19,9 @@ import java.util.UUID;
  *
  * <p>When {@code MCP_PROGRESS_TOKEN} is present in {@link ToolContext}, this wrapper
  * calls {@link McpSyncClient#callTool(McpSchema.CallToolRequest)} directly with the
- * progressToken injected. Otherwise it delegates to the original callback
- * (compatible with MCP Servers that do not support progress, and with built-in tools).
+ * progressToken injected. A per-call result capture also selects this path so
+ * structured content can reach the UI without a model rewriting it. With neither
+ * context value present, it delegates to the original callback.
  */
 @Slf4j
 public final class ProgressAwareMcpToolCallback implements ToolCallback {
@@ -66,9 +66,11 @@ public final class ProgressAwareMcpToolCallback implements ToolCallback {
                 progressToken = s;
             }
         }
-        if (progressToken == null) {
+        McpToolResultCapture capture = McpToolResultCapture.from(toolContext);
+        if (progressToken == null && capture == null) {
             return delegate.call(toolInput, toolContext);
         }
+        McpSchema.CallToolResult result;
         try {
             // Apply identity forwarding BEFORE building CallToolRequest —
             // otherwise the progress path would silently bypass identity injection.
@@ -80,15 +82,18 @@ public final class ProgressAwareMcpToolCallback implements ToolCallback {
             McpSchema.CallToolRequest request = McpSchema.CallToolRequest.builder()
                     .name(rawToolName)
                     .arguments(arguments != null ? arguments : Map.of())
-                    .meta(Map.of("progressToken", progressToken))
+                    .meta(progressToken != null ? Map.of("progressToken", progressToken) : Map.of())
                     .build();
-            McpSchema.CallToolResult result = mcpClient.callTool(request);
-            return serializeResult(result);
+            result = mcpClient.callTool(request);
         } catch (Exception e) {
+            // The structured path executes exactly once; replaying could duplicate side effects.
+            if (capture != null) throw new IllegalStateException("MCP tool call failed", e);
             log.warn("Progress-aware MCP call failed for tool '{}', falling back to delegate: {}",
                     rawToolName, e.getMessage());
             return delegate.call(toolInput, toolContext);
         }
+        if (capture != null) capture.capture(result, objectMapper);
+        return serializeResult(result);
     }
 
     private Map<String, Object> parseArguments(String toolInput) {
@@ -103,7 +108,14 @@ public final class ProgressAwareMcpToolCallback implements ToolCallback {
 
     private String serializeResult(McpSchema.CallToolResult result) {
         if (result == null) return "";
-        if (result.content() == null || result.content().isEmpty()) return "";
+        if (result.content() == null || result.content().isEmpty()) {
+            if (result.structuredContent() == null) return "";
+            try {
+                return objectMapper.writeValueAsString(result.structuredContent());
+            } catch (Exception ignored) {
+                return "[Structured tool result could not be serialized]";
+            }
+        }
         StringBuilder sb = new StringBuilder();
         for (var content : result.content()) {
             if (content instanceof McpSchema.TextContent tc) {

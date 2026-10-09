@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import vip.mate.channel.feishu.FeishuClientFactory;
+import vip.mate.channel.ChannelTypes;
 import vip.mate.channel.model.ChannelEntity;
 import vip.mate.channel.repository.ChannelMapper;
 import vip.mate.exception.MateClawException;
@@ -117,6 +118,7 @@ public class ChannelService {
         if (channel.getChannelType() == null || channel.getChannelType().isBlank()) {
             throw new MateClawException("err.channel.type_required", "渠道类型不能为空");
         }
+        ChannelTypes.requireSupported(channel.getChannelType());
         if (channel.getEnabled() == null) {
             channel.setEnabled(false);
         }
@@ -133,6 +135,11 @@ public class ChannelService {
      */
     public ChannelEntity updateChannel(ChannelEntity channel) {
         ChannelEntity existing = getChannel(channel.getId());
+        if (channel.getChannelType() != null) {
+            ChannelTypes.requireSupported(channel.getChannelType());
+        } else if (Boolean.TRUE.equals(channel.getEnabled())) {
+            ChannelTypes.requireSupported(existing.getChannelType());
+        }
         if ("webchat".equals(channel.getChannelType())) {
             channel.setConfigJson(enrichWebChatConfig(channel.getConfigJson(), existing.getConfigJson()));
         }
@@ -157,6 +164,9 @@ public class ChannelService {
      */
     public ChannelEntity toggleChannel(Long id, boolean enabled) {
         ChannelEntity channel = getChannel(id);
+        if (enabled) {
+            ChannelTypes.requireSupported(channel.getChannelType());
+        }
         channel.setEnabled(enabled);
         channelMapper.updateById(channel);
         invalidateChannelCaches(id, channel.getChannelType());

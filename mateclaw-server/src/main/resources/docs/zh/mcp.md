@@ -540,3 +540,77 @@ user = claims["sub"]            # 验签通过才相信
 - [工具系统](./tools)——MCP 工具和内置工具的关系
 - [技能系统](./skills)——MCP 支撑的技能
 - [配置说明](./config)——完整配置参考
+
+## 工具结果直接展示图表、表格与商品卡片
+
+Web 控制台支持直接渲染 MCP 工具成功返回的 `structuredContent`，无需模型重新包装为 Markdown。展示数据绑定到对应工具调用；本轮回复结束后，图表、表格和商品卡片统一显示在回复正文下方，不占用思考及工具执行过程。中止或失败的回复仍展示已经成功取得的结果；失败或未完成工具的结果不展示。重新打开会话可恢复，原有文本回复继续兼容。
+
+MCP 的 `tools/call` 返回值可同时提供文字摘要和下面的界面数据：
+
+```json
+{
+  "content": [{ "type": "text", "text": "季度销量：第一季度 120，第二季度 180。" }],
+  "structuredContent": {
+    "mateclawUi": {
+      "version": 1,
+      "blocks": [
+        {
+          "type": "echarts",
+          "title": "季度销量",
+          "data": {
+            "xAxis": { "type": "category", "data": ["第一季度", "第二季度"] },
+            "yAxis": { "type": "value" },
+            "series": [{ "type": "bar", "data": [120, 180] }]
+          }
+        },
+        {
+          "type": "table",
+          "data": {
+            "columns": [{ "key": "quarter", "label": "季度" }, { "key": "sales", "label": "销量" }],
+            "rows": [{ "quarter": "第一季度", "sales": 120 }, { "quarter": "第二季度", "sales": 180 }]
+          }
+        },
+        {
+          "type": "product-cards",
+          "data": [{ "name": "示例商品", "price": 99, "imageUrl": "https://example.com/product.png", "url": "https://example.com/product" }]
+        }
+      ]
+    }
+  },
+  "isError": false
+}
+```
+
+`structuredContent` 是 MCP 标准字段；**`mateclawUi` 是 MateClaw 的版本化渲染约定**，并非 AG-UI 事件格式或 MCP Apps 界面资源。本实现参考 [工具组件注册机制](https://github.com/CopilotKit/CopilotKit) 与 [MCP Apps 的结构化结果设计](https://github.com/modelcontextprotocol/ext-apps)，沿用现有 SSE 通道，暂不加载第三方 HTML 或 MCP Apps iframe。
+
+支持的组件：
+
+| 类型 | `data` 格式 | 约束 |
+| --- | --- | --- |
+| `echarts` | 包含 `series` 对象或非空数组的 ECharts option 对象 | 仅支持声明式配置；移除 formatter、可执行代码、HTML 提示框、跳转和图片钩子 |
+| `table` | `columns: [{key, label}]`、`rows: object[]` | 1–32 列、最多 200 行，内容按文本转义 |
+| `product-cards` | 商品数组，必填 `name`；可选 `price`、`originalPrice`、`lowestPrice`、`url`、`imageUrl`、`platformLabel`、`shopName`、`purchaseAdvice` | 最多 24 个商品；链接和图片仅允许有效 HTTP(S) URL |
+
+一次最多 8 个组件；完整 `structuredContent` 的 UTF-8 JSON 不得超过 100 KiB。超限时不发送结构化展示数据，请在 `content` 中保留有用的文字摘要。未知版本、未知类型或不合法数据回退为转义后的 JSON。`isError: true` 会将工具标为失败，并禁止富内容展示。结果顶层 `_meta` 不发送至 UI。
+
+后端在原有 `tool_call_completed` 事件的 `toolCallId`、`toolName`、`result`、`success` 之外增加 `structuredContent`，同时保存在消息元数据的工具片段中。模型文本截断不影响这份独立数据。“直接返回用户”的工具继续将结果隔离于后续模型上下文。建议通过 `content` 提供简洁摘要；只有结构化结果时，序列化的 JSON 会作为文字回退。
+
+### 自定义前端渲染器
+
+可信前端代码可在应用初始化时注册 Vue 组件：
+
+```ts
+import InventoryCard from './InventoryCard.vue'
+import { registerToolResultRenderer } from '@/components/chat/tool-results/registry'
+
+registerToolResultRenderer('inventory', {
+  component: InventoryCard,
+  validate: (data: unknown) => {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return false
+    const value = data as Record<string, unknown>
+    return typeof value.name === 'string' && typeof value.quantity === 'number'
+  },
+})
+```
+
+组件通过 `data` prop 接收数据。工具随后可以在 `blocks` 中返回 `{ "type": "inventory", "data": { "name": "示例", "quantity": 10 } }`。注册新组件需要重新构建前端；工具返回值只能选择已注册类型，不能导入组件或执行脚本。自定义组件需校验自身数据结构，并安全处理不可信内容。

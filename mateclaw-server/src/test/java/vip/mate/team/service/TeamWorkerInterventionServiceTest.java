@@ -3,6 +3,7 @@ package vip.mate.team.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import vip.mate.agent.AgentService;
+import vip.mate.decision.api.DecisionRecordingException;
 import vip.mate.agent.context.ChatOrigin;
 import vip.mate.agent.runtime.ConversationTurnGate;
 import vip.mate.approval.ApprovalWorkflowService;
@@ -72,7 +73,7 @@ class TeamWorkerInterventionServiceTest {
         verify(conversationService).removeApprovalPlaceholders("worker-101");
         verify(replayPersistenceService).persist(101L, "pending-42", "worker-101",
                 "tool completed", AgentService.ChatResult.contentOnly("tool completed"));
-        verify(dispatchService).settleOutcome(task, "tool completed");
+        verify(dispatchService).settleOutcome(eq(task), eq("tool completed"), any(WorkerDecisionAdapter.Snapshot.class));
         verify(approvalService).consumeReplayClaim("pending-42", "alice");
     }
 
@@ -121,12 +122,24 @@ class TeamWorkerInterventionServiceTest {
         verify(conversationService).saveMessage("worker-101", "user", "tighten the summary");
         verify(conversationService).saveMessage("worker-101", "assistant", "revised summary",
                 null, "completed", 0, 0, null, null);
-        verify(dispatchService).settleOutcome(completed, "revised summary");
+        verify(dispatchService).settleOutcome(eq(completed), eq("revised summary"), any(WorkerDecisionAdapter.Snapshot.class));
 
         when(approvalService.findPendingByConversation("worker-101"))
                 .thenReturn(pending("pending-next"));
         assertThrows(IllegalStateException.class,
                 () -> service.feedback(7L, 101L, "run another command", "alice"));
+    }
+
+    @Test
+    void feedbackAuditFailureDoesNotFailWorker() {
+        TeamTaskEntity completed = task(TeamTaskStatus.COMPLETED);
+        when(taskService.getTask(101L)).thenReturn(completed);
+        when(governance.resolve("worker-101", 11L, 101L)).thenReturn(Optional.of(context()));
+        when(taskService.resumeForWorkerFeedback(101L)).thenReturn(true);
+        when(agentService.chatWithUsage(any(), any(), any(), any()))
+                .thenThrow(new IllegalStateException("wrapper", new DecisionRecordingException()));
+        assertThrows(DecisionRecordingException.class, () -> service.feedback(7L, 101L, "revise", "alice"));
+        verify(taskService, never()).failTask(any(), any());
     }
 
     @Test
@@ -204,7 +217,7 @@ class TeamWorkerInterventionServiceTest {
 
         verify(agentService, never()).chatWithReplayWithUsage(any(), any(), any(), any(), any());
         verify(conversationService, never()).removeApprovalPlaceholders(anyString());
-        verify(dispatchService).settleOutcome(task, "tool completed");
+        verify(dispatchService).settleOutcome(eq(task), eq("tool completed"), any(WorkerDecisionAdapter.Snapshot.class));
     }
 
     @Test

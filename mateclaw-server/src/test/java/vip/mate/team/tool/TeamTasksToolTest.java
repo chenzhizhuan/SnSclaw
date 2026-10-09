@@ -1,6 +1,7 @@
 package vip.mate.team.tool;
 
 import org.junit.jupiter.api.AfterEach;
+import vip.mate.decision.api.DecisionRecordingException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -439,6 +440,16 @@ class TeamTasksToolTest {
     }
 
     // ==================== member execution actions ====================
+
+    @Test
+    void completionAuditFailureEscapesToolErrorFormatting() {
+        callerIs(MEMBER_ID);
+        when(taskService.getTask(5L)).thenReturn(task(5L, TeamTaskStatus.IN_PROGRESS));
+        when(taskService.completeTask(5L, MEMBER_ID, "done"))
+                .thenThrow(new IllegalStateException("wrapper", new DecisionRecordingException()));
+        assertThrows(DecisionRecordingException.class, () -> tool.team_tasks("complete", "5", null, null,
+                null, null, null, null, null, null, null, "done", null, null, null, null, null, null, null));
+    }
 
     @Test
     @DisplayName("complete requires a result and reports released dependents")

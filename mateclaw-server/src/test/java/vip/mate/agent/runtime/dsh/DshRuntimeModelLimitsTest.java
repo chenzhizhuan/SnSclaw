@@ -1,5 +1,6 @@
 package vip.mate.agent.runtime.dsh;
 
+import java.util.List;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.Test;
@@ -13,11 +14,9 @@ import vip.mate.llm.model.ModelConfigEntity;
 import vip.mate.llm.model.ModelProviderEntity;
 import vip.mate.llm.service.ModelConfigService;
 import vip.mate.llm.service.ModelProviderService;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -47,15 +46,21 @@ class DshRuntimeModelLimitsTest {
         Files.writeString(script, """
                 #!/bin/sh
                 IFS= read -r initialize
-                printf '%s\\n' "$initialize" > "$1"
-                printf '%s\\n' '{"jsonrpc":"2.0","id":"init-limit-test","result":{}}'
+                printf '%s\\n' "$initialize" > initialize.json
+                id=$(printf '%s' "$initialize" | sed -n 's/.*"id":"\\([^"]*\\)".*/\\1/p')
+                printf '{"jsonrpc":"2.0","id":"%s","result":{"serverInfo":{"name":"deepseek-harness-sdk-runtime"}}}\\n' "$id"
                 IFS= read -r prompt
-                printf '%s\\n' '{"jsonrpc":"2.0","id":"prompt-limit-test","result":{}}'
-                printf '%s\\n' '{"jsonrpc":"2.0","method":"session.status","params":{"status":"idle"}}'
+                session=$(printf '%s' "$prompt" | sed -n 's/.*"sessionId":"\\([^"]*\\)".*/\\1/p')
+                printf '%s\\n' '{"jsonrpc":"2.0","id":"prompt-limit-test","result":{"messageId":"m1"}}'
+                printf '{"jsonrpc":"2.0","method":"session.event","params":{"sessionId":"%s","event":{"seq":1,"type":"agent/inbox/spliced","data":{"inserted":[{"id":"m1"}]}}}}\\n' "$session"
+                printf '{"jsonrpc":"2.0","method":"session.event","params":{"sessionId":"%s","event":{"seq":2,"type":"turn/end","data":{"reason":{"kind":"completed"}}}}}\\n' "$session"
+                printf '{"jsonrpc":"2.0","method":"session.status","params":{"sessionId":"%s","status":"idle"}}\\n' "$session"
+                IFS= read -r shutdown
                 """);
+        assertTrue(script.toFile().setExecutable(true));
         var config = mock(DshRuntimeConfigService.class);
         when(config.resolve()).thenReturn(new DshRuntimeConfiguration(
-                "/bin/sh \"" + script + "\" \"" + capture + "\"", "", temp.toString(), "", "", ""));
+                script.toString(), "", temp.toString(), "", "", "", "sdk", List.of(), temp.resolve("homes").toString()));
         var models = mock(ModelConfigService.class);
         var model = new ModelConfigEntity();
         model.setModelName("custom-model");
