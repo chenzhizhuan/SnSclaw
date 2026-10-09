@@ -1,6 +1,6 @@
 # 桌面端打包脚本
 
-- `build-desktop.ps1` —— Windows，产出 `智算方舟_<版本>_<arch>_Setup.exe`
+- `build-desktop.ps1` —— Windows，产出 `智屿_<版本>_<arch>_Setup.exe`
 - `build-desktop-mac.sh` —— macOS，产出 `.dmg` / `.zip`（**必须在 Mac 上运行**）
 
 双击根目录 `RUN_LOCAL_PIPELINE.cmd` 即可，它把参数透传给 `build-desktop.ps1`。
@@ -64,11 +64,11 @@ bundle 里连 `Contents/_CodeSignature` 都不存在）。经网络传输的副�
 这是 Gatekeeper 的误报，不是文件传坏了。
 
 用户装完必须先清隔离标记再打开，顺序不能反（`.app` 名取自
-`branding.config.json` 的 `productName`，当前品牌下是 `智算方舟.app`）：
+`branding.config.json` 的 `productName`，当前品牌下是 `智屿.app`）：
 
 ```bash
-xattr -rd com.apple.quarantine "/Applications/智算方舟.app"   # 先这个
-open "/Applications/智算方舟.app"                              # 再打开
+xattr -rd com.apple.quarantine "/Applications/智屿.app"   # 先这个
+open "/Applications/智屿.app"                              # 再打开
 ```
 
 两点都已用从 `.dmg` 里取出、带隔离标记的副本实测过：

@@ -218,7 +218,7 @@ log "Artifacts under: $DESK/release"
 # Read the real bundle name out of the packed output rather than hardcoding it:
 # productName comes from branding.config.json, so a rebrand renames the .app and
 # any literal here goes stale (it used to say "<AppName>.app" long after the bundle
-# had become 智算方舟.app).
+# had become 智屿.app).
 APP_NAME="$(find "$DESK/release" -maxdepth 2 -name '*.app' -print 2>/dev/null | head -1 | xargs -I{} basename {} 2>/dev/null)"
 [ -n "$APP_NAME" ] || APP_NAME="<AppName>.app"
 
