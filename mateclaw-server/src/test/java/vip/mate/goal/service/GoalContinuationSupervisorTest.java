@@ -1,5 +1,12 @@
 package vip.mate.goal.service;
 
+import vip.mate.decision.api.DecisionRecordingException;
+import vip.mate.decision.api.DecisionTicket;
+import vip.mate.decision.api.DecisionMode;
+import vip.mate.decision.api.DecisionValue;
+import vip.mate.goal.model.GoalContinuationDecision;
+import vip.mate.goal.model.GoalContinuationDecision.Action;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +58,53 @@ class GoalContinuationSupervisorTest {
         supervisor = new GoalContinuationSupervisor(store, goals, properties,
                 new GoalFollowupService(properties,new ObjectMapper()), runner, running, streams,coordinator,recovery,
                 Clock.fixed(now.toInstant(ZoneOffset.UTC),ZoneOffset.UTC), Runnable::run);
+    }
+
+    @Test void auditFailureLeavesLeaseForRecoveryWithoutPausingOrRunning() {
+        var adapter = mock(GoalDecisionAdapter.class);
+        supervisor.setDecisionAdapter(adapter);
+        when(adapter.select(any(), any(), any(), any(), any())).thenThrow(new DecisionRecordingException());
+        supervisor.tick();
+        verify(goals, never()).pause(any(), any());
+        verifyNoInteractions(runner);
+        verify(coordinator, never()).settle(any(), any(), any());
+    }
+
+    @Test void explicitTicketIsConsumedAtStartAndNotAtLaterSettlement() {
+        var adapter = mock(GoalDecisionAdapter.class);
+        supervisor.setDecisionAdapter(adapter);
+        var ticket = new DecisionTicket("decision", DecisionMode.ACTIVE,
+                new DecisionValue.Choice("CONTINUE"));
+        var selection = new GoalDecisionAdapter.Selection(ticket,
+                new GoalContinuationDecision(Action.CONTINUE,
+                        "continue", now, "remaining_criteria"));
+        when(adapter.select(any(), any(), any(), eq("attempt"), eq("DURABLE"))).thenReturn(selection);
+        when(coordinator.markRunning(claimed, now, ticket)).thenReturn(true);
+        supervisor.tick();
+        verify(coordinator).markRunning(claimed, now, ticket);
+        verify(runner).run(claimed, "continue", false);
+        verify(coordinator).settle(eq(claimed), isA(SegmentOutcome.Continue.class), eq(now));
+    }
+
+    @Test void wrappedGraphAuditFailureRetainsLeaseWithoutPausing() {
+        when(runner.run(eq(claimed), anyString(), anyBoolean()))
+                .thenThrow(new IllegalStateException("graph failed", new DecisionRecordingException()));
+        supervisor.tick();
+        verify(goals, never()).pause(any(), any());
+        verify(coordinator, never()).settle(any(), any(), any());
+    }
+
+    @Test void activeDeferAndRetrySettleWithoutStartingSegment() {
+        var adapter = mock(GoalDecisionAdapter.class); supervisor.setDecisionAdapter(adapter);
+        for (Action action : List.of(Action.DEFER, Action.RETRY)) {
+            var ticket = new DecisionTicket(action.name(), DecisionMode.ACTIVE, new DecisionValue.Choice(action.name()));
+            when(adapter.select(any(), any(), any(), any(), any())).thenReturn(new GoalDecisionAdapter.Selection(ticket,
+                    new GoalContinuationDecision(action, "prompt", now.plusSeconds(30), "decision_delay")));
+            supervisor.tick();
+            verify(coordinator).settle(eq(claimed), eq(new SegmentOutcome.Defer("decision_delay", now.plusSeconds(30))), eq(now), eq(ticket));
+        }
+        verifyNoInteractions(runner);
+        verify(coordinator, never()).markRunning(any(), any(), any());
     }
 
     @Test void incompleteGoalIsRescheduledAcrossMultipleSegments() {

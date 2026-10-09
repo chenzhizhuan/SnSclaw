@@ -38,7 +38,7 @@
 >
 > Multi-user workspaces. Approval-gated sensitive actions. Full audit trail. Spring Boot Actuator health monitoring. Per-channel error isolation so one chat platform's outage doesn't take down the rest. One JAR in your environment; you control persisted data, and task content is sent only to model, channel, or tool services you explicitly configure.
 >
-> **And underneath, a real Agent Runtime.** An employee is no longer welded to one reasoning loop. Choose the native StateGraph runtime for ReAct, Plan-and-Execute, Goals, and Team Runs, or run DeepSeek Harness as a managed external loop over authenticated JSON-RPC. Both paths converge on the same conversations, workspace boundaries, Tool Guard, event projection, and lifecycle controls.
+> **And underneath, a real Agent Runtime.** An employee is no longer welded to one reasoning loop. Choose the native StateGraph runtime for ReAct, Plan-and-Execute, Goals, and Team Runs, or run DeepSeek Harness as a managed external loop over SDK JSON-RPC. Both paths converge on the same conversations, workspace boundaries, Tool Guard, event projection, and lifecycle controls.
 
 Most AI tools die when their vendor has a bad day. Most forget you the moment the tab closes. Most give you a chatbox and call it a product.
 
@@ -86,7 +86,7 @@ Same brain. Same memory. Same tools. Different doors.
 You hire coworkers, not chat boxes. Each one has a **Role**, a **Goal**, a **Backstory**, a runtime, a pixel-art avatar, and a color of their own — six built-in templates ship ready (General Assistant · Product Assistant · Research Analyst · Customer Support · Data Analyst · Code Reviewer). Employee identity and governance stay stable even when the execution engine changes.
 
 ### Agent Runtime: native or DSH (2.2.0+)
-The `AgentRuntimeProvider` contract separates an employee from the engine that runs its turn. The **native runtime** keeps ReAct, Plan-and-Execute, persistent Goals, and Team Runs inside SnSclaw. The **DSH runtime** manages `dsh-jsonrpc-agent` as an authenticated child process and streams thinking, text, tool calls, usage, completion, and cancellation back as normalized runtime events. DSH owns the external Agent loop; SnSclaw still owns the session, workspace, credentials, tools, approvals, messages, and UI projection. Runtime availability and capabilities are validated before startup, and DSH can be installed, verified, connection-tested, enabled, or disabled from the console. [Configure DeepSeek Harness →](https://claw.mate.vip/docs/en/deepseek-harness)
+The `AgentRuntimeProvider` contract separates an employee from the engine that runs its turn. The **native runtime** keeps ReAct, Plan-and-Execute, persistent Goals, and Team Runs inside SnSclaw. The **DSH runtime** launches the official `dsh --profile sdk` CLI and normalizes its streaming, text, tool calls, usage, completion, and cancellation events. Managed installation pins `0.2.0-rc.1` (alternative: `0.1.7-rc.2`) with reviewed npm locks and Node.js 22; upgrades copy runtime homes, check the candidate, and switch to a retained generation, while rollback restores the previous home/configuration without merging newer sessions. Runtime availability and capabilities are validated before startup, and DSH can be installed, verified, connection-tested, enabled, or disabled from the console. [Configure DeepSeek Harness →](https://claw.mate.vip/docs/en/deepseek-harness)
 
 ### Durable long tasks: checkpoint, restart, continue (2.2.0+)
 Persistent Goals turn work that takes hours into bounded, recoverable segments. The database preserves the goal checklist, continuation state, attempts, cooldowns, leases, and user input accepted while the worker is busy. After a single backend instance restarts, the supervisor reconciles the interrupted attempt, reads persisted checkpoints and artifacts, and schedules the next safe segment instead of asking you to repeat the task.
@@ -335,3 +335,5 @@ Something that stays with you — and grabs work and moves it.
 ## License
 
 [Apache License 2.0](LICENSE). No asterisks.
+
+> AI生成

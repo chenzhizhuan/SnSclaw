@@ -1,5 +1,15 @@
 package vip.mate.agent.graph.node;
 
+import vip.mate.goal.service.GoalDecisionAdapter;
+import vip.mate.goal.model.GoalContinuationDecision;
+import vip.mate.decision.api.DecisionTicket;
+import vip.mate.decision.api.DecisionMode;
+import vip.mate.decision.api.DecisionValue;
+import vip.mate.decision.api.DecisionRecordingException;
+import java.time.LocalDateTime;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
 import com.alibaba.cloud.ai.graph.OverAllState;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.Message;
@@ -24,6 +34,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -36,6 +49,8 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 /**
@@ -52,6 +67,63 @@ import static org.mockito.Mockito.when;
 class GoalEvaluationNodeContinuationTest {
 
     // ===== Pure decision helpers =====
+
+    @Test
+    void emptyEvaluationDoesNotRetryPastCombinedBudget() throws Exception {
+        Fixture f = new Fixture();
+        var state = f.state(FinishReason.NORMAL.getValue(), 0, 0);
+        state.<GoalEntity>value(MateClawStateKeys.ACTIVE_GOAL).orElseThrow().setLlmCallBudget(11);
+        when(f.evaluationService.evaluate(any(), anyList(), anyString()))
+                .thenReturn(GoalEvaluationResult.fallbackAfterCall("empty_response", "fixture", 2));
+        when(f.goalService.suspendRuntime(1L, "EVALUATION_UNAVAILABLE")).thenReturn(true);
+        var node = f.node(); node.setDecisionAdapter(mock(GoalDecisionAdapter.class));
+        node.apply(state);
+        verify(f.evaluationService).evaluate(any(), anyList(), anyString());
+        verify(f.goalService).recordEvaluation(eq(1L), any(), eq(10), eq(1));
+    }
+
+    @Test
+    void offEmptyEvaluationKeepsSingleJudgeCall() throws Exception {
+        Fixture f = new Fixture();
+        when(f.evaluationService.evaluate(any(), anyList(), anyString()))
+                .thenReturn(GoalEvaluationResult.fallbackAfterCall("empty_response", "fixture", 2));
+        // No adapter and suspendRuntime=false represent the existing OFF domain path.
+        f.node().apply(f.state(FinishReason.NORMAL.getValue(), 0, 0));
+        verify(f.evaluationService).evaluate(any(), anyList(), anyString());
+        verify(f.goalService).recordEvaluation(eq(1L), any(), eq(10), eq(1));
+    }
+
+    @Test
+    void emptyEvaluationRetriesOnlyJudgeAndAccountsBothCalls() throws Exception {
+        Fixture f = new Fixture();
+        var adapter = mock(GoalDecisionAdapter.class); when(adapter.enabled()).thenReturn(true);
+        var first = GoalEvaluationResult.fallbackAfterCall("empty_response", "fixture", 2);
+        var second = new GoalEvaluationResult(1, "done", "completed", true, "fixture", 1, 3, List.of(), null);
+        when(f.evaluationService.evaluate(any(), anyList(), anyString())).thenReturn(first, second);
+        var goal = new GoalEntity(); goal.setId(1L);
+        when(f.goalService.markRuntimeEvaluatedCompleted(any(), any(), any())).thenReturn(goal);
+        var node = f.node(); node.setDecisionAdapter(adapter);
+        var out = node.apply(f.state(FinishReason.NORMAL.getValue(), 0, 0));
+        verify(f.evaluationService, times(2)).evaluate(any(), anyList(), eq("partial answer so far"));
+        verify(f.goalService).recordEvaluation(eq(1L), any(), eq(10), eq(2));
+        verify(f.followupService, never()).maybeBuildFollowup(any(), any());
+        assertEquals(true, out.get(MateClawStateKeys.GOAL_EVALUATED_THIS_RUN));
+    }
+
+    @Test
+    void unavailableJudgePausesInsteadOfReexecutingBusinessWork() throws Exception {
+        Fixture f = new Fixture();
+        var adapter = mock(GoalDecisionAdapter.class); when(adapter.enabled()).thenReturn(true);
+        when(f.evaluationService.evaluate(any(), anyList(), anyString()))
+                .thenReturn(GoalEvaluationResult.fallbackAfterCall("empty_response", "fixture", 2));
+        when(f.goalService.suspendRuntime(1L, "EVALUATION_UNAVAILABLE")).thenReturn(true);
+        var node = f.node(); node.setDecisionAdapter(adapter);
+        var out = node.apply(f.state(FinishReason.NORMAL.getValue(), 0, 0));
+        verify(f.evaluationService, times(2)).evaluate(any(), anyList(), anyString());
+        verify(f.goalService).suspendRuntime(1L, "EVALUATION_UNAVAILABLE");
+        verify(f.followupService, never()).maybeBuildFollowup(any(), any());
+        assertEquals(true, out.get(MateClawStateKeys.GOAL_EVALUATED_THIS_RUN));
+    }
 
     @Test
     void hardSkip_coversUserAndNonProgressTerminals_only() {
@@ -244,6 +316,93 @@ class GoalEvaluationNodeContinuationTest {
         assertEquals("continue", result.get("decision"));
         assertTrue(result.get("gap").toString().contains("checkManagedGoalJson"));
         verify(f.goalService, never()).markCompleted(any(), any());
+    }
+
+    @Test void graphSubmissionRecordsAfterConstructionDespiteLegacyBookkeepingFailure() throws Exception {
+        Fixture f = new Fixture();
+        var adapter = mock(GoalDecisionAdapter.class);
+        var ticket = new DecisionTicket("ticket", DecisionMode.ACTIVE, new DecisionValue.Choice("CONTINUE"));
+        when(adapter.selectGraph(any(), any(), any(), eq(false))).thenReturn(new GoalDecisionAdapter.Selection(ticket,
+                new GoalContinuationDecision(GoalContinuationDecision.Action.CONTINUE, "selected prompt", LocalDateTime.now(), "remaining_criteria")));
+        doThrow(new IllegalStateException("legacy audit unavailable")).when(f.goalService).recordFollowupInjected(any(), any());
+        var node = f.node(); node.setDecisionAdapter(adapter);
+        var output = node.apply(f.state(FinishReason.NORMAL.getValue(), 0, 0));
+        assertEquals("selected prompt", output.get(MateClawStateKeys.GOAL_FOLLOWUP_PROMPT));
+        verify(adapter).outcome(ticket, true, "FOLLOWUP_SUBMITTED");
+    }
+
+    @Test void graphCapsArePassedAsGuardsAndNeverRecordedAsSubmission() throws Exception {
+        Fixture f = new Fixture(); var adapter = mock(GoalDecisionAdapter.class);
+        var ticket = new DecisionTicket("ticket", DecisionMode.ACTIVE, new DecisionValue.Choice("DISABLED"));
+        when(adapter.selectGraph(any(), any(), any(), eq(true))).thenReturn(new GoalDecisionAdapter.Selection(ticket,
+                new GoalContinuationDecision(GoalContinuationDecision.Action.CONTINUE, "selected prompt", LocalDateTime.now(), "remaining_criteria")));
+        var node = f.node(); node.setDecisionAdapter(adapter);
+        var output = node.apply(f.state(FinishReason.NORMAL.getValue(), f.properties.getMaxFollowupsPerRun(), 0));
+        assertFalse(Boolean.TRUE.equals(output.get(MateClawStateKeys.GOAL_FOLLOWUP_INJECTED)));
+        verify(adapter).outcome(ticket, false, "GRAPH_CAP");
+    }
+
+    @Test void activeRecordingFailureEscapesGraphPlanningCatch() {
+        Fixture f = new Fixture(); var adapter = mock(GoalDecisionAdapter.class);
+        when(adapter.selectGraph(any(), any(), any(), anyBoolean())).thenThrow(new DecisionRecordingException());
+        var node = f.node(); node.setDecisionAdapter(adapter);
+        assertThrows(DecisionRecordingException.class, () -> node.apply(f.state(FinishReason.NORMAL.getValue(), 0, 0)));
+    }
+
+    @Test void failedLegacyPlanningIsNotRetriedByDecisionAdapter() throws Exception {
+        Fixture f = new Fixture(); var adapter = mock(GoalDecisionAdapter.class);
+        when(f.followupService.maybeBuildFollowup(any(), any())).thenThrow(new IllegalStateException("planning failed"));
+        var node = f.node(); node.setDecisionAdapter(adapter);
+        var output = node.apply(f.state(FinishReason.NORMAL.getValue(), 0, 0));
+        assertEquals(true, output.get(MateClawStateKeys.GOAL_EVALUATED_THIS_RUN));
+        verify(f.followupService, times(1)).maybeBuildFollowup(any(), any());
+        verifyNoInteractions(adapter);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void wrappedTerminalAuditFailureEscapesLegacyDegradation(boolean completed) {
+        Fixture f = new Fixture();
+        var failure = new IllegalStateException("transaction wrapper", new DecisionRecordingException());
+        if (completed) {
+            var result = new GoalEvaluationResult(1, "verified", "completed", true, "", 0, 0, List.of(), null);
+            when(f.evaluationService.evaluate(any(), anyList(), anyString())).thenReturn(result);
+            when(f.goalService.markRuntimeEvaluatedCompleted(any(), any(), any())).thenThrow(failure);
+        } else {
+            when(f.goalService.isBudgetExhausted(any())).thenReturn(true);
+            when(f.goalService.markExhausted(any(), any())).thenThrow(failure);
+        }
+        assertThrows(DecisionRecordingException.class,
+                () -> f.node().apply(f.state(FinishReason.NORMAL.getValue(), 0, 0)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"DEFER", "RETRY"})
+    void activeDelayRecordsAppliedGraphSuppressionWithoutClaimingDurableScheduling(String action) throws Exception {
+        Fixture f = new Fixture(); var adapter = mock(GoalDecisionAdapter.class);
+        var ticket = new DecisionTicket("ticket", DecisionMode.ACTIVE, new DecisionValue.Choice(action));
+        when(adapter.selectGraph(any(), any(), any(), eq(false))).thenReturn(new GoalDecisionAdapter.Selection(ticket,
+                new GoalContinuationDecision(GoalContinuationDecision.Action.valueOf(action), "original prompt",
+                        LocalDateTime.now().plusSeconds(30), "decision_delay")));
+        var node = f.node(); node.setDecisionAdapter(adapter);
+        var output = node.apply(f.state(FinishReason.NORMAL.getValue(), 0, 0));
+        assertEquals(true, output.get(MateClawStateKeys.GOAL_EVALUATED_THIS_RUN));
+        assertFalse(Boolean.TRUE.equals(output.get(MateClawStateKeys.GOAL_FOLLOWUP_INJECTED)));
+        assertFalse(output.containsKey(MateClawStateKeys.GOAL_FOLLOWUP_PROMPT));
+        verify(f.goalService, never()).recordFollowupInjected(any(), any());
+        verify(adapter).outcome(ticket, true, "FOLLOWUP_SUPPRESSED");
+    }
+
+    @Test void absentBaselineFollowupRemainsNotApplied() throws Exception {
+        Fixture f = new Fixture(); var adapter = mock(GoalDecisionAdapter.class);
+        when(f.followupService.maybeBuildFollowup(any(), any())).thenReturn(Optional.empty());
+        var ticket = new DecisionTicket("ticket", DecisionMode.ACTIVE, new DecisionValue.Choice("DISABLED"));
+        when(adapter.selectGraph(any(), any(), any(), eq(false))).thenReturn(new GoalDecisionAdapter.Selection(ticket,
+                new GoalContinuationDecision(GoalContinuationDecision.Action.DISABLED, null, null, "no_followup")));
+        var node = f.node(); node.setDecisionAdapter(adapter);
+        var output = node.apply(f.state(FinishReason.NORMAL.getValue(), 0, 0));
+        assertEquals(true, output.get(MateClawStateKeys.GOAL_EVALUATED_THIS_RUN));
+        verify(adapter).outcome(ticket, false, "NO_FOLLOWUP");
     }
 
     // ===== Test fixture =====

@@ -7,6 +7,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import vip.mate.decision.api.DecisionTicket;
+import vip.mate.decision.api.DecisionMode;
 import org.springframework.transaction.annotation.Transactional;
 import vip.mate.team.model.AgentTeamEntity;
 import vip.mate.team.model.TeamTaskCommentEntity;
@@ -69,6 +72,90 @@ public class TeamTaskService {
     private final TeamService teamService;
     private final TeamRunProjectionScheduler projectionScheduler;
     private final TeamRunService runService;
+
+    private WorkerDecisionAdapter decisionAdapter;
+
+    @Autowired(required = false)
+    public void setDecisionAdapter(WorkerDecisionAdapter adapter) { this.decisionAdapter = adapter; }
+
+    public record Completion(boolean applied, List<Long> released, String status) {}
+
+    /** Lock the execution row before applying an ACTIVE result or attaching its artifact. */
+    private TeamTaskEntity lockWorkerAttempt(Long taskId, WorkerDecisionAdapter.Snapshot snapshot) {
+        if (snapshot == null || !Objects.equals(taskId, snapshot.taskId())) return null;
+        TeamTaskEntity locked = taskMapper.selectOne(Wrappers.<TeamTaskEntity>lambdaQuery()
+                .eq(TeamTaskEntity::getId, snapshot.taskId()).last("FOR UPDATE"));
+        return snapshot.matches(locked) ? locked : null;
+    }
+
+    private boolean allowWorkerMutation(Long taskId, DecisionTicket ticket, WorkerDecisionAdapter.Snapshot snapshot) {
+        if (ticket == null || ticket.mode() != DecisionMode.ACTIVE || lockWorkerAttempt(taskId, snapshot) != null) return true;
+        decisionAdapter.outcome(ticket, false, "STALE_ATTEMPT");
+        return false;
+    }
+
+    @Transactional
+    public Completion completeTask(Long taskId, Long agentId, String result, DecisionTicket ticket,
+                                   WorkerDecisionAdapter.Snapshot snapshot) {
+        TeamTaskEntity locked = null;
+        if (ticket != null && ticket.mode() == DecisionMode.ACTIVE) {
+            locked = lockWorkerAttempt(taskId, snapshot);
+            if (locked == null) {
+                decisionAdapter.outcome(ticket, false, "STALE_ATTEMPT");
+                return new Completion(false, List.of(), null);
+            }
+        }
+        Completion completed = completeTaskInternal(taskId, agentId, result, false, locked);
+        if (decisionAdapter != null) decisionAdapter.outcome(ticket, completed.applied(), completed.status());
+        return completed;
+    }
+
+    @Transactional
+    public boolean failTask(Long taskId, String reason, DecisionTicket ticket, WorkerDecisionAdapter.Snapshot snapshot) {
+        if (!allowWorkerMutation(taskId, ticket, snapshot)) return false;
+        boolean applied = failTask(taskId, reason);
+        if (decisionAdapter != null) decisionAdapter.outcome(ticket, applied, applied ? TeamTaskStatus.FAILED : "TRANSITION_REJECTED");
+        return applied;
+    }
+
+    @Transactional
+    public boolean requeueUnusableResult(Long taskId, String reason, DecisionTicket ticket,
+                                        WorkerDecisionAdapter.Snapshot snapshot) {
+        if (!allowWorkerMutation(taskId, ticket, snapshot)) return false;
+        boolean applied = requeueUnusableResult(taskId, reason);
+        if (decisionAdapter != null) decisionAdapter.outcome(ticket, applied, applied ? TeamTaskStatus.PENDING : "TRANSITION_REJECTED");
+        return applied;
+    }
+
+    @Transactional
+    public String settleUnusableResult(Long taskId, String reason, boolean retryAllowed, DecisionTicket ticket,
+                                       WorkerDecisionAdapter.Snapshot snapshot) {
+        if (!allowWorkerMutation(taskId, ticket, snapshot)) return null;
+        String actual = retryAllowed && requeueUnusableResult(taskId, reason) ? TeamTaskStatus.PENDING
+                : failTask(taskId, reason) ? TeamTaskStatus.FAILED : null;
+        if (decisionAdapter != null) decisionAdapter.outcome(ticket, actual != null,
+                actual == null ? "TRANSITION_REJECTED" : actual);
+        return actual;
+    }
+
+    @Transactional
+    public boolean parkWorkerCheckpoint(Long taskId, int percent, String step, DecisionTicket ticket,
+                                        WorkerDecisionAdapter.Snapshot snapshot) {
+        if (!allowWorkerMutation(taskId, ticket, snapshot)) return false;
+        boolean applied = updateProgress(taskId, null, percent, step);
+        if (decisionAdapter != null) decisionAdapter.outcome(ticket, applied,
+                applied ? TeamTaskStatus.IN_PROGRESS : "TRANSITION_REJECTED");
+        return applied;
+    }
+
+    @Transactional
+    public boolean addWorkerDeliverable(WorkerDecisionAdapter.Snapshot snapshot, Long agentId, String name, String url) {
+        if (snapshot == null) return false;
+        TeamTaskEntity locked = lockWorkerAttempt(snapshot.taskId(), snapshot);
+        if (locked == null) return false;
+        addDeliverableInternal(locked, agentId, name, url);
+        return true;
+    }
 
     // ==================== creation ====================
 
@@ -212,7 +299,11 @@ public class TeamTaskService {
      */
     @Transactional
     public List<Long> completeTask(Long taskId, Long agentId, String result) {
-        TeamTaskEntity task = requireTask(taskId);
+        return completeTaskInternal(taskId, agentId, result, true, null).released();
+    }
+
+    private Completion completeTaskInternal(Long taskId, Long agentId, String result, boolean observe, TeamTaskEntity locked) {
+        TeamTaskEntity task = locked == null ? requireTask(taskId) : locked;
         if (TeamTaskStatus.PENDING.equals(task.getStatus()) && agentId != null) {
             if (task.getAssigneeAgentId() != null && !agentId.equals(task.getAssigneeAgentId())) {
                 throw new IllegalStateException("task #" + task.getTaskNumber()
@@ -235,6 +326,7 @@ public class TeamTaskService {
                 .set(TeamTaskEntity::getLockExpiresAt, null)
                 .set(TeamTaskEntity::getProgressPercent, 100));
         if (rows != 1) {
+            if (locked != null) return new Completion(false, List.of(), "TRANSITION_REJECTED");
             throw new IllegalStateException("task #" + task.getTaskNumber()
                     + " is " + task.getStatus() + " and cannot be completed");
         }
@@ -244,7 +336,8 @@ public class TeamTaskService {
                 agentId != null ? String.valueOf(agentId) : null, null);
         List<Long> released = toReview ? List.of() : releaseDependents(task);
         projectTask(task);
-        return released;
+        if (observe && decisionAdapter != null && decisionAdapter.enabled()) decisionAdapter.observeCompletion(task, target);
+        return new Completion(true, released, target);
     }
 
     /** Human approval of an in_review task; releases dependents. */
@@ -804,7 +897,11 @@ public class TeamTaskService {
      */
     @Transactional
     public void addDeliverable(Long taskId, Long agentId, String name, String url) {
-        TeamTaskEntity task = requireTask(taskId);
+        addDeliverableInternal(requireTask(taskId), agentId, name, url);
+    }
+
+    private void addDeliverableInternal(TeamTaskEntity task, Long agentId, String name, String url) {
+        Long taskId = task.getId();
         if (TeamTaskStatus.isTerminal(task.getStatus())) {
             throw new IllegalStateException("task #" + task.getTaskNumber() + " is "
                     + task.getStatus() + "; deliverables can only be attached while it is active");

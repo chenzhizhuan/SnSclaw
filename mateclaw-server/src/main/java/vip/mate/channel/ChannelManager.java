@@ -233,9 +233,7 @@ public class ChannelManager {
     private static final long FOLLOWER_RETRY_INTERVAL_SECONDS = 30L;
 
     /** 支持的渠道类型 */
-    private static final Set<String> SUPPORTED_TYPES = Set.of(
-            "web", "dingtalk", "feishu", "telegram", "discord", "wecom", "qq", "weixin", "slack", "webchat"
-    );
+    private static final Set<String> SUPPORTED_TYPES = ChannelTypes.SUPPORTED;
 
     /**
      * 应用启动完成后自动加载并启动所有已启用的渠道。

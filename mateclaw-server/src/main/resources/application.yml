@@ -421,6 +421,18 @@ mateclaw:
 
 # SnSclaw Agent 配置
 mate:
+  decision:
+    mode: SHADOW
+    scenarios: {}
+    provider: rule
+    confidence-threshold: 0.8
+    timeout-ms: 250
+    provider-threads: 4
+    shadow-threads: 2
+    queue-capacity: 64
+    retention-days: 30
+    retention-batch-size: 500
+    retention-interval-ms: 3600000
   channel:
     # 入站消息去重：IM 平台在 ack 迟到 / 丢失 / 非 200 时会重投同一条消息，
     # 不去重则每次重投都会跑一轮完整 Agent 回合，用户看到重复答复。

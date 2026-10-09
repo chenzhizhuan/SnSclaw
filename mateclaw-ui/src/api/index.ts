@@ -771,7 +771,11 @@ export const dshApi = {
   saveConfig: (data: Record<string, string>) => http.put('/admin/dsh/config', data),
   install: () => http.post('/admin/dsh/install'),
   verify: () => http.post('/admin/dsh/verify'),
-  testConnection: () => http.post('/admin/dsh/test-connection'),
+  testConnection: () => http.post('/admin/dsh/test-connection', undefined, { timeout: 45000 }),
+  testTask: () => http.post('/admin/dsh/test-task', undefined, { timeout: 100000 }),
+  upgrade: (data: { targetVersion: string; expectedRevision: string; idempotencyKey: string }) => http.post('/admin/dsh/upgrades', data),
+  upgradeStatus: (id: string) => http.get(`/admin/dsh/upgrades/${encodeURIComponent(id)}`),
+  rollback: (id: string, data: { expectedRevision: string; idempotencyKey: string }) => http.post(`/admin/dsh/upgrades/${encodeURIComponent(id)}/rollback`, data),
   enable: () => http.post('/admin/dsh/enable'),
   disable: () => http.post('/admin/dsh/disable'),
 }

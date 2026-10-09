@@ -344,6 +344,9 @@ public final class AgentStreamAccumulator {
                             && toolName.equals(tc.get("name")));
                 if (matches) {
                     tc.put("result", data.getOrDefault("result", ""));
+                    if (data.get("structuredContent") instanceof Map<?, ?> structured) {
+                        tc.put("structuredContent", structured);
+                    }
                     tc.put("success", data.getOrDefault("success", true));
                     tc.put("status", "completed");
                     break;
@@ -362,6 +365,9 @@ public final class AgentStreamAccumulator {
                     seg.put("status", "completed");
                     seg.put("endTimestamp", System.currentTimeMillis());
                     seg.put("toolResult", data.getOrDefault("result", ""));
+                    if (data.get("structuredContent") instanceof Map<?, ?> structured) {
+                        seg.put("structuredContent", structured);
+                    }
                     seg.put("toolSuccess", data.getOrDefault("success", true));
                     break;
                 }

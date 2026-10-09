@@ -574,12 +574,13 @@ class AgentBindingServiceTest {
         assertTrue(effective.contains("record_lesson"), "system-level 必须保留");
         boolean hasMcp = effective.stream().anyMatch(n -> n != null && n.startsWith("mcp_"));
         assertFalse(hasMcp, "两 flag 全开时 MCP 必须完全隐藏");
-        // Sanity: the set should be roughly the SYSTEM_LEVEL_TOOLS list —
-        // we don't enforce equality (the constant evolves) but it should be
-        // substantially smaller than the catalog of every enabled tool.
-        assertTrue(effective.size() < 100,
-                "两 flag 全开时返回的应该只是 system-level 内核工具，体积明显小于完整默认集。"
-                        + "实际大小: " + effective.size());
+        for (String name : Set.of("execute_code", "execute_shell_command", "read_file", "append_file",
+                "write_file", "edit_file", "web_search", "browser_use", "delegateToAgent", "delegateAsync",
+                "renderDocx", "image_generate", "wiki_create_page")) {
+            assertFalse(effective.contains(name), "Explicit opt-out must not restore " + name);
+        }
+        assertFalse(effective.contains("load_skill"));
+        assertFalse(effective.contains("runSkillScript"));
     }
 
     @Test

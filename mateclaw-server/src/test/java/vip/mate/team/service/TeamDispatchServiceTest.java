@@ -1,5 +1,7 @@
 package vip.mate.team.service;
 
+import vip.mate.decision.api.*;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -74,6 +76,36 @@ class TeamDispatchServiceTest {
         return t;
     }
 
+    @Test
+    void structuredBlockedResultFailsWithoutRetryOrReleasingDependents() {
+        TeamTaskEntity running = task(71L, MEMBER_A);
+        running.setStatus(TeamTaskStatus.IN_PROGRESS);
+        running.setRequireApproval(true);
+        when(taskService.getTask(71L)).thenReturn(running);
+        var adapter = mock(WorkerDecisionAdapter.class);
+        when(adapter.enabled()).thenReturn(true);
+        var ticket = new DecisionTicket("blocked", DecisionMode.SHADOW, new DecisionValue.BooleanValue(false));
+        when(adapter.judge(any(), anyString(), anyString()))
+                .thenReturn(new WorkerDecisionAdapter.Judgment(ticket, false));
+        service.setDecisionAdapter(adapter);
+        String reply = "{\"status\":\"BLOCKED\",\"result\":\"\",\"evidence\":\"Missing total count\"}";
+        service.settleOutcome(running, reply);
+        verify(taskService).failTask(eq(71L), startsWith("BLOCKED:"), eq(ticket), any());
+        verify(taskService, never()).completeTask(any(), any(), anyString(), any(), any());
+        verify(taskService, never()).requeueUnusableResult(any(), anyString());
+        verify(adapter).judge(running, "BLOCKED", reply);
+    }
+
+    @Test
+    void enabledWorkerEnvelopeRequiresStructuredCompletionEvenWithoutTools() {
+        var adapter = mock(WorkerDecisionAdapter.class);
+        when(adapter.enabled()).thenReturn(true);
+        service.setDecisionAdapter(adapter);
+        String prompt = service.buildDispatchContent(task(72L, MEMBER_A));
+        assertTrue(prompt.contains("COMPLETED|BLOCKED|FAILED"));
+        assertTrue(prompt.contains("evidence"));
+    }
+
     // ==================== sweep arbitration ====================
 
     @Test
@@ -138,6 +170,39 @@ class TeamDispatchServiceTest {
         // The work must not vanish silently: the lead hears about the auto-fail.
         verify(announceService).announceTaskSettled(failed);
         verifyNoInteractions(agentService);
+    }
+
+    @Test
+    void activeSemanticRejectionFailsWithoutAnotherAttempt() {
+        var adapter = mock(WorkerDecisionAdapter.class); service.setDecisionAdapter(adapter); when(adapter.enabled()).thenReturn(true);
+        when(adapter.active()).thenReturn(true);
+        var running = WorkerDecisionAdapterTest.task();
+        var snapshot = WorkerDecisionAdapter.Snapshot.capture(running);
+        var ticket = new DecisionTicket("worker", DecisionMode.ACTIVE, new DecisionValue.BooleanValue(false));
+        when(taskService.getTask(1L)).thenReturn(running);
+        when(adapter.judge(running, "VALID", "analysis finished"))
+                .thenReturn(new WorkerDecisionAdapter.Judgment(ticket, false));
+        service.settleOutcome(running, "{\"status\":\"COMPLETED\",\"result\":\"analysis finished\",\"evidence\":\"measured\"}");
+        verify(taskService).failTask(1L, "worker result did not satisfy task requirements", ticket, snapshot);
+        verify(taskService, never()).requeueUnusableResult(any(), anyString(), any(), any());
+        verify(taskService, never()).completeTask(any(), any(), anyString(), any(), any());
+    }
+
+    @Test
+    void staleActiveReplyDoesNotAttachArtifactOrCompleteNewAttempt() {
+        var adapter = mock(WorkerDecisionAdapter.class); service.setDecisionAdapter(adapter); when(adapter.enabled()).thenReturn(true);
+        when(adapter.active()).thenReturn(true);
+        var original = WorkerDecisionAdapterTest.task();
+        var replacement = WorkerDecisionAdapterTest.task(); replacement.setDispatchCount(2);
+        when(taskService.getTask(1L)).thenReturn(replacement);
+        var ticket = new DecisionTicket("worker", DecisionMode.ACTIVE, new DecisionValue.BooleanValue(false));
+        when(adapter.judge(eq(original), eq("STALE_ATTEMPT"), isNull()))
+                .thenReturn(new WorkerDecisionAdapter.Judgment(ticket, false));
+        service.settleOutcome(original, "[file](/api/v1/files/generated/abc)");
+        verify(adapter).outcome(ticket, false, "STALE_ATTEMPT");
+        verify(taskService, never()).addDeliverable(any(), any(), anyString(), anyString());
+        verify(taskService, never()).addWorkerDeliverable(any(), any(), anyString(), anyString());
+        verify(taskService, never()).completeTask(any(), any(), anyString(), any(), any());
     }
 
     // ==================== outcome settling ====================

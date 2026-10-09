@@ -3,6 +3,7 @@ package vip.mate.tts;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,6 +42,24 @@ public class TtsController {
     @GetMapping("/voices")
     public ResponseEntity<List<Map<String, Object>>> listVoices() {
         return ResponseEntity.ok(ttsService.listVoices());
+    }
+
+    @PostMapping("/preview")
+    public ResponseEntity<?> preview(@RequestBody PreviewRequest req) {
+        TtsResult result = ttsService.preview(req.getProvider(), req.getVoice(), req.getSpeed(), req.getText());
+        if (!result.isSuccess()) {
+            return ResponseEntity.badRequest().body(Map.of("msg", result.getErrorMessage()));
+        }
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(result.getContentType()))
+                .header("Cache-Control", "no-store").body(result.getAudioData());
+    }
+
+    @Data
+    public static class PreviewRequest {
+        private String provider;
+        private String voice;
+        private Double speed;
+        private String text;
     }
 
     @Data

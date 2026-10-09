@@ -1080,15 +1080,16 @@ export function useChat(options: UseChatOptions): UseChatReturn {
         // Match by toolCallId when available, fall back to "first running" for legacy events.
         let target = -1
         if (data.toolCallId) {
-          target = toolCalls.findIndex((tc: any) => tc.toolCallId === data.toolCallId && tc.status === 'running')
+          target = toolCalls.findIndex((tc: any) => tc.toolCallId === data.toolCallId)
         }
-        if (target < 0) {
+        if (!data.toolCallId) {
           target = toolCalls.findIndex((tc: any) => tc.status === 'running' && tc.name === data.toolName)
         }
         if (target >= 0) {
           toolCalls[target] = {
             ...toolCalls[target],
             result: data.result,
+            structuredContent: data.structuredContent,
             success: data.success,
             status: 'completed'
           }
@@ -1110,20 +1111,21 @@ export function useChat(options: UseChatOptions): UseChatReturn {
           metadata: { ...metadata, toolCalls, runningToolName: undefined, generatedFiles }
         } as any)
       }
-      // Segments: prefer toolCallId match, fall back to first-running by toolName.
+      // Explicit IDs also match replayed completions; only ID-less events use the running-name fallback.
       const segs = currentSegments.value
       let toolSeg: MessageSegment | undefined
       if (data.toolCallId) {
         toolSeg = segs.find((s: MessageSegment) =>
-          s.type === 'tool_call' && s.status === 'running' && s.toolCallId === data.toolCallId)
+          s.type === 'tool_call' && s.toolCallId === data.toolCallId)
       }
-      if (!toolSeg) {
+      if (!data.toolCallId) {
         toolSeg = segs.find((s: MessageSegment) =>
           s.type === 'tool_call' && s.status === 'running' && s.toolName === data.toolName)
       }
       if (toolSeg) {
         toolSeg.status = data.success !== false ? 'completed' : 'error'
         toolSeg.toolResult = data.result
+        toolSeg.structuredContent = data.structuredContent
         toolSeg.toolSuccess = data.success
       }
       flushSegmentsToMessage()

@@ -1,5 +1,6 @@
 <template>
   <div class="overview">
+    <EnterpriseOffer />
     <div class="metric-strip">
       <div class="metric" v-for="m in metrics" :key="m.key" :class="m.tone">
         <div class="metric-label">{{ m.label }}</div>
@@ -105,6 +106,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import EnterpriseOffer from './EnterpriseOffer.vue'
 
 const { t } = useI18n()
 const emit = defineEmits<{ (e: 'open-case', id: string): void }>()

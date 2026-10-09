@@ -1,6 +1,10 @@
 package vip.mate.goal.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import vip.mate.decision.api.DecisionTicket;
+import vip.mate.decision.api.DecisionMode;
+import vip.mate.decision.api.DecisionValue;
 import org.springframework.transaction.annotation.Transactional;
 import vip.mate.goal.config.GoalProperties;
 import vip.mate.goal.model.GoalAttempt;
@@ -32,6 +36,11 @@ public class GoalRunCoordinator {
         this.continuations=continuations;this.attempts=attempts;this.goals=goals;this.properties=properties;
         this.clock=clock;
     }
+
+    private GoalDecisionAdapter decisionAdapter;
+
+    @Autowired(required = false)
+    public void setDecisionAdapter(GoalDecisionAdapter decisionAdapter) { this.decisionAdapter = decisionAdapter; }
 
     public record ClaimedRun(GoalContinuationStore.Continuation candidate,GoalEntity goal,
                              GoalAttempt attempt,long revision) {}
@@ -78,6 +87,29 @@ public class GoalRunCoordinator {
     }
 
     @Transactional
+    public boolean markRunning(ClaimedRun run, LocalDateTime now, DecisionTicket ticket) {
+        if (ticket != null && ticket.mode() == DecisionMode.ACTIVE) {
+            if (run == null || !continuations.lockGoal(run.goal().getId())) {
+                if (decisionAdapter != null) decisionAdapter.outcome(ticket, false, "FENCE_REJECTED");
+                return false;
+            }
+            // Provider work may have overlapped a user stop. Recheck under the same goal lock.
+            if (!eligible(goals.getById(run.goal().getId()))) {
+                if (decisionAdapter != null) decisionAdapter.outcome(ticket, false, "GOAL_NOT_RUNNABLE");
+                return false;
+            }
+        }
+        boolean applied = markRunning(run, now);
+        if (decisionAdapter != null) decisionAdapter.outcome(ticket, applied, applied ? "RUN_STARTED" : "FENCE_REJECTED");
+        return applied;
+    }
+
+    @Transactional
+    public boolean settle(ClaimedRun run, SegmentOutcome outcome, LocalDateTime now, DecisionTicket ticket) {
+        return settleWithDecision(run, outcome, now, ticket);
+    }
+
+    @Transactional
     public boolean renew(ClaimedRun run,LocalDateTime now) {
         if(run==null || !continuations.lockGoal(run.goal().getId())) return false;
         java.time.Instant instant=currentInstant(now);
@@ -108,24 +140,59 @@ public class GoalRunCoordinator {
 
     @Transactional
     public boolean settle(ClaimedRun run,SegmentOutcome outcome,LocalDateTime now) {
-        if(run==null || !continuations.lockGoal(run.goal().getId())) return false;
+        return settleWithDecision(run, outcome, now, null);
+    }
+
+    private boolean settleWithDecision(ClaimedRun run, SegmentOutcome outcome, LocalDateTime now, DecisionTicket ticket) {
+        if(run==null || !continuations.lockGoal(run.goal().getId())) return rejectDecision(ticket, "FENCE_REJECTED");
         java.time.Instant instant=currentInstant(now);
         long nowEpoch=instant.getEpochSecond();
         now=LocalDateTime.ofInstant(instant,java.time.ZoneId.systemDefault());
-        if(!current(run,nowEpoch)) return false;
+        if(!current(run,nowEpoch)) return rejectDecision(ticket, "FENCE_REJECTED");
         GoalEntity fresh=goals.getById(run.goal().getId());
         Settlement settlement=classify(run,outcome,fresh,now);
+        // A delayed proposal cannot revive scheduling after a concurrent stop or disable.
+        if (ticket != null && ticket.mode() == DecisionMode.ACTIVE
+                && "queued".equals(settlement.projectionState) && !eligible(fresh)) {
+            return rejectDecision(ticket, "GOAL_NOT_RUNNABLE");
+        }
         if((outcome instanceof SegmentOutcome.Continue || outcome instanceof SegmentOutcome.Complete)
                 && !attempts.checkpoint(run.attempt().id(),run.attempt().leaseToken(),"resolved",
-                "evaluation_saved",null,now)) return false;
+                "evaluation_saved",null,now)) return rejectDecision(ticket, "FENCE_REJECTED");
         if(!attempts.finish(run.attempt().id(),run.attempt().leaseToken(),settlement.attemptState,
-                outcome.reason(),settlement.errorCategory,now)) return false;
+                outcome.reason(),settlement.errorCategory,now)) return rejectDecision(ticket, "FENCE_REJECTED");
         if(!continuations.settleFenced(run.goal().getId(),run.attempt().leaseToken(),run.attempt().id(),
                 run.revision(),settlement.projectionState,settlement.nextRunAt,settlement.failures,
                 settlement.reason,now)) {
             throw new IllegalStateException("Goal projection fence changed during settlement");
         }
+        if (ticket != null && decisionAdapter != null) {
+            boolean delayOverridden = ticket.mode() == DecisionMode.ACTIVE
+                    && ticket.effectiveValue() instanceof DecisionValue.Choice choice
+                    && ("DEFER".equals(choice.code()) || "RETRY".equals(choice.code()))
+                    && !"queued".equals(settlement.projectionState);
+            decisionAdapter.outcome(ticket, !delayOverridden, settledCode(settlement.projectionState));
+        }
         return true;
+    }
+
+    private boolean rejectDecision(DecisionTicket ticket, String actualCode) {
+        if (ticket != null && decisionAdapter != null) decisionAdapter.outcome(ticket, false, actualCode);
+        return false;
+    }
+
+    private static String settledCode(String state) {
+        return switch (state) {
+            case "completed" -> "COMPLETED";
+            case "budget_limited" -> "BUDGET_LIMITED";
+            case "waiting_approval" -> "WAITING_APPROVAL";
+            case "waiting_input" -> "WAITING_INPUT";
+            case "retry" -> "RETRY";
+            case "blocked" -> "BLOCKED";
+            case "paused" -> "PAUSED";
+            case "queued" -> "QUEUED";
+            default -> throw new IllegalStateException("Unknown goal settlement state");
+        };
     }
 
     private java.time.Instant currentInstant(LocalDateTime requested) {

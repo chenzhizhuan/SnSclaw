@@ -8,6 +8,8 @@ import vip.mate.common.result.R;
 import vip.mate.workspace.core.annotation.RequireGlobalAdmin;
 
 import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.UUID;
 
 @Tag(name = "DeepSeek Harness Runtime Management")
 @RestController
@@ -15,11 +17,19 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class DshManagementController {
     private final DshManagementService managementService;
+    private final DshUpgradeService upgrades;
+
+    public record UpgradeRequest(String targetVersion, String expectedRevision, String idempotencyKey) {}
+    public record RollbackRequest(String expectedRevision, String idempotencyKey) {}
 
     @Operation(summary = "Get managed DSH runtime status")
     @GetMapping("/status")
     @RequireGlobalAdmin
-    public R<Map<String, Object>> status() { return R.ok(managementService.status()); }
+    public R<Map<String, Object>> status() {
+        Map<String, Object> status = new LinkedHashMap<>(managementService.status());
+        status.putAll(upgrades.status());
+        return R.ok(status);
+    }
 
     @Operation(summary = "Save managed DSH runtime configuration")
     @PutMapping("/config")
@@ -31,7 +41,29 @@ public class DshManagementController {
     @Operation(summary = "Install the server-selected DSH artifact")
     @PostMapping("/install")
     @RequireGlobalAdmin
-    public R<Map<String, Object>> install() throws Exception { return R.ok(managementService.install()); }
+    public R<Map<String, String>> install() {
+        return R.ok(upgrades.upgrade("0.2.0-rc.1", (String) upgrades.status().get("configRevision"), UUID.randomUUID().toString()));
+    }
+
+    @PostMapping("/test-task")
+    @RequireGlobalAdmin
+    public R<Map<String, Object>> testTask() { return R.ok(managementService.testTask()); }
+
+    @PostMapping("/upgrades")
+    @RequireGlobalAdmin
+    public R<Map<String, String>> upgrade(@RequestBody UpgradeRequest request) {
+        return R.ok(upgrades.upgrade(request.targetVersion(), request.expectedRevision(), request.idempotencyKey()));
+    }
+
+    @GetMapping("/upgrades/{id}")
+    @RequireGlobalAdmin
+    public R<Map<String, String>> operation(@PathVariable String id) { return R.ok(upgrades.operation(id)); }
+
+    @PostMapping("/upgrades/{id}/rollback")
+    @RequireGlobalAdmin
+    public R<Map<String, String>> rollback(@PathVariable String id, @RequestBody RollbackRequest request) {
+        return R.ok(upgrades.rollback(id, request.expectedRevision(), request.idempotencyKey()));
+    }
 
     @Operation(summary = "Verify DSH runtime configuration")
     @PostMapping("/verify")

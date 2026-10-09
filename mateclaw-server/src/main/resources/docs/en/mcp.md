@@ -573,3 +573,77 @@ Subprocesses are cleaned up on normal shutdown. If SnSclaw was force-killed (`ki
 - [Tools](./tools) — how MCP tools relate to built-in tools
 - [Skills](./skills) — MCP-backed skills
 - [Configuration](./config) — full configuration reference
+
+## Structured charts, tables and product cards
+
+The web console can render a successful MCP tool's `structuredContent` directly, without asking the model to rewrite it into Markdown. Structured tool results appear below the answer after the turn ends, rather than inside the reasoning/tool timeline. Stopped or failed turns retain results from successful tool calls; failed or unfinished calls are excluded. The same metadata restores these results when reopening a conversation. Existing text responses remain supported.
+
+Return a normal MCP `tools/call` result with a text summary and the following application-specific UI envelope:
+
+```json
+{
+  "content": [{ "type": "text", "text": "Quarterly sales: Q1 120, Q2 180." }],
+  "structuredContent": {
+    "mateclawUi": {
+      "version": 1,
+      "blocks": [
+        {
+          "type": "echarts",
+          "title": "Quarterly sales",
+          "data": {
+            "xAxis": { "type": "category", "data": ["Q1", "Q2"] },
+            "yAxis": { "type": "value" },
+            "series": [{ "type": "bar", "data": [120, 180] }]
+          }
+        },
+        {
+          "type": "table",
+          "data": {
+            "columns": [{ "key": "quarter", "label": "Quarter" }, { "key": "sales", "label": "Sales" }],
+            "rows": [{ "quarter": "Q1", "sales": 120 }, { "quarter": "Q2", "sales": 180 }]
+          }
+        },
+        {
+          "type": "product-cards",
+          "data": [{ "name": "Example product", "price": 99, "imageUrl": "https://example.com/product.png", "url": "https://example.com/product" }]
+        }
+      ]
+    }
+  },
+  "isError": false
+}
+```
+
+`structuredContent` is an MCP field; **`mateclawUi` is MateClaw's versioned rendering contract**, not an AG-UI event format or an MCP Apps UI resource. This implementation takes inspiration from [registered tool renderers](https://github.com/CopilotKit/CopilotKit) and [MCP Apps structured results](https://github.com/modelcontextprotocol/ext-apps), while retaining the existing SSE transport. It does not load third-party HTML or MCP Apps iframes.
+
+Supported block types:
+
+| Type | `data` | Limits |
+| --- | --- | --- |
+| `echarts` | ECharts option object with a `series` object or nonempty array | Declarative options only; formatters, executable code, HTML tooltips, navigation and image hooks are removed |
+| `table` | `columns: [{key, label}]`, `rows: object[]` | 1–32 columns, at most 200 rows; text is escaped |
+| `product-cards` | Array of products with `name`; optional `price`, `originalPrice`, `lowestPrice`, `url`, `imageUrl`, `platformLabel`, `shopName`, `purchaseAdvice` | At most 24 products; only valid HTTP(S) links and images |
+
+A response supports at most 8 blocks. The complete `structuredContent` must fit within 100 KiB of UTF-8 JSON. Larger structured payloads are omitted from the display channel; provide a useful text summary in `content`. Unknown versions/types or invalid block data fall back to escaped JSON. `isError: true` marks the tool as failed and suppresses rich rendering. The UI does not receive the result's top-level `_meta`.
+
+The backend adds `structuredContent` to `tool_call_completed` alongside `toolCallId`, `toolName`, `result` and `success`. The same data is stored in message metadata segments. Model text truncation does not truncate this separate payload. Tools configured to return directly still keep their output out of subsequent model context. Prefer supplying `content` for a concise model-facing summary; structured-only tools use serialized JSON as the text fallback.
+
+### Register a custom renderer
+
+Trusted frontend code can register another Vue component during application startup:
+
+```ts
+import InventoryCard from './InventoryCard.vue'
+import { registerToolResultRenderer } from '@/components/chat/tool-results/registry'
+
+registerToolResultRenderer('inventory', {
+  component: InventoryCard,
+  validate: (data: unknown) => {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return false
+    const value = data as Record<string, unknown>
+    return typeof value.name === 'string' && typeof value.quantity === 'number'
+  },
+})
+```
+
+The component receives a `data` prop. A tool can then return `{ "type": "inventory", "data": { "name": "Example", "quantity": 10 } }` inside `blocks`. Registration requires a frontend rebuild; tool responses can only name registered types and cannot import components or execute scripts. Custom components must validate their schema and safely render untrusted values.

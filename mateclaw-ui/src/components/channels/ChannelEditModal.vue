@@ -30,7 +30,6 @@
               <option value="qq">{{ t('channels.types.qq') }}</option>
               <option value="slack">{{ t('channels.types.slack') }}</option>
               <option value="webchat">{{ t('channels.types.webchat') }}</option>
-              <option value="webhook">{{ t('channels.types.webhook') }}</option>
             </select>
           </div>
           <div class="form-group full-width">

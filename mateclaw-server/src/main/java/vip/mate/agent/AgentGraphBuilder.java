@@ -1,5 +1,8 @@
 package vip.mate.agent;
 
+import vip.mate.goal.service.GoalDecisionAdapter;
+import vip.mate.planning.service.AgentRoutingDecisionAdapter;
+
 // PR-0b: DashScope imports moved with the construction code into DashScopeChatModelBuilder.
 import com.alibaba.cloud.ai.graph.CompiledGraph;
 import com.alibaba.cloud.ai.graph.CompileConfig;
@@ -155,10 +158,25 @@ public class AgentGraphBuilder {
     private final vip.mate.llm.chatmodel.DashScopeChatModelBuilder dashScopeBuilder;
     private final vip.mate.llm.routing.MultimodalRouter multimodalRouter;
     private final vip.mate.llm.routing.MediaCaptionService mediaCaptionService;
+    private vip.mate.workspace.core.service.ChatUploadLocationResolver chatUploadLocationResolver;
+
+    @Autowired
+    public void setChatUploadLocationResolver(vip.mate.workspace.core.service.ChatUploadLocationResolver resolver) {
+        this.chatUploadLocationResolver = resolver;
+    }
     private final vip.mate.goal.service.GoalService goalService;
     private final vip.mate.goal.service.GoalEvaluationService goalEvaluationService;
     private final vip.mate.goal.service.GoalFollowupService goalFollowupService;
     private final vip.mate.goal.config.GoalProperties goalProperties;
+    private GoalDecisionAdapter goalDecisionAdapter;
+    private AgentRoutingDecisionAdapter routingDecisionAdapter;
+
+    @Autowired(required = false)
+    public void setRoutingDecisionAdapter(AgentRoutingDecisionAdapter adapter) { this.routingDecisionAdapter = adapter; }
+
+
+    @Autowired(required = false)
+    public void setGoalDecisionAdapter(GoalDecisionAdapter adapter) { this.goalDecisionAdapter = adapter; }
     /** C4: per-conversation environment notification registry, injected into ReasoningNode. */
     private final vip.mate.agent.runtime.RunningConversationRegistry runningConversationRegistry;
 
@@ -531,6 +549,7 @@ public class AgentGraphBuilder {
         agent.goalService = goalService;
         agent.multimodalRouter = multimodalRouter;
         agent.mediaCaptionService = mediaCaptionService;
+        agent.chatUploadLocationResolver = chatUploadLocationResolver;
         agent.userLocale = resolveLocale();
         agent.temperature = runtimeModel.getTemperature();
         agent.maxTokens = runtimeModel.getMaxTokens();
@@ -704,6 +723,8 @@ public class AgentGraphBuilder {
             // Team hand-off: a lead-of-team plan agent parks multi-step plans on
             // the team task board instead of the serial delegation pipeline.
             planGenerationNode.setTeamPlanBridge(teamPlanBridge);
+            planGenerationNode.setRoutingAdapter(routingDecisionAdapter);
+            planGenerationNode.setGoalDecisionAdapter(goalDecisionAdapter);
             List<ToolCallback> advertisedCallbacks = toolDisclosureService
                     .split(toolSet, Set.of(), autoDemotedTools).activeCallbacks();
             AgentToolSet advertisedToolSet = AgentToolSet.fromCallbacks(
@@ -714,7 +735,9 @@ public class AgentGraphBuilder {
             // Per-step delegation: route a step assigned to a specialist agent
             // through DelegateAgentTool (null when delegation deps aren't wired).
             stepExecutionNode.setDelegateAgentTool(delegateAgentTool);
+            stepExecutionNode.setGoalDecisionAdapter(goalDecisionAdapter);
             PlanSummaryNode planSummaryNode = new PlanSummaryNode(chatModel, planningService, streamingHelper);
+            planSummaryNode.setGoalService(goalService);
             DirectAnswerNode directAnswerNode = new DirectAnswerNode();
 
             KeyStrategyFactory keyStrategyFactory = KeyStrategy.builder()
@@ -842,6 +865,7 @@ public class AgentGraphBuilder {
                     goalEvaluationService, goalFollowupService, goalService, goalProperties,
                     conversationWindowManager, conversationService,
                     vip.mate.goal.service.GraphFlavor.PLAN_EXECUTE);
+            goalEvalNode.setDecisionAdapter(goalDecisionAdapter);
 
             StateGraph graph = new StateGraph("plan-execute-agent", keyStrategyFactory)
                     .addNode(PlanStateKeys.PLAN_GENERATION_NODE,
@@ -864,7 +888,7 @@ public class AgentGraphBuilder {
                                     // rebuilt from team tasks — summarize directly.
                                     PlanStateKeys.PLAN_SUMMARY_NODE, PlanStateKeys.PLAN_SUMMARY_NODE))
                     .addConditionalEdges(PlanStateKeys.STEP_EXECUTION_NODE,
-                            AsyncEdgeAction.edge_async(new StepProgressDispatcher()),
+                            AsyncEdgeAction.edge_async(new StepProgressDispatcher(goalService)),
                             Map.of(
                                     PlanStateKeys.STEP_EXECUTION_NODE, PlanStateKeys.STEP_EXECUTION_NODE,
                                     PlanStateKeys.PLAN_SUMMARY_NODE, PlanStateKeys.PLAN_SUMMARY_NODE,
@@ -1184,6 +1208,7 @@ public class AgentGraphBuilder {
                     goalEvaluationService, goalFollowupService, goalService, goalProperties,
                     conversationWindowManager, conversationService,
                     vip.mate.goal.service.GraphFlavor.REACT);
+            goalEvalNode.setDecisionAdapter(goalDecisionAdapter);
 
             StateGraph graph = new StateGraph("react-agent-v2", keyStrategyFactory)
                     .addNode(MateClawStateKeys.REASONING_NODE,

@@ -1,5 +1,9 @@
 package vip.mate.agent.runtime.dsh;
 
+import java.nio.file.Files;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.io.TempDir;
+import vip.mate.config.ConversationWindowProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -13,14 +17,12 @@ import vip.mate.agent.runtime.dsh.management.DshRuntimeConfiguration;
 import vip.mate.llm.model.ModelProviderEntity;
 import vip.mate.llm.service.ModelConfigService;
 import vip.mate.llm.service.ModelProviderService;
-
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.time.Duration;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -82,23 +84,25 @@ class DshRuntimeServiceTest {
     }
 
     @Test
-    void streamSubscriptionReturnsBeforeSynchronousDshReadLoopFinishes() {
-        DshRuntimeService service = service("/bin/sh -c \"sleep 5\"");
+    void streamSubscriptionReturnsBeforeSynchronousDshReadLoopFinishes(@TempDir Path temp) throws Exception {
+        Path script = Files.writeString(temp.resolve("synthetic-sdk"), "#!/bin/sh\nsleep 5\n");
+        assertTrue(script.toFile().setExecutable(true));
+        DshRuntimeService service = service(script.toString());
         AgentEntity agent = new AgentEntity();
         agent.setId(1L);
         agent.setWorkspaceId(2L);
         agent.setModelName("model");
 
         Disposable subscription = assertTimeout(Duration.ofSeconds(2), () ->
-                service.stream(agent, "hello", "conversation", "model").subscribe());
+                service.stream(agent, "hello", "conversation", "model").subscribe(delta -> {}, error -> {}));
         assertFalse(subscription.isDisposed());
         subscription.dispose();
     }
 
     @Test
-    void commandLineKeepsQuotedExecutablePathTogether() {
-        assertEquals(List.of("/opt/Deep Seek/dsh-jsonrpc-agent", "--stdio"),
-                DshRuntimeService.commandLine("\"/opt/Deep Seek/dsh-jsonrpc-agent\" --stdio"));
+    void oldCommandStringRequiresMigration() {
+        DshRuntimeConfiguration configuration = new DshRuntimeConfiguration("/bin/sh --stdio", "", "/tmp", "", "", "");
+        assertTrue(configuration.migrationRequired());
     }
 
     @Test
@@ -123,12 +127,49 @@ class DshRuntimeServiceTest {
         assertEquals("/usr/bin", environment.get("PATH"));
 		assertEquals("/Users/tester", environment.get("HOME"));
         assertEquals("/workspace/project", environment.get("DSH_CWD"));
-        assertEquals("/opt/dsh/cordis.yml", environment.get("DSH_CORDIS_CONFIG"));
+        assertFalse(environment.containsKey("DSH_CORDIS_CONFIG"));
+        assertTrue(environment.containsKey("DSH_HOME"));
         assertEquals("configured-key", environment.get("DEEPSEEK_API_KEY"));
         assertEquals("https://configured.example/v1", environment.get("DEEPSEEK_BASE_URL"));
         assertFalse(environment.containsKey("AWS_SECRET_ACCESS_KEY"));
         assertFalse(environment.containsValue("inherited-key"));
         assertFalse(environment.containsValue("/stale/cordis.yml"));
+    }
+
+    @Test
+    void committedMessageUsesContentNotStream() throws Exception {
+        RuntimeEvent event = service().mapEvent("root", 1, new ObjectMapper().readTree("""
+                {"type":"assistant/message","data":{"message":{"content":[{"type":"text","text":"answer"}]},
+                "stream":[{"type":"text-delta","text":"duplicate"}]}}
+                """));
+        Assertions.assertNotNull(event);
+        assertEquals("answer", event.text());
+    }
+
+    @Test
+    void incompleteTurnIsFailure() throws Exception {
+        RuntimeEvent event = service().mapEvent("root", 1, new ObjectMapper().readTree("""
+                {"type":"turn/end","data":{"reason":{"kind":"max-tokens"}}}
+                """));
+        Assertions.assertNotNull(event);
+        assertEquals(RuntimeEventType.FAILED, event.type());
+    }
+
+    @Test
+    void toolUsesSdkNameAndCallId() throws Exception {
+        RuntimeEvent event = service().mapEvent("root", 1, new ObjectMapper().readTree("""
+                {"type":"tool/start","data":{"name":"read_file","callId":"call-1"}}
+                """));
+        assertEquals("read_file", event.data().get("toolName"));
+        assertEquals("call-1", event.data().get("callId"));
+    }
+
+    @Test
+    void toolResultPairsWithNestedMessageCallId() throws Exception {
+        RuntimeEvent event = service().mapEvent("root", 1, new ObjectMapper().readTree("""
+                {"type":"tool/result","data":{"message":{"role":"tool","toolCallId":"call-1","content":[]}}}
+                """));
+        assertEquals("call-1", event.data().get("callId"));
     }
 
     private static DshRuntimeService service() {
@@ -138,10 +179,10 @@ class DshRuntimeServiceTest {
     private static DshRuntimeService service(String executable) {
         DshRuntimeConfigService config = Mockito.mock(DshRuntimeConfigService.class);
         Mockito.when(config.resolve()).thenReturn(new DshRuntimeConfiguration(
-                executable, "", "/tmp", "", "model", ""));
+                executable, "", "/tmp", "", "model", "", "sdk", List.of(), Path.of(executable).getParent().resolve("homes").toString()));
         return new DshRuntimeService(new ObjectMapper(),
                 Mockito.mock(ModelConfigService.class),
-                Mockito.mock(ModelProviderService.class), config, new vip.mate.config.ConversationWindowProperties());
+                Mockito.mock(ModelProviderService.class), config, new ConversationWindowProperties());
     }
 
     private static RuntimeSession session(Path workingDirectory) {

@@ -13,6 +13,8 @@ import org.springframework.util.MimeType;
 import vip.mate.llm.chatmodel.ProviderChatModelFactory;
 import vip.mate.llm.model.ModelConfigEntity;
 import vip.mate.workspace.conversation.model.MessageContentPart;
+import vip.mate.agent.context.ChatOrigin;
+import vip.mate.workspace.core.service.ChatUploadLocationResolver;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,6 +42,12 @@ public class MediaCaptionService {
 
     private final ProviderChatModelFactory chatModelFactory;
     private final RetryTemplate retryTemplate;
+    private ChatUploadLocationResolver uploadLocationResolver;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setUploadLocationResolver(ChatUploadLocationResolver resolver) {
+        this.uploadLocationResolver = resolver;
+    }
 
     public CaptionResult caption(ModelConfigEntity visionModel, MessageContentPart imagePart, Locale locale) {
         return caption(visionModel, imagePart, locale, null);
@@ -53,11 +61,16 @@ public class MediaCaptionService {
      * the factual full-description prompt.
      */
     public CaptionResult caption(ModelConfigEntity visionModel, MessageContentPart imagePart, Locale locale,
-                                 String userQuestion) {
+                                  String userQuestion) {
+        return caption(visionModel, imagePart, locale, userQuestion, null);
+    }
+
+    public CaptionResult caption(ModelConfigEntity visionModel, MessageContentPart imagePart, Locale locale,
+                                 String userQuestion, ChatOrigin origin) {
         if (visionModel == null || imagePart == null) {
             return CaptionResult.failure(0, new IllegalArgumentException("vision model or image part is null"));
         }
-        Path mediaPath = resolveMediaPath(imagePart);
+        Path mediaPath = resolveMediaPath(imagePart, origin);
         if (mediaPath == null) {
             return CaptionResult.failure(0, new IllegalStateException(
                     "Image file not found for attachment: " + imagePart.getFileName()));
@@ -135,7 +148,11 @@ public class MediaCaptionService {
      * Mirrors {@code BaseAgent.resolveImagePath} but standalone — caption service
      * is reused outside the agent context (e.g. tests, future preflight endpoint).
      */
-    private Path resolveMediaPath(MessageContentPart part) {
+    private Path resolveMediaPath(MessageContentPart part, ChatOrigin origin) {
+        if (uploadLocationResolver != null && origin != null && "web".equals(origin.channelType())
+                && part.getStoredName() != null) {
+            return uploadLocationResolver.resolveExistingFile(origin, part.getStoredName());
+        }
         Path resolved = tryResolve(part.getPath());
         if (resolved != null) return resolved;
         return tryResolve(part.getMediaId());

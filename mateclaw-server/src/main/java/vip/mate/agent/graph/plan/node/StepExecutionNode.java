@@ -82,6 +82,11 @@ public class StepExecutionNode implements NodeAction {
      * specialist agent runs on that agent. Null disables per-step delegation.
      */
     private DelegateAgentTool delegateAgentTool;
+    private vip.mate.goal.service.GoalDecisionAdapter goalDecisionAdapter;
+    public void setGoalDecisionAdapter(vip.mate.goal.service.GoalDecisionAdapter adapter) {
+        this.goalDecisionAdapter = adapter;
+    }
+
 
     public void setDelegateAgentTool(DelegateAgentTool delegateAgentTool) {
         this.delegateAgentTool = delegateAgentTool;
@@ -718,7 +723,8 @@ public class StepExecutionNode implements NodeAction {
         ChildResult childResult = null;
         String delegateError = null;
         try {
-            childResult = delegateAgentTool.delegateByAgentIdStructured(assignedAgentId, step, chatOrigin);
+            childResult = delegateAgentTool.delegateByAgentIdStructured(assignedAgentId,
+                    DelegatedStepContract.task(step, accessor.completedResults()), chatOrigin);
         } catch (Exception e) {
             log.error("[StepExecution] Delegated step {} threw: {}", stepIndex, e.getMessage(), e);
             delegateError = e.getMessage();
@@ -728,22 +734,26 @@ public class StepExecutionNode implements NodeAction {
             }
         }
 
-        // Branch on the structured outcome instead of pattern-matching an error
-        // prefix out of the reply text: a successful child with non-empty content
-        // is the only "ok" case; blank / error / missing all count as failure.
-        boolean ok = childResult != null && childResult.success() && !childResult.isBlank();
-        String finalResult = ok
-                ? (childResult.result() != null ? childResult.result() : "")
-                : "[错误] 委派执行失败：" + (delegateError != null ? delegateError
-                    : childResult != null && childResult.error() != null ? childResult.error()
-                    : childResult != null && childResult.isBlank() ? "子 Agent 返回内容为空"
-                    : "未知错误");
-        boolean failed = !ok;
-        if (failed) {
-            planningService.updateSubPlanFailure(planId, stepIndex, finalResult);
-        } else {
-            planningService.updateSubPlanResult(planId, stepIndex, finalResult);
+        var contract = DelegatedStepContract.parse(childResult == null ? null : childResult.result());
+        boolean ok = childResult != null && childResult.success() && !childResult.isBlank()
+                && contract.completed();
+        // Do not infer task success from nonempty model prose or language-specific error phrases.
+        if (!ok) {
+            String reason = delegateError != null || childResult == null || !childResult.success()
+                    ? "CHILD_EXECUTION_FAILED" : contract.reason();
+            String failure = "委派步骤未通过结果验收（" + reason + "），计划已停止；请检查所需数据或执行证据后重试。";
+            planningService.updateSubPlanFailure(planId, stepIndex, failure);
+            planningService.markPlanFailed(planId, failure);
+            log.warn("[StepExecution] Delegated result rejected: planId={}, step={}, agentId={}, reason={}",
+                    planId, stepIndex, assignedAgentId, reason);
+            events.add(GraphEventPublisher.stepCompleted(stepIndex, failure));
+            if (iterationEventsOn) events.add(GraphEventPublisher.iterationEnd(stepIndex, "parent", null, failure.length(), 0));
+            // Stop rather than replay potentially side-effecting work or summarize it as completed.
+            return PlanStateAccessor.output().currentStepResult(failure).currentPhase("plan_aborted")
+                    .finalSummary(failure).contentStreamed(false).events(events).build();
         }
+        String finalResult = contract.text();
+        planningService.updateSubPlanResult(planId, stepIndex, finalResult);
 
         events.add(GraphEventPublisher.stepCompleted(stepIndex, finalResult));
         if (iterationEventsOn) {
@@ -753,7 +763,17 @@ public class StepExecutionNode implements NodeAction {
         // Keep the rolling working-context in sync exactly like the local path
         // so later steps see this delegated step's result.
         String prevWorkingContext = accessor.workingContext();
-        String formattedNewStep = formatStepResult(stepIndex, finalResult);
+        String summaryResult = finalResult;
+        if (goalDecisionAdapter != null && goalDecisionAdapter.enabled()) {
+            String name = java.util.Objects.toString(childResult.agentName(), "");
+            if (name.length() > 160) name = name.substring(0, 160);
+            // Runtime metadata comes from the actual child invocation, not generated prose.
+            // Keep bounded evidence so summary/evaluation need not guess who ran this step.
+            String identity = MAPPER.valueToTree(Map.of("assignedAgentId", String.valueOf(assignedAgentId),
+                    "assignedAgentName", name, "status", "COMPLETED")).toString();
+            summaryResult = "[Runtime execution evidence] " + identity + "\n" + finalResult;
+        }
+        String formattedNewStep = formatStepResult(stepIndex, summaryResult);
         String updatedWorkingContext = prevWorkingContext.isEmpty()
                 ? rebuildWorkingContext(accessor, appendOne(accessor.completedResults(), formattedNewStep))
                 : appendStepIncremental(prevWorkingContext, formattedNewStep);

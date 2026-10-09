@@ -15,6 +15,9 @@ describe('DSH managed configuration mapping', () => {
       'dsh.model_name': 'deepseek-chat',
       'dsh.api_key': 'plain-test-key',
     })).toEqual({
+      profile: 'sdk',
+      patch_paths: '[]',
+      home_root: '',
       executable_path: '/opt/dsh/bin',
       cordis_config_path: '/opt/dsh/cordis.yml',
       working_directory: '/srv/workspace',
@@ -31,6 +34,9 @@ describe('DSH managed configuration mapping', () => {
 
   it('maps every settings form field to the canonical backend key', () => {
     const payload = formToManagedConfig({
+      profile: 'sdk',
+      patch_paths: '["/tmp/my patch.yml"]',
+      home_root: '/tmp/dsh-home',
       executable_path: '/opt/dsh/bin',
       cordis_config_path: '/opt/dsh/cordis.yml',
       working_directory: '/srv/workspace',
@@ -40,6 +46,9 @@ describe('DSH managed configuration mapping', () => {
     })
 
     expect(payload).toEqual({
+      'dsh.profile': 'sdk',
+      'dsh.patch_paths': '["/tmp/my patch.yml"]',
+      'dsh.home_root': '/tmp/dsh-home',
       'dsh.executable_path': '/opt/dsh/bin',
       'dsh.cordis_config_path': '/opt/dsh/cordis.yml',
       'dsh.working_directory': '/srv/workspace',
@@ -49,4 +58,12 @@ describe('DSH managed configuration mapping', () => {
     })
     expect(payload).not.toHaveProperty('executable_path')
   })
+})
+
+it('rejects patch lists that are not JSON arrays of absolute paths', () => {
+  const form = createEmptyDshConfigForm()
+  form.patch_paths = '["relative.yml"]'
+  expect(() => formToManagedConfig(form)).toThrow()
+  form.patch_paths = '{}'
+  expect(() => formToManagedConfig(form)).toThrow()
 })

@@ -1,5 +1,6 @@
 package vip.mate.agent.graph.executor;
 
+import vip.mate.workspace.core.service.MemberFileIsolation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -12,6 +13,7 @@ import vip.mate.tool.disclosure.ToolUsageRecencyTracker;
 import vip.mate.tool.mcp.runtime.McpProgressContext;
 import vip.mate.tool.mcp.runtime.McpToolNameResolver;
 import vip.mate.tool.mcp.runtime.ProgressAwareMcpToolCallback;
+import vip.mate.tool.mcp.runtime.McpToolResultCapture;
 import vip.mate.agent.AgentToolSet;
 import vip.mate.agent.GraphEventPublisher;
 import vip.mate.agent.context.ChatOrigin;
@@ -246,6 +248,18 @@ public class ToolExecutionExecutor {
         return shouldAppendProductCardDirective(toolName, result)
                 ? result + PRODUCT_CARD_RENDER_DIRECTIVE
                 : result;
+    }
+
+    /** Avoid requesting a second copy of cards already supplied through the display channel. */
+    static String withProductCardDirective(String toolName, String result, Map<String, Object> structured) {
+        if (structured != null && structured.get("mateclawUi") instanceof Map<?, ?> ui
+                && Integer.valueOf(1).equals(ui.get("version")) && ui.get("blocks") instanceof List<?> blocks
+                && blocks.size() <= 8 && blocks.stream().anyMatch(block -> block instanceof Map<?, ?> value
+                && "product-cards".equals(value.get("type")) && value.get("data") instanceof List<?> products
+                && !products.isEmpty() && products.size() <= 24)) {
+            return result;
+        }
+        return withProductCardDirective(toolName, result);
     }
 
     private final Map<String, ToolCallback> toolCallbackMap;
@@ -493,6 +507,8 @@ public class ToolExecutionExecutor {
         if (isBlank(safeOrigin.workspaceBasePath()) && !isBlank(workspaceBasePath)) {
             safeOrigin = safeOrigin.withWorkspace(safeOrigin.workspaceId(), workspaceBasePath);
         }
+        safeOrigin = MemberFileIsolation.scope(safeOrigin);
+        if (MemberFileIsolation.isEnabled()) workspaceBasePath = safeOrigin.workspaceBasePath();
         // Reset per-turn audit dedupe state. A retried denied tool inside the
         // same turn writes a single audit row; the set is repopulated by the
         // denial branch below.
@@ -579,6 +595,12 @@ public class ToolExecutionExecutor {
             // bypass guard rules keyed on the canonical name.
             String toolName = resolveToolName(toolCall.name());
             String arguments = toolCall.arguments();
+            try { MemberFileIsolation.requireAuditedTool(toolName); }
+            catch (SecurityException denied) {
+                allResponses.add(new ToolResponseMessage.ToolResponse(toolCall.id(), responseName, denied.getMessage()));
+                events.add(GraphEventPublisher.toolComplete(toolCall.id(), toolName, denied.getMessage(), false));
+                continue;
+            }
 
             events.add(GraphEventPublisher.toolStart(toolCall.id(), toolName, arguments));
 
@@ -805,6 +827,7 @@ public class ToolExecutionExecutor {
             String conversationId, String workspaceBasePath,
             List<DirectToolOutput> directOutputs, ChatOrigin origin) {
         String toolName = resolveToolName(toolCall.name());
+        MemberFileIsolation.requireAuditedTool(toolName);
         String callArguments = storedArguments != null ? storedArguments : toolCall.arguments();
 
         ToolCallback callback = toolCallbackMap.get(toolName);
@@ -842,7 +865,10 @@ public class ToolExecutionExecutor {
             ChatOrigin replayOrigin = (origin == null ? ChatOrigin.EMPTY : origin)
                     .withConversationId(conversationId);
             replayOrigin = replayOrigin.withWorkspace(replayOrigin.workspaceId(), workspaceBasePath);
-            String result = invokeObserved(callback, callArguments, toolContextWithScopedCatalog(replayOrigin),
+            replayOrigin = MemberFileIsolation.scope(replayOrigin);
+            if (MemberFileIsolation.isEnabled()) workspaceBasePath = replayOrigin.workspaceBasePath();
+            McpToolResultCapture resultCapture = new McpToolResultCapture();
+            String result = invokeObserved(callback, callArguments, resultCapture.attach(toolContextWithScopedCatalog(replayOrigin)),
                     UUID.randomUUID().toString(), toolCall.id());
             throwIfStopRequested(conversationId);
             int rawLen = result != null ? result.length() : 0;
@@ -867,7 +893,8 @@ public class ToolExecutionExecutor {
                 // deliberately used here: the full result remains confined to
                 // tool_direct_result / DIRECT_TOOL_OUTPUTS.
                 events.add(GraphEventPublisher.toolComplete(
-                        toolCall.id(), toolName, DIRECT_TOOL_PLACEHOLDER, true));
+                        toolCall.id(), toolName, DIRECT_TOOL_PLACEHOLDER, !resultCapture.isError(),
+                        resultCapture.structuredContent()));
                 return new ToolResponseMessage.ToolResponse(
                         toolCall.id(), toolName, DIRECT_TOOL_PLACEHOLDER);
             }
@@ -881,11 +908,12 @@ public class ToolExecutionExecutor {
                     result, toolName, toolCall.id(), conversationId, workspaceBasePath);
             log.info("[ToolExecutor] Pre-approved tool {} returned {} chars{}", toolName, rawLen,
                     result != null && result.length() < rawLen ? " (now " + result.length() + " after spill/truncate)" : "");
-            events.add(GraphEventPublisher.toolComplete(toolCall.id(), toolName, result, true));
+            events.add(GraphEventPublisher.toolComplete(toolCall.id(), toolName, result, !resultCapture.isError(),
+                    resultCapture.structuredContent()));
             // Append the card-rendering directive to the LLM-facing response only,
             // leaving the broadcast tool-result panel unchanged.
             return new ToolResponseMessage.ToolResponse(
-                    toolCall.id(), toolName, withProductCardDirective(toolName, result != null ? result : ""));
+                    toolCall.id(), toolName, withProductCardDirective(toolName, result != null ? result : "", resultCapture.structuredContent()));
         } catch (CancellationException e) {
             throw e;
         } catch (Exception e) {
@@ -1072,13 +1100,14 @@ public class ToolExecutionExecutor {
             // not yet migrated to ToolContext keep working unchanged.
             ToolExecutionContext.set(pc.conversationId, pc.requesterId, pc.workspaceBasePath);
             String result;
+            McpToolResultCapture resultCapture = new McpToolResultCapture();
             String progressToken = null;
             try {
                 ChatOrigin runtimeOrigin = pc.origin != null ? pc.origin : ChatOrigin.EMPTY;
                 runtimeOrigin = runtimeOrigin
                         .withConversationId(pc.conversationId)
                         .withWorkspace(runtimeOrigin.workspaceId(), pc.workspaceBasePath);
-                ToolContext toolContext = toolContextWithScopedCatalog(runtimeOrigin);
+                ToolContext toolContext = resultCapture.attach(toolContextWithScopedCatalog(runtimeOrigin));
 
                 // MCP progress: generate progressToken and inject into ToolContext
                 // so ProgressAwareMcpToolCallback can include it in tools/call _meta.
@@ -1126,11 +1155,11 @@ public class ToolExecutionExecutor {
                     streamTracker.broadcastObject(pc.conversationId,
                             GraphEventPublisher.EVENT_TOOL_COMPLETE,
                             GraphEventPublisher.toolComplete(pc.toolCall.id(), toolName,
-                                    DIRECT_TOOL_PLACEHOLDER, true).data());
+                                    DIRECT_TOOL_PLACEHOLDER, !resultCapture.isError(), resultCapture.structuredContent()).data());
                     streamTracker.updateRunningTool(pc.conversationId, null);
                 }
                 events.add(GraphEventPublisher.toolComplete(
-                        pc.toolCall.id(), toolName, DIRECT_TOOL_PLACEHOLDER, true));
+                        pc.toolCall.id(), toolName, DIRECT_TOOL_PLACEHOLDER, !resultCapture.isError(), resultCapture.structuredContent()));
                 // Placeholder keeps the tool_call_id ↔ tool_response pairing valid
                 // for OpenAI-compatible providers, while withholding the data from
                 // any subsequent LLM round (the graph won't take a next round —
@@ -1167,17 +1196,17 @@ public class ToolExecutionExecutor {
                     result, toolName, pc.toolCall.id(), pc.conversationId, pc.workspaceBasePath);
             log.info("[ToolExecutor] Tool {} returned {} chars{}", toolName, rawLen,
                     result != null && result.length() < rawLen ? " (now " + result.length() + " after spill/truncate)" : "");
-            events.add(GraphEventPublisher.toolComplete(pc.toolCall.id(), toolName, result, true));
+            events.add(GraphEventPublisher.toolComplete(pc.toolCall.id(), toolName, result, !resultCapture.isError(), resultCapture.structuredContent()));
             if (streamTracker != null) {
                 streamTracker.broadcastObject(pc.conversationId, GraphEventPublisher.EVENT_TOOL_COMPLETE,
-                        GraphEventPublisher.toolComplete(pc.toolCall.id(), toolName, result, true).data());
+                        GraphEventPublisher.toolComplete(pc.toolCall.id(), toolName, result, !resultCapture.isError(), resultCapture.structuredContent()).data());
                 streamTracker.updateRunningTool(pc.conversationId, null);
             }
             // Append the card-rendering directive to the LLM-facing response only,
             // leaving the broadcast tool-result panel unchanged.
             return new ToolResponseMessage.ToolResponse(
                     pc.toolCall.id(), pc.responseName,
-                    withProductCardDirective(toolName, result != null ? result : ""));
+                    withProductCardDirective(toolName, result != null ? result : "", resultCapture.structuredContent()));
         } catch (CancellationException e) {
             if (streamTracker != null) {
                 streamTracker.updateRunningTool(pc.conversationId, null);
@@ -1645,6 +1674,7 @@ public class ToolExecutionExecutor {
      * to the usual {@code skillAwareNotFoundMessage} hint.
      */
     private SkillRedirect tryAutoRedirectSkillCall(String toolName, String originalArgs, ChatOrigin origin) {
+        if (MemberFileIsolation.isEnabled()) return null;
         if (skillRuntimeService == null || toolName == null || toolName.isBlank()) return null;
         try {
             // Scope to the conversation's workspace so an agent is never redirected
@@ -1795,9 +1825,20 @@ public class ToolExecutionExecutor {
     private String invokeObserved(ToolCallback callback, String arguments, ToolContext context,
                                   String invocationKey, String providerCallId) throws TimeoutException {
         String toolName = callback.getToolDefinition().name();
-        return ToolCallDeadline.call(toolName, getToolTimeoutMs(toolName),
-                () -> executionEvidenceRecorder == null ? callback.call(arguments, context)
-                        : executionEvidenceRecorder.invoke(callback, arguments, context, invocationKey, providerCallId));
+        MemberFileIsolation.requireAuditedTool(toolName);
+        ChatOrigin scoped = MemberFileIsolation.scope(ChatOrigin.from(context));
+        java.util.Map<String, Object> values = new java.util.HashMap<>(context.getContext());
+        values.put(ChatOrigin.CTX_KEY, scoped);
+        ToolContext scopedContext = new ToolContext(values);
+        return ToolCallDeadline.call(toolName, getToolTimeoutMs(toolName), () -> {
+            // Deadlines may use another thread; install the identity inside the callback.
+            ToolExecutionContext.set(scoped.conversationId(), scoped.requesterId(), scoped.workspaceBasePath());
+            ToolExecutionContext.setOrigin(scoped);
+            try {
+                return executionEvidenceRecorder == null ? callback.call(arguments, scopedContext)
+                        : executionEvidenceRecorder.invoke(callback, arguments, scopedContext, invocationKey, providerCallId);
+            } finally { ToolExecutionContext.clear(); }
+        });
     }
 
     // ==================== 内部数据类 ====================

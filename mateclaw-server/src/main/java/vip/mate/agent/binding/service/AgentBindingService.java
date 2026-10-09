@@ -506,7 +506,8 @@ public class AgentBindingService implements AgentBindingResolver {
      * <p>Auto-included on every non-null result, in addition to the bound
      * tools and skill-expanded tools:
      * <ul>
-     *   <li>{@link #SYSTEM_LEVEL_TOOLS} — agent-wide primitives.</li>
+     *   <li>{@link #MINIMAL_SYSTEM_TOOLS} for explicit tools opt-out; otherwise
+     *       {@link #SYSTEM_LEVEL_TOOLS} for compatibility with skill bindings.</li>
      *   <li>Every currently-bindable MCP tool ({@code source="mcp"},
      *       {@code available=true} in the picker) — but only when the agent
      *       has not ticked any MCP tool itself. MCP servers are
@@ -569,14 +570,15 @@ public class AgentBindingService implements AgentBindingResolver {
             merged.addAll(directTools);
         }
 
-        // System-level tools that don't belong to any single skill but
-        // are agent-wide capabilities — structured memory primitives,
-        // workspace memory CRUD, etc. Without this carve-out, binding any
-        // skill silently strips record_lesson / remember / *memory_file
-        // tools, breaking the self-evolution loop. These survive even
-        // toolsDisabled=true because they are agent-internal infrastructure,
-        // unrelated to the user-facing capability picker.
-        merged.addAll(SYSTEM_LEVEL_TOOLS);
+        // Binding a skill preserves the historical default capabilities, but an
+        // explicit tools opt-out must not regain file/exec/network/delegation
+        // tools through that compatibility list (issue #655).
+        merged.addAll(toolsDisabled ? MINIMAL_SYSTEM_TOOLS : SYSTEM_LEVEL_TOOLS);
+        if (toolsDisabled && !skillsDisabled) {
+            // Skill opt-out is independent. Explicitly enabled skills may still
+            // be discovered and contribute their declared tools above.
+            merged.addAll(SKILL_DISCOVERY_TOOLS);
+        }
 
         // MCP tools. An agent that bound only a skill or a built-in tool
         // and ticked no MCP row normally keeps full access to every enabled
@@ -657,13 +659,25 @@ public class AgentBindingService implements AgentBindingResolver {
     }
 
     /**
-     * Tools that exist outside the skill scope and must survive any
-     * agent-level skill binding restriction.
+     * Minimal internal capabilities retained by the explicit tools opt-out.
+     * General file access, execution, network access and delegation are excluded.
      *
      * <p>Add new entries here only after verifying the tool is genuinely
-     * agent-wide, not skill-specific. Tools added here bypass the
-     * {@link #getEffectiveToolNames} allowlist completely.
+     * required for internal state rather than a user-selectable capability.
      */
+    private static final Set<String> MINIMAL_SYSTEM_TOOLS = Set.of(
+            "record_lesson", "remember", "remember_structured", "recall_structured", "forget_structured",
+            "list_workspace_memory_files", "read_workspace_memory_file", "write_workspace_memory_file",
+            "edit_workspace_memory_file", "search_workspace_memory",
+            "getCurrentDate", "getCurrentDateTime", "getCurrentTime",
+            "setGoal", "addGoalCriterion", "completeGoal", "getGoalStatus",
+            "getManagedGoalJsonSlots", "publishManagedGoalJson", "checkManagedGoalJson",
+            "waitForGoalInput", "resumeGoal", "progress_update",
+            // These bridges resolve targets against the same effective allowlist.
+            "enable_tool", "tool_search", "tool_describe", "tool_call"
+    );
+
+    /** Compatibility defaults for skill-bound agents that have NOT disabled tools. */
     private static final Set<String> SYSTEM_LEVEL_TOOLS = Set.of(
             // Structured memory primitives — used by every agent regardless
             // of skill bindings, otherwise the self-evolution path collapses
@@ -735,6 +749,7 @@ public class AgentBindingService implements AgentBindingResolver {
             "publishManagedGoalJson",
             "checkManagedGoalJson",
             "waitForGoalInput",
+            "resumeGoal",
             // Conversation-scoped progress ledger — same rationale as the
             // goal primitives above. Long multi-step research / drafting
             // tasks need it on every business agent, not just the planner,

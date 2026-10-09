@@ -29,6 +29,17 @@ class StepProgressDispatcherTest {
     }
 
     @Test
+    void abortedPlanSuspendsConversationGoalBeforeEnding() {
+        var goals = org.mockito.Mockito.mock(vip.mate.goal.service.GoalService.class);
+        var goal = new vip.mate.goal.model.GoalEntity(); goal.setId(42L);
+        org.mockito.Mockito.when(goals.findActiveByConversation("conv")).thenReturn(goal);
+        var state = new OverAllState(Map.of(MateClawStateKeys.CURRENT_PHASE, "plan_aborted",
+                MateClawStateKeys.CONVERSATION_ID, "conv"));
+        assertEquals(StateGraph.END, new StepProgressDispatcher(goals).apply(state));
+        org.mockito.Mockito.verify(goals).suspendRuntime(42L, "PLAN_ABORTED");
+    }
+
+    @Test
     void replanPhase_routesToPlanGeneration() {
         String next = dispatcher.apply(state("plan_replan", 0, List.of("a", "b")));
         assertEquals(PlanStateKeys.PLAN_GENERATION_NODE, next);
