@@ -2,6 +2,7 @@ package vip.mate.agent.runtime.dsh.management;
 
 /** Lifecycle states exposed by the DSH runtime management screen. */
 public enum DshManagementState {
+    MIGRATION_REQUIRED,
     NOT_INSTALLED,
     INSTALLING,
     INSTALLED_UNCONFIGURED,

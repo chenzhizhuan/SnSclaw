@@ -3,6 +3,7 @@
     <header class="enterprise-head">
       <div class="enterprise-eyebrow">{{ t('enterprise.eyebrow') }}</div>
       <h1 class="enterprise-title">{{ t('enterprise.title') }}</h1>
+      <a class="enterprise-website" href="https://mate.vip/enterprise/" target="_blank" rel="noopener noreferrer">{{ t('enterprise.offer.website') }} ↗</a>
       <p class="enterprise-subtitle">{{ t('enterprise.subtitle') }}</p>
     </header>
 
@@ -71,6 +72,7 @@ function onOpenCase(id: string) {
   overflow: hidden;
 }
 
+.enterprise-website { align-self: flex-start; color: var(--mc-primary); font-size: 13px; text-underline-offset: 3px; }
 .enterprise-head { display: flex; flex-direction: column; gap: 4px; }
 .enterprise-eyebrow {
   font-size: var(--mc-text-xs);

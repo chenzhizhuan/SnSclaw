@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import vip.mate.agent.runtime.RunningConversationRegistry;
+import vip.mate.decision.api.DecisionRecordingException;
+import vip.mate.decision.api.DecisionTicket;
 import vip.mate.channel.web.ChatStreamTracker;
 import vip.mate.goal.config.GoalProperties;
 import vip.mate.goal.model.GoalEntity;
@@ -44,6 +46,10 @@ public class GoalContinuationSupervisor {
     private final ConcurrentHashMap<Long, GoalRunCoordinator.ClaimedRun> active = new ConcurrentHashMap<>();
     private final AtomicReference<LocalDateTime> providerBackoffUntil = new AtomicReference<>();
     private volatile boolean closing;
+    private GoalDecisionAdapter decisionAdapter;
+
+    @Autowired(required = false)
+    public void setDecisionAdapter(GoalDecisionAdapter decisionAdapter) { this.decisionAdapter = decisionAdapter; }
 
     @Autowired
     public GoalContinuationSupervisor(GoalContinuationStore store, GoalService goals, GoalProperties properties,
@@ -108,22 +114,28 @@ public class GoalContinuationSupervisor {
             if (!eligible(goal)) {
                 settle(claimed,new SegmentOutcome.Cancelled("goal_not_runnable"),now); return;
             }
-            var decision = followups.decide(goal,new GoalEvaluationResult(0,goal.getProgressSummary(),
-                    GoalEvaluationResult.DECISION_CONTINUE,false,"",0,0,List.of(),null),now);
+            var evaluation = new GoalEvaluationResult(0,goal.getProgressSummary(),
+                    GoalEvaluationResult.DECISION_CONTINUE,false,"",0,0,List.of(),null);
+            var selection = decisionAdapter == null ? null
+                    : decisionAdapter.select(goal, evaluation, now, claimed.attempt().id(), "DURABLE");
+            var decision = selection == null ? followups.decide(goal, evaluation, now) : selection.decision();
+            DecisionTicket ticket = selection == null ? null : selection.ticket();
             switch (decision.action()) {
                 case DEFER, RETRY -> {
-                    settle(claimed,new SegmentOutcome.Defer(decision.reason(),decision.nextRunAt()),now); return;
+                    settle(claimed,new SegmentOutcome.Defer(decision.reason(),decision.nextRunAt()),now,ticket); return;
                 }
                 case BUDGET_LIMITED -> {
                     goals.markExhausted(goal.getId(),decision.reason());
-                    settle(claimed,new SegmentOutcome.Cancelled(decision.reason()),now); return;
+                    settle(claimed,new SegmentOutcome.Cancelled(decision.reason()),now,ticket); return;
                 }
                 case COMPLETE, DISABLED -> {
-                    settle(claimed,new SegmentOutcome.Cancelled(decision.reason()),now); return;
+                    settle(claimed,new SegmentOutcome.Cancelled(decision.reason()),now,ticket); return;
                 }
                 case CONTINUE -> { }
             }
-            if(!coordinator.markRunning(claimed,now)) return;
+            boolean started = ticket == null ? coordinator.markRunning(claimed,now)
+                    : coordinator.markRunning(claimed,now,ticket);
+            if (!started) return;
             // Recovery requeues the projection as retry and gives the new attempt
             // a durable parent; the old running-state check alone loses its guidance.
             boolean recovered = claimed.attempt().parentAttemptId()!=null
@@ -136,10 +148,17 @@ public class GoalContinuationSupervisor {
             // Shutdown cancellation is not user Stop: retain the lease for recovery.
             if (closing) return;
             settle(claimed,outcome,LocalDateTime.now(clock));
+        } catch (DecisionRecordingException error) {
+            // Retain the lease for recovery; audit availability is not a model or user-input failure.
+            log.warn("Goal {} decision recording failed; retaining recovery lease", initial.getId());
         } catch (RuntimeException error) {
             // A shutdown/lost-lease cancellation is not a task failure. Leave the
             // running lease for restart recovery; the runner saves partial evidence.
             if (closing || Thread.currentThread().isInterrupted()) return;
+            if (DecisionRecordingException.find(error) != null) {
+                log.warn("Goal {} decision recording failed; retaining recovery lease", initial.getId());
+                return;
+            }
             boolean transientError = retryable(error);
             if (transientError) activateProviderBackoff(now);
             if (!transientError) {
@@ -167,6 +186,15 @@ public class GoalContinuationSupervisor {
     private void settle(GoalRunCoordinator.ClaimedRun claimed,SegmentOutcome outcome,LocalDateTime now) {
         if (coordinator.settle(claimed,outcome,now)) {
             streams.broadcastObject(claimed.goal().getConversationId(),"goal_continuation",store.get(claimed.goal().getId()));
+        }
+    }
+
+    private void settle(GoalRunCoordinator.ClaimedRun claimed, SegmentOutcome outcome,
+                        LocalDateTime now, DecisionTicket ticket) {
+        if (ticket == null) {
+            settle(claimed, outcome, now);
+        } else if (coordinator.settle(claimed, outcome, now, ticket)) {
+            streams.broadcastObject(claimed.goal().getConversationId(), "goal_continuation", store.get(claimed.goal().getId()));
         }
     }
 

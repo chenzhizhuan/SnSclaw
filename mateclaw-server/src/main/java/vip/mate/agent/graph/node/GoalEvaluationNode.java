@@ -14,6 +14,11 @@ import vip.mate.goal.model.GoalEntity;
 import vip.mate.goal.model.GoalEvaluationResult;
 import vip.mate.goal.model.GoalResponse;
 import vip.mate.goal.service.GoalEvaluationService;
+import vip.mate.goal.service.GoalDecisionAdapter;
+import vip.mate.goal.model.GoalContinuationDecision.Action;
+import vip.mate.decision.api.DecisionMode;
+import vip.mate.decision.api.DecisionRecordingException;
+import java.time.LocalDateTime;
 import vip.mate.goal.service.GoalFollowupService;
 import vip.mate.goal.service.GoalService;
 import vip.mate.goal.service.GraphFlavor;
@@ -72,6 +77,10 @@ public class GoalEvaluationNode implements NodeAction {
         this.conversationService = conversationService;
         this.flavor = flavor;
     }
+
+    private GoalDecisionAdapter decisionAdapter;
+
+    public void setDecisionAdapter(GoalDecisionAdapter decisionAdapter) { this.decisionAdapter = decisionAdapter; }
 
     @Override
     public Map<String, Object> apply(OverAllState state) throws Exception {
@@ -166,6 +175,21 @@ public class GoalEvaluationNode implements NodeAction {
         GoalEntity refreshed;
         try {
             result = evaluationService.evaluate(goal, recent, terminal);
+            // Retry only the judge against identical evidence, never the business execution.
+            int pendingAgentCalls = Math.max(0, accessor.llmCallCount() - accessor.goalAccountedLlmCallCount());
+            int budget = goal.getLlmCallBudget() == null ? 0 : goal.getLlmCallBudget();
+            boolean evaluationRoom = budget <= 0
+                    || goal.totalLlmCallsUsed() + pendingAgentCalls + result.llmCallsConsumed() < budget;
+            if (GoalEvaluationResult.DECISION_FALLBACK.equals(result.decision())
+                    && "evaluator unavailable: empty_response".equals(result.gap())
+                    && !goal.isJsonAcceptanceRequired()
+                    && evaluationRoom && decisionAdapter != null && decisionAdapter.enabled()) {
+                var retry = evaluationService.evaluate(goal, recent, terminal);
+                result = new GoalEvaluationResult(retry.score(), retry.gap(), retry.decision(), retry.completed(),
+                        retry.evaluatorModel(), result.llmCallsConsumed() + retry.llmCallsConsumed(),
+                        result.latencyMs() + retry.latencyMs(), retry.criterionVerdicts(),
+                        retry.bootstrapCriteria(), retry.evaluationRevision());
+            }
 
             // Bill only the NEW agent LLM calls since the last accounted point.
             // The run-to-completion loop evaluates multiple times per graph run
@@ -192,6 +216,15 @@ public class GoalEvaluationNode implements NodeAction {
                 && refreshed.getStatus()!=vip.mate.goal.model.GoalStatus.ACTIVE) {
             return MateClawStateAccessor.output().goalEvaluatedThisRun(true)
                     .events(List.of(skippedEvent(refreshed.getId(), "goal_no_longer_active"))).build();
+        }
+
+        if (GoalEvaluationResult.DECISION_FALLBACK.equals(result.decision())
+                && goalService.suspendRuntime(goal.getId(), "EVALUATION_UNAVAILABLE")) {
+            return MateClawStateAccessor.output().goalEvaluationResult(result.toMap()).goalEvaluatedThisRun(true)
+                    .events(List.of(goalEvent("goal_paused", Map.of("goalId", String.valueOf(goal.getId()),
+                            "reason", "EVALUATION_UNAVAILABLE",
+                            "goal", stateSafeGoal(goalService.toResponse(goalService.getById(goal.getId())))))))
+                    .build();
         }
 
         // Decision branches. Each terminal write is wrapped so a DB hiccup
@@ -230,6 +263,8 @@ public class GoalEvaluationNode implements NodeAction {
                         .build();
             }
         } catch (Throwable t) {
+            DecisionRecordingException recording = DecisionRecordingException.find(t);
+            if (recording != null) throw recording;
             log.warn("[GoalEvaluationNode] terminal write failed for goal={} — degrading to evaluated-only: {}",
                     refreshed.getId(), t.toString());
             Map<String, Object> outward = result.toMap();
@@ -266,12 +301,14 @@ public class GoalEvaluationNode implements NodeAction {
         int hardCap = Math.min(properties.getMaxHardContinuationsPerRun(),
                 GoalProperties.MAX_HARD_CONTINUATIONS_CEILING);
         Optional<String> followup;
+        boolean planningSucceeded = true;
         try {
             followup = followupService.maybeBuildFollowup(refreshed, result);
         } catch (Throwable t) {
             log.warn("[GoalEvaluationNode] followup planning failed for goal={}: {}",
                     refreshed.getId(), t.toString());
             followup = Optional.empty();
+            planningSucceeded = false;
         }
         // Per-run safety net: cap the autonomous self-continuation loop so a
         // single user message can't drive an unbounded number of steps or
@@ -286,6 +323,16 @@ public class GoalEvaluationNode implements NodeAction {
         // recursion ceiling. hardCap==0 keeps the legacy behaviour (a
         // max-iterations turn simply ends the run).
         boolean hardCapReached = reactIterationCapReached && hardContinuationCount >= hardCap;
+        // Caps are deterministic guards and must be resolved before consulting a provider.
+        GoalDecisionAdapter.Selection selection = decisionAdapter == null || !planningSucceeded ? null
+                : decisionAdapter.selectGraph(refreshed, followup, LocalDateTime.now(), perRunCapReached || hardCapReached);
+        boolean followupSuppressed = selection != null && selection.ticket().mode() == DecisionMode.ACTIVE
+                && followup.isPresent() && !perRunCapReached && !hardCapReached
+                && (selection.decision().action() == Action.DEFER || selection.decision().action() == Action.RETRY);
+        if (selection != null && selection.ticket().mode() == DecisionMode.ACTIVE) {
+            followup = selection.decision().action() == Action.CONTINUE
+                    ? Optional.of(selection.decision().prompt()) : Optional.empty();
+        }
         if (followup.isPresent() && (perRunCapReached || hardCapReached)) {
             log.info("[GoalEvaluationNode] follow-up suppressed for goal={} " +
                             "(followups {}/{}, hardContinuations {}/{}, iterationCapReached={}); ending this run",
@@ -363,12 +410,15 @@ public class GoalEvaluationNode implements NodeAction {
                    .clearFinalSummaryThinking()
                    .clearCurrentStepThinking();
             }
-            return out.build();
+            Map<String, Object> output = out.build();
+            // This records submission to the graph, not durable execution of the next pass.
+            // A database commit and delivery of in-memory graph output are not atomic.
+            if (selection != null) decisionAdapter.outcome(selection.ticket(), true, "FOLLOWUP_SUBMITTED");
+            return output;
         }
-
         // Continue but no follow-up — just record the evaluation event.
         // (helper below avoids needing a custom() factory on GraphEventPublisher.)
-        return MateClawStateAccessor.output()
+        Map<String, Object> output = MateClawStateAccessor.output()
                 .goalEvaluationResult(result.toMap())
                 .goalEvaluatedThisRun(true)
                 .events(List.of(goalEvent("goal_evaluated", Map.of(
@@ -377,6 +427,11 @@ public class GoalEvaluationNode implements NodeAction {
                         "gap", result.gap() == null ? "" : result.gap(),
                         "goal", stateSafeGoal(goalService.toResponse(refreshed))))))
                 .build();
+        // Graph DEFER/RETRY applies suppression of this pass only; it creates no durable schedule.
+        if (selection != null) decisionAdapter.outcome(selection.ticket(), followupSuppressed,
+                followupSuppressed ? "FOLLOWUP_SUPPRESSED"
+                        : perRunCapReached || hardCapReached ? "GRAPH_CAP" : "NO_FOLLOWUP");
+        return output;
     }
 
     /**

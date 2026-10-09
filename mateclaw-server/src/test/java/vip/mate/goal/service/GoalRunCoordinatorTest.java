@@ -1,12 +1,30 @@
 package vip.mate.goal.service;
 
 import org.h2.jdbcx.JdbcDataSource;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import vip.mate.decision.config.DecisionProperties;
+import vip.mate.decision.core.DecisionService;
+import vip.mate.decision.record.JdbcDecisionRecordStore;
+import vip.mate.decision.provider.RuleDecisionProvider;
+import vip.mate.decision.api.DecisionRecordingException;
+import vip.mate.goal.model.GoalEvaluationResult;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import vip.mate.decision.provider.DecisionResult;
+import vip.mate.decision.api.DecisionRequest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import vip.mate.goal.config.GoalProperties;
+import vip.mate.decision.api.DecisionTicket;
+import vip.mate.decision.api.DecisionMode;
+import vip.mate.decision.api.DecisionValue;
 import vip.mate.goal.model.GoalEntity;
 import vip.mate.goal.model.GoalStatus;
 import vip.mate.goal.model.SegmentOutcome;
@@ -48,6 +66,156 @@ class GoalRunCoordinatorTest {
         goal.setPersistentExecution(true);goal.setAutoFollowupEnabled(true);
         when(goals.getById(1L)).thenReturn(goal);
         continuations.discover(now);
+    }
+
+    @Test void runningAndImmediateSettlementRecordOnlyAfterSuccessfulFence() {
+        var adapter = mock(GoalDecisionAdapter.class);
+        coordinator.setDecisionAdapter(adapter);
+        var ticket = new DecisionTicket("decision", DecisionMode.ACTIVE, new DecisionValue.Choice("CONTINUE"));
+        var run = coordinator.claim(continuations.get(1L), goal, now);
+        assertTrue(coordinator.markRunning(run, now, ticket));
+        verify(adapter).outcome(ticket, true, "RUN_STARTED");
+        assertTrue(coordinator.settle(run, new SegmentOutcome.Continue("normal"), now));
+        assertFalse(coordinator.markRunning(run, now, ticket));
+        verify(adapter).outcome(ticket, false, "FENCE_REJECTED");
+        verifyNoMoreInteractions(adapter);
+        var next = continuations.get(1L);
+        var deferred = coordinator.claim(next, goal, next.nextRunAt());
+        assertTrue(coordinator.settle(deferred, new SegmentOutcome.Defer("decision_defer", now.plusMinutes(1)),
+                next.nextRunAt(), ticket));
+        verify(adapter).outcome(ticket, true, "QUEUED");
+    }
+
+    @Test void freshCompletionOverridesRequestedDeferInRecordedActualOutcome() {
+        var adapter = mock(GoalDecisionAdapter.class); coordinator.setDecisionAdapter(adapter);
+        var ticket = new DecisionTicket("decision", DecisionMode.ACTIVE, new DecisionValue.Choice("DEFER"));
+        var run = coordinator.claim(continuations.get(1L), goal, now);
+        goal.setStatus(GoalStatus.COMPLETED);
+        assertTrue(coordinator.settle(run, new SegmentOutcome.Defer("defer", now.plusSeconds(30)), now, ticket));
+        assertEquals("completed", continuations.get(1L).state());
+        verify(adapter).outcome(ticket, false, "COMPLETED");
+    }
+
+    @Test void freshBudgetPauseSettlesAuthorityButDoesNotApplyDelayProposal() {
+        var adapter = mock(GoalDecisionAdapter.class); coordinator.setDecisionAdapter(adapter);
+        var ticket = new DecisionTicket("decision", DecisionMode.ACTIVE, new DecisionValue.Choice("RETRY"));
+        var run = coordinator.claim(continuations.get(1L), goal, now);
+        goal.setStatus(GoalStatus.PAUSED);
+        when(goals.isBudgetExhausted(goal)).thenReturn(true);
+        when(goals.exhaustionReason(goal)).thenReturn("turn_budget");
+        assertTrue(coordinator.settle(run, new SegmentOutcome.Defer("retry", now.plusSeconds(30)), now, ticket));
+        assertEquals("budget_limited", continuations.get(1L).state());
+        verify(adapter).outcome(ticket, false, "BUDGET_LIMITED");
+    }
+
+    @Test void activeOutcomeFailureRollsBackRunningAndSettlementButRetainsProposal() {
+        var manager = new DataSourceTransactionManager(jdbc.getDataSource());
+        var transaction = new TransactionTemplate(manager);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/h2/V203__decision_record.sql")).execute(jdbc.getDataSource());
+        var config = new DecisionProperties(); config.setMode(DecisionMode.ACTIVE);
+        var records = spy(new JdbcDecisionRecordStore(jdbc, manager, config));
+        try (var service = new DecisionService(config, List.of(new RuleDecisionProvider()), records, new SimpleMeterRegistry())) {
+            var adapter = new GoalDecisionAdapter(new GoalFollowupService(properties, new ObjectMapper()), service);
+            coordinator.setDecisionAdapter(adapter);
+            var evaluation = new GoalEvaluationResult(0, "remaining", "continue", false, "", 0, 0, List.of(), null);
+            var run = coordinator.claim(continuations.get(1L), goal, now);
+            var selection = adapter.select(goal, evaluation, now, run.attempt().id(), "DURABLE");
+            doThrow(new IllegalStateException("audit unavailable")).when(records).outcome(any(), any(), any());
+            assertThrows(DecisionRecordingException.class, () -> transaction.executeWithoutResult(status ->
+                    coordinator.markRunning(run, now, selection.ticket())));
+            assertEquals("claimed", attempts.get(run.attempt().id()).state());
+            assertThrows(DecisionRecordingException.class, () -> transaction.executeWithoutResult(status ->
+                    coordinator.settle(run, new SegmentOutcome.Defer("defer", now.plusSeconds(30)), now, selection.ticket())));
+            assertEquals(run.attempt().id(), continuations.get(1L).currentAttemptId());
+            assertEquals("claimed", attempts.get(run.attempt().id()).state());
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM mate_decision_record", Integer.class));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM mate_decision_outcome", Integer.class));
+        }
+    }
+
+    @Test void successfulOutcomeJoinsCommitAndLateRollbackKeepsOnlyIndependentProposal() {
+        var manager = new DataSourceTransactionManager(jdbc.getDataSource());
+        var transaction = new TransactionTemplate(manager);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/h2/V203__decision_record.sql")).execute(jdbc.getDataSource());
+        var config = new DecisionProperties(); config.setMode(DecisionMode.ACTIVE);
+        var records = new JdbcDecisionRecordStore(jdbc, manager, config);
+        try (var service = new DecisionService(config, List.of(new RuleDecisionProvider()), records, new SimpleMeterRegistry())) {
+            var adapter = new GoalDecisionAdapter(new GoalFollowupService(properties, new ObjectMapper()), service);
+            coordinator.setDecisionAdapter(adapter);
+            var run = coordinator.claim(continuations.get(1L), goal, now);
+            transaction.executeWithoutResult(status -> {
+                var selection = adapter.select(goal, null, now, run.attempt().id(), "DURABLE");
+                assertTrue(coordinator.settle(run, new SegmentOutcome.Defer("retry", now.plusSeconds(30)), now, selection.ticket()));
+                status.setRollbackOnly();
+            });
+            assertEquals("claimed", attempts.get(run.attempt().id()).state());
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM mate_decision_record", Integer.class));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM mate_decision_outcome", Integer.class));
+            var selection = adapter.select(goal, null, now, run.attempt().id(), "DURABLE");
+            transaction.executeWithoutResult(status -> coordinator.settle(run,
+                    new SegmentOutcome.Defer("retry", now.plusSeconds(30)), now, selection.ticket()));
+            assertEquals("QUEUED", jdbc.queryForObject("SELECT actual_value FROM mate_decision_outcome", String.class));
+            assertEquals("APPLIED", jdbc.queryForObject("SELECT outcome FROM mate_decision_outcome", String.class));
+        }
+    }
+
+    @Test void activeStartRechecksStoppedGoalAfterDecisionButShadowKeepsBaseline() {
+        var adapter = mock(GoalDecisionAdapter.class); coordinator.setDecisionAdapter(adapter);
+        var run = coordinator.claim(continuations.get(1L), goal, now);
+        goal.setStatus(GoalStatus.PAUSED);
+        var active = new DecisionTicket("active", DecisionMode.ACTIVE, new DecisionValue.Choice("CONTINUE"));
+        assertFalse(coordinator.markRunning(run, now, active));
+        assertEquals("claimed", attempts.get(run.attempt().id()).state());
+        verify(adapter).outcome(active, false, "GOAL_NOT_RUNNABLE");
+        var shadow = new DecisionTicket("shadow", DecisionMode.SHADOW, new DecisionValue.Choice("CONTINUE"));
+        assertTrue(coordinator.markRunning(run, now, shadow));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void activeDelayCannotQueueAfterConcurrentPauseOrAutoFollowupDisable(boolean paused) {
+        var manager = new DataSourceTransactionManager(jdbc.getDataSource());
+        var transaction = new TransactionTemplate(manager);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/h2/V203__decision_record.sql")).execute(jdbc.getDataSource());
+        var config = new DecisionProperties(); config.setMode(DecisionMode.ACTIVE);
+        var records = new JdbcDecisionRecordStore(jdbc, manager, config);
+        var provider = new RuleDecisionProvider() {
+            @Override public DecisionResult decide(DecisionRequest request) {
+                return DecisionResult.proposed(new DecisionValue.Choice("DEFER"), 1, "delay-v1");
+            }
+        };
+        try (var service = new DecisionService(config, List.of(provider), records, new SimpleMeterRegistry())) {
+            var adapter = new GoalDecisionAdapter(new GoalFollowupService(properties, new ObjectMapper()), service);
+            coordinator.setDecisionAdapter(adapter);
+            var run = coordinator.claim(continuations.get(1L), goal, now);
+            var evaluation = new GoalEvaluationResult(0, "remaining", "continue", false, "", 0, 0, List.of(), null);
+            var selected = adapter.select(goal, evaluation, now, run.attempt().id(), "DURABLE");
+            assertEquals("DEFER", selected.decision().action().name());
+            if (paused) {
+                goal.setStatus(GoalStatus.PAUSED);
+                jdbc.update("UPDATE mate_agent_goal SET status='paused' WHERE id=1");
+            } else {
+                goal.setAutoFollowupEnabled(false);
+                jdbc.update("UPDATE mate_agent_goal SET auto_followup_enabled=FALSE WHERE id=1");
+            }
+            transaction.executeWithoutResult(status -> assertFalse(coordinator.settle(run,
+                    new SegmentOutcome.Defer(selected.decision().reason(), selected.decision().nextRunAt()), now, selected.ticket())));
+            assertEquals("claimed", attempts.get(run.attempt().id()).state());
+            assertEquals("running", continuations.get(1L).state());
+            assertEquals("NOT_APPLIED", jdbc.queryForObject("SELECT outcome FROM mate_decision_outcome", String.class));
+            assertEquals("GOAL_NOT_RUNNABLE", jdbc.queryForObject("SELECT actual_value FROM mate_decision_outcome", String.class));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"OFF", "SHADOW"})
+    void observationModesKeepLegacyDelaySettlementAfterPause(String mode) {
+        var adapter = mock(GoalDecisionAdapter.class); coordinator.setDecisionAdapter(adapter);
+        var run = coordinator.claim(continuations.get(1L), goal, now);
+        goal.setStatus(GoalStatus.PAUSED);
+        var ticket = new DecisionTicket("ticket", DecisionMode.valueOf(mode), new DecisionValue.Choice("DEFER"));
+        assertTrue(coordinator.settle(run, new SegmentOutcome.Defer("cooldown", now.plusSeconds(30)), now, ticket));
+        assertEquals("queued", continuations.get(1L).state());
     }
 
     @Test void claimBindsAttemptAndStaleSettlementCannotOverwriteNewProjection() {

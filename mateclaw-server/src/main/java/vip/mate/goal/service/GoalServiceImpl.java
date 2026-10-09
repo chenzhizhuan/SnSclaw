@@ -19,6 +19,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import vip.mate.audit.service.AuditEventService;
 import vip.mate.exception.MateClawException;
 import vip.mate.goal.config.GoalProperties;
+import vip.mate.goal.model.GoalContinuationDecision.Action;
 import vip.mate.goal.model.GoalCreateRequest;
 import vip.mate.goal.model.GoalCriteriaCodec;
 import vip.mate.goal.model.GoalCriterion;
@@ -74,6 +75,10 @@ public class GoalServiceImpl implements GoalService {
     private vip.mate.memory.spi.MemoryManager memoryManager;
     private GoalJsonBindingService jsonBindings;
     private ManagedGoalJsonService managedArtifacts;
+    private GoalDecisionAdapter decisionAdapter;
+
+    @Autowired(required = false)
+    public void setDecisionAdapter(GoalDecisionAdapter decisionAdapter) { this.decisionAdapter = decisionAdapter; }
 
     @Autowired
     public void setManagedArtifacts(ManagedGoalJsonService managedArtifacts) { this.managedArtifacts = managedArtifacts; }
@@ -332,6 +337,37 @@ public class GoalServiceImpl implements GoalService {
 
     @Override
     @Transactional
+    public boolean suspendRuntime(Long id, String reasonCode) {
+        if (decisionAdapter == null) return false;
+        if (!java.util.Set.of("PLAN_ABORTED", "EVALUATION_UNAVAILABLE").contains(reasonCode)) {
+            throw new IllegalArgumentException("Unknown runtime stop reason");
+        }
+        GoalEntity goal = getById(id);
+        // Managed JSON goals have their own owner/lease/approval state machine.
+        // Generic runtime guardrails must not mutate them on stale or unselected turns.
+        if (goal.getStatus() != GoalStatus.ACTIVE || goal.isJsonAcceptanceRequired()) return false;
+        var ticket = decisionAdapter.guardStop(goal, reasonCode);
+        if (ticket.mode() == vip.mate.decision.api.DecisionMode.OFF) return false;
+        // Transaction + optimistic version checks keep the transition and its audit atomic.
+        GoalEntity paused = retryOptimistic(id, "suspendRuntime", fresh -> {
+            if (fresh.getStatus() != GoalStatus.ACTIVE) {
+                throw new MateClawException("err.goal.not_active", 409, "Goal is no longer active");
+            }
+            LambdaUpdateWrapper<GoalEntity> update = baseLockedUpdate(fresh)
+                    .set(GoalEntity::getStatus, GoalStatus.PAUSED)
+                    .set(GoalEntity::getProgressSummary, "Runtime paused: " + reasonCode + "; review and explicitly resume.");
+            bumpVersionAndTime(update);
+            return update;
+        });
+        Map<String, Object> detail = Map.of("reason", reasonCode, "from", "active", "to", "paused");
+        writeEvent(id, GoalEventType.PAUSED, null, detail);
+        recordAudit("goal.runtime_paused", paused, detail);
+        decisionAdapter.outcome(ticket, true, "PAUSED");
+        return true;
+    }
+
+    @Override
+    @Transactional
     public GoalEntity pause(Long id, String username) {
         return flipStatus(id, GoalStatus.ACTIVE, GoalStatus.PAUSED,
                 GoalEventType.PAUSED, "goal.paused", username);
@@ -486,6 +522,7 @@ public class GoalServiceImpl implements GoalService {
             return w;
         });
         if (!transitioned[0]) return g;
+        if (decisionAdapter != null) decisionAdapter.observeTransition(g, Action.COMPLETE);
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("finalScore", result != null ? result.score() : null);
         detail.put("agentLlmCallsUsed", g.getAgentLlmCallsUsed());
@@ -542,7 +579,9 @@ public class GoalServiceImpl implements GoalService {
     @Override
     @Transactional
     public GoalEntity markExhausted(Long id, String reason) {
+        boolean[] transitioned = {false};
         GoalEntity g = retryOptimistic(id, "markExhausted", fresh -> {
+            transitioned[0] = false;
             if (fresh.getStatus().isTerminal()) return null;
             boolean persistent = Boolean.TRUE.equals(fresh.getPersistentExecution());
             LambdaUpdateWrapper<GoalEntity> w = baseLockedUpdate(fresh)
@@ -552,9 +591,11 @@ public class GoalServiceImpl implements GoalService {
                         + (reason != null ? reason : "budget limit")
                         + ". Increase the budget and resume to continue.");
             }
+            transitioned[0] = true;
             bumpVersionAndTime(w);
             return w;
         });
+        if (transitioned[0] && decisionAdapter != null) decisionAdapter.observeTransition(g, Action.BUDGET_LIMITED);
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("reason", reason != null ? reason : "unknown");
         detail.put("turnsUsed", g.getTurnsUsed());

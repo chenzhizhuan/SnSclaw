@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import vip.mate.decision.api.DecisionRecordingException;
 import org.springframework.transaction.annotation.Transactional;
 import vip.mate.planning.model.PlanEntity;
 import vip.mate.planning.model.SubPlanEntity;
@@ -12,6 +14,7 @@ import vip.mate.planning.repository.SubPlanMapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Collectors;
 
@@ -28,6 +31,32 @@ public class PlanningService {
 
     private final PlanMapper planMapper;
     private final SubPlanMapper subPlanMapper;
+    private AgentRoutingDecisionAdapter routingAdapter;
+
+    @Autowired(required = false)
+    public void setRoutingAdapter(AgentRoutingDecisionAdapter adapter) { this.routingAdapter = adapter; }
+
+    /** Persist selected assignments and their actual outcomes in one transaction. */
+    @Transactional
+    public PlanEntity createPlan(String agentId, String conversationId, String goal, List<String> steps,
+                                 List<Long> baseline, AgentRoutingDecisionAdapter.Selection selection) {
+        if (selection == null) return createPlan(agentId, conversationId, goal, steps, baseline);
+        try {
+            if (routingAdapter == null || selection.steps().size() != steps.size()
+                    || !Objects.equals(agentId, selection.parentId())) {
+                throw new IllegalArgumentException("Routing selection does not match plan");
+            }
+            List<Long> actual = routingAdapter.assignments(selection);
+            PlanEntity plan = insertPlan(agentId, conversationId, goal, steps, actual, selection.active());
+            routingAdapter.record(selection, actual);
+            return plan;
+        } catch (RuntimeException failure) {
+            // An ACTIVE plan must not be replaced by an unrecorded fallback after rollback.
+            if (selection.active()) throw new DecisionRecordingException();
+            throw failure;
+        }
+    }
+
 
     /**
      * 创建执行计划（由 StateGraphPlanExecuteAgent 调用）
@@ -54,6 +83,11 @@ public class PlanningService {
     @Transactional
     public PlanEntity createPlan(String agentId, String conversationId, String goal,
                                  List<String> steps, List<Long> stepAgentIds) {
+        return insertPlan(agentId, conversationId, goal, steps, stepAgentIds, false);
+    }
+
+    private PlanEntity insertPlan(String agentId, String conversationId, String goal,
+                                  List<String> steps, List<Long> stepAgentIds, boolean requireInserted) {
         PlanEntity plan = new PlanEntity();
         plan.setAgentId(agentId);
         plan.setConversationId(conversationId);
@@ -66,7 +100,8 @@ public class PlanningService {
         plan.setStatus("pending");
         plan.setTotalSteps(steps.size());
         plan.setCompletedSteps(0);
-        planMapper.insert(plan);
+        int inserted = planMapper.insert(plan);
+        if (requireInserted && inserted != 1) throw new DecisionRecordingException();
 
         IntStream.range(0, steps.size()).forEach(i -> {
             SubPlanEntity sub = new SubPlanEntity();
@@ -79,7 +114,8 @@ public class PlanningService {
             if (stepAgentIds != null && i < stepAgentIds.size()) {
                 sub.setAssignedAgentId(stepAgentIds.get(i));
             }
-            subPlanMapper.insert(sub);
+            int insertedSub = subPlanMapper.insert(sub);
+            if (requireInserted && insertedSub != 1) throw new DecisionRecordingException();
         });
 
         log.info("Created plan {} with {} steps for agent {}", plan.getId(), steps.size(), agentId);

@@ -9,6 +9,8 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.content.Media;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.util.MimeType;
 import reactor.core.publisher.Flux;
 import vip.mate.agent.context.ChatOrigin;
@@ -25,6 +27,9 @@ import vip.mate.workspace.conversation.ConversationService;
 import vip.mate.workspace.conversation.MessageMetadataJson;
 import vip.mate.workspace.conversation.model.MessageContentPart;
 import vip.mate.workspace.conversation.model.MessageEntity;
+import vip.mate.workspace.core.service.MemberFileAccess;
+import vip.mate.workspace.core.service.MemberFileIsolation;
+import vip.mate.workspace.core.service.ChatUploadLocationResolver;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -149,6 +154,7 @@ public abstract class BaseAgent {
      */
     protected MultimodalRouter multimodalRouter;
     protected MediaCaptionService mediaCaptionService;
+    protected ChatUploadLocationResolver chatUploadLocationResolver;
 
     /**
      * RFC 48 — wired by {@link AgentGraphBuilder#build} so the agent's
@@ -1001,6 +1007,12 @@ public abstract class BaseAgent {
                 : MultimodalRoutingDecision.none();
 
         StringBuilder textBuilder = new StringBuilder(renderedContent == null ? "" : renderedContent);
+        if (MemberFileIsolation.isEnabled()
+                && decision.strategy() == MultimodalRoutingDecision.Strategy.SIDECAR) {
+            // The sidecar still loads host paths itself, so it cannot receive member attachments.
+            decision = MultimodalRoutingDecision.none();
+            textBuilder.append("\n\n[系统提示] 成员文件隔离模式暂不支持图片旁路识别。请明确告知用户此限制，并建议使用原生支持图片输入的模型。");
+        }
         java.util.Set<String> sidecarHandledIdentifiers = new java.util.HashSet<>();
         if (decision.strategy() == MultimodalRoutingDecision.Strategy.SIDECAR
                 && mediaCaptionService != null
@@ -1018,7 +1030,7 @@ public abstract class BaseAgent {
                         && !contentType.contains("svg");
                 if (!isImage) continue;
                 MediaCaptionService.CaptionResult result = mediaCaptionService.caption(
-                        decision.sidecarModel(), part, userLocale, userQuestion);
+                        decision.sidecarModel(), part, userLocale, userQuestion, ChatOriginHolder.get());
                 if (result.isFailure()) {
                     log.warn("[{}] Sidecar caption failed for {}: {}",
                             agentName, part.getFileName(), result.failure().getMessage());
@@ -1114,8 +1126,8 @@ public abstract class BaseAgent {
             }
 
             // 解析媒体文件路径：先尝试 path，再尝试 mediaId（IM 渠道下载后存在 mediaId 中），再拼接工作目录
-            Path mediaPath = resolveImagePath(part.getPath());
-            if (mediaPath == null && part.getMediaId() != null) {
+            Path mediaPath = resolveAttachmentPath(part);
+            if (mediaPath == null && part.getMediaId() != null && !isWebUpload(part)) {
                 mediaPath = resolveImagePath(part.getMediaId());
             }
             if (mediaPath == null) {
@@ -1126,7 +1138,7 @@ public abstract class BaseAgent {
             }
             try {
                 MimeType mimeType = MimeType.valueOf(contentType);
-                Media media = new Media(mimeType, new FileSystemResource(mediaPath));
+                Media media = new Media(mimeType, mediaResource(mediaPath));
                 mediaList.add(media);
                 log.debug("[{}] Injected {} into prompt: {} ({})",
                         agentName, isVideo ? "video" : "image", part.getFileName(), mediaPath);
@@ -1145,7 +1157,9 @@ public abstract class BaseAgent {
             // either. With a media tool the LLM may legitimately choose to
             // delegate to the tool — never instruct it not to use tools.
             if (!hasMediaCapableTools()) {
-                textBuilder.append("\n请用对话语言清晰、友好地告诉用户：当前模型无法处理这类附件，建议切换到具备相应能力的多模态模型，或在「设置 → 模型」中配置视觉/视频模型作为旁路。");
+                textBuilder.append(MemberFileIsolation.isEnabled()
+                        ? "\n请明确告知用户附件未能加载；成员文件隔离模式仅支持读取本人的文件，请使用原生支持此类附件的多模态模型，旁路识别暂不可用。"
+                        : "\n请用对话语言清晰、友好地告诉用户：当前模型无法处理这类附件，建议切换到具备相应能力的多模态模型，或在「设置 → 模型」中配置视觉/视频模型作为旁路。");
             }
         }
 
@@ -1371,13 +1385,13 @@ public abstract class BaseAgent {
                 for (int k = parts.size() - 1; k >= 0; k--) {
                     MessageContentPart part = parts.get(k);
                     if (!isResolvableImagePart(part)) continue;
-                    Path imgPath = resolveImagePath(part.getPath());
-                    if (imgPath == null && part.getMediaId() != null) imgPath = resolveImagePath(part.getMediaId());
+                    Path imgPath = resolveAttachmentPath(part);
+                    if (imgPath == null && part.getMediaId() != null && !isWebUpload(part)) imgPath = resolveImagePath(part.getMediaId());
                     if (imgPath == null) continue;
                     String contentType = part.getContentType();
                     if (contentType == null || "image/*".equals(contentType)) contentType = "image/jpeg";
                     try {
-                        Media carried = new Media(MimeType.valueOf(contentType), new FileSystemResource(imgPath));
+                        Media carried = new Media(MimeType.valueOf(contentType), mediaResource(imgPath));
                         UserMessage orig = built.userMessage();
                         String name = part.getFileName() == null ? "image" : part.getFileName();
                         String text = (orig.getText() == null ? "" : orig.getText())
@@ -1421,9 +1435,43 @@ public abstract class BaseAgent {
         return isImage && !contentType.contains("svg");
     }
 
+    private Resource mediaResource(Path path) throws java.io.IOException {
+        if (!MemberFileIsolation.isEnabled()) return new FileSystemResource(path);
+        Path root = Path.of(MemberFileIsolation.scope(ChatOriginHolder.get()).workspaceBasePath());
+        // Snapshot through descriptor-relative access; never defer a host path read to the model client.
+        return new ByteArrayResource(MemberFileAccess.read(root, path, 32 * 1024 * 1024));
+    }
+
+    private Path resolveAttachmentPath(MessageContentPart part) {
+        ChatOrigin origin = ChatOriginHolder.get();
+        if (chatUploadLocationResolver != null && origin != null
+                && "web".equals(origin.channelType()) && part.getStoredName() != null) {
+            // The client-visible path is informational; the stored name is resolved
+            // under the authenticated conversation's actual upload root.
+            return chatUploadLocationResolver.resolveExistingFile(origin, part.getStoredName());
+        }
+        return resolveImagePath(part.getPath());
+    }
+
+    private boolean isWebUpload(MessageContentPart part) {
+        ChatOrigin origin = ChatOriginHolder.get();
+        return chatUploadLocationResolver != null && origin != null
+                && "web".equals(origin.channelType()) && part.getStoredName() != null;
+    }
+
     protected Path resolveImagePath(String relativePath) {
         if (relativePath == null || relativePath.isBlank()) {
             return null;
+        }
+        if (MemberFileIsolation.isEnabled()) {
+            try {
+                Path root = Path.of(MemberFileIsolation.scope(ChatOriginHolder.get()).workspaceBasePath());
+                Path resolved = MemberFileIsolation.validate(root, relativePath);
+                return Files.isRegularFile(resolved, java.nio.file.LinkOption.NOFOLLOW_LINKS) ? resolved : null;
+            } catch (SecurityException | IllegalArgumentException denied) {
+                log.debug("[{}] Member media path rejected", agentName);
+                return null;
+            }
         }
         // 1. 如果已经是绝对路径且存在，直接用
         Path path = Paths.get(relativePath);
