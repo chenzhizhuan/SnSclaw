@@ -716,3 +716,7 @@ Cron 编辑器会持久保存 delivery channel 和 target；修改表达式或�
 - [聊天与消息](./chat)——消息流、segment、流式事件
 - [Agent 引擎](./agents)——实际在每个渠道里回答的是什么
 - [配置说明](./config)——全局渠道调优
+
+## 渠道配置与生命周期（3.0.0）
+
+飞书 WebSocket readiness、重连与关闭由应用管理。无法运行的 webhook 渠道类型在保存前拒绝；持久会话中的过期查询上下文会清理，防止串入后续任务。

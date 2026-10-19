@@ -1,5 +1,10 @@
 <div align="center">
 
+> 当前开发版本：**3.0.0-SNAPSHOT**。Java 21 / Spring Boot 4.1.1 / Spring AI 2.0.1 / AgentScope 2.0.4。AgentScope 驱动执行循环，MateClaw 保留工具审批、权限、Goal、SSE 与持久化。正式发行版请查看 Releases。
+> [3.0.0 架构升级日志](CHANGELOG.md)
+> 包含 2.3.0 之后全部累计更新：结构化决策、成员文件隔离、DSH SDK 升级、朗读音色试听和结构化 MCP 展示。
+
+
 <p align="center">
   <img src="mateclaw-ui/public/logo/mateclaw_logo_s.png" alt="SnSclaw Logo" width="120">
 </p>
@@ -15,7 +20,7 @@
 [![在线演示](https://img.shields.io/badge/演示-在线-orange.svg?logo=vercel&label=Demo)](https://claw-demo.sns.app)
 [![官网](https://img.shields.io/badge/官网-claw.sns.app-blue.svg?logo=googlechrome&label=Site)](https://claw.sns.app)
 [![Java 版本](https://img.shields.io/badge/Java-21+-blue.svg?logo=openjdk&label=Java)](https://adoptium.net/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen.svg?logo=springboot)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-brightgreen.svg?logo=springboot)](https://spring.io/projects/spring-boot)
 [![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg?logo=vuedotjs)](https://vuejs.org/)
 [![最后提交](https://img.shields.io/github/last-commit/sns/SnSclaw)](https://lab.sns.app/SnSclaw)
 [![许可证](https://img.shields.io/badge/license-Apache--2.0-red.svg?logo=opensourceinitiative&label=License)](LICENSE)
@@ -38,7 +43,7 @@
 >
 > 多用户工作空间。敏感操作走审批。完整审计日志。Spring Boot Actuator 健康监控。单个渠道挂掉不影响其他渠道的错误隔离。一个 JAR 包跑在自己的环境里；持久化数据由你掌控，任务所需内容只会发送到你主动配置的模型、渠道或工具服务。
 >
-> **底下是一套真正的 Agent Runtime。** 员工不再焊死在一套推理循环上：可以用原生 StateGraph 运行 ReAct、Plan-and-Execute、Goal 与 Team Run，也可以通过 SDK JSON-RPC 把 DeepSeek Harness 作为受管理的外部循环。两条路径最终进入同一套会话、工作空间边界、Tool Guard、事件投影与生命周期控制。
+> **底下是一套真正的 Agent Runtime。** 员工不再焊死在一套推理循环上：可以用原生 AgentScope 运行 ReAct、Plan-and-Execute、Goal 与 Team Run，也可以通过 SDK JSON-RPC 把 DeepSeek Harness 作为受管理的外部循环。两条路径最终进入同一套会话、工作空间边界、Tool Guard、事件投影与生命周期控制。
 
 大多数 AI 工具一到厂商抽风那天就两手一摊。关一次标签页就忘了你是谁。给你一个聊天框，就敢叫产品。
 
@@ -162,12 +167,14 @@ RBAC + JWT。**Personal Access Token** 给无人值守脚本和 CI 使用。**We
 
 ```bash
 # 后端
-cd mateclaw-server
-mvn spring-boot:run           # http://localhost:18088
+# 从仓库根目录运行，使用根目录下已配置的模型数据库与工作空间
+SPRING_DATASOURCE_URL="jdbc:h2:file:$PWD/data/mateclaw;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE" \
+MATECLAW_WORKSPACE_SANDBOX_ROOT="$PWD/data/workspace" \
+mvn -pl mateclaw-server spring-boot:run  # http://localhost:18088
 
-# 前端
+# 前端（新终端，从仓库根目录进入）
 cd mateclaw-ui
-npm install && npm run dev    # http://localhost:5173
+npm install && npm run dev -- --host 127.0.0.1    # http://localhost:5173
 ```
 
 默认登录：`admin` / `admin123`
@@ -204,7 +211,7 @@ docker compose up -d          # http://localhost:18080
 
 ```
 SnSclaw/
-├── mateclaw-server/        Spring Boot 3.5 后端（Agent Runtime contract · Native StateGraph + DSH）
+├── mateclaw-server/        Spring Boot 4.1.1 后端（Agent Runtime contract · Native AgentScope + DSH）
 ├── mateclaw-ui/            Vue 3 + TypeScript 管理 SPA（构建产物打进后端 JAR）
 ├── mateclaw-desktop/       Electron 桌面端（本地内嵌 / 远程集中双模式）
 ├── mateclaw-webchat/       网页嵌入式聊天组件（UMD / ES bundle）
@@ -222,8 +229,8 @@ SnSclaw/
 
 | 层次 | 技术 |
 |---|---|
-| 后端 | Spring Boot 3.5 · Spring AI Alibaba 1.1 · MyBatis Plus · Flyway |
-| Agent Runtime | `AgentRuntimeProvider` contract · Native StateGraph（ReAct + Plan-Execute）· 受管理的 DSH JSON-RPC runtime · 统一事件 / 生命周期 / 用量 · Tool Guard |
+| 后端 | Spring Boot 4.1.1 · Spring AI 2.0.1 · AgentScope Java 2.0.4 · MyBatis Plus · Flyway |
+| Agent Runtime | `AgentRuntimeProvider` contract · Native AgentScope（ReAct + Plan-Execute）· 受管理的 DSH JSON-RPC runtime · 统一事件 / 生命周期 / 用量 · Tool Guard |
 | 业务编排 | 工作流（7 step mode · Pebble DSL）· 触发器（6 pattern type · 事件治理）· Wiki 加工器（1.3.0+）|
 | 能力扩展 | SKILL.md 包 · MCP（stdio / SSE / HTTP · per-agent 绑定）· ACP 桥接（Claude Code / Codex） |
 | 数据库 | H2（开发）· PostgreSQL 16（Docker 默认）· MySQL 8.0+（支持）· Kingbase（按需驱动）|
@@ -321,7 +328,7 @@ SnSclaw/
 git clone https://lab.sns.app/SnSclaw.git
 cd SnSclaw
 cd mateclaw-server && mvn clean compile
-cd ../mateclaw-ui && npm install && npm run dev
+cd ../mateclaw-ui && npm install && npm run dev -- --host 127.0.0.1
 ```
 
 ---

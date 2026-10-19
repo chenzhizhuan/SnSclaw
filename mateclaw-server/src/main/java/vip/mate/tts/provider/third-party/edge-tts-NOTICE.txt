@@ -1,0 +1,19 @@
+EdgeTtsSecurityToken.java contains a Java port of the Sec-MS-GEC v2
+algorithm from edge-tts src/edge_tts/drm.py.
+
+Upstream project: https://github.com/rany2/edge-tts
+Author: rany (ranygh@riseup.net), as identified in upstream setup.cfg.
+Sec-MS-GEC v2 contribution: HarryXiaoCN, upstream pull request #492.
+Reference revision: 360fa8e1de354e1dda74c09bd695887d6a44df74
+Reference source:
+https://github.com/rany2/edge-tts/blob/360fa8e1de354e1dda74c09bd695887d6a44df74/src/edge_tts/drm.py
+
+The upstream drm.py does not specify a separate copyright notice.
+The upstream LICENSE is reproduced verbatim in edge-tts-LICENSE.txt;
+it states that all files other than srt_composer.py are licensed under
+GNU Lesser General Public License version 3. Copyright notices in that
+file are preserved verbatim and apply as described there.
+
+Changes: translated the Python algorithm into Java using int overflow
+for modulo 2^32 arithmetic and Instant for five-minute FILETIME buckets.
+This derived utility is licensed under LGPLv3 as the upstream source.

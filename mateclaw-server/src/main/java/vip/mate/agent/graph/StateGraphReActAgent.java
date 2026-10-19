@@ -1,10 +1,10 @@
 package vip.mate.agent.graph;
 
 import vip.mate.workspace.core.service.MemberFileIsolation;
-import com.alibaba.cloud.ai.graph.CompiledGraph;
-import com.alibaba.cloud.ai.graph.NodeOutput;
-import com.alibaba.cloud.ai.graph.OverAllState;
-import com.alibaba.cloud.ai.graph.RunnableConfig;
+import vip.mate.agent.runtime.AgentRuntime;
+import vip.mate.tool.builtin.DelegationContext;
+import vip.mate.agent.runtime.state.RunStep;
+import vip.mate.agent.runtime.state.RunState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
@@ -19,6 +19,10 @@ import vip.mate.agent.delegation.DelegatedUsageAccumulator;
 import vip.mate.agent.GraphEventPublisher;
 import vip.mate.agent.StructuredStreamCapable;
 import vip.mate.agent.context.ConversationWindowManager;
+import vip.mate.agent.context.BudgetedCompactionModel;
+import vip.mate.agent.context.PrefixBudgetPlan;
+import vip.mate.llm.chatmodel.ChatModelDefaults;
+import vip.mate.agent.graph.state.FinishReason;
 import vip.mate.agent.graph.state.MateClawStateKeys;
 import vip.mate.workspace.conversation.ConversationService;
 
@@ -30,30 +34,17 @@ import java.util.concurrent.atomic.AtomicReference;
 import static vip.mate.agent.graph.state.MateClawStateKeys.*;
 
 /**
- * 基于 StateGraph v2 的 ReAct Agent
- * <p>
- * 使用 spring-ai-alibaba-graph-core 的 StateGraph 引擎，
- * 实现显式可控的 Thought → Action → Observation 循环，
- * 含 Summarizing、LimitExceeded 和 FinalAnswer 节点。
- * <p>
- * 关键特性：
- * - 迭代次数强制控制（maxIterations 真正生效）
- * - ToolGuard 安全拦截（在 ActionNode 中执行）
- * - 工具调用过程可观测
- * - Summarizing 阶段收束冗长上下文
- * - 超限友好提示
- * - 结构化生命周期日志
- * <p>
- * content_delta 和 thinking_delta 由节点内 {@link NodeStreamingChatHelper} 直推，
- * chatStructuredStream() 只处理 phase/tool/事件等结构化事件。
- * 不再从 NodeOutput 二次整段下发已流式推送的内容。
+ * ReAct application entry point backed by the native AgentScope runtime.
+ * Application policies own prompts, guarded tool batches, summaries and goal decisions.
+ * Streaming content and thinking originate in NodeStreamingChatHelper; retained RunSteps
+ * project structured events without sending already streamed text again.
  *
  * @author SnSclaw
  */
 @Slf4j
 public class StateGraphReActAgent extends BaseAgent implements StructuredStreamCapable {
 
-    private final CompiledGraph compiledGraph;
+    private final AgentRuntime compiledGraph;
     private final org.springframework.ai.chat.model.ChatModel chatModel;
     private final ConversationWindowManager conversationWindowManager;
     /**
@@ -72,6 +63,11 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
      * builder that already threads a dozen collaborators, and this is a single
      * boolean with a safe default.
      */
+    private PrefixBudgetPlan prefixBudgetPlan;
+    private static final String PRE_RUN_ABORTED = "pre_run_context_aborted";
+
+    public void setPrefixBudgetPlan(PrefixBudgetPlan plan) { this.prefixBudgetPlan=plan; }
+
     private boolean persistEveryIterationReasoning = true;
 
     public void setPersistEveryIterationReasoning(boolean persistEveryIterationReasoning) {
@@ -79,7 +75,7 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
     }
 
     public StateGraphReActAgent(ChatClient chatClient, ConversationService conversationService,
-                                CompiledGraph compiledGraph,
+                                AgentRuntime compiledGraph,
                                 org.springframework.ai.chat.model.ChatModel chatModel,
                                 ConversationWindowManager conversationWindowManager) {
         this(chatClient, conversationService, compiledGraph, chatModel,
@@ -87,7 +83,7 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
     }
 
     public StateGraphReActAgent(ChatClient chatClient, ConversationService conversationService,
-                                CompiledGraph compiledGraph,
+                                AgentRuntime compiledGraph,
                                 org.springframework.ai.chat.model.ChatModel chatModel,
                                 ConversationWindowManager conversationWindowManager,
                                 vip.mate.agent.AgentToolSet toolSet) {
@@ -106,13 +102,12 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
 
             Map<String, Object> inputs = buildInitialState(userMessage, conversationId);
             // Fresh thread per invocation so graph state never carries over
-            // between calls. The CompiledGraph is cached and shared; without a
+            // between calls. The AgentRuntime is cached and shared; without a
             // unique threadId, consecutive sync runs (e.g. back-to-back cron
             // executions) inherit the prior run's accumulated messages and
             // counters. Mirrors the streaming paths, which already do this.
-            RunnableConfig config = RunnableConfig.builder()
-                    .threadId(UUID.randomUUID().toString()).build();
-            Optional<OverAllState> result = compiledGraph.invoke(inputs, config);
+
+            Optional<RunState> result = invokePrepared(inputs);
 
             return result
                     .flatMap(s -> s.<String>value(FINAL_ANSWER))
@@ -135,10 +130,10 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
             log.info("[{}] StateGraph stream: conversationId={}", agentName, conversationId);
 
             Map<String, Object> inputs = buildInitialState(userMessage, conversationId);
-            String threadId = UUID.randomUUID().toString();
-            RunnableConfig config = RunnableConfig.builder().threadId(threadId).build();
 
-            return compiledGraph.stream(inputs, config)
+
+
+            return streamPrepared(inputs)
                     .filter(this::hasFinalAnswer)
                     .map(this::extractFinalAnswer)
                     .filter(content -> content != null && !content.isEmpty())
@@ -172,9 +167,8 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
                 inputs.put(FORCED_TOOL_CALL, toolCallPayload);
             }
             // Fresh thread per invocation — see chat() for rationale.
-            RunnableConfig config = RunnableConfig.builder()
-                    .threadId(UUID.randomUUID().toString()).build();
-            Optional<OverAllState> result = compiledGraph.invoke(inputs, config);
+
+            Optional<RunState> result = invokePrepared(inputs);
 
             return result
                     .flatMap(s -> s.<String>value(FINAL_ANSWER))
@@ -208,8 +202,8 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
             if (toolCallPayload != null && !toolCallPayload.isEmpty()) {
                 inputs.put(FORCED_TOOL_CALL, toolCallPayload);
             }
-            String threadId = UUID.randomUUID().toString();
-            RunnableConfig config = RunnableConfig.builder().threadId(threadId).build();
+
+
 
             AtomicInteger sentEventCount = new AtomicInteger(0);
             AtomicInteger finalPromptTokens = new AtomicInteger(0);
@@ -229,7 +223,7 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
             AtomicInteger lastSoftCap = new AtomicInteger(0);
             AtomicBoolean sawLegitimateExit = new AtomicBoolean(false);
 
-            return BaseAgent.routingStartupDelta(inputs).concatWith(compiledGraph.stream(inputs, config)
+            return BaseAgent.routingStartupDelta(inputs).concatWith(streamPrepared(inputs)
                     .flatMapIterable(output -> {
                         List<AgentService.StreamDelta> deltas = new ArrayList<>();
                         List<GraphEventPublisher.GraphEvent> allEvents = GraphEventPublisher.extractEvents(output);
@@ -341,9 +335,7 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
 
                         lastIteration.set(output.state().value(CURRENT_ITERATION, 0));
                         lastSoftCap.set(output.state().value(MAX_ITERATIONS, 0));
-                        if (hasFinalAnswer(output)
-                                || Boolean.TRUE.equals(output.state().value(LIMIT_EXCEEDED, false))
-                                || !output.state().<String>value(FINISH_REASON).orElse("").isBlank()) {
+                        if (isFinalAnswerOutput(output)) {
                             sawLegitimateExit.set(true);
                         }
 
@@ -410,12 +402,12 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
 
             Map<String, Object> inputs = buildInitialState(userMessage, conversationId);
             inputs.put(REQUESTER_ID, requesterId != null ? requesterId : "");
-            String threadId = UUID.randomUUID().toString();
-            RunnableConfig config = RunnableConfig.builder().threadId(threadId).build();
+
+
 
             // Lambda 内需要维护已发送事件偏移；这里只是局部可变计数器，不涉及跨会话共享。
             AtomicInteger sentEventCount = new AtomicInteger(0);
-            // Token usage 追踪（每次 NodeOutput 更新最新累计值，最后一次即最终值）
+            // Token usage 追踪（每次 RunStep 更新最新累计值，最后一次即最终值）
             AtomicInteger finalPromptTokens = new AtomicInteger(0);
             AtomicInteger finalCompletionTokens = new AtomicInteger(0);
             AtomicInteger finalCacheReadTokens = new AtomicInteger(0);
@@ -423,15 +415,15 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
             AtomicInteger finalReasoningTokens = new AtomicInteger(0);
             AtomicReference<String> finalModelName = new AtomicReference<>("");
             AtomicReference<String> finalProviderId = new AtomicReference<>("");
-            // 防重保护：StateGraph 对每个节点都 emit NodeOutput，FINAL_ANSWER 一旦写入后续节点都携带，
+            // 防重保护：StateGraph 对每个节点都 emit RunStep，FINAL_ANSWER 一旦写入后续节点都携带，
             // 用 compareAndSet 保证只取第一次，避免 content/thinking 被重复追加
             AtomicBoolean finalAnswerEmitted = new AtomicBoolean(false);
             AtomicBoolean finalThinkingEmitted = new AtomicBoolean(false);
             // 同 STREAMED_CONTENT：STREAMED_THINKING 也是 REPLACE，用独立游标
-            // 跟踪已持久化的每轮 thinking，避免后续节点的 NodeOutput 重复发送。
+            // 跟踪已持久化的每轮 thinking，避免后续节点的 RunStep 重复发送。
             AtomicReference<String> lastEmittedIterationThinking = new AtomicReference<>("");
             // STREAMED_CONTENT 是 REPLACE 策略（每轮 ReasoningNode/SummarizingNode 覆写），
-            // 用 lastEmitted 跟踪已发送的值，避免在 ActionNode/ObservationNode 的 NodeOutput 上重复发送同一段内容。
+            // 用 lastEmitted 跟踪已发送的值，避免在 ActionNode/ObservationNode 的 RunStep 上重复发送同一段内容。
             AtomicReference<String> lastEmittedStreamedContent = new AtomicReference<>("");
             // Silent-termination guardrail: track the highest iteration / soft cap
             // observed and whether the graph reached a legitimate exit (final answer
@@ -445,7 +437,7 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
             AtomicInteger lastSoftCap = new AtomicInteger(0);
             AtomicBoolean sawLegitimateExit = new AtomicBoolean(false);
 
-            return BaseAgent.routingStartupDelta(inputs).concatWith(compiledGraph.stream(inputs, config)
+            return BaseAgent.routingStartupDelta(inputs).concatWith(streamPrepared(inputs)
                     .flatMapIterable(output -> {
                         List<AgentService.StreamDelta> deltas = new ArrayList<>();
                         // 1. 提取所有累积的事件，只发送新增部分
@@ -543,9 +535,7 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
                         // 4. Silent-termination guard inputs
                         lastIteration.set(output.state().value(CURRENT_ITERATION, 0));
                         lastSoftCap.set(output.state().value(MAX_ITERATIONS, 0));
-                        if (hasFinalAnswer(output)
-                                || Boolean.TRUE.equals(output.state().value(LIMIT_EXCEEDED, false))
-                                || !output.state().<String>value(FINISH_REASON).orElse("").isBlank()) {
+                        if (isFinalAnswerOutput(output)) {
                             sawLegitimateExit.set(true);
                         }
 
@@ -600,33 +590,67 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
         }
     }
 
+    private Optional<RunState> invokePrepared(Map<String,Object> inputs) {
+        return Boolean.TRUE.equals(inputs.get(PRE_RUN_ABORTED))
+                ? Optional.of(new RunState(inputs)) : compiledGraph.invoke(inputs);
+    }
+
+    private Flux<RunStep> streamPrepared(Map<String,Object> inputs) {
+        return Boolean.TRUE.equals(inputs.get(PRE_RUN_ABORTED))
+                ? Flux.just(new RunStep("finalAnswer",new RunState(inputs))) : compiledGraph.stream(inputs);
+    }
+
     private Map<String, Object> buildInitialState(String userMessage, String conversationId) {
         var incoming = vip.mate.agent.context.ChatOriginHolder.get().withConversationId(conversationId);
         var memberOrigin = MemberFileIsolation.scope(incoming.withWorkspace(incoming.workspaceId(), this.workspaceBasePath));
         String workspaceBasePath = memberOrigin.workspaceBasePath();
-        // 加载会话历史
-        List<Message> historyMessages = buildConversationHistory(conversationId, userMessage);
+        String thinkingLevel = vip.mate.llm.chatmodel.ThinkingLevelHolder.get();
+        boolean thinkingOn = thinkingLevel != null && !"off".equalsIgnoreCase(thinkingLevel);
+        int effectiveMaxIterations = maxIterations <= 0 ? 0
+                : (int)Math.min(Integer.MAX_VALUE,(long)maxIterations + (thinkingOn ? 5L : 0L));
+        long setupCalls = effectiveMaxIterations <= 0 ? Long.MAX_VALUE
+                : (long)effectiveMaxIterations * 5L - 1L;
+        int effectiveWindow = prefixBudgetPlan != null
+                ? (prefixBudgetPlan.enabled() ? prefixBudgetPlan.effectiveMaxTokens() : 0)
+                : (maxInputTokens != null && maxInputTokens > 0 ? maxInputTokens : 0);
+        var defaults=chatModel == null ? null : ChatModelDefaults.optionsFor(chatModel);
+        int fallbackOutput = BudgetedCompactionModel.outputReserveTokens(defaults,1024);
+        BudgetedCompactionModel setupModel = new BudgetedCompactionModel(chatModel,setupCalls,effectiveWindow,fallbackOutput);
+        boolean setupCancelled = false;
+        // Own a detached history projection; compaction must not rewrite canonical messages.
+        List<Message> historyMessages = new RunState(Map.of(MESSAGES,
+                buildConversationHistory(conversationId, userMessage))).value(MESSAGES,List.<Message>of());
 
         // 上下文窗口管理：裁剪超出模型 context window 的历史（含当前消息预算）
         if (conversationWindowManager != null) {
             Long parsedAgentId = null;
             try { parsedAgentId = Long.valueOf(agentId); } catch (Exception ignored) {}
-            historyMessages = conversationWindowManager.fitToWindow(
+            try {
+                historyMessages = conversationWindowManager.fitToWindow(
                     historyMessages,
                     systemPrompt != null ? systemPrompt : "",
                     userMessage,
-                    maxInputTokens,
-                    chatModel,
+                    prefixBudgetPlan != null && prefixBudgetPlan.enabled() ? Integer.valueOf(effectiveWindow) : maxInputTokens,
+                    setupModel,
                     conversationId,
                     parsedAgentId,
                     toolSet != null ? toolSet.callbacks() : null,
                     workspaceBasePath);
+            } catch (java.util.concurrent.CancellationException stopped) {
+                setupCancelled = true;
+            } catch (BudgetedCompactionModel.CallBudgetExceeded | BudgetedCompactionModel.SummaryPromptOverflow rejected) {
+                // The wrapper retains the reason even when CWM swallowed it first.
+            }
         }
 
+        setupCancelled |= setupModel.cancellation() != null;
+        boolean setupAborted = setupCancelled || setupModel.blockedPrompt() != null || setupModel.callBudgetBlocked();
         List<Message> messages = new ArrayList<>(historyMessages);
         // 构建当前用户消息：支持 multimodal（如果有图片附件，直接注入 Media）
         // 同步获取 routing decision，写入 state 供后续节点 / accumulator 读取。
-        BaseAgent.CurrentTurnUserMessage currentTurn = buildCurrentUserMessageWithRouting(conversationId, userMessage);
+        BaseAgent.CurrentTurnUserMessage currentTurn = setupAborted
+                ? new BaseAgent.CurrentTurnUserMessage(new UserMessage(userMessage),null)
+                : buildCurrentUserMessageWithRouting(conversationId, userMessage);
         messages.add(currentTurn.userMessage());
 
         Map<String, Object> inputs = new HashMap<>();
@@ -640,14 +664,12 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
         // 迭代控制：深度思考模式允许更多迭代（思考需要更多轮工具调用）
         // maxIterations<=0 表示软上限解除（由 LLM 自己决定何时收尾），加分要短路，
         // 否则 thinking-on 会把"无限"误算成 5（变成"5 步就停"）。
-        String thinkingLevel = vip.mate.llm.chatmodel.ThinkingLevelHolder.get();
-        boolean thinkingOn = thinkingLevel != null && !"off".equalsIgnoreCase(thinkingLevel);
-        int effectiveMaxIterations = (maxIterations <= 0)
-                ? 0
-                : (thinkingOn ? maxIterations + 5 : maxIterations);
+        if (thinkingLevel != null) inputs.put(REQUESTED_THINKING_LEVEL, thinkingLevel);
+        inputs.put(SUBAGENT_RUN_CONTEXT, DelegationContext.current());
         inputs.put(MAX_ITERATIONS, effectiveMaxIterations);
         inputs.put(CURRENT_ITERATION, 0);
         // 初始化新字段
+        inputs.put(LLM_CALL_COUNT,setupModel.calls());
         inputs.put(TOOL_CALL_COUNT, 0);
         inputs.put(ERROR_COUNT, 0);
         inputs.put(SHOULD_SUMMARIZE, false);
@@ -665,6 +687,7 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
         inputs.put(CACHE_READ_TOKENS, 0);
         inputs.put(CACHE_WRITE_TOKENS, 0);
         inputs.put(REASONING_TOKENS, 0);
+        inputs.putAll(setupModel.usage());
         inputs.put(RUNTIME_MODEL_NAME, modelName != null ? modelName : "");
         inputs.put(RUNTIME_PROVIDER_ID, runtimeProviderId != null ? runtimeProviderId : "");
         inputs.put(TRACE_ID, UUID.randomUUID().toString().substring(0, 8));
@@ -722,6 +745,15 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
         inputs.put(MateClawStateKeys.GOAL_FOLLOWUP_INJECTED, false);
         inputs.put(MateClawStateKeys.GOAL_FOLLOWUP_PROMPT, "");
 
+        if (setupAborted) {
+            String reason=setupCancelled ? FinishReason.STOPPED.getValue() : FinishReason.INCOMPLETE.getValue();
+            inputs.put(PRE_RUN_ABORTED,true);
+            inputs.put(NEEDS_TOOL_CALL,false);
+            inputs.put(CONTINUE_REASONING,false);
+            inputs.put(FINISH_REASON,reason);
+            inputs.put(FINAL_ANSWER,setupCancelled ? "" : "（上下文准备无法在模型窗口或调用预算内安全完成，任务尚未完成。）");
+            inputs.put(PENDING_EVENTS,List.of(GraphEventPublisher.finishReason(reason)));
+        }
         return inputs;
     }
 
@@ -813,8 +845,14 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
                 || !finalAnswer.contains(streamed);
     }
 
-    private boolean hasFinalAnswer(NodeOutput output) {
-        if (output == null || output.state() == null) {
+    /** Reasoning candidates still require final-node cleanup before publication/persistence. */
+    private boolean isFinalAnswerOutput(RunStep output) {
+        return output != null && (FINAL_ANSWER_NODE.equals(output.node())
+                || "finalAnswer".equals(output.node()) && output.state().value(PRE_RUN_ABORTED,false));
+    }
+
+    private boolean hasFinalAnswer(RunStep output) {
+        if (!isFinalAnswerOutput(output)) {
             return false;
         }
         return output.state().<String>value(FINAL_ANSWER)
@@ -822,11 +860,11 @@ public class StateGraphReActAgent extends BaseAgent implements StructuredStreamC
                 .isPresent();
     }
 
-    private String extractFinalAnswer(NodeOutput output) {
+    private String extractFinalAnswer(RunStep output) {
         return output.state().<String>value(FINAL_ANSWER).orElse("");
     }
 
-    private String extractFinalThinking(NodeOutput output) {
+    private String extractFinalThinking(RunStep output) {
         if (output == null || output.state() == null) {
             return null;
         }

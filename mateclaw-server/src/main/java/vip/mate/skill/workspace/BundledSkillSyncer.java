@@ -20,9 +20,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -129,6 +132,7 @@ public class BundledSkillSyncer {
             } else {
                 List<String> missing = missingBucketsOnDisk(source, targetDir);
                 if (missing.isEmpty()) {
+                    repairMissingBundleRows(skillName, source, targetDir);
                     log.debug("Bundled skill '{}' workspace is current (bundled={}, workspace={}), skipping",
                             skillName, bundledVersion, workspaceVersion);
                     return false;
@@ -180,11 +184,39 @@ public class BundledSkillSyncer {
         SkillEntity skill = skillService.findByName(skillName);
         if (skill == null || skill.getId() == null) return;
         try {
-            Map<String, String> bundleFiles = SkillBundleFiles.readDbEligible(source);
+            Map<String, byte[]> bundleFiles = SkillBundleFiles.readDbEligibleBytes(source);
             if (bundleFiles.isEmpty()) return;
-            skillFileService.applyBundleFiles(skill.getId(), bundleFiles, false);
+            skillFileService.applyBundleBytes(skill.getId(), bundleFiles, false);
         } catch (IOException e) {
             log.warn("Failed to load bundle files from {}: {}", source.origin(), e.getMessage());
+        }
+    }
+
+    /** Fill only absent canonical rows from the builtin cache, retaining local versions and edits. */
+    private void repairMissingBundleRows(String skillName, SkillBundleSource source, Path targetDir) {
+        SkillEntity skill = skillService.findByName(skillName);
+        if (skill == null || skill.getId() == null || !Boolean.TRUE.equals(skill.getBuiltin())) return;
+        Set<String> storedPaths = skillFileService.listBySkillId(skill.getId()).stream()
+                .map(row -> row.getFilePath()).collect(Collectors.toSet());
+        try {
+            for (SkillBundleSource.BundleAsset asset : source.assets()) {
+                String relative = asset.relativePath();
+                if (!SkillBundleFiles.isDbEligible(relative) || storedPaths.contains(relative)) continue;
+                Path file = targetDir.resolve(relative).normalize();
+                if (!file.startsWith(targetDir.normalize())) continue;
+                boolean symbolic = false;
+                for (Path part = file; part != null && part.startsWith(targetDir); part = part.getParent()) {
+                    if (Files.isSymbolicLink(part)) {
+                        symbolic = true;
+                        break;
+                    }
+                }
+                if (symbolic || !Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) continue;
+                skillFileService.upsertBytes(skill.getId(), relative, Files.readAllBytes(file));
+                storedPaths.add(relative);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to repair missing bundle rows for '{}': {}", skillName, e.getMessage());
         }
     }
 

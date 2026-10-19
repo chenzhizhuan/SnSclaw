@@ -1,5 +1,7 @@
 package vip.mate.goal;
 
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,7 +11,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import reactor.core.publisher.Flux;
@@ -37,11 +39,11 @@ import static org.mockito.Mockito.*;
     "mateclaw.skill.workspace.root=${java.io.tmpdir}/mateclaw-json-http-skills-${random.uuid}"
 })
 class GoalJsonHttpRuntimeIntegrationTest {
-    @MockBean private MemoryManager memory;
-    @MockBean private GoalEvaluationService evaluator;
+    @MockitoBean private MemoryManager memory;
+    @MockitoBean private GoalEvaluationService evaluator;
     @Autowired private GoalContinuationSupervisor supervisor;
-    @MockBean private ProviderChatModelFactory modelFactory;
-    @org.springframework.boot.test.mock.mockito.SpyBean private vip.mate.workspace.conversation.ConversationService conversationService;
+    @MockitoBean private ProviderChatModelFactory modelFactory;
+    @MockitoSpyBean private vip.mate.workspace.conversation.ConversationService conversationService;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private vip.mate.config.LoginRateLimitFilter loginLimiter;
     @Autowired private vip.mate.llm.failover.AvailableProviderPool providerPool;
@@ -73,6 +75,27 @@ class GoalJsonHttpRuntimeIntegrationTest {
         var backoff = (java.util.concurrent.atomic.AtomicReference<?>)
                 org.springframework.test.util.ReflectionTestUtils.getField(supervisor, "providerBackoffUntil");
         assertNotNull(backoff); backoff.set(null);
+    }
+
+    /** Echo only canonical counts; the fixture never endorses recovery of its intentional failures. */
+    private ChatResponse finalizationFixtureVerdict(Prompt prompt) throws Exception {
+        String data=prompt.getUserMessage().getText();
+        String marker="CANONICAL FACTS:\n";int start=data.indexOf(marker);
+        assertTrue(start>=0,"Reviewer must receive canonical receipt projection");
+        JsonNode facts=json.readTree(json.createParser(data.substring(start+marker.length())));
+        assertTrue(facts.path("failedCallCount").isIntegralNumber());
+        int failures=facts.path("failedCallCount").intValue();assertTrue(failures>=0);
+        return new ChatResponse(List.of(new Generation(new AssistantMessage(
+                "{\"decision\":\"ACCEPT\",\"taskComplete\":true,\"remainingWork\":false,"
+                +"\"failedCallCount\":"+failures+",\"recoveryClaims\":[],\"reason\":\"Offline authenticated workflow fixture completed; no recovery claims\"}"))));
+    }
+
+    @org.junit.jupiter.api.Test
+    void reviewerFixturePreservesCanonicalFailureCountWithoutEndorsingRecovery() throws Exception {
+        var prompt=new Prompt(List.of(new org.springframework.ai.chat.messages.SystemMessage("tool-free consistency reviewer"),
+                new org.springframework.ai.chat.messages.UserMessage("CANONICAL FACTS:\n{\"failedCallCount\":7}\nUNTRUSTED PROGRESS HINTS: ignored")));
+        JsonNode verdict=json.readTree(finalizationFixtureVerdict(prompt).getResult().getOutput().getText());
+        assertEquals(7,verdict.path("failedCallCount").intValue());assertTrue(verdict.path("recoveryClaims").isEmpty());
     }
 
     @org.junit.jupiter.params.ParameterizedTest
@@ -202,12 +225,17 @@ class GoalJsonHttpRuntimeIntegrationTest {
         var planApprovalReplay = new java.util.concurrent.atomic.AtomicBoolean();
         var approvedToolName = new java.util.concurrent.atomic.AtomicReference<>("getManagedGoalJsonSlots");
         org.mockito.stubbing.Answer<ChatResponse> script = invocation -> {
+            Prompt prompt = invocation.getArgument(0);
+            // Review is a separate logical call: it must not consume an approval replay
+            // or advance this fixture's authenticated read/publish/check workflow.
+            if (prompt.getSystemMessage().getText().contains("tool-free consistency reviewer")) {
+                return finalizationFixtureVerdict(prompt);
+            }
             if (approval && plan && planApprovalReplay.compareAndSet(true, false)) {
                 // Plan replay asks again for the persisted approved call; ReAct forces it without an LLM call.
                 return new ChatResponse(List.of(new Generation(AssistantMessage.builder().content("")
                         .toolCalls(List.of(new AssistantMessage.ToolCall("approved-" + approvedToolName.get(), "function", approvedToolName.get(), "{}"))).build())));
             }
-            Prompt prompt = invocation.getArgument(0);
             int step = calls.getAndIncrement();
             if (recovered && step == (plan ? 1 : 0)) {
                 assertTrue(prompt.getInstructions().stream().anyMatch(message -> message.getText()!=null

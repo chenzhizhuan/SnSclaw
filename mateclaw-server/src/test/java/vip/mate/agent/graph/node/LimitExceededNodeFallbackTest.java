@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -85,7 +85,7 @@ class LimitExceededNodeFallbackTest {
         assertEquals("real answer", output.get(FINAL_ANSWER_DRAFT));
     }
 
-    private OverAllState buildStateWithObservations() {
+    private RunState buildStateWithObservations() {
         Map<String, Object> map = new HashMap<>();
         map.put(CONVERSATION_ID, "test-conv");
         map.put(USER_MESSAGE, "hello");
@@ -93,8 +93,8 @@ class LimitExceededNodeFallbackTest {
         map.put(CURRENT_ITERATION, 5);
         // Non-empty observations so contextForLLM doesn't take the empty-context branch
         // (that branch is exercised separately by an integration test, hard to mock here
-        // because OverAllState.value() may return immutable empty list defaults).
+        // because RunState.value() may return immutable empty list defaults).
         map.put(OBSERVATION_HISTORY, List.of("obs1", "obs2"));
-        return new OverAllState(map);
+        return new RunState(map);
     }
 }

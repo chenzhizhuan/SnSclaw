@@ -3,16 +3,12 @@ package vip.mate.llm.chatmodel;
 import io.micrometer.observation.ObservationRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.model.ApiKey;
-import org.springframework.ai.model.NoopApiKey;
-import org.springframework.ai.model.SimpleApiKey;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient;
+import com.openai.client.OpenAIClientImpl;
+import com.openai.core.ClientOptions;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.openai.api.OpenAiApi;
-import org.springframework.ai.retry.RetryUtils;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -20,8 +16,6 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
-import reactor.core.publisher.Flux;
 import vip.mate.exception.MateClawException;
 import vip.mate.llm.model.ModelConfigEntity;
 import vip.mate.llm.model.ModelFamily;
@@ -29,33 +23,18 @@ import vip.mate.llm.model.ModelProtocol;
 import vip.mate.llm.model.ModelProviderEntity;
 import vip.mate.llm.service.ModelProviderService;
 
-import java.net.http.HttpClient;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
-/**
- * Strategy implementation of {@link ChatModelBuilder} for
- * {@link ModelProtocol#OPENAI_COMPATIBLE}.
- *
- * <p>Owns the full OpenAI-compatible construction path: the {@link OpenAiApi}
- * client (HTTP timeouts, header overrides, completions-path resolution), the
- * {@link OpenAiChatOptions} (temperature / max tokens / reasoning effort / web
- * search), and the outbound request-rewrite pipeline delegated to
- * {@link OpenAiRequestRewriter}. DeepSeek V4 reasoning models are wrapped with
- * {@link DeepSeekV4ThinkingDecorator}.
- *
- * <p>Depends only on infrastructure beans, so the {@code llm} package builds a
- * {@link ChatModel} without any dependency on the agent graph layer.
- */
+/** Builds an immutable Spring AI model with final HTTP request policies for compatible providers. */
 @Slf4j
 @Component
 public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
 
     private final ModelProviderService modelProviderService;
-    private final ObjectProvider<RestClient.Builder> restClientBuilderProvider;
-    private final ObjectProvider<WebClient.Builder> webClientBuilderProvider;
     private final ObjectProvider<ObservationRegistry> observationRegistryProvider;
 
     public OpenAiCompatibleChatModelBuilder(
@@ -64,8 +43,6 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
             ObjectProvider<WebClient.Builder> webClientBuilderProvider,
             ObjectProvider<ObservationRegistry> observationRegistryProvider) {
         this.modelProviderService = modelProviderService;
-        this.restClientBuilderProvider = restClientBuilderProvider;
-        this.webClientBuilderProvider = webClientBuilderProvider;
         this.observationRegistryProvider = observationRegistryProvider;
     }
 
@@ -76,24 +53,47 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
 
     @Override
     public ChatModel build(ModelConfigEntity model, ModelProviderEntity provider, RetryTemplate retry) {
-        // Pass model.requestTimeoutSeconds so providers / models with
-        // extended-thinking p99s don't false-positive on the default read timeout.
-        OpenAiApi api = buildOpenAiApi(provider, model.getRequestTimeoutSeconds());
-        OpenAiChatOptions options = buildOpenAiOptions(model, provider);
-        ChatModel raw = OpenAiChatModel.builder()
-                .openAiApi(api)
-                .defaultOptions(options)
-                .retryTemplate(retry)
-                .observationRegistry(observationRegistryProvider.getIfAvailable(() -> ObservationRegistry.NOOP))
-                .build();
-
-        // DeepSeek V4 (flash / pro) extends OpenAI's wire format with `thinking: {type}` and a
-        // strict reasoning_content replay contract. Spring AI's OpenAiChatOptions can't express
-        // those directly — wrap with a per-request payload patcher.
-        if (ModelFamily.detect(model.getModelName()) == ModelFamily.DEEPSEEK_V4_REASONING) {
+        validateProvider(provider);
+        Map<String, Object> kwargs = modelProviderService.readProviderGenerateKwargs(provider);
+        String baseUrl = normalizeOpenAiBaseUrl(provider.getBaseUrl());
+        OpenAiChatOptions.Builder configured = buildOpenAiOptions(model, provider).mutate();
+        configured.baseUrl(baseUrl).apiKey(StringUtils.hasText(provider.getApiKey()) && modelProviderService.hasUsableApiKey(provider.getApiKey())
+                ? provider.getApiKey().trim() : "");
+        configured.maxRetries(0).timeout(HttpTimeouts.resolveReadTimeout(model.getRequestTimeoutSeconds()));
+        OpenAiChatOptions options = configured.build();
+        OpenAiCompatibleHttpInterceptor interceptor = new OpenAiCompatibleHttpInterceptor(provider,
+                baseUrl + resolveOpenAiCompletionsPath(baseUrl, kwargs),
+                buildOpenAiHeaders(kwargs).toSingleValueMap(),
+                isKimiProvider(provider) && Boolean.TRUE.equals(ProviderGenerateKwargs.findOptionValue(kwargs, "enableSearch")),
+                HttpTimeouts.resolveReadTimeout(model.getRequestTimeoutSeconds()));
+        ObservationRegistry observations = observationRegistryProvider == null ? ObservationRegistry.NOOP
+                : observationRegistryProvider.getIfAvailable(() -> ObservationRegistry.NOOP);
+        SpringAiOpenAiHttpClient.Builder observed = SpringAiOpenAiHttpClient.builder()
+                .observationRegistry(observations).timeout(options.getTimeout()).proxy(options.getProxy());
+        boolean authenticated = StringUtils.hasText(options.getApiKey());
+        if (!authenticated) observed.interceptor(chain -> chain.proceed(
+                chain.request().newBuilder().removeHeader("Authorization").build()));
+        observed.interceptor(interceptor);
+        PinnedOpenAiHttpClient transport = new PinnedOpenAiHttpClient(observed.build());
+        ClientOptions clientOptions = ClientOptions.builder().httpClient(transport).baseUrl(baseUrl)
+                .apiKey(authenticated ? options.getApiKey() : "mateclaw-keyless-placeholder")
+                .timeout(options.getTimeout()).maxRetries(0).build();
+        OpenAIClientImpl sdk = new OpenAIClientImpl(clientOptions);
+        ChatModel raw = OpenAiChatModel.builder().options(options).openAiClient(sdk).openAiClientAsync(sdk.async())
+                .observationRegistry(observations).build();
+        raw = new OpenAiWirePolicyChatModel(raw, retry, transport);
+        if (ModelFamily.detect(model.getModelName()) == ModelFamily.DEEPSEEK_V4_REASONING)
             return new DeepSeekV4ThinkingDecorator(raw);
-        }
         return VllmThinkingDecorator.supports(provider, options) ? new VllmThinkingDecorator(raw) : raw;
+    }
+
+    private void validateProvider(ModelProviderEntity provider) {
+        if (provider == null || !modelProviderService.isProviderConfigured(provider.getProviderId()))
+            throw new MateClawException("err.agent.provider_not_configured", "Provider is not configured");
+        if (!Boolean.FALSE.equals(provider.getRequireApiKey()) && !modelProviderService.hasUsableApiKey(provider.getApiKey()))
+            throw new MateClawException("err.agent.provider_apikey_invalid", "Provider API Key is invalid");
+        if (!StringUtils.hasText(normalizeOpenAiBaseUrl(provider.getBaseUrl())))
+            throw new MateClawException("err.agent.provider_baseurl_missing", "Provider Base URL is missing");
     }
 
     // ==================== chat options ====================
@@ -162,37 +162,16 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
             if (!StringUtils.hasText(strategy)) {
                 strategy = (String) ProviderGenerateKwargs.findOptionValue(kwargs, "searchStrategy");
             }
-            OpenAiApi.ChatCompletionRequest.WebSearchOptions.SearchContextSize contextSize;
-            try {
-                contextSize = StringUtils.hasText(strategy)
-                        ? OpenAiApi.ChatCompletionRequest.WebSearchOptions.SearchContextSize.valueOf(strategy.toUpperCase())
-                        : OpenAiApi.ChatCompletionRequest.WebSearchOptions.SearchContextSize.MEDIUM;
-            } catch (IllegalArgumentException e) {
-                contextSize = OpenAiApi.ChatCompletionRequest.WebSearchOptions.SearchContextSize.MEDIUM;
-            }
-            builder.webSearchOptions(new OpenAiApi.ChatCompletionRequest.WebSearchOptions(contextSize, null));
+            String contextSize = StringUtils.hasText(strategy) ? strategy.toLowerCase(Locale.ROOT) : "medium";
+            if (!Set.of("low", "medium", "high").contains(contextSize)) contextSize = "medium";
+            builder.extraBody(Map.of("web_search_options", Map.of("search_context_size", contextSize)));
         }
-
+        builder.streamUsage(true);
+        Map<String, Object> extraBody = new LinkedHashMap<>();
+        if (builder.build().getExtraBody() != null) extraBody.putAll(builder.build().getExtraBody());
+        extraBody.putAll(ProviderGenerateKwargs.collectPassthroughExtraBody(kwargs));
+        builder.extraBody(extraBody);
         OpenAiChatOptions options = builder.build();
-        options.setInternalToolExecutionEnabled(false);
-        // Do not set parallelToolCalls — setting it to false makes OpenAI return 400 when
-        // there are no tools: "parallel_tool_calls is only allowed when 'tools' are specified".
-        // Leaving it null keeps Spring AI from serializing the field; each node controls it
-        // when tools are present.
-        options.setStreamUsage(true);
-
-        // Forward unrecognized top-level generateKwargs keys as-is via extraBody (e.g. vLLM's
-        // chat_template_kwargs). Get-then-merge rather than overwrite, in case a future addition
-        // to buildOpenAiOptions ever sets extraBody above this point.
-        Map<String, Object> passthroughExtraBody = ProviderGenerateKwargs.collectPassthroughExtraBody(kwargs);
-        if (!passthroughExtraBody.isEmpty()) {
-            Map<String, Object> existingExtraBody = options.getExtraBody();
-            Map<String, Object> mergedExtraBody = (existingExtraBody == null)
-                    ? new LinkedHashMap<>()
-                    : new LinkedHashMap<>(existingExtraBody);
-            mergedExtraBody.putAll(passthroughExtraBody);
-            options.setExtraBody(mergedExtraBody);
-        }
         return options;
     }
 
@@ -215,125 +194,6 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
             return null;
         }
         return ProviderGenerateKwargs.resolveDoubleOption("topP", configuredTopP, kwargs);
-    }
-
-    // ==================== OpenAI API client ====================
-
-    /**
-     * Build an {@link OpenAiApi} for the provider. Accepts a per-model
-     * read-timeout override (seconds), threaded into both the sync RestClient and
-     * the streaming WebClient. Null falls back to the default 180s.
-     */
-    OpenAiApi buildOpenAiApi(ModelProviderEntity provider, Integer readTimeoutOverride) {
-        if (provider == null || !modelProviderService.isProviderConfigured(provider.getProviderId())) {
-            throw new MateClawException("err.agent.provider_not_configured",
-                    "Provider 未完成配置，请在模型设置中填写有效的 API Key 和 Base URL");
-        }
-        String apiKey = provider.getApiKey();
-        // Honor the provider's requireApiKey flag instead of hard-failing on every empty key.
-        // Local + key-free providers (Ollama, LM Studio, MLX, llama.cpp, OpenCode) declare
-        // requireApiKey=false; for them an empty / placeholder key means "no Authorization
-        // header" — Spring AI's NoopApiKey expresses that.
-        boolean keyRequired = !Boolean.FALSE.equals(provider.getRequireApiKey());
-        if (keyRequired && !modelProviderService.hasUsableApiKey(apiKey)) {
-            throw new MateClawException("err.agent.provider_apikey_invalid",
-                    "Provider API Key 未配置或无效: " + provider.getProviderId());
-        }
-        String baseUrl = normalizeOpenAiBaseUrl(provider.getBaseUrl());
-        if (!StringUtils.hasText(baseUrl)) {
-            throw new MateClawException("err.agent.provider_baseurl_missing",
-                    "Provider Base URL 未配置: " + provider.getProviderId());
-        }
-        Map<String, Object> kwargs = modelProviderService.readProviderGenerateKwargs(provider);
-        MultiValueMap<String, String> headers = buildOpenAiHeaders(kwargs);
-        String completionsPath = resolveOpenAiCompletionsPath(baseUrl, kwargs);
-        RestClient.Builder restClientBuilder = applyHttpTimeouts(
-                restClientBuilderProvider.getIfAvailable(RestClient::builder), readTimeoutOverride);
-        WebClient.Builder webClientBuilder = applyHttpTimeoutsToWebClient(
-                webClientBuilderProvider.getIfAvailable(WebClient::builder), readTimeoutOverride);
-
-        restClientBuilder.requestInterceptor(OpenAiReasoningResponseNormalizer.blockingInterceptor());
-        webClientBuilder.filter(OpenAiReasoningResponseNormalizer.streamingFilter());
-
-        // Spring AI's OpenAiApi constructor sets User-Agent to "spring-ai" first, then addAll's
-        // our headers, so a custom User-Agent is appended rather than replaced. For providers
-        // that must masquerade as a specific client (e.g. kimi-code), force-override headers
-        // via a RestClient/WebClient interceptor before the request goes out.
-        Map<String, String> overrideHeaders = extractOverrideHeaders(kwargs);
-        if (!overrideHeaders.isEmpty()) {
-            restClientBuilder = restClientBuilder.requestInterceptor((request, body, execution) -> {
-                HttpHeaders reqHeaders = request.getHeaders();
-                overrideHeaders.forEach(reqHeaders::set);
-                return execution.execute(request, body);
-            });
-            webClientBuilder = webClientBuilder.filter((request, next) -> {
-                org.springframework.web.reactive.function.client.ClientRequest modified =
-                        org.springframework.web.reactive.function.client.ClientRequest.from(request)
-                                .headers(h -> overrideHeaders.forEach(h::set))
-                                .build();
-                return next.exchange(modified);
-            });
-        }
-
-        boolean kimiSearchEnabled = isKimiProvider(provider)
-                && Boolean.TRUE.equals(ProviderGenerateKwargs.findOptionValue(kwargs, "enableSearch"));
-
-        ApiKey apiKeyImpl = (keyRequired && StringUtils.hasText(apiKey))
-                ? new SimpleApiKey(apiKey.trim())
-                : new NoopApiKey();
-        return new OpenAiApi(
-                baseUrl,
-                apiKeyImpl,
-                headers,
-                completionsPath,
-                "/v1/embeddings",
-                restClientBuilder,
-                webClientBuilder,
-                RetryUtils.DEFAULT_RESPONSE_ERROR_HANDLER) {
-            @Override
-            public org.springframework.http.ResponseEntity<OpenAiApi.ChatCompletion> chatCompletionEntity(
-                    OpenAiApi.ChatCompletionRequest chatRequest,
-                    MultiValueMap<String, String> additionalHttpHeader) {
-                chatRequest = OpenAiRequestRewriter.preserveToolSchemaNumbers(chatRequest);
-                chatRequest = OpenAiRequestRewriter.sanitizeReasoningEffortForProvider(chatRequest, provider);
-                chatRequest = OpenAiRequestRewriter.patchReasoningContent(chatRequest, provider);
-                chatRequest = OpenAiRequestRewriter.stripReasoningEffortIfIncompatible(chatRequest);
-                chatRequest = OpenAiRequestRewriter.stripAutoToolChoice(chatRequest);
-                chatRequest = OpenAiRequestRewriter.patchVideoMediaContent(chatRequest);
-                if (kimiSearchEnabled) {
-                    chatRequest = OpenAiRequestRewriter.injectKimiWebSearch(chatRequest);
-                }
-                logOpenAiRequest(provider, chatRequest);
-                try {
-                    return super.chatCompletionEntity(chatRequest, additionalHttpHeader);
-                } catch (WebClientResponseException e) {
-                    logOpenAiError(provider, e);
-                    throw e;
-                }
-            }
-
-            @Override
-            public Flux<OpenAiApi.ChatCompletionChunk> chatCompletionStream(
-                    OpenAiApi.ChatCompletionRequest chatRequest,
-                    MultiValueMap<String, String> additionalHttpHeader) {
-                chatRequest = OpenAiRequestRewriter.preserveToolSchemaNumbers(chatRequest);
-                chatRequest = OpenAiRequestRewriter.sanitizeReasoningEffortForProvider(chatRequest, provider);
-                chatRequest = OpenAiRequestRewriter.patchReasoningContent(chatRequest, provider);
-                chatRequest = OpenAiRequestRewriter.stripReasoningEffortIfIncompatible(chatRequest);
-                chatRequest = OpenAiRequestRewriter.stripAutoToolChoice(chatRequest);
-                chatRequest = OpenAiRequestRewriter.patchVideoMediaContent(chatRequest);
-                if (kimiSearchEnabled) {
-                    chatRequest = OpenAiRequestRewriter.injectKimiWebSearch(chatRequest);
-                }
-                logOpenAiRequest(provider, chatRequest);
-                return super.chatCompletionStream(chatRequest, additionalHttpHeader)
-                        .doOnError(error -> {
-                            if (error instanceof WebClientResponseException e) {
-                                logOpenAiError(provider, e);
-                            }
-                        });
-            }
-        };
     }
 
     /**
@@ -384,24 +244,6 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
         return headers;
     }
 
-    /**
-     * Extract headers that must be force-overridden, read from
-     * {@code generateKwargs.headers}. Used by a RestClient/WebClient interceptor
-     * to bypass Spring AI's default User-Agent.
-     */
-    private Map<String, String> extractOverrideHeaders(Map<String, Object> kwargs) {
-        Map<String, String> result = new HashMap<>();
-        Object headerObject = kwargs.get("headers");
-        if (headerObject instanceof Map<?, ?> headerMap) {
-            headerMap.forEach((key, value) -> {
-                if (key != null && value != null) {
-                    result.put(String.valueOf(key), String.valueOf(value));
-                }
-            });
-        }
-        return result;
-    }
-
     // Trailing "/v{digits}" segment in a base URL — the OpenAI-compatible convention
     // (/v1 OpenAI, /v3 Volcano Ark, /v4 Zhipu). When the baseUrl already carries this
     // segment, the default /v1 prefix on the path must be stripped to avoid building
@@ -425,92 +267,6 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
             path = path.substring(3);
         }
         return path;
-    }
-
-    // ==================== HTTP timeouts ====================
-
-    /**
-     * Configure an explicit timeout on the RestClient used for LLM calls so a
-     * socket never hangs forever.
-     *
-     * <p>Uses {@link JdkClientHttpRequestFactory} (backed by the Java 11+
-     * {@link HttpClient}) because it natively supports HTTP/2 / ALPN negotiation
-     * and transparently decompresses {@code Content-Encoding: gzip} responses.
-     *
-     * <p>connectTimeout=10s; readTimeout defaults to 180s (covers an nginx 60s
-     * gateway timeout plus headroom for a real long response; the upper retry
-     * layer takes over once it times out).
-     */
-    private RestClient.Builder applyHttpTimeouts(RestClient.Builder builder, Integer readTimeoutOverride) {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(HttpTimeouts.CONNECT_TIMEOUT)
-                .version(HttpClient.Version.HTTP_1_1)
-                .build();
-        JdkClientHttpRequestFactory rf = new JdkClientHttpRequestFactory(httpClient);
-        rf.setReadTimeout(HttpTimeouts.resolveReadTimeout(readTimeoutOverride));
-        return builder.requestFactory(rf);
-    }
-
-    /**
-     * Apply equivalent timeouts to the WebClient backing OpenAI-compatible
-     * STREAMING calls.
-     *
-     * <p><b>Scope caveat (issue #585):</b> {@code setReadTimeout} maps to the
-     * JDK HttpClient's request timeout, which only protects up to the
-     * <em>response headers</em>. Once the headers arrive the clock stops, so
-     * this timeout does <b>not</b> prevent a provider that returns 200 + a
-     * first SSE frame and then goes silent from hanging the body Flux. The
-     * body-level gap is closed by a reactor inter-frame idle timeout applied
-     * at the streaming chokepoint ({@code NodeStreamingChatHelper}, driven by
-     * {@link HttpTimeouts#DEFAULT_STREAM_IDLE_TIMEOUT}) — that is what actually
-     * surfaces a stalled provider to the error path / failover chain. Both
-     * layers are needed: this one catches a provider that never sends headers
-     * at all, the reactor one catches a provider that sends headers then stalls.
-     *
-     * <p>Uses {@link org.springframework.http.client.reactive.JdkClientHttpConnector}
-     * with the same {@link HttpClient} so the dependency surface stays clean
-     * (reactor-netty is not on this project's classpath).
-     */
-    private WebClient.Builder applyHttpTimeoutsToWebClient(WebClient.Builder builder, Integer readTimeoutOverride) {
-        // Pin HTTP/1.1: many self-hosted OpenAI-compatible servers (vLLM, lmstudio,
-        // llama.cpp, ollama — all uvicorn/ASGI based) only speak HTTP/1.1 over
-        // cleartext and slam the socket on the JDK client's default H2C upgrade
-        // probe, surfacing as "header parser received no bytes" with no body sent.
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(HttpTimeouts.CONNECT_TIMEOUT)
-                .version(HttpClient.Version.HTTP_1_1)
-                .build();
-        org.springframework.http.client.reactive.JdkClientHttpConnector connector =
-                new org.springframework.http.client.reactive.JdkClientHttpConnector(httpClient);
-        connector.setReadTimeout(HttpTimeouts.resolveReadTimeout(readTimeoutOverride));
-        return builder.clientConnector(connector);
-    }
-
-    // ==================== logging ====================
-
-    private void logOpenAiRequest(ModelProviderEntity provider, OpenAiApi.ChatCompletionRequest chatRequest) {
-        // Never log the request body: it contains system prompts, workspace
-        // memory, user content and tool schemas. Besides leaking private
-        // context, serializing it at INFO made long-running team jobs produce
-        // multi-megabyte log lines. Cardinality-only diagnostics are enough to
-        // correlate provider traffic without retaining payloads.
-        log.debug("OpenAI-compatible request: provider={}, model={}, messages={}, tools={}, stream={}",
-                provider.getProviderId(), chatRequest.model(),
-                sizeOf(chatRequest.messages()), sizeOf(chatRequest.tools()), chatRequest.stream());
-    }
-
-    private void logOpenAiError(ModelProviderEntity provider, WebClientResponseException e) {
-        String body = e.getResponseBodyAsString();
-        log.error("OpenAI-compatible error: provider={}, status={}, responseBytes={}",
-                provider.getProviderId(), e.getStatusCode(), body == null ? 0 : body.length());
-        if (log.isDebugEnabled() && body != null && !body.isBlank()) {
-            log.debug("OpenAI-compatible error detail: provider={}, body={}",
-                    provider.getProviderId(), redactAndTruncate(body));
-        }
-    }
-
-    private static int sizeOf(java.util.Collection<?> values) {
-        return values == null ? 0 : values.size();
     }
 
     /** Defensive scrub for provider error bodies, which may echo request data. */

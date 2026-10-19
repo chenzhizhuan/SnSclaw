@@ -1,6 +1,7 @@
 package vip.mate.memory.service;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.h2.jdbcx.JdbcDataSource;
@@ -11,6 +12,9 @@ import org.springframework.jdbc.datasource.embedded.EmbeddedDatabase;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.jdbc.datasource.SingleConnectionDataSource;
+
+import java.sql.DriverManager;
 
 import java.util.UUID;
 
@@ -20,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class MemoryRecallMigrationTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"mysql", "kingbase"})
+    @ValueSource(strings = {"kingbase"})
     void dialectMigrationAppliesInCompatibleMode(String dialect) {
         JdbcDataSource database = new JdbcDataSource();
         String mode = "kingbase".equals(dialect) ? "PostgreSQL" : "MySQL";
@@ -33,6 +37,38 @@ class MemoryRecallMigrationTest {
                 "db/migration/" + dialect + "/V192__memory_recall_unique_identity.sql")).execute(database);
 
         assertMerged(jdbc);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "mateclaw.mysql.migration.enabled", matches = "true")
+    void mysqlMigrationMergesCountersOnNativeEngine() throws Exception {
+        // Use an empty disposable database: H2 does not implement MySQL UPDATE JOIN.
+        try (var connection = DriverManager.getConnection(
+                requiredMysqlProperty("url"), requiredMysqlProperty("username"),
+                requiredMysqlProperty("password"))) {
+            var database = new SingleConnectionDataSource(connection, true);
+            JdbcTemplate jdbc = new JdbcTemplate(database);
+            createTable(jdbc);
+            try {
+                insertDuplicates(jdbc);
+                new ResourceDatabasePopulator(new ClassPathResource(
+                        "db/migration/mysql/V192__memory_recall_unique_identity.sql")).execute(database);
+                assertMerged(jdbc);
+                assertThat(jdbc.queryForObject("SELECT id FROM mate_memory_recall", Long.class))
+                        .isEqualTo(2L);
+            } finally {
+                jdbc.execute("DROP TABLE IF EXISTS tmp_memory_recall_merge");
+                jdbc.execute("DROP TABLE mate_memory_recall");
+            }
+        }
+    }
+
+    private static String requiredMysqlProperty(String name) {
+        String value = System.getProperty("mateclaw.mysql.migration." + name);
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Missing disposable MySQL property: " + name);
+        }
+        return value;
     }
 
     @Test

@@ -7,7 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.ai.anthropic.api.AnthropicApi;
+import org.springframework.ai.anthropic.AnthropicChatOptions;
+import org.springframework.ai.chat.model.ChatModel;
+import vip.mate.llm.model.ModelConfigEntity;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.web.client.RestClient;
@@ -33,7 +35,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * Header-construction + token-fetch coverage for the Claude Code OAuth chat
- * model builder. Building a real {@link AnthropicApi} doesn't make a network
+ * model builder. Building a real SDK model doesn't make a network
  * call (Spring AI defers all I/O to {@code chatCompletionEntity}), so these
  * tests can exercise the full assembly path without mocking the API client.
  */
@@ -77,14 +79,15 @@ class ClaudeCodeChatModelBuilderTest {
     }
 
     @Test
-    @DisplayName("buildOauthAnthropicApi accepts a token and produces a non-null AnthropicApi")
-    void buildOauthAnthropicApi_returnsClient() {
-        // Sanity check: the NoopApiKey path passes Spring AI's notNull assertion
-        // and the OAuth headers attach without throwing. If this test ever
-        // fails, the most likely cause is a Spring AI upgrade tightening the
-        // ApiKey contract — see ClaudeCodeChatModelBuilder javadoc.
-        AnthropicApi api = builder.buildOauthAnthropicApi("sk-ant-oat01-test-token");
-        assertNotNull(api);
+    @DisplayName("OAuth SDK model construction accepts a token without a direct API key")
+    void oauthSdkModelAcceptsToken() {
+        when(oauthService.getValidToken()).thenReturn("sk-ant-oat01-test-token");
+        when(anthropicBuilder.buildAnthropicOptions(any()))
+                .thenReturn(AnthropicChatOptions.builder().model("claude-test").build());
+        ChatModel model = builder.build(new ModelConfigEntity(), null, null);
+        assertNotNull(model);
+        assertEquals("Bearer sk-ant-oat01-test-token",
+                builder.buildOauthHeaders("sk-ant-oat01-test-token").get("Authorization"));
     }
 
     @Test

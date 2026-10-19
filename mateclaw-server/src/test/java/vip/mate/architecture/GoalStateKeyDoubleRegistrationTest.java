@@ -1,83 +1,42 @@
 package vip.mate.architecture;
 
 import org.junit.jupiter.api.Test;
+import vip.mate.agent.runtime.state.RunState;
+import vip.mate.agent.context.ChatOrigin;
+import vip.mate.agent.graph.state.MateClawStateKeys;
+import vip.mate.agent.graph.plan.state.PlanStateKeys;
+import vip.mate.goal.model.GoalEntity;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import static org.junit.jupiter.api.Assertions.*;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
-
-/**
- * Strict double-registration check for the persistent-goal state keys.
- *
- * <p>{@link StateKeyRegistrationCoverageTest} only verifies that a key
- * appears somewhere in {@code AgentGraphBuilder.java}; it cannot tell
- * apart the ReAct and Plan-Execute {@code KeyStrategyFactory} blocks.
- * History (the {@code CHAT_ORIGIN} regression) shows that "registered
- * once" is not enough — multi-node merges silently drop keys when one
- * graph's factory leaves them out.
- *
- * <p>Each of the five Goal state keys must therefore appear at least
- * twice in the builder source: once per graph. This test pins that
- * invariant so future regressions get caught at PR time.
- */
+/** Goal and origin state remains available through both runtime patch styles. */
 class GoalStateKeyDoubleRegistrationTest {
-
-    private static final String[] GOAL_KEYS = {
-            "ACTIVE_GOAL",
-            "GOAL_EVALUATION_RESULT",
-            "GOAL_FOLLOWUP_INJECTED",
-            "GOAL_FOLLOWUP_PROMPT",
-            "GOAL_EVALUATED_THIS_RUN",
-            "GOAL_HARD_CONTINUATION_COUNT",
-    };
-
-    @Test
-    void everyGoalKeyMustAppearAtLeastTwiceInAddStrategyCalls() throws Exception {
-        Path src = Paths.get("src/main/java/vip/mate/agent/AgentGraphBuilder.java")
-                .toAbsolutePath();
-        if (!Files.exists(src)) {
-            fail("Cannot find AgentGraphBuilder.java at " + src);
-        }
-        String content = Files.readString(src);
-
-        for (String key : GOAL_KEYS) {
-            Pattern p = Pattern.compile(
-                    "\\.addStrategy\\(\\s*MateClawStateKeys\\." + key + "\\b");
-            Matcher m = p.matcher(content);
-            int count = 0;
-            while (m.find()) count++;
-            if (count < 2) {
-                fail("Goal state key " + key + " must be registered in BOTH the "
-                        + "ReAct and Plan-Execute KeyStrategyFactory blocks "
-                        + "(found " + count + " addStrategy occurrence(s) in "
-                        + "AgentGraphBuilder.java). The architecture coverage "
-                        + "test only checks 'appears somewhere'; this test "
-                        + "is the strict double-registration guard documented "
-                        + "in RFC 48 §3.2 v2.");
+    @Test void allGoalKeysAndOriginSurviveReActAndPlanPatches() {
+        for (boolean plan : List.of(false, true)) {
+            GoalEntity goal = new GoalEntity(); goal.setTitle("objective");
+            Map<String,Object> evaluation = new HashMap<>(Map.of("score", 0.5));
+            ChatOrigin origin = ChatOrigin.EMPTY.withConversationId("conversation");
+            RunState state = new RunState(Map.of(MateClawStateKeys.ACTIVE_GOAL, goal,
+                    MateClawStateKeys.GOAL_EVALUATION_RESULT, evaluation,
+                    MateClawStateKeys.GOAL_FOLLOWUP_INJECTED, true,
+                    MateClawStateKeys.GOAL_FOLLOWUP_PROMPT, "continue",
+                    MateClawStateKeys.GOAL_EVALUATED_THIS_RUN, true,
+                    MateClawStateKeys.GOAL_HARD_CONTINUATION_COUNT, 2,
+                    MateClawStateKeys.CHAT_ORIGIN, origin));
+            state.applyPatch(plan ? Map.of(PlanStateKeys.PLAN_STEPS, List.of("step")) : Map.of(MateClawStateKeys.MESSAGES, List.of("reasoning")));
+            RunState retained = state.snapshot(); evaluation.put("score", 1.0); goal.setTitle("external");
+            state.applyPatch(plan ? Map.of(PlanStateKeys.COMPLETED_RESULTS, List.of("result")) : Map.of(MateClawStateKeys.PENDING_EVENTS, List.of("event")));
+            for (RunState checked : List.of(state, retained)) {
+                assertEquals("objective", checked.value(MateClawStateKeys.ACTIVE_GOAL, GoalEntity.class).orElseThrow().getTitle());
+                assertEquals(Map.of("score", 0.5), checked.value(MateClawStateKeys.GOAL_EVALUATION_RESULT).orElseThrow());
+                assertEquals(true, checked.value(MateClawStateKeys.GOAL_FOLLOWUP_INJECTED).orElseThrow());
+                assertEquals("continue", checked.value(MateClawStateKeys.GOAL_FOLLOWUP_PROMPT).orElseThrow());
+                assertEquals(true, checked.value(MateClawStateKeys.GOAL_EVALUATED_THIS_RUN).orElseThrow());
+                assertEquals(2, checked.value(MateClawStateKeys.GOAL_HARD_CONTINUATION_COUNT).orElseThrow());
+                assertEquals(origin, checked.value(MateClawStateKeys.CHAT_ORIGIN).orElseThrow());
             }
-            assertTrue(count >= 2,
-                    "Sanity: " + key + " should have >=2 addStrategy calls");
         }
-    }
-
-    @Test
-    void goalEvaluationNodeIdentifierAppearsExactlyOncePerGraph() throws Exception {
-        Path src = Paths.get("src/main/java/vip/mate/agent/AgentGraphBuilder.java")
-                .toAbsolutePath();
-        String content = Files.readString(src);
-        Pattern p = Pattern.compile(
-                "\\.addNode\\(\\s*MateClawStateKeys\\.GOAL_EVALUATION_NODE\\b");
-        Matcher m = p.matcher(content);
-        int count = 0;
-        while (m.find()) count++;
-        assertEquals(2, count,
-                "GOAL_EVALUATION_NODE must be added as a node in BOTH graphs " +
-                        "(ReAct + Plan-Execute). Found " + count + " addNode calls.");
     }
 }

@@ -103,8 +103,7 @@ class StripThinkingBoundaryTest {
     @DisplayName("Options reference is preserved by the returned Prompt (producer relies on this)")
     void optionsPreservedByReference() {
         org.springframework.ai.openai.OpenAiChatOptions opts =
-                org.springframework.ai.openai.OpenAiChatOptions.builder().model("test").build();
-        opts.setUser("original-user");
+                org.springframework.ai.openai.OpenAiChatOptions.builder().model("test").user("original-user").build();
 
         List<Message> msgs = List.of(
                 new UserMessage("u1"),
@@ -113,8 +112,7 @@ class StripThinkingBoundaryTest {
         Prompt in = new Prompt(msgs, opts);
         Prompt cleaned = NodeStreamingChatHelper.stripThinkingFromPrompt(in);
 
-        // The returned Prompt's options must be the same instance, so the
-        // producer's subsequent setUser(relayToken) is visible through cleaned too.
+        // Normalization preserves immutable options; relay injection creates another prompt.
         assertTrue(cleaned.getOptions() == in.getOptions(),
                 "stripThinkingFromPrompt must preserve the options reference");
         assertEquals("original-user",

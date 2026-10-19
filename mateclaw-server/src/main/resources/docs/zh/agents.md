@@ -4,7 +4,7 @@ description: SnSclaw 的多智能体系统支持 ReAct 推理循环和 Plan-and-
 head:
   - - meta
     - name: keywords
-      content: 多智能体,ReAct,Plan-and-Execute,Agent委派,Spring AI Alibaba,AI Agent
+      content: 多智能体,ReAct,Plan-and-Execute,Agent委派,Spring AI,AgentScope,AI Agent
 ---
 
 # 多智能体引擎
@@ -381,7 +381,7 @@ System prompt 是数字员工的声音、优先级、约束的来源。**角色 
 
 ## 给开发者：Agent 内部是怎么转的
 
-只是用 Agent 的话，这一节可以跳。在它上面写代码（加节点、改路由、做扩展）的话，请直接看 [架构说明](./architecture)——StateGraph 拓扑、节点列表、共享状态 key、扩展点都在那一页。
+只是用 Agent 的话，这一节可以跳。在它上面写代码（加节点、改路由、做扩展）的话，请直接看 [架构说明](./architecture)——原生 ReAct、显式计划阶段、策略节点、共享状态 key 与扩展点都在那一页。
 
 ---
 
@@ -507,4 +507,8 @@ logging:
 - [记忆系统](./memory)——Agent 怎么跨会话记住东西
 - [工作流](./workflow)（1.3.0+）——把多个数字员工 + 系统动作编排成一条业务流程
 - [触发器](./triggers)（1.3.0+）——让事件自动启动工作流或员工对话
-- [架构说明](./architecture)——StateGraph 运行时深入
+- [架构说明](./architecture)——原生 ReAct 与计划运行时深入
+
+## 执行与工具边界（3.0.0）
+
+AgentScope 2 驱动原生 ReAct 和计划单步内部循环；工具实际执行仍交给 MateClaw 的审批、权限和审计链。显式关闭工具的配置保持有效，员工草稿 JSON 可位于推理块之后。

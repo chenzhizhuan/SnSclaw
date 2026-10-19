@@ -96,8 +96,7 @@ class DeepSeekV4ThinkingDecoratorTest {
         Map<String, Object> seed = new HashMap<>();
         seed.put("custom_knob", 42);
         OpenAiChatOptions opts = OpenAiChatOptions.builder()
-                .model("deepseek-v4-flash").build();
-        opts.setExtraBody(seed);
+                .model("deepseek-v4-flash").extraBody(seed).build();
 
         Prompt result = decorator.transform(new Prompt(List.of(new UserMessage("hi")), opts));
         OpenAiChatOptions out = (OpenAiChatOptions) result.getOptions();

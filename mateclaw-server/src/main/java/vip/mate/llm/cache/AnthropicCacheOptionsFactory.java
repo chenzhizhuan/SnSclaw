@@ -1,8 +1,8 @@
 package vip.mate.llm.cache;
 
-import org.springframework.ai.anthropic.api.AnthropicCacheOptions;
-import org.springframework.ai.anthropic.api.AnthropicCacheStrategy;
-import org.springframework.ai.anthropic.api.AnthropicCacheTtl;
+import org.springframework.ai.anthropic.AnthropicCacheOptions;
+import org.springframework.ai.anthropic.AnthropicCacheStrategy;
+import org.springframework.ai.anthropic.AnthropicCacheTtl;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.stereotype.Component;
 
@@ -10,7 +10,7 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * 把 SnSclaw 的 {@link CacheProperties} 翻译成 spring-ai 1.1.4 一等支持的 {@link AnthropicCacheOptions}。
+ * 把 SnSclaw 的 {@link CacheProperties} 翻译成 Spring AI 2 一等支持的 {@link AnthropicCacheOptions}。
  *
  * <p>设计说明：spring-ai 已内置完整的 Anthropic prompt cache 框架（{@code CacheEligibilityResolver} +
  * {@code CacheBreakpointTracker}），它会按 {@link AnthropicCacheStrategy} 自动决策在 system / tools /
@@ -30,7 +30,6 @@ import java.util.Map;
 @Component
 public class AnthropicCacheOptionsFactory {
 
-    /** token → 字符 的粗略乘子（英文 4 字符 ≈ 1 token；中文略低，但作为门槛足矣）。 */
     private static final int CHARS_PER_TOKEN_HEURISTIC = 4;
 
     private final CacheProperties props;
@@ -39,13 +38,9 @@ public class AnthropicCacheOptionsFactory {
         this.props = props;
     }
 
-    /**
-     * 构建启用了缓存的 {@link AnthropicCacheOptions}；当 {@link CacheProperties#isEnabled()} 为 false
-     * 时返回 {@link AnthropicCacheOptions#DISABLED}（spring-ai 内置的 NONE 策略快速路径）。
-     */
     public AnthropicCacheOptions build() {
         if (!props.isEnabled()) {
-            return AnthropicCacheOptions.DISABLED;
+            return AnthropicCacheOptions.disabled();
         }
 
         AnthropicCacheStrategy strategy = props.isIncludeToolsBlock()

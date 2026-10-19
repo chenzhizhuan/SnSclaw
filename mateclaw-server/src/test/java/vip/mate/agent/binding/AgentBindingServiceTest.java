@@ -387,6 +387,107 @@ class AgentBindingServiceTest {
                         + "实际 allowlist: " + effective);
     }
 
+    @Test
+    void skillsDisabledSelectedMcpExcludesUncheckedCapabilities() {
+        seedMcpServerWithOneTool(8_888_664L, "issue664-selected", "search");
+        seedMcpServerWithOneTool(8_888_665L, "issue664-other", "search");
+        String selected = mcpToolNameForServer(8_888_664L);
+        String other = mcpToolNameForServer(8_888_665L);
+        assertNotNull(selected);
+        assertNotNull(other);
+        setSkillsDisabledFlag(true);
+        bindingService.setToolBindings(agentId, List.of(selected));
+
+        Set<String> effective = bindingService.getEffectiveToolNames(agentId);
+        assertTrue(effective.contains(selected));
+        assertFalse(effective.contains(other));
+        assertScopedInternalTools(effective);
+        assertUncheckedBusinessToolsAbsent(effective);
+    }
+
+    @Test
+    void skillsDisabledStaleMcpBindingDoesNotAutoJoinAvailableMcp() {
+        seedMcpServerWithOneTool(8_888_666L, "issue664-offline", "search");
+        seedMcpServerWithOneTool(8_888_667L, "issue664-online", "search");
+        String selected = mcpToolNameForServer(8_888_666L);
+        String other = mcpToolNameForServer(8_888_667L);
+        assertNotNull(selected);
+        assertNotNull(other);
+        setSkillsDisabledFlag(true);
+        bindingService.setToolBindings(agentId, List.of(selected));
+        jdbcTemplate.update("UPDATE mate_mcp_server SET enabled = FALSE, last_status = 'disconnected' WHERE id = ?",
+                8_888_666L);
+
+        Set<String> effective = bindingService.getEffectiveToolNames(agentId);
+        assertTrue(effective.contains(selected), "Saved binding remains scoped even when its provider goes offline");
+        assertFalse(effective.contains(other), "Unavailable selection must not authorize another provider");
+        assertScopedInternalTools(effective);
+        assertUncheckedBusinessToolsAbsent(effective);
+    }
+
+    @Test
+    void skillsDisabledExplicitEmptyBindingDoesNotInheritBusinessToolsOrMcp() {
+        seedMcpServerWithOneTool(8_888_668L, "issue664-empty", "search");
+        setSkillsDisabledFlag(true);
+        bindingService.bindTool(agentId, "disabled_binding_probe");
+        jdbcTemplate.update("UPDATE mate_agent_tool SET enabled = FALSE WHERE agent_id = ?", agentId);
+        assertEquals(Set.of(), bindingService.getBoundToolNames(agentId));
+
+        Set<String> effective = bindingService.getEffectiveToolNames(agentId);
+        assertScopedInternalTools(effective);
+        assertUncheckedBusinessToolsAbsent(effective);
+        assertFalse(effective.contains("disabled_binding_probe"));
+        assertFalse(effective.stream().anyMatch(name -> name.startsWith("mcp_")));
+    }
+
+    @Test
+    void skillsDisabledExplicitBuiltinSelectionIsPreservedWithoutMcpAutoJoin() {
+        seedBuiltinTool("web_search");
+        seedMcpServerWithOneTool(8_888_669L, "issue664-mixed", "search");
+        seedMcpServerWithOneTool(8_888_670L, "issue664-unselected", "search");
+        String selected = mcpToolNameForServer(8_888_669L);
+        assertNotNull(selected);
+        setSkillsDisabledFlag(true);
+        bindingService.setToolBindings(agentId, List.of(selected, "web_search"));
+
+        Set<String> effective = bindingService.getEffectiveToolNames(agentId);
+        assertTrue(effective.containsAll(Set.of(selected, "web_search")));
+        assertFalse(effective.contains(mcpToolNameForServer(8_888_670L)));
+        assertFalse(effective.contains("browser_use"));
+        assertFalse(effective.contains("execute_shell_command"));
+        assertScopedInternalTools(effective);
+    }
+
+    @Test
+    void skillsDisabledBuiltinOnlySelectionDoesNotAutoJoinMcp() {
+        seedBuiltinTool("builtin_only_probe");
+        seedMcpServerWithOneTool(8_888_671L, "issue664-builtin-only", "search");
+        setSkillsDisabledFlag(true);
+        bindingService.setToolBindings(agentId, List.of("builtin_only_probe"));
+
+        Set<String> effective = bindingService.getEffectiveToolNames(agentId);
+        assertTrue(effective.contains("builtin_only_probe"));
+        assertScopedInternalTools(effective);
+        assertUncheckedBusinessToolsAbsent(effective);
+        assertFalse(effective.stream().anyMatch(name -> name.startsWith("mcp_")));
+    }
+
+    private void assertScopedInternalTools(Set<String> effective) {
+        assertNotNull(effective);
+        assertTrue(effective.containsAll(Set.of("read_file", "record_lesson", "get_progress",
+                "getManagedGoalJsonSlots", "publishManagedGoalJson", "checkManagedGoalJson",
+                "enable_tool", "tool_search", "tool_describe", "tool_call")));
+    }
+
+    private void assertUncheckedBusinessToolsAbsent(Set<String> effective) {
+        for (String name : Set.of("web_search", "browser_use", "execute_code", "execute_shell_command",
+                "delegateToAgent", "delegateParallel", "delegateAsync", "taskOutput", "listAvailableAgents",
+                "write_file", "append_file", "edit_file", "send_file", "renderDocx", "image_generate",
+                "wiki_create_page", "load_skill", "runSkillScript", "listAvailableSkills")) {
+            assertFalse(effective.contains(name), "Unchecked capability must not be exposed: " + name);
+        }
+    }
+
     /** Picker name the UI would save for the (only) MCP tool of {@code serverId}. */
     private String mcpToolNameForServer(long serverId) {
         return availableToolService.listAvailable().stream()
@@ -507,7 +608,7 @@ class AgentBindingServiceTest {
     }
 
     @Test
-    @DisplayName("issue #184 matrix (T,F,*,>0): skillsDisabled + 显式 tool 绑定 → 仅这些 tool + SYSTEM + MCP-rule")
+    @DisplayName("issue #184 matrix (T,F,*,>0): skillsDisabled + 显式 tool 绑定 → 仅这些 tool + minimal internal + read_file")
     void skillsDisabledWithToolBindingsScopesToTools() {
         seedBuiltinTool("scoped_tool_probe");
         setSkillsDisabledFlag(true);
@@ -533,6 +634,7 @@ class AgentBindingServiceTest {
 
         Set<String> effective = bindingService.getEffectiveToolNames(agentId);
         assertNotNull(effective, "toolsDisabled=true 时绝不能返回 null（那会让全局默认工具又流回来）");
+        assertTrue(effective.contains("get_progress"), "own-conversation recovery stays reachable with tools disabled");
         assertTrue(effective.contains("record_lesson"), "system-level memory 工具必须保留");
         assertTrue(effective.containsAll(Set.of("getManagedGoalJsonSlots", "publishManagedGoalJson", "checkManagedGoalJson")),
                 "选中的 JSON 要求不能因业务技能绑定失去受管发布和检查入口");

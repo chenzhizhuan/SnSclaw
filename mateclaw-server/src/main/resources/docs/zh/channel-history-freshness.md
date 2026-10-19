@@ -27,7 +27,7 @@
 
 ## 当前修复
 
-StateGraph 与 DSH 共用 `ChannelHistoryPolicy`，仅改变本轮模型输入，不修改持久记录、会话 ID 或推送映射。默认覆盖有 `channelType` 的非 Web、非定时任务调用，包括飞书、微信、企业微信、钉钉及 webchat。
+原生 AgentScope 运行时与 DSH 共用 `ChannelHistoryPolicy`，仅改变本轮模型输入，不修改持久记录、会话 ID 或推送映射。默认覆盖有 `channelType` 的非 Web、非定时任务调用，包括飞书、微信、企业微信、钉钉及 webchat。
 
 | 层级 | 默认时间 | 模型输入 |
 | --- | --- | --- |

@@ -506,13 +506,16 @@ public class AgentBindingService implements AgentBindingResolver {
      * <p>Auto-included on every non-null result, in addition to the bound
      * tools and skill-expanded tools:
      * <ul>
-     *   <li>{@link #MINIMAL_SYSTEM_TOOLS} for explicit tools opt-out; otherwise
-     *       {@link #SYSTEM_LEVEL_TOOLS} for compatibility with skill bindings.</li>
+     *   <li>{@link #MINIMAL_SYSTEM_TOOLS} for explicit tools opt-out;
+     *       {@link #SCOPED_TOOL_INTERNAL_TOOLS} when skills are disabled and
+     *       explicit tool bindings exist (including all-disabled rows);
+     *       otherwise {@link #SYSTEM_LEVEL_TOOLS} for compatibility.</li>
      *   <li>Every currently-bindable MCP tool ({@code source="mcp"},
      *       {@code available=true} in the picker) — but only when the agent
-     *       has not ticked any MCP tool itself. MCP servers are
-     *       administrator-level capabilities, so an agent that bound merely
-     *       a skill or a built-in tool keeps full MCP access. Once the
+     *       has not ticked any MCP tool itself and is not in the explicit
+     *       skills-disabled tool scope described above. MCP servers are
+     *       administrator-level capabilities, so a skills-enabled agent that
+     *       bound merely a skill or a built-in tool keeps full MCP access. Once the
      *       operator ticks specific MCP rows, that is read as a deliberate
      *       per-agent scope: only the ticked MCP tools stay and the rest
      *       are not auto-joined, so a role can be limited to a fixed MCP
@@ -546,6 +549,16 @@ public class AgentBindingService implements AgentBindingResolver {
         //     suppressed via getBoundSkillIds returning Set.of().
         if (skillsDisabled && !toolsDisabled && directTools == null) {
             return null;
+        }
+
+        // With skills disabled, explicit tool rows are the complete business
+        // capability selection. Do not infer scope from the live MCP catalog:
+        // stale/offline selections and an explicit empty set must stay scoped.
+        // tools_disabled retains its separate minimal-only opt-out below.
+        if (skillsDisabled && !toolsDisabled && directTools != null) {
+            Set<String> scoped = new LinkedHashSet<>(directTools);
+            scoped.addAll(SCOPED_TOOL_INTERNAL_TOOLS);
+            return scoped;
         }
 
         Set<String> merged = new LinkedHashSet<>();
@@ -672,10 +685,20 @@ public class AgentBindingService implements AgentBindingResolver {
             "getCurrentDate", "getCurrentDateTime", "getCurrentTime",
             "setGoal", "addGoalCriterion", "completeGoal", "getGoalStatus",
             "getManagedGoalJsonSlots", "publishManagedGoalJson", "checkManagedGoalJson",
-            "waitForGoalInput", "resumeGoal", "progress_update",
+            "waitForGoalInput", "resumeGoal", "progress_update", "get_progress",
             // These bridges resolve targets against the same effective allowlist.
             "enable_tool", "tool_search", "tool_describe", "tool_call"
     );
+
+    /**
+     * Internal tools for an explicit selection with skills disabled. read_file
+     * preserves access to large MCP results spilled into the workspace; normal
+     * sandbox and global tool-guard restrictions still apply at runtime.
+     * This is deliberately separate from the tools-disabled minimal set.
+     */
+    private static final Set<String> SCOPED_TOOL_INTERNAL_TOOLS = java.util.stream.Stream.concat(
+            MINIMAL_SYSTEM_TOOLS.stream(), java.util.stream.Stream.of("read_file"))
+            .collect(Collectors.toUnmodifiableSet());
 
     /** Compatibility defaults for skill-bound agents that have NOT disabled tools. */
     private static final Set<String> SYSTEM_LEVEL_TOOLS = Set.of(
@@ -755,7 +778,7 @@ public class AgentBindingService implements AgentBindingResolver {
             // tasks need it on every business agent, not just the planner,
             // since context-window trims can otherwise let an agent forget
             // what it has already produced and re-do work or stall.
-            "progress_update",
+            "progress_update", "get_progress",
             // Document / media generation — agent-wide capabilities, never
             // declared inside any skill manifest. Pre-Phase-2b these were
             // universally visible; the new gate silently strips them whenever

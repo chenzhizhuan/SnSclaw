@@ -1,5 +1,9 @@
 package vip.mate.llm.cache;
 
+import org.springframework.ai.anthropic.AnthropicCacheStrategy;
+import org.springframework.ai.anthropic.AnthropicCacheTtl;
+import org.springframework.ai.chat.messages.MessageType;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -85,22 +89,22 @@ class PromptCacheStrategyTest {
         props.setTtl(CacheProperties.Ttl.EXTENDED_1H);
         var factory = new AnthropicCacheOptionsFactory(props);
         var opts = factory.build();
-        assertNotSame(org.springframework.ai.anthropic.api.AnthropicCacheOptions.DISABLED, opts);
-        assertEquals(org.springframework.ai.anthropic.api.AnthropicCacheStrategy.CONVERSATION_HISTORY,
+        assertNotEquals(AnthropicCacheStrategy.NONE, opts.getStrategy());
+        assertEquals(AnthropicCacheStrategy.CONVERSATION_HISTORY,
                 opts.getStrategy());
         // ttl 映射到 SYSTEM/USER ONE_HOUR
         var ttlMap = opts.getMessageTypeTtl();
-        assertEquals(org.springframework.ai.anthropic.api.AnthropicCacheTtl.ONE_HOUR,
-                ttlMap.get(org.springframework.ai.chat.messages.MessageType.SYSTEM));
+        assertEquals(AnthropicCacheTtl.ONE_HOUR,
+                ttlMap.get(MessageType.SYSTEM));
     }
 
     @Test
-    @DisplayName("AnthropicCacheOptionsFactory: disabled → DISABLED 单例")
+    @DisplayName("AnthropicCacheOptionsFactory: disabled → NONE strategy")
     void anthropicFactoryDisabledFastPath() {
         var props = new CacheProperties();
         props.setEnabled(false);
         var factory = new AnthropicCacheOptionsFactory(props);
-        assertSame(org.springframework.ai.anthropic.api.AnthropicCacheOptions.DISABLED, factory.build());
+        assertEquals(AnthropicCacheStrategy.NONE, factory.build().getStrategy());
     }
 
     @Test

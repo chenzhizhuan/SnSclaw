@@ -196,3 +196,7 @@ They coexist: a team member can still call `delegateToAgent` inside its own task
 - [Persistent Goals](./goals) — cross-turn follow-through for a single employee
 - [Workflow](./workflow) — deterministic step orchestration (use workflows when the process is fixed, teams when it must be decomposed on the spot)
 - [Security & Approval](./security) — how tool approval relates to team task approval
+
+## 3.0.0: guarded worker-result judgment
+
+Worker-result judgment uses typed decisions, output contracts and task identity checks. Domain transactions commit outcomes and state. SHADOW remains default and does not replace approvals or artifact acceptance.

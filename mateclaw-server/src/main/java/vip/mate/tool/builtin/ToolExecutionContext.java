@@ -59,6 +59,39 @@ public final class ToolExecutionContext {
     public static void setOrigin(ChatOrigin origin) { ORIGIN.set(origin); }
     public static ChatOrigin origin() { return ORIGIN.get(); }
 
+    public static Scope openScope(String conversationId, String username, String workspaceBasePath) {
+        Scope scope = new Scope();
+        set(conversationId, username, workspaceBasePath);
+        return scope;
+    }
+
+    public static final class Scope implements AutoCloseable {
+        private final Thread owner = Thread.currentThread();
+        private final ChatOrigin origin = ORIGIN.get();
+        private final String conversationId = CONVERSATION_ID.get();
+        private final String username = USERNAME.get();
+        private final String workspaceBasePath = WORKSPACE_BASE_PATH.get();
+        private boolean closed;
+
+        private Scope() {}
+
+        @Override
+        public void close() {
+            if (Thread.currentThread() != owner) throw new IllegalStateException("Tool context scope must close on its opening thread");
+            if (closed) return;
+            closed = true;
+            restore(ORIGIN, origin);
+            restore(CONVERSATION_ID, conversationId);
+            restore(USERNAME, username);
+            restore(WORKSPACE_BASE_PATH, workspaceBasePath);
+        }
+
+        private static <T> void restore(ThreadLocal<T> holder, T value) {
+            if (value == null) holder.remove();
+            else holder.set(value);
+        }
+    }
+
     public static void clear() {
         ORIGIN.remove();
         CONVERSATION_ID.remove();

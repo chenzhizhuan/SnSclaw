@@ -1,5 +1,10 @@
 <div align="center">
 
+> Current development version: **3.0.0-SNAPSHOT**. Java 21 / Spring Boot 4.1.1 / Spring AI 2.0.1 / AgentScope 2.0.4. AgentScope drives execution loops; MateClaw retains tool approvals, permissions, Goals, SSE and persistence. See Releases for stable builds.
+> [3.0.0 architecture changelog](CHANGELOG.md)
+> Includes all changes since 2.3.0: structured decisions, member file isolation, DSH SDK upgrades, voice preview and structured MCP presentation.
+
+
 <p align="center">
   <img src="mateclaw-ui/public/logo/mateclaw_logo_s.png" alt="SnSclaw Logo" width="120">
 </p>
@@ -15,7 +20,7 @@
 [![Live Demo](https://img.shields.io/badge/Demo-Online-orange.svg?logo=vercel&label=Demo)](https://claw-demo.sns.app)
 [![Website](https://img.shields.io/badge/Website-claw.sns.app-blue.svg?logo=googlechrome&label=Site)](https://claw.sns.app)
 [![Java Version](https://img.shields.io/badge/Java-21+-blue.svg?logo=openjdk&label=Java)](https://adoptium.net/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen.svg?logo=springboot)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-brightgreen.svg?logo=springboot)](https://spring.io/projects/spring-boot)
 [![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg?logo=vuedotjs)](https://vuejs.org/)
 [![Last Commit](https://img.shields.io/github/last-commit/sns/SnSclaw)](https://lab.sns.app/SnSclaw)
 [![License](https://img.shields.io/badge/license-Apache--2.0-red.svg?logo=opensourceinitiative&label=License)](LICENSE)
@@ -38,7 +43,7 @@
 >
 > Multi-user workspaces. Approval-gated sensitive actions. Full audit trail. Spring Boot Actuator health monitoring. Per-channel error isolation so one chat platform's outage doesn't take down the rest. One JAR in your environment; you control persisted data, and task content is sent only to model, channel, or tool services you explicitly configure.
 >
-> **And underneath, a real Agent Runtime.** An employee is no longer welded to one reasoning loop. Choose the native StateGraph runtime for ReAct, Plan-and-Execute, Goals, and Team Runs, or run DeepSeek Harness as a managed external loop over SDK JSON-RPC. Both paths converge on the same conversations, workspace boundaries, Tool Guard, event projection, and lifecycle controls.
+> **And underneath, a real Agent Runtime.** An employee is no longer welded to one reasoning loop. Choose the native AgentScope runtime for ReAct, Plan-and-Execute, Goals, and Team Runs, or run DeepSeek Harness as a managed external loop over SDK JSON-RPC. Both paths converge on the same conversations, workspace boundaries, Tool Guard, event projection, and lifecycle controls.
 
 Most AI tools die when their vendor has a bad day. Most forget you the moment the tab closes. Most give you a chatbox and call it a product.
 
@@ -162,12 +167,14 @@ Same "whole widget" philosophy. Different center of gravity.
 
 ```bash
 # Backend
-cd mateclaw-server
-mvn spring-boot:run           # http://localhost:18088
+# From the repository root; use its configured models and workspace
+SPRING_DATASOURCE_URL="jdbc:h2:file:$PWD/data/mateclaw;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE" \
+MATECLAW_WORKSPACE_SANDBOX_ROOT="$PWD/data/workspace" \
+mvn -pl mateclaw-server spring-boot:run  # http://localhost:18088
 
-# Frontend
+# Frontend (new terminal, from the repository root)
 cd mateclaw-ui
-npm install && npm run dev    # http://localhost:5173
+npm install && npm run dev -- --host 127.0.0.1    # http://localhost:5173
 ```
 
 Login: `admin` / `admin123`
@@ -204,7 +211,7 @@ Download from [GitHub Releases](https://lab.sns.app/SnSclaw/releases). Bundles J
 
 ```
 SnSclaw/
-├── mateclaw-server/        Spring Boot 3.5 backend (Agent Runtime contract, native StateGraph + DSH)
+├── mateclaw-server/        Spring Boot 4.1.1 backend (Agent Runtime contract, native AgentScope + DSH)
 ├── mateclaw-ui/            Vue 3 + TypeScript admin SPA (built into the server JAR)
 ├── mateclaw-desktop/       Electron desktop app (local-embedded / remote-centralized)
 ├── mateclaw-webchat/       Embeddable chat widget (UMD / ES bundles)
@@ -222,8 +229,8 @@ Desktop binaries ship via [GitHub Releases](https://lab.sns.app/SnSclaw/releases
 
 | Layer | Technology |
 |---|---|
-| Backend | Spring Boot 3.5 · Spring AI Alibaba 1.1 · MyBatis Plus · Flyway |
-| Agent Runtime | `AgentRuntimeProvider` contract · Native StateGraph (ReAct + Plan-Execute) · managed DSH JSON-RPC runtime · normalized events / lifecycle / usage · Tool Guard |
+| Backend | Spring Boot 4.1.1 · Spring AI 2.0.1 · AgentScope Java 2.0.4 · MyBatis Plus · Flyway |
+| Agent Runtime | `AgentRuntimeProvider` contract · Native AgentScope (ReAct + Plan-Execute) · managed DSH JSON-RPC runtime · normalized events / lifecycle / usage · Tool Guard |
 | Orchestration | Workflow (7 step modes · Pebble DSL) · Triggers (6 pattern types · event governance) · Wiki Transformations (1.3.0+) |
 | Capability Extension | SKILL.md packages · MCP (stdio / SSE / HTTP · per-agent binding) · ACP bridge (Claude Code / Codex) |
 | Database | H2 (dev) · PostgreSQL 16 (Docker default) · MySQL 8.0+ (supported) · Kingbase (opt-in driver) |
@@ -321,7 +328,7 @@ Full story in the [v1.7.0 release notes](https://claw.sns.app/docs/en/releases/1
 git clone https://lab.sns.app/SnSclaw.git
 cd SnSclaw
 cd mateclaw-server && mvn clean compile
-cd ../mateclaw-ui && npm install && npm run dev
+cd ../mateclaw-ui && npm install && npm run dev -- --host 127.0.0.1
 ```
 
 ---

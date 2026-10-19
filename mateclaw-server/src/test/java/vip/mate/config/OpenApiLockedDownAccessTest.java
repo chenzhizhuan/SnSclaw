@@ -2,11 +2,12 @@ package vip.mate.config;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -31,38 +32,41 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 )
 class OpenApiLockedDownAccessTest {
 
-    @Autowired
-    private TestRestTemplate rest;
+    @LocalServerPort
+    private int port;
 
     @Test
     @DisplayName("Anonymous OpenAPI JSON is blocked (401) when expose-ui=false")
-    void anonymousApiDocsBlocked() {
-        ResponseEntity<String> resp = rest.getForEntity("/v3/api-docs", String.class);
-        assertEquals(HttpStatus.UNAUTHORIZED, resp.getStatusCode());
+    void anonymousApiDocsBlocked() throws Exception {
+        int status = getStatus("/v3/api-docs");
+        assertEquals(401, status);
     }
 
     @Test
     @DisplayName("Anonymous Swagger UI is blocked (401) when expose-ui=false")
-    void anonymousSwaggerUiBlocked() {
-        ResponseEntity<String> resp = rest.getForEntity("/swagger-ui/index.html", String.class);
-        assertEquals(HttpStatus.UNAUTHORIZED, resp.getStatusCode());
+    void anonymousSwaggerUiBlocked() throws Exception {
+        int status = getStatus("/swagger-ui/index.html");
+        assertEquals(401, status);
     }
 
     @Test
     @DisplayName("Anonymous generated-file download is blocked (401)")
-    void anonymousGeneratedFileDownloadBlocked() {
-        ResponseEntity<String> resp = rest.getForEntity(
-                "/api/v1/files/generated/00000000-0000-0000-0000-000000000000",
-                String.class);
-        assertEquals(HttpStatus.UNAUTHORIZED, resp.getStatusCode());
+    void anonymousGeneratedFileDownloadBlocked() throws Exception {
+        int status = getStatus("/api/v1/files/generated/00000000-0000-0000-0000-000000000000");
+        assertEquals(401, status);
     }
 
     @Test
     @DisplayName("A genuinely public endpoint stays reachable when Swagger is locked")
-    void publicEndpointStillReachable() {
+    void publicEndpointStillReachable() throws Exception {
         // GET /api/v1/settings/language is permitAll (first-paint i18n); proves
         // the lockdown is scoped to the OpenAPI paths, not a blanket denial.
-        ResponseEntity<String> resp = rest.getForEntity("/api/v1/settings/language", String.class);
-        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        int status = getStatus("/api/v1/settings/language");
+        assertEquals(200, status);
+    }
+    private int getStatus(String path) throws Exception {
+        return HttpClient.newHttpClient().send(HttpRequest.newBuilder(
+                URI.create("http://127.0.0.1:" + port + path)).GET().build(),
+                HttpResponse.BodyHandlers.discarding()).statusCode();
     }
 }

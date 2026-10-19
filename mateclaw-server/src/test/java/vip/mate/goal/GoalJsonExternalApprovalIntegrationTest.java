@@ -1,5 +1,7 @@
 package vip.mate.goal;
 
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -9,7 +11,7 @@ import org.springframework.test.context.DynamicPropertySource;
 /** Opt-in real HTTP approval replay against a disposable MySQL or PostgreSQL database. */
 @EnabledIfSystemProperty(named = "mateclaw.json.external.enabled", matches = "true")
 class GoalJsonExternalApprovalIntegrationTest extends GoalJsonHttpRuntimeIntegrationTest {
-    @org.springframework.boot.test.mock.mockito.MockBean
+    @MockitoBean
     private vip.mate.skill.workspace.SkillWorkspaceBootstrapRunner skillWorkspaceBootstrap;
 
     @Override

@@ -716,3 +716,7 @@ Cron edits now retain both delivery channel and target, so changing a schedule o
 - [Chat & Messaging](./chat) — message flow, segments, streaming events
 - [Agents](./agents) — what's actually answering through each channel
 - [Configuration](./config) — global channel tuning
+
+## Channel configuration and lifecycle (3.0.0)
+
+The application owns Feishu WebSocket readiness, reconnect and shutdown. Unsupported webhook channel types are rejected before saving; stale query context is cleared from persistent conversations to avoid affecting later tasks.

@@ -1,7 +1,7 @@
 package vip.mate.agent.graph.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
-import com.alibaba.cloud.ai.graph.action.NodeAction;
+import vip.mate.agent.runtime.state.RunState;
+import vip.mate.agent.runtime.state.NodeAction;
 import lombok.extern.slf4j.Slf4j;
 import vip.mate.agent.GraphEventPublisher;
 import vip.mate.agent.graph.state.DirectToolOutput;
@@ -62,7 +62,7 @@ public class FinalAnswerNode implements NodeAction {
     }
 
     @Override
-    public Map<String, Object> apply(OverAllState state) throws Exception {
+    public Map<String, Object> apply(RunState state) throws Exception {
         MateClawStateAccessor accessor = new MateClawStateAccessor(state);
 
         String finalAnswer;

@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.plan.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.Test;
 import vip.mate.agent.graph.plan.state.PlanStateAccessor;
 import vip.mate.agent.graph.plan.state.PlanStateKeys;
@@ -24,7 +24,7 @@ class StepExecutionReplanContextTest {
         Map<String, Object> vals = new HashMap<>();
         vals.put(PlanStateKeys.WORKING_CONTEXT, workingContext);
         vals.put(PlanStateKeys.PLAN_STEPS, steps);
-        return new PlanStateAccessor(new OverAllState(vals));
+        return new PlanStateAccessor(new RunState(vals));
     }
 
     @Test

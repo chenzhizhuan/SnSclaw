@@ -1,62 +1,32 @@
 package vip.mate.architecture;
 
 import org.junit.jupiter.api.Test;
+import vip.mate.agent.runtime.state.RunState;
+import vip.mate.agent.graph.state.MateClawStateKeys;
+import vip.mate.agent.graph.plan.state.PlanStateKeys;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import static org.junit.jupiter.api.Assertions.*;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
-
-/**
- * Strict double-registration check for the skill progressive-disclosure state
- * keys.
- *
- * <p>{@link StateKeyRegistrationCoverageTest} only verifies that a key appears
- * somewhere in {@code AgentGraphBuilder.java}; it cannot tell apart the ReAct
- * and Plan-Execute {@code KeyStrategyFactory} blocks. The {@code CHAT_ORIGIN}
- * regression showed that "registered once" is not enough — multi-node merges
- * silently drop keys when one graph's factory leaves them out.
- *
- * <p>{@code LOADED_SKILLS} is written via read-merge-write in ActionNode, so a
- * dropped key would silently disable the load_skill catalog pin. It must appear
- * in BOTH factory blocks.
- */
+/** Skill disclosure containers remain isolated and retained in either runtime. */
 class SkillStateKeyDoubleRegistrationTest {
-
-    private static final String[] SKILL_KEYS = {
-            "LOADED_SKILLS",
-            "ENABLED_EXTENSION_TOOLS",
-    };
-
-    @Test
-    void everySkillDisclosureKeyMustAppearAtLeastTwiceInAddStrategyCalls() throws Exception {
-        Path src = Paths.get("src/main/java/vip/mate/agent/AgentGraphBuilder.java")
-                .toAbsolutePath();
-        if (!Files.exists(src)) {
-            fail("Cannot find AgentGraphBuilder.java at " + src);
-        }
-        String content = Files.readString(src);
-
-        for (String key : SKILL_KEYS) {
-            Pattern p = Pattern.compile(
-                    "\\.addStrategy\\(\\s*MateClawStateKeys\\." + key + "\\b");
-            Matcher m = p.matcher(content);
-            int count = 0;
-            while (m.find()) count++;
-            if (count < 2) {
-                fail("Skill disclosure state key " + key + " must be registered in BOTH the "
-                        + "ReAct and Plan-Execute KeyStrategyFactory blocks "
-                        + "(found " + count + " addStrategy occurrence(s) in "
-                        + "AgentGraphBuilder.java). Without double registration the "
-                        + "spring-ai-alibaba-graph merge can drop the key, silently "
-                        + "disabling the load_skill catalog pin.");
-            }
-            assertTrue(count >= 2,
-                    "Sanity: " + key + " should have >=2 addStrategy calls");
+    @Test void skillDisclosureSurvivesBothPatchStylesAndReadMergeWrite() {
+        for (boolean plan : List.of(false, true)) {
+            Set<String> skills = new HashSet<>(Set.of("initial"));
+            Set<String> tools = new HashSet<>(Set.of("tool"));
+            RunState state = new RunState(Map.of(MateClawStateKeys.LOADED_SKILLS, skills, MateClawStateKeys.ENABLED_EXTENSION_TOOLS, tools));
+            state.applyPatch(plan ? Map.of(PlanStateKeys.PLAN_STEPS, List.of("step")) : Map.of(MateClawStateKeys.MESSAGES, List.of("reasoning")));
+            RunState retained = state.snapshot(); skills.clear(); tools.clear();
+            Set<String> merged = new HashSet<>(state.<Set<String>>value(MateClawStateKeys.LOADED_SKILLS).orElseThrow());
+            merged.add("loaded"); state.applyPatch(Map.of(MateClawStateKeys.LOADED_SKILLS, merged)); merged.clear();
+            state.applyPatch(plan ? Map.of(PlanStateKeys.COMPLETED_RESULTS, List.of("result")) : Map.of(MateClawStateKeys.PENDING_EVENTS, List.of("event")));
+            assertEquals(Set.of("initial", "loaded"), state.value(MateClawStateKeys.LOADED_SKILLS).orElseThrow());
+            assertEquals(Set.of("tool"), state.value(MateClawStateKeys.ENABLED_EXTENSION_TOOLS).orElseThrow());
+            assertEquals(Set.of("initial"), retained.value(MateClawStateKeys.LOADED_SKILLS).orElseThrow());
+            assertEquals(Set.of("tool"), retained.value(MateClawStateKeys.ENABLED_EXTENSION_TOOLS).orElseThrow());
+            assertThrows(UnsupportedOperationException.class, () -> state.<Set<String>>value(MateClawStateKeys.LOADED_SKILLS).orElseThrow().clear());
         }
     }
 }

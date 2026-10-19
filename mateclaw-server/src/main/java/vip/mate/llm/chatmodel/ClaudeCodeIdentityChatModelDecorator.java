@@ -19,9 +19,7 @@ import org.springframework.ai.tool.metadata.ToolMetadata;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Claude Code OAuth identity transform applied to every Anthropic request
@@ -86,8 +84,8 @@ public class ClaudeCodeIdentityChatModelDecorator implements ChatModel {
     }
 
     @Override
-    public ChatOptions getDefaultOptions() {
-        return delegate.getDefaultOptions();
+    public ChatOptions getOptions() {
+        return delegate.getOptions();
     }
 
     /* ====================================================================== */
@@ -147,34 +145,12 @@ public class ClaudeCodeIdentityChatModelDecorator implements ChatModel {
             return options;
         }
         List<ToolCallback> originalCallbacks = anthropicOpts.getToolCallbacks();
-        Set<String> originalToolNames = anthropicOpts.getToolNames();
-
-        boolean hasCallbacks = originalCallbacks != null && !originalCallbacks.isEmpty();
-        boolean hasToolNames = originalToolNames != null && !originalToolNames.isEmpty();
-        if (!hasCallbacks && !hasToolNames) {
-            return options;
+        if (originalCallbacks == null || originalCallbacks.isEmpty()) return options;
+        List<ToolCallback> wrapped = new ArrayList<>(originalCallbacks.size());
+        for (ToolCallback callback : originalCallbacks) {
+            wrapped.add(callback instanceof PrefixedToolCallback ? callback : new PrefixedToolCallback(callback));
         }
-
-        AnthropicChatOptions copy = AnthropicChatOptions.fromOptions(anthropicOpts);
-        if (hasCallbacks) {
-            List<ToolCallback> wrapped = new ArrayList<>(originalCallbacks.size());
-            for (ToolCallback cb : originalCallbacks) {
-                wrapped.add(cb instanceof PrefixedToolCallback ? cb : new PrefixedToolCallback(cb));
-            }
-            copy.setToolCallbacks(wrapped);
-        }
-        if (hasToolNames) {
-            // toolNames is a set used by Spring AI's tool resolver to filter from
-            // a wider registry. If SnSclaw populates it (most paths use callbacks
-            // directly so this is rare), prefix the names so they line up with
-            // the wrapped callbacks above.
-            Set<String> prefixed = new LinkedHashSet<>(originalToolNames.size());
-            for (String n : originalToolNames) {
-                prefixed.add(n.startsWith(MCP_TOOL_PREFIX) ? n : MCP_TOOL_PREFIX + n);
-            }
-            copy.setToolNames(prefixed);
-        }
-        return copy;
+        return anthropicOpts.mutate().toolCallbacks(wrapped).build();
     }
 
     /* ====================================================================== */

@@ -143,8 +143,8 @@ Output: "2026-04-11T14:30:22"
 Web search via a **provider chain** — DuckDuckGo and SearXNG as keyless fallbacks, Serper and Tavily when you have keys. Configured in `Settings → System → Search Service` and takes effect without restart.
 
 ```
-Input:  {"query": "Spring AI Alibaba latest version", "freshness": "month", "count": 5}
-Output: "Spring AI Alibaba 1.1 was released..."
+Input:  {"query": "AgentScope Java latest version", "freshness": "month", "count": 5}
+Output: "AgentScope Java 2.0 was released..."
 ```
 
 Features:

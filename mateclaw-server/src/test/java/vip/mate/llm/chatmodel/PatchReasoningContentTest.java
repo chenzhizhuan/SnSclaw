@@ -1,14 +1,11 @@
 package vip.mate.llm.chatmodel;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.openai.api.OpenAiApi;
-import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionMessage;
-import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionMessage.Role;
-import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionMessage.ToolCall;
-import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionRequest;
 import vip.mate.llm.model.ModelProviderEntity;
 
 import java.util.ArrayList;
@@ -18,24 +15,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
-/**
- * Consumer-side tests for
- * {@link OpenAiRequestRewriter#patchReasoningContent(ChatCompletionRequest, ModelProviderEntity)}.
- *
- * <p>Covers four orthogonal dimensions:
- * <ul>
- *   <li>FallbackPolicy — DEEPSEEK (null + warn + patchNonToolCall) vs KIMI / OPENAI /
- *       DEFAULT (" " + no-warn + tool-call-only)</li>
- *   <li>{@code lastUserIdx} scope — assistants at {@code i <= lastUserIdx} never patched;
- *       iterator still advances for alignment</li>
- *   <li>sanitizedUser — restored from {@code RelayEntry.originalUser}; relay token
- *       never egresses</li>
- *   <li>relay presence — iterator consumed in order; missing relay triggers policy
- *       fallback only for in-turn messages</li>
- * </ul>
- */
+/** Exercises provider reasoning policies on the final JSON request. */
 class PatchReasoningContentTest {
 
     // ---------- Fixtures ----------
@@ -46,37 +27,36 @@ class PatchReasoningContentTest {
         return p;
     }
 
-    private static ChatCompletionMessage user(String text) {
-        return new ChatCompletionMessage(text, Role.USER);
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    private static ObjectNode message(String role, String text) {
+        return JSON.createObjectNode().put("role", role).put("content", text);
     }
 
-    private static ChatCompletionMessage system(String text) {
-        return new ChatCompletionMessage(text, Role.SYSTEM);
+    private static ObjectNode user(String text) { return message("user", text); }
+    private static ObjectNode system(String text) { return message("system", text); }
+    private static ObjectNode assistantPlain(String text) { return message("assistant", text); }
+
+    private static ObjectNode assistantToolCall(String text, String reasoningContent) {
+        ObjectNode message = assistantPlain(text);
+        message.putArray("tool_calls").addObject().put("id", "call_1").put("type", "function");
+        if (reasoningContent != null) message.put("reasoning_content", reasoningContent);
+        return message;
     }
 
-    /** Plain assistant message — no tool calls, no reasoning_content. */
-    private static ChatCompletionMessage assistantPlain(String text) {
-        return new ChatCompletionMessage(text, Role.ASSISTANT, null, null, null, null, null, null, null);
+    private static ObjectNode request(List<ObjectNode> messages, String user) {
+        return request(messages, user, "test-model");
     }
 
-    /** Assistant tool_call message with optional pre-existing reasoning_content. */
-    private static ChatCompletionMessage assistantToolCall(String text, String reasoningContent) {
-        ToolCall tc = new ToolCall("call_1", "function", null);
-        return new ChatCompletionMessage(text, Role.ASSISTANT, null, null, List.of(tc), null, null, null, reasoningContent);
+    private static ObjectNode request(List<ObjectNode> messages, String user, String model) {
+        ObjectNode request = JSON.createObjectNode().put("model", model);
+        request.set("messages", JSON.valueToTree(messages));
+        if (user != null) request.put("user", user);
+        return request;
     }
 
-    /** Build a ChatCompletionRequest with the given messages + user field; all other fields null. */
-    private static ChatCompletionRequest request(List<ChatCompletionMessage> messages, String user) {
-        return new ChatCompletionRequest(
-                messages,           // messages
-                "test-model",       // model
-                null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null,
-                null, null,         // toolChoice, parallelToolCalls
-                user,               // user
-                null,               // reasoningEffort
-                null, null, null, null, null
-        );
+    private static ObjectNode rewrite(ObjectNode request, ModelProviderEntity provider) {
+        return OpenAiRequestRewriter.rewrite(request, provider, false);
     }
 
     @BeforeEach
@@ -94,18 +74,18 @@ class PatchReasoningContentTest {
     // ---------- No-relay, no-thinking-mode path ----------
 
     @Test
-    @DisplayName("No relay token + no thinking signals → request passes through unchanged")
+    @DisplayName("No relay token + no thinking signals → request content passes through unchanged")
     void noop_whenNoRelayAndNoThinkingMode() {
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 system("sys"),
                 user("q1"),
                 assistantToolCall("", null)     // no reasoning_content anywhere → not thinking mode
         ), "caller-user-1");
 
         // model is "test-model" which maps to STANDARD family → requiresReasoningContentPatch returns false
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("deepseek"));
-        assertSame(req, out, "no thinking signal → no rebuild");
-        assertEquals("caller-user-1", out.user(), "user field untouched");
+        ObjectNode out = rewrite(req, provider("deepseek"));
+        assertEquals(req, out, "no thinking signal → no rebuild");
+        assertEquals("caller-user-1", out.path("user").asText(null), "user field untouched");
     }
 
     @Test
@@ -114,14 +94,14 @@ class PatchReasoningContentTest {
         // Prefix-shaped but not actually stashed — simulates consumer running after
         // producer's finally already discarded. take() returns null; isToken() still true.
         String fakeToken = AssistantThinkingRelay.TOKEN_PREFIX + "orphan-uuid";
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 user("q1"),
                 assistantPlain("hi")
         ), fakeToken);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("openai"));
+        ObjectNode out = rewrite(req, provider("openai"));
         assertNotSame(req, out, "rebuild expected to strip leaked token");
-        assertNull(out.user(), "leaked token must be sanitized to null");
+        assertNull(out.path("user").asText(null), "leaked token must be sanitized to null");
     }
 
     // ---------- sanitizedUser restoration from RelayEntry ----------
@@ -132,16 +112,16 @@ class PatchReasoningContentTest {
         List<String> thinkings = List.of("", "in-turn-think");
         String token = AssistantThinkingRelay.stash(thinkings, "original-caller-42");
 
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 assistantPlain("prior-assistant"),  // i=0, position 0 in thinkings → ""
                 user("q1"),
                 assistantToolCall("a1", null)        // i=2, position 1 in thinkings → "in-turn-think"
         ), token);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("deepseek"));
+        ObjectNode out = rewrite(req, provider("deepseek"));
 
-        assertEquals("original-caller-42", out.user(), "sanitizedUser must equal entry.originalUser()");
-        assertEquals("in-turn-think", out.messages().get(2).reasoningContent(),
+        assertEquals("original-caller-42", out.path("user").asText(null), "sanitizedUser must equal entry.originalUser()");
+        assertEquals("in-turn-think", out.at("/messages/2/reasoning_content").asText(null),
                 "in-turn assistant (i=2 > lastUserIdx=1) should receive the real thinking");
     }
 
@@ -161,7 +141,7 @@ class PatchReasoningContentTest {
         List<String> thinkings = Arrays.asList("", "real-a2");
         String token = AssistantThinkingRelay.stash(thinkings, null);
 
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 system("sys"),
                 user("q1"),
                 assistantToolCall("a1", null),       // i=2, cross-turn (2 <= 3)
@@ -169,11 +149,11 @@ class PatchReasoningContentTest {
                 assistantToolCall("a2", null)        // i=4, in-turn (4 > 3)
         ), token);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("deepseek"));
+        ObjectNode out = rewrite(req, provider("deepseek"));
 
-        assertEquals(" ", out.messages().get(2).reasoningContent(),
+        assertEquals(" ", out.at("/messages/2/reasoning_content").asText(null),
                 "cross-turn A1 gets ' ' fallback so DeepSeek thinking-mode validation passes");
-        assertEquals("real-a2", out.messages().get(4).reasoningContent(),
+        assertEquals("real-a2", out.at("/messages/4/reasoning_content").asText(null),
                 "in-turn A2 (i=4 > lastUserIdx=3) receives the real relay value");
     }
 
@@ -186,7 +166,7 @@ class PatchReasoningContentTest {
         List<String> thinkings = List.of("", "", "real-a3", "real-a4");
         String token = AssistantThinkingRelay.stash(thinkings, null);
 
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 user("q1"),
                 assistantToolCall("a1", null),   // i=1 cross-turn
                 assistantToolCall("a2", null),   // i=2 cross-turn
@@ -195,15 +175,15 @@ class PatchReasoningContentTest {
                 assistantToolCall("a4", null)    // i=5 in-turn
         ), token);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("deepseek"));
+        ObjectNode out = rewrite(req, provider("deepseek"));
 
         // DEEPSEEK patchCrossTurn=true: cross-turn now also gets ' ' fallback.
         // Iterator alignment is preserved: A1/A2 consume the empty entries '',
         // A3/A4 consume their real values in correct positions.
-        assertEquals(" ", out.messages().get(1).reasoningContent(), "A1 cross-turn ' ' fallback");
-        assertEquals(" ", out.messages().get(2).reasoningContent(), "A2 cross-turn ' ' fallback");
-        assertEquals("real-a3", out.messages().get(4).reasoningContent(), "A3 in-turn gets real-a3 (not real-a4)");
-        assertEquals("real-a4", out.messages().get(5).reasoningContent(), "A4 in-turn gets real-a4");
+        assertEquals(" ", out.at("/messages/1/reasoning_content").asText(null), "A1 cross-turn ' ' fallback");
+        assertEquals(" ", out.at("/messages/2/reasoning_content").asText(null), "A2 cross-turn ' ' fallback");
+        assertEquals("real-a3", out.at("/messages/4/reasoning_content").asText(null), "A3 in-turn gets real-a3 (not real-a4)");
+        assertEquals("real-a4", out.at("/messages/5/reasoning_content").asText(null), "A4 in-turn gets real-a4");
     }
 
     // ---------- FallbackPolicy × emptyFallback ----------
@@ -217,14 +197,14 @@ class PatchReasoningContentTest {
         List<String> thinkings = List.of("");  // one assistant, no real thinking
         String token = AssistantThinkingRelay.stash(thinkings, null);
 
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 user("q1"),
                 assistantToolCall("a1", null)  // in-turn
         ), token);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("deepseek"));
+        ObjectNode out = rewrite(req, provider("deepseek"));
 
-        assertEquals(" ", out.messages().get(1).reasoningContent(),
+        assertEquals(" ", out.at("/messages/1/reasoning_content").asText(null),
                 "DeepSeek: ' ' fallback restores forward progress when relay has no real value");
     }
 
@@ -235,19 +215,15 @@ class PatchReasoningContentTest {
         List<String> thinkings = List.of("");
         String token = AssistantThinkingRelay.stash(thinkings, null);
 
-        List<ChatCompletionMessage> msgs = List.of(
+        List<ObjectNode> msgs = List.of(
                 user("q1"),
                 assistantToolCall("a1", null)
         );
-        ChatCompletionRequest req = new ChatCompletionRequest(
-                msgs, "kimi-k2.5", null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null, token,
-                null, null, null, null, null, null
-        );
+        ObjectNode req = request(msgs, token, "kimi-k2.5");
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("kimi-cn"));
+        ObjectNode out = rewrite(req, provider("kimi-cn"));
 
-        assertEquals(" ", out.messages().get(1).reasoningContent(),
+        assertEquals(" ", out.at("/messages/1/reasoning_content").asText(null),
                 "Kimi tolerates ' ' — preserve legacy behavior");
     }
 
@@ -258,19 +234,15 @@ class PatchReasoningContentTest {
         String token = AssistantThinkingRelay.stash(thinkings, null);
 
         // Use a model that triggers requiresReasoningContentPatch so thinking mode is active
-        List<ChatCompletionMessage> msgs = List.of(
+        List<ObjectNode> msgs = List.of(
                 user("q1"),
                 assistantToolCall("a1", null)
         );
-        ChatCompletionRequest req = new ChatCompletionRequest(
-                msgs, "deepseek-reasoner", null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null, token,
-                null, null, null, null, null, null
-        );
+        ObjectNode req = request(msgs, token, "deepseek-reasoner");
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("custom-gateway"));
+        ObjectNode out = rewrite(req, provider("custom-gateway"));
 
-        assertEquals(" ", out.messages().get(1).reasoningContent(),
+        assertEquals(" ", out.at("/messages/1/reasoning_content").asText(null),
                 "DEFAULT keeps legacy ' ' for unrecognized providers — avoid regressing self-hosted backends");
     }
 
@@ -282,14 +254,14 @@ class PatchReasoningContentTest {
         List<String> thinkings = List.of("thinking-for-plain");
         String token = AssistantThinkingRelay.stash(thinkings, null);
 
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 user("q1"),
                 assistantPlain("plain answer")  // no tool_calls
         ), token);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("deepseek"));
+        ObjectNode out = rewrite(req, provider("deepseek"));
 
-        assertEquals("thinking-for-plain", out.messages().get(1).reasoningContent(),
+        assertEquals("thinking-for-plain", out.at("/messages/1/reasoning_content").asText(null),
                 "DeepSeek contract requires reasoning_content even on non-tool_call assistants when in thinking mode");
     }
 
@@ -299,19 +271,15 @@ class PatchReasoningContentTest {
         List<String> thinkings = List.of("would-not-be-used");
         String token = AssistantThinkingRelay.stash(thinkings, null);
 
-        List<ChatCompletionMessage> msgs = List.of(
+        List<ObjectNode> msgs = List.of(
                 user("q1"),
                 assistantPlain("plain answer")
         );
-        ChatCompletionRequest req = new ChatCompletionRequest(
-                msgs, "kimi-k2.5", null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null, token,
-                null, null, null, null, null, null
-        );
+        ObjectNode req = request(msgs, token, "kimi-k2.5");
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("kimi-cn"));
+        ObjectNode out = rewrite(req, provider("kimi-cn"));
 
-        assertNull(out.messages().get(1).reasoningContent(),
+        assertNull(out.at("/messages/1/reasoning_content").asText(null),
                 "Kimi only patches tool_call assistants; plain assistants are untouched");
     }
 
@@ -323,35 +291,31 @@ class PatchReasoningContentTest {
         List<String> thinkings = List.of("would-overwrite");
         String token = AssistantThinkingRelay.stash(thinkings, null);
 
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 user("q1"),
                 assistantToolCall("a1", "pre-existing-real-thinking")  // already has a value
         ), token);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("deepseek"));
+        ObjectNode out = rewrite(req, provider("deepseek"));
 
-        assertEquals("pre-existing-real-thinking", out.messages().get(1).reasoningContent(),
+        assertEquals("pre-existing-real-thinking", out.at("/messages/1/reasoning_content").asText(null),
                 "non-blank existing reasoning_content must not be overwritten by relay");
     }
 
     // ---------- Edge: empty messages ----------
 
     @Test
-    @DisplayName("Empty messages list: no-op, returns same instance")
+    @DisplayName("Empty messages list: no-op, preserves request content")
     void emptyMessages_noop() {
-        ChatCompletionRequest req = request(List.of(), null);
-        assertSame(req, OpenAiRequestRewriter.patchReasoningContent(req, provider("deepseek")));
+        ObjectNode req = request(List.of(), null);
+        assertEquals(req, rewrite(req, provider("deepseek")));
     }
 
     @Test
-    @DisplayName("Null messages: no-op, returns same instance")
+    @DisplayName("Null messages: no-op, preserves request content")
     void nullMessages_noop() {
-        ChatCompletionRequest req = new ChatCompletionRequest(
-                null, "m", null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null
-        );
-        assertSame(req, OpenAiRequestRewriter.patchReasoningContent(req, provider("deepseek")));
+        ObjectNode req = request(null, null, "m");
+        assertEquals(req, rewrite(req, provider("deepseek")));
     }
 
     // ---------- Fewer relay entries than assistants: defensive policy fallback ----------
@@ -364,16 +328,16 @@ class PatchReasoningContentTest {
         List<String> thinkings = List.of("real-1");
         String token = AssistantThinkingRelay.stash(thinkings, null);
 
-        ChatCompletionRequest req = request(new ArrayList<>(List.of(
+        ObjectNode req = request(new ArrayList<>(List.of(
                 user("q1"),
                 assistantToolCall("a1", null),
                 assistantToolCall("a2", null)
         )), token);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("deepseek"));
+        ObjectNode out = rewrite(req, provider("deepseek"));
 
-        assertEquals("real-1", out.messages().get(1).reasoningContent());
-        assertEquals(" ", out.messages().get(2).reasoningContent(),
+        assertEquals("real-1", out.at("/messages/1/reasoning_content").asText(null));
+        assertEquals(" ", out.at("/messages/2/reasoning_content").asText(null),
                 "DEEPSEEK with emptyFallback=' ' (post-72bd33dc): missing real values get the same tolerant fallback");
     }
 
@@ -389,18 +353,18 @@ class PatchReasoningContentTest {
         List<String> thinkings = Arrays.asList("", "real-a2");
         String token = AssistantThinkingRelay.stash(thinkings, null);
 
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 user("q1"),
                 assistantToolCall("a1", null),       // i=1, cross-turn (1 <= 2)
                 user("q2"),
                 assistantToolCall("a2", null)        // i=3, in-turn (3 > 2)
         ), token);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("kimi-cn"));
+        ObjectNode out = rewrite(req, provider("kimi-cn"));
 
-        assertNull(out.messages().get(1).reasoningContent(),
+        assertNull(out.at("/messages/1/reasoning_content").asText(null),
                 "KIMI does not patch cross-turn — thinking resets across user turns");
-        assertEquals("real-a2", out.messages().get(3).reasoningContent(),
+        assertEquals("real-a2", out.at("/messages/3/reasoning_content").asText(null),
                 "KIMI in-turn assistants still receive their relay value");
     }
 
@@ -415,18 +379,18 @@ class PatchReasoningContentTest {
         List<String> thinkings = Arrays.asList("", "");
         String token = AssistantThinkingRelay.stash(thinkings, null);
 
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 user("q1"),
-                new ChatCompletionMessage("plain a1", Role.ASSISTANT),  // no tool_calls
+                assistantPlain("plain a1"),  // no tool_calls
                 user("q2"),
-                new ChatCompletionMessage("plain a2", Role.ASSISTANT)
+                assistantPlain("plain a2")
         ), token);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("deepseek"));
+        ObjectNode out = rewrite(req, provider("deepseek"));
 
-        assertEquals(" ", out.messages().get(1).reasoningContent(),
+        assertEquals(" ", out.at("/messages/1/reasoning_content").asText(null),
                 "DEEPSEEK plain prior-turn assistant gets ' ' so request validates");
-        assertEquals(" ", out.messages().get(3).reasoningContent(),
+        assertEquals(" ", out.at("/messages/3/reasoning_content").asText(null),
                 "DEEPSEEK plain in-turn assistant gets ' ' as before");
     }
 
@@ -445,15 +409,15 @@ class PatchReasoningContentTest {
         // Empty relay: no in-turn thinking (current turn hasn't produced one yet).
         String token = AssistantThinkingRelay.stash(List.of(""), null);
 
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 user("q1"),
                 assistantToolCall("a1", null),   // i=1, cross-turn (1 <= 2), tool_call id="call_1"
                 user("q2")                       // i=2, lastUserIdx
         ), token);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("xiaomi-mimo"));
+        ObjectNode out = rewrite(req, provider("xiaomi-mimo"));
 
-        assertEquals("real-prior-thinking", out.messages().get(1).reasoningContent(),
+        assertEquals("real-prior-thinking", out.at("/messages/1/reasoning_content").asText(null),
                 "XIAOMI_MIMO cross-turn tool_call must replay cached reasoning_content over the ' ' fallback");
     }
 
@@ -464,15 +428,15 @@ class PatchReasoningContentTest {
         // injecting the policy's emptyFallback so MiMo doesn't 400.
         String token = AssistantThinkingRelay.stash(List.of(""), null);
 
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 user("q1"),
                 assistantToolCall("a1", null),   // i=1, cross-turn, no cache entry
                 user("q2")
         ), token);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("xiaomi-mimo"));
+        ObjectNode out = rewrite(req, provider("xiaomi-mimo"));
 
-        assertEquals(" ", out.messages().get(1).reasoningContent(),
+        assertEquals(" ", out.at("/messages/1/reasoning_content").asText(null),
                 "XIAOMI_MIMO cross-turn cache miss falls back to ' ' so the request still validates");
     }
 
@@ -484,18 +448,18 @@ class PatchReasoningContentTest {
         // can't help here (no tool_call_ids to key on) — fallback is " ".
         String token = AssistantThinkingRelay.stash(List.of("", ""), null);
 
-        ChatCompletionRequest req = request(List.of(
+        ObjectNode req = request(List.of(
                 user("q1"),
-                new ChatCompletionMessage("plain a1", Role.ASSISTANT),  // i=1, cross-turn, no tool_calls
+                assistantPlain("plain a1"),  // i=1, cross-turn, no tool_calls
                 user("q2"),
-                new ChatCompletionMessage("plain a2", Role.ASSISTANT)   // i=3, in-turn, no tool_calls
+                assistantPlain("plain a2")   // i=3, in-turn, no tool_calls
         ), token);
 
-        ChatCompletionRequest out = OpenAiRequestRewriter.patchReasoningContent(req, provider("xiaomi-mimo"));
+        ObjectNode out = rewrite(req, provider("xiaomi-mimo"));
 
-        assertEquals(" ", out.messages().get(1).reasoningContent(),
+        assertEquals(" ", out.at("/messages/1/reasoning_content").asText(null),
                 "XIAOMI_MIMO plain prior-turn assistant gets ' ' (patchNonToolCall=true + patchCrossTurn=true)");
-        assertEquals(" ", out.messages().get(3).reasoningContent(),
+        assertEquals(" ", out.at("/messages/3/reasoning_content").asText(null),
                 "XIAOMI_MIMO plain in-turn assistant gets ' ' (patchNonToolCall=true)");
     }
 }

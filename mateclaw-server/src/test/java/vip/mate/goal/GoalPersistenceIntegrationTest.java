@@ -4,7 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import vip.mate.memory.spi.MemoryManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
@@ -64,7 +64,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 })
 class GoalPersistenceIntegrationTest {
 
-    @MockBean private MemoryManager memory;
+    @MockitoBean private MemoryManager memory;
     @Autowired private GoalService goalService;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private GoalContinuationStore continuations;

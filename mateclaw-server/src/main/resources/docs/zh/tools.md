@@ -143,8 +143,8 @@ Tool Guard 是守门员。超时是**每个工具独立**的（这样一个慢�
 通过**供应商链**搜索——DuckDuckGo 和 SearXNG 作为无 Key 的 fallback，Serper 和 Tavily 在你有 Key 时启用。在 `设置 → 系统设置 → 搜索服务` 里配置，**改完即生效，不需要重启**。
 
 ```
-输入：{"query": "Spring AI Alibaba 最新版本", "freshness": "month", "count": 5}
-输出："Spring AI Alibaba 1.1 发布..."
+输入：{"query": "AgentScope Java 最新版本", "freshness": "month", "count": 5}
+输出："AgentScope Java 2.0 发布..."
 ```
 
 特性：

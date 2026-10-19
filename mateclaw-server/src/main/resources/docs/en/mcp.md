@@ -647,3 +647,7 @@ registerToolResultRenderer('inventory', {
 ```
 
 The component receives a `data` prop. A tool can then return `{ "type": "inventory", "data": { "name": "Example", "quantity": 10 } }` inside `blocks`. Registration requires a frontend rebuild; tool responses can only name registered types and cannot import components or execute scripts. Custom components must validate their schema and safely render untrusted values.
+
+## 3.0.0: protocol and presentation boundaries
+
+SDK 0.18.3 preserves call IDs, structured content and protocol errors. Ordinary tool results are presented separately below final answers. Transport failures with uncertain side effects do not trigger automatic duplicate execution.

@@ -16,6 +16,7 @@ import vip.mate.channel.web.ChatStreamTracker;
 
 import java.util.List;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -85,12 +86,18 @@ class LaneDPerformanceFixesTest {
                 return Flux.error(new RuntimeException("429 Too Many Requests"));
             });
 
-            // Stop is requested after first call — during backoff sleep.
-            // First poll returns false (initial check before sleep loop starts),
-            // then true on subsequent checks to simulate user clicking stop.
-            AtomicInteger stopCheckCount = new AtomicInteger(0);
-            when(streamTracker.isStopRequested("conv-d1")).thenAnswer(inv ->
-                    stopCheckCount.incrementAndGet() > 2);
+            // The retry warning is emitted after the retry entry guard and
+            // immediately before backoff polling. Stop at that concrete phase.
+            AtomicBoolean backoffStarted = new AtomicBoolean();
+            doAnswer(inv -> {
+                String payload = inv.getArgument(2);
+                if (payload.contains("后重试（第")) {
+                    backoffStarted.set(true);
+                }
+                return null;
+            }).when(streamTracker).broadcast(eq("conv-d1"), eq("warning"), anyString());
+            when(streamTracker.isStopRequested("conv-d1"))
+                    .thenAnswer(inv -> backoffStarted.get());
 
             var helper = helper(model);
             long startMs = System.currentTimeMillis();
@@ -100,6 +107,7 @@ class LaneDPerformanceFixesTest {
                     helper.streamCall(model, smallPrompt(), "conv-d1", "reasoning"));
 
             long elapsedMs = System.currentTimeMillis() - startMs;
+            assertTrue(backoffStarted.get(), "Stop must originate in retry backoff");
 
             // The backoff for attempt 1 is 3000ms base. With stop polling at 100ms intervals,
             // it should abort well before the full 3000ms backoff completes.

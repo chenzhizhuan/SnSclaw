@@ -19,10 +19,13 @@ hero:
       text: GitHub
       link: https://lab.sns.app/SnSclaw
     - theme: alt
-      text: v2.3.0 更新日志
-      link: /zh/releases/2.3.0
+      text: 3.0.0 快照更新日志
+      link: /zh/releases/3.0.0
 
 features:
+  - icon: ⚙️
+    title: 3.0.0-SNAPSHOT — 执行架构升级
+    details: 3.0.0-SNAPSHOT 升级到 Java 21、Spring Boot 4 和 Spring AI 2，AgentScope 2 驱动 ReAct 与计划单步执行循环。工具审批、权限、Goal、SSE 与持久化继续由 MateClaw 统一治理；这是开发快照。
   - icon: ✅
     title: 2.3.0 — 托管 JSON 验收
     details: 用户指定顶层必需字段，服务端把检查绑定到当前要求与不可变 JSON 版本。默认观察模式的执行证据用于追踪；普通产物诊断不代替验收绑定。

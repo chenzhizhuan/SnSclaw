@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import vip.mate.agent.graph.observation.ObservationProcessor;
@@ -24,16 +24,16 @@ class ObservationNodeDuplicateTest {
     }
 
     /**
-     * 构建 OverAllState，包含指定的观察历史和工具结果
+     * 构建 RunState，包含指定的观察历史和工具结果
      */
-    private OverAllState buildState(List<String> observationHistory, int iteration, int maxIter) {
+    private RunState buildState(List<String> observationHistory, int iteration, int maxIter) {
         Map<String, Object> stateMap = new HashMap<>();
         stateMap.put(CURRENT_ITERATION, iteration);
         stateMap.put(MAX_ITERATIONS, maxIter);
         stateMap.put(OBSERVATION_HISTORY, new ArrayList<>(observationHistory));
         stateMap.put(TOOL_RESULTS, List.of());
         stateMap.put(TOOL_CALL_COUNT, 0);
-        return new OverAllState(stateMap);
+        return new RunState(stateMap);
     }
 
     @Test
@@ -43,7 +43,7 @@ class ObservationNodeDuplicateTest {
         // TOOL_RESULTS 为空时 combinedObservation = ""，
         // detectDuplicateObservations 对空字符串返回 false（by design）
         List<String> history = List.of("", "");
-        OverAllState state = buildState(history, 2, 10);
+        RunState state = buildState(history, 2, 10);
 
         Map<String, Object> result = node.apply(state);
         assertNull(result.get(ERROR), "Empty observations should not trigger duplicate detection");
@@ -55,7 +55,7 @@ class ObservationNodeDuplicateTest {
         ObservationNode node = createNode();
         // 只有 1 条历史，threshold=3 需要至少 2 条匹配
         List<String> history = List.of("");
-        OverAllState state = buildState(history, 1, 10);
+        RunState state = buildState(history, 1, 10);
 
         Map<String, Object> result = node.apply(state);
         assertNull(result.get(ERROR));
@@ -66,7 +66,7 @@ class ObservationNodeDuplicateTest {
     void shouldNotTriggerWhenHistoryDiffers() throws Exception {
         ObservationNode node = createNode();
         List<String> history = List.of("result A", "result B");
-        OverAllState state = buildState(history, 2, 10);
+        RunState state = buildState(history, 2, 10);
 
         Map<String, Object> result = node.apply(state);
         assertNull(result.get(ERROR));
@@ -76,7 +76,7 @@ class ObservationNodeDuplicateTest {
     @DisplayName("空历史不触发重复检测")
     void shouldNotTriggerWithEmptyHistory() throws Exception {
         ObservationNode node = createNode();
-        OverAllState state = buildState(List.of(), 0, 10);
+        RunState state = buildState(List.of(), 0, 10);
 
         Map<String, Object> result = node.apply(state);
         assertNull(result.get(ERROR));

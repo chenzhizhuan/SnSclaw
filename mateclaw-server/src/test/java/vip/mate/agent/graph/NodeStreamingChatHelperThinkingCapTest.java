@@ -21,19 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/**
- * Regression coverage for the thinking-only soft cap added in P0-2.
- *
- * <p>The cap disposes the upstream stream when the model has emitted
- * {@code >= THINKING_ONLY_HARD_CAP_CHARS} of {@code reasoning_content}
- * with zero visible content and zero tool calls. The risk noted during
- * review (P1-A): some providers (Anthropic / DeepSeek-thinking variants)
- * pack {@code reasoning_content} and a {@code tool_call} into the same
- * SSE chunk. If the cap check sits inside the thinking-delta block (i.e.
- * before the chunk's tool_call is accumulated) it would dispose just
- * before observing the tool — turning a request that was about to dispatch
- * a tool into a spurious "INCOMPLETE: thinking-only" outcome.
- */
+/** Regression coverage for reasoning loops, extended budgets, and tool transitions. */
 class NodeStreamingChatHelperThinkingCapTest {
 
     private ChatStreamTracker streamTracker;
@@ -112,6 +100,74 @@ class NodeStreamingChatHelperThinkingCapTest {
         assertEquals(hugeThinking, result.thinking(),
                 "Thinking transcript is preserved so the UI can show it in a collapse panel");
     }
+    @Test
+    void diverseLongThinkingCanReachAnswerInLaterChunk() {
+        assertLongThinkingProgress(AssistantMessage.builder().content("Finished analysis").build());
+    }
+
+    @Test
+    void diverseLongThinkingCanReachToolInLaterChunk() {
+        assertLongThinkingProgress(AssistantMessage.builder().content("")
+                .toolCalls(List.of(new AssistantMessage.ToolCall("later", "function", "search", "{}"))).build());
+    }
+
+    private void assertLongThinkingProgress(AssistantMessage progress) {
+        StringBuilder reasoning = new StringBuilder();
+        for (int i = 0; i < 1400; i++) {
+            reasoning.append("Consider case ").append(i).append(": compare evidence ")
+                    .append(i * 17).append(" with alternative ").append(i * 31).append(".\n");
+        }
+        assertTrue(reasoning.length() > 32768);
+        var thinking = AssistantMessage.builder().content("")
+                .properties(Map.of("reasoningContent", reasoning.toString())).build();
+        var model = mock(ChatModel.class);
+        when(model.stream(any(Prompt.class))).thenReturn(Flux.just(
+                new ChatResponse(List.of(new Generation(thinking))),
+                new ChatResponse(List.of(new Generation(progress)))));
+        var result = new NodeStreamingChatHelper(streamTracker)
+                .streamCall(model, smallPrompt(), "conv-long-valid", "reasoning");
+        assertFalse(result.partial(), "Diverse reasoning must be allowed to finish");
+        assertEquals(reasoning.toString(), result.thinking());
+        assertEquals(progress.getText(), result.text());
+        assertEquals(progress.hasToolCalls(), result.hasToolCalls());
+    }
+
+    @Test
+    void diverseThinkingStillHasFiniteMemorySafetyBound() {
+        StringBuilder reasoning = new StringBuilder();
+        for (int i = 0; i < 15000; i++) {
+            reasoning.append("Evidence ").append(i).append(" differs from ").append(i * 31)
+                    .append(" so compare the next independent case.\n");
+        }
+        var message = AssistantMessage.builder().content("")
+                .properties(Map.of("reasoningContent", reasoning.toString())).build();
+        var result = new NodeStreamingChatHelper(streamTracker).streamCall(
+                singleChunkModel(message), smallPrompt(), "conv-memory-bound", "reasoning");
+        assertTrue(result.partial());
+        assertEquals("thinking_only_no_content", result.errorMessage());
+    }
+
+    @Test
+    void largerConfiguredTokenBudgetRaisesThinkingSafetyBound() {
+        StringBuilder reasoning = new StringBuilder();
+        for (int i = 0; i < 15000; i++) {
+            reasoning.append("Evidence ").append(i).append(" differs from ").append(i * 31)
+                    .append(" so compare the next independent case.\n");
+        }
+        var thinking = AssistantMessage.builder().content("")
+                .properties(Map.of("reasoningContent", reasoning.toString())).build();
+        var model = mock(ChatModel.class);
+        when(model.stream(any(Prompt.class))).thenReturn(Flux.just(
+                new ChatResponse(List.of(new Generation(thinking))),
+                new ChatResponse(List.of(new Generation(new AssistantMessage("Finished"))))));
+        var prompt = new Prompt(List.of(new UserMessage("hi")),
+                org.springframework.ai.chat.prompt.ChatOptions.builder().maxTokens(100000).build());
+        var result = new NodeStreamingChatHelper(streamTracker)
+                .streamCall(model, prompt, "conv-configured-budget", "reasoning");
+        assertFalse(result.partial());
+        assertEquals("Finished", result.text());
+    }
+
     @Test
     void reasoningOnlyTokenLimitIsIncompleteRatherThanEmptyOrSuccessful() {
         var message = AssistantMessage.builder().content("")

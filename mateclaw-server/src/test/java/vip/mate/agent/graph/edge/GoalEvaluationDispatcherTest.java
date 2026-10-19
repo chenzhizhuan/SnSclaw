@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.edge;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -18,12 +18,12 @@ import static org.mockito.Mockito.when;
  */
 class GoalEvaluationDispatcherTest {
 
-    private OverAllState stateWith(boolean followup) {
+    private RunState stateWith(boolean followup) {
         return stateWith(followup, false);
     }
 
-    private OverAllState stateWith(boolean followup, boolean terminal) {
-        OverAllState s = mock(OverAllState.class);
+    private RunState stateWith(boolean followup, boolean terminal) {
+        RunState s = mock(RunState.class);
         lenient().when(s.value("goal_followup_injected", false)).thenReturn(followup);
         lenient().when(s.value("goal_evaluated_this_run", false)).thenReturn(terminal);
         return s;

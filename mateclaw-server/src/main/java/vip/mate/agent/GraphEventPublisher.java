@@ -1,6 +1,6 @@
 package vip.mate.agent;
 
-import com.alibaba.cloud.ai.graph.NodeOutput;
+import vip.mate.agent.runtime.state.RunStep;
 import vip.mate.agent.graph.state.MateClawStateKeys;
 
 import java.util.List;
@@ -12,7 +12,7 @@ import java.util.LinkedHashMap;
  * <p>
  * 所有方法都是 static，不做状态管理。
  * 节点内部收集 List&lt;GraphEvent&gt;，最终写入 PENDING_EVENTS。
- * StateGraph*Agent 从 NodeOutput 中读取这些事件。
+ * StateGraph*Agent 从 RunStep 中读取这些事件。
  *
  * @author SnSclaw
  */
@@ -285,10 +285,10 @@ public final class GraphEventPublisher {
     // ===== 提取方法 =====
 
     /**
-     * 从 NodeOutput 中提取 PENDING_EVENTS
+     * 从 RunStep 中提取 PENDING_EVENTS
      */
     @SuppressWarnings("unchecked")
-    public static List<GraphEvent> extractEvents(NodeOutput output) {
+    public static List<GraphEvent> extractEvents(RunStep output) {
         if (output == null || output.state() == null) {
             return List.of();
         }

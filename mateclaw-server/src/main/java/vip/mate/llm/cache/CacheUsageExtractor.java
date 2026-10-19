@@ -3,6 +3,7 @@ package vip.mate.llm.cache;
 import org.springframework.ai.chat.metadata.Usage;
 
 import java.lang.reflect.Method;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -13,13 +14,13 @@ import java.util.concurrent.ConcurrentMap;
  * 没有 cache / reasoning 维度；但 {@link Usage#getNativeUsage()} 会返回 provider 的原生
  * usage 对象。各 provider 的字段位置：</p>
  * <ul>
- *   <li><b>Anthropic</b>（{@code AnthropicApi.Usage}）：顶层 {@code cacheReadInputTokens} /
+ *   <li><b>Anthropic</b>（native SDK usage）：顶层 {@code cacheReadInputTokens} /
  *       {@code cacheCreationInputTokens}。注意其 {@code inputTokens} <b>不含</b>缓存部分
  *       （加法口径）。无 reasoning 计数。</li>
- *   <li><b>OpenAI 兼容</b>（{@code OpenAiApi.Usage}）：嵌套 {@code promptTokensDetails.cachedTokens}
+ *   <li><b>OpenAI 兼容</b>（native SDK usage）：嵌套 {@code promptTokensDetails.cachedTokens}
  *       与 {@code completionTokenDetails.reasoningTokens}；{@code promptTokens} <b>已含</b>
  *       缓存命中部分（包含口径）。无 cache 写入计数。</li>
- *   <li><b>DashScope</b>（{@code DashScopeApi.TokenUsage}）：嵌套
+ *   <li><b>DashScope</b>（native transport usage）：嵌套
  *       {@code promptTokenDetailed.cachedTokens}；包含口径，无写入/reasoning 计数。</li>
  * </ul>
  *
@@ -105,7 +106,10 @@ public final class CacheUsageExtractor {
         Method m = METHOD_CACHE.computeIfAbsent(key, k -> resolveAccessor(cls, accessor));
         if (m == NULL_METHOD) return null;
         try {
-            return m.invoke(target);
+            Object value = m.invoke(target);
+            // Native SDK details and counters are Optional rather than nullable records.
+            while (value instanceof Optional<?> optional) value = optional.orElse(null);
+            return value;
         } catch (ReflectiveOperationException ignored) {
             return null;
         }

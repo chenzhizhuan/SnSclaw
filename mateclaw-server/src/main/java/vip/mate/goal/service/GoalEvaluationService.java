@@ -10,6 +10,10 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.converter.BeanOutputConverter;
+import tools.jackson.core.StreamReadFeature;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.cfg.EnumFeature;
+import tools.jackson.databind.json.JsonMapper;
 import org.springframework.ai.evaluation.EvaluationRequest;
 import org.springframework.ai.evaluation.EvaluationResponse;
 import org.springframework.ai.evaluation.Evaluator;
@@ -101,10 +105,14 @@ public class GoalEvaluationService implements Evaluator {
         this.objectMapper = objectMapper;
         // Preserve converter tolerance for extra fields, but never silently
         // choose the last value of an ambiguous model-produced JSON key.
-        ObjectMapper evaluatorJson = objectMapper.copy()
-                .disable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .enable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-                .enable(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
+        // The AI2 converter owns a Jackson3 boundary; stored application data remains Jackson2.
+        JsonMapper evaluatorJson = JsonMapper.builder()
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+                .enable(EnumFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL)
+                .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+                .build();
         this.draftConverter = new BeanOutputConverter<>(GoalCriteriaDraft.class, evaluatorJson);
         this.verdictConverter = new BeanOutputConverter<>(GoalChecklistVerdict.class, evaluatorJson);
     }
