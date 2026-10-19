@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import vip.mate.memory.spi.MemoryManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
         "mateclaw.skill.workspace.root=${java.io.tmpdir}/mateclaw-goal-replay-skills-${random.uuid}"
 })
 class OfflineGoalServiceTaskReplayTest {
-    @MockBean MemoryManager memory;
+    @MockitoBean MemoryManager memory;
     @Autowired GoalService goals;
     @Autowired JdbcTemplate jdbc;
     private byte[] fixture() throws Exception {

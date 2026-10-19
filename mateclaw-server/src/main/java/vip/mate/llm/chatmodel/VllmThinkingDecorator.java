@@ -4,8 +4,6 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.model.ModelOptionsUtils;
-import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import reactor.core.publisher.Flux;
 import vip.mate.llm.model.ModelProviderEntity;
@@ -33,31 +31,27 @@ final class VllmThinkingDecorator implements ChatModel {
 
     @Override public ChatResponse call(Prompt prompt) { return delegate.call(transform(prompt)); }
     @Override public Flux<ChatResponse> stream(Prompt prompt) { return delegate.stream(transform(prompt)); }
-    @Override public ChatOptions getDefaultOptions() { return delegate.getDefaultOptions(); }
+    @Override public ChatOptions getOptions() { return delegate.getOptions(); }
 
     private Prompt transform(Prompt prompt) {
         // Capture on the caller's thread, before Reactor subscription or worker handoff.
         String level = ThinkingLevelHolder.get();
         if (level == null || level.isBlank()) return prompt;
         ChatOptions runtime = prompt.getOptions();
-        OpenAiChatOptions patched = runtime instanceof OpenAiChatOptions options
-                ? OpenAiChatOptions.fromOptions(options)
-                : runtime == null ? new OpenAiChatOptions()
-                : runtime instanceof ToolCallingChatOptions toolOptions
-                ? ModelOptionsUtils.copyToTarget(toolOptions, ToolCallingChatOptions.class, OpenAiChatOptions.class)
-                : ModelOptionsUtils.copyToTarget(runtime, ChatOptions.class, OpenAiChatOptions.class);
+        OpenAiChatOptions.Builder builder = OpenAiWirePolicyChatModel.mergeOptions(delegate.getOptions(), runtime).mutate();
+        OpenAiChatOptions patched = builder.build();
         Map<String, Object> extra = new LinkedHashMap<>();
         Map<String, Object> template = new LinkedHashMap<>();
-        if (delegate.getDefaultOptions() instanceof OpenAiChatOptions defaults) {
+        if (delegate.getOptions() instanceof OpenAiChatOptions defaults) {
             mergeExtra(extra, template, defaults.getExtraBody());
         }
         mergeExtra(extra, template, patched.getExtraBody());
         template.put("enable_thinking", !"off".equalsIgnoreCase(level));
         extra.put("chat_template_kwargs", template);
-        patched.setExtraBody(extra);
+        builder.extraBody(extra);
         // vLLM template switching does not use OpenAI's effort levels.
-        patched.setReasoningEffort(null);
-        return new Prompt(prompt.getInstructions(), patched);
+        builder.reasoningEffort(null);
+        return new Prompt(prompt.getInstructions(), builder.build());
     }
 
     private static void mergeExtra(Map<String, Object> extra, Map<String, Object> template, Map<String, Object> source) {

@@ -18,11 +18,13 @@ cd snsclaw
 ### 2. Start the backend
 
 ```bash
-cd snsclaw-server
-mvn spring-boot:run
+# From the repository root; use its configured models and workspace
+SPRING_DATASOURCE_URL="jdbc:h2:file:$PWD/data/mateclaw;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE" \
+MATECLAW_WORKSPACE_SANDBOX_ROOT="$PWD/data/workspace" \
+mvn -pl mateclaw-server spring-boot:run
 ```
 
-Backend starts on port 18088. H2 console at `/h2-console`, Swagger UI at `/swagger-ui.html`.
+Use the repository-root `data/` directory; starting against `mateclaw-server/data/` creates a separate database without your configured models. Backend starts on port 18088. H2 console at `/h2-console`, Swagger UI at `/swagger-ui.html`.
 
 ::: tip
 Model configuration is **UI-driven** — no need to set `DASHSCOPE_API_KEY` as an env var to start. Log in, go to `Settings → Models`, add a provider there.
@@ -33,7 +35,7 @@ Model configuration is **UI-driven** — no need to set `DASHSCOPE_API_KEY` as a
 ```bash
 cd snsclaw-ui
 npm install
-npm run dev
+npm run dev -- --host 127.0.0.1
 ```
 
 Frontend on port 5173, proxies `/api` to the backend.
@@ -117,16 +119,16 @@ Put new code in the right `vip.mate.*` package:
 
 ### Code style
 
-- **Java 17+ features encouraged** — records, sealed classes, text blocks, pattern matching, `var` for obvious local types
+- **Java 21 features encouraged** — records, sealed classes, text blocks, pattern matching, `var` for obvious local types
 - **Constructor injection**, not field injection
 - **Naming**: `XxxService`, `XxxController`, `XxxMapper`, `XxxEntity`
 - **Database**: MyBatis Plus, not JPA. `mate_` prefix. camelCase Java fields → snake_case columns.
 - **Logical delete** via `deleted` column
 - **Every table** needs `create_time`, `update_time`, `deleted`
 
-### Agent graph is a StateGraph
+### Native loop, application policies
 
-Don't look for a `BaseAgent` class hierarchy — the agent runtime is a **StateGraph** of nodes and edges. When you're adding agent behavior, think in terms of:
+AgentScope owns the outer ReAct loop, while `ExplicitPlanRuntime` owns plan phases. Business policy remains in application callbacks wired by `AgentGraphBuilder`. When adding behavior, work with:
 
 - **A node** (reasoning, action, observation, plan generation) — in `vip.mate.agent.graph.node` or `vip.mate.agent.graph.plan.node`
 - **An edge** or **dispatcher** — in `vip.mate.agent.graph.edge` or `vip.mate.agent.graph.plan.edge`
@@ -168,9 +170,19 @@ public class MyNewTool {
 3. Add configuration under `mate.memory.providers.{name}`
 4. Add tests
 
+### External plugins after the runtime upgrade
+
+Rebuild external plugins against the current `mateclaw-plugin-api` and Java 21. Plugins that call Spring AI provider APIs must migrate those calls to Spring AI 2 before rebuilding; removed provider DTOs and mutable setters are not binary compatible. Keep host-provided MateClaw API, Spring Boot and Spring AI libraries out of the plugin JAR. The compatibility bridge preserves defaults from legacy `ChatModel.getDefaultOptions()` implementations, but does not guarantee compatibility for older provider SDK bytecode. Test plugin loading, tool registration and a real invocation against the upgraded host before deployment.
+
+MyBatis Plus uses the Spring Boot 4 starter at 3.5.17. Its Spring integration classes moved from `com.baomidou.mybatisplus.extension.spring` to `com.baomidou.mybatisplus.spring`; update imports such as `MybatisSqlSessionFactoryBean` when rebuilding code that uses those classes.
+
 ### SQL schema changes
 
-Schema is managed by **Flyway**. New DDL goes in a fresh `V{next}__description.sql` file under **both** `db/migration/h2/` and `db/migration/mysql/` directories. Each file must be compatible with its dialect (MySQL doesn't support `ADD COLUMN IF NOT EXISTS` — use an `INFORMATION_SCHEMA` guard; H2 supports it natively).
+Schema is managed by **Flyway**. New DDL goes in a fresh `V{next}__description.sql` file under `db/migration/h2/`, `db/migration/mysql/` and `db/migration/kingbase/` (shared by PostgreSQL and KingbaseES profiles). Each file must be compatible with its dialect (MySQL doesn't support `ADD COLUMN IF NOT EXISTS` — use an `INFORMATION_SCHEMA` guard; H2 supports it natively).
+
+Migration startup validates applied checksums by default. The runtime upgrade corrects MySQL V192 to update its temporary merge table through one JOIN; MySQL 8 cannot reopen that table across several subqueries. Back up existing databases before upgrading. An already-applied V192 requires a reviewed checksum repair; a failed nontransactional migration may also retain cleanup changes and a failed history record. `mateclaw.flyway.auto-repair=true` is an explicit operator opt-in for repair before migration. Inspect the affected history and script first, then return the setting to its default `false`; never enable repair routinely to hide drift. Test both a fresh database and an upgraded copy. Application rollback requires the matching prior database backup when migration changes cannot be reversed.
+
+Before switching runtime versions, stop scheduled Goal/Cron dispatch and new conversation turns, drain active callbacks, and back up the database and workspace together. Reconcile attempts with `tool_outcome_uncertain` or an unfinished tool-entry checkpoint before enabling the prior runtime: older settlement code does not enforce the new unknown-outcome guard. Restoring a database backup does not undo external tool effects. Keep uncertain work blocked until its external result is established; do not resume it by clearing checkpoint fields. Validate the restored copy, approval records and conversation history before reopening dispatch.
 
 Seed data is loaded by `DatabaseBootstrapRunner` from `db/data-*.sql` — idempotent (`INSERT ... ON DUPLICATE KEY UPDATE` / `MERGE INTO`).
 
@@ -244,8 +256,8 @@ onMounted(async () => {
 ```bash
 cd snsclaw-server
 mvn test                                  # All tests
-mvn test -Dtest=StateGraphReActAgentTest  # Single class
-mvn test -Dtest=StateGraphReActAgentTest#testChat  # Single method
+mvn test -Dtest=NativePolicyDriverTest  # Single class
+mvn test -Dtest=NativePolicyDriverTest#toolRoundUsesOneBatchAndDetachedApplicationHistory  # Single method
 ```
 
 ### Frontend type check and lint
@@ -336,5 +348,7 @@ Good bug reports get good fixes.
 
 - [Quick Start](./quickstart) — setup walkthrough
 - [Introduction](./intro) — architecture overview
-- [Architecture](./architecture) — StateGraph deep-dive for developers
+- [Architecture](./architecture) — native runtime guide for developers
 - [Roadmap](./roadmap) — what we're working on next
+
+> AI生成

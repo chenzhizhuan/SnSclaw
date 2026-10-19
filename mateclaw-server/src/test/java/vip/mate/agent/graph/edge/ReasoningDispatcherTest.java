@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.edge;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ class ReasoningDispatcherTest {
     @Test
     @DisplayName("需要工具调用时路由到 action")
     void shouldRouteToActionWhenToolCallNeeded() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 NEEDS_TOOL_CALL, true,
                 CURRENT_ITERATION, 0,
                 MAX_ITERATIONS, 10
@@ -36,7 +36,7 @@ class ReasoningDispatcherTest {
     @Test
     @DisplayName("不需要工具调用时路由到 final_answer_node")
     void shouldRouteToFinalAnswerWhenNoToolCall() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 NEEDS_TOOL_CALL, false,
                 CURRENT_ITERATION, 0,
                 MAX_ITERATIONS, 10
@@ -47,7 +47,7 @@ class ReasoningDispatcherTest {
     @Test
     @DisplayName("缺少 NEEDS_TOOL_CALL 键时默认路由到 final_answer_node")
     void shouldRouteToFinalAnswerWhenKeyMissing() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 CURRENT_ITERATION, 0,
                 MAX_ITERATIONS, 10
         ));
@@ -57,7 +57,7 @@ class ReasoningDispatcherTest {
     @Test
     @DisplayName("动作完成门控请求续跑时回到 reasoning")
     void shouldContinueReasoningWhenCompletionGateRejectsCandidate() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 CONTINUE_REASONING, true,
                 NEEDS_TOOL_CALL, false,
                 CURRENT_ITERATION, 0,
@@ -69,7 +69,7 @@ class ReasoningDispatcherTest {
     @Test
     @DisplayName("迭代超限时路由到 limit_exceeded")
     void shouldRouteToLimitExceededWhenOverLimit() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 CURRENT_ITERATION, 10,
                 MAX_ITERATIONS, 10,
                 NEEDS_TOOL_CALL, true
@@ -80,7 +80,7 @@ class ReasoningDispatcherTest {
     @Test
     @DisplayName("需要总结时路由到 summarizing")
     void shouldRouteToSummarizingWhenNeeded() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 SHOULD_SUMMARIZE, true,
                 NEEDS_TOOL_CALL, false,
                 CURRENT_ITERATION, 0,

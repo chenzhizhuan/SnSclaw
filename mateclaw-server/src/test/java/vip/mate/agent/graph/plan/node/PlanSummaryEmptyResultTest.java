@@ -1,11 +1,15 @@
 package vip.mate.agent.graph.plan.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.model.ChatModel;
 import vip.mate.agent.graph.NodeStreamingChatHelper;
+import vip.mate.agent.GraphEventPublisher;
+import vip.mate.agent.graph.state.MateClawStateKeys;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.mockito.ArgumentCaptor;
 import vip.mate.agent.graph.plan.state.PlanStateKeys;
 import vip.mate.planning.service.PlanningService;
 
@@ -53,17 +57,94 @@ class PlanSummaryEmptyResultTest {
         return new NodeStreamingChatHelper.StreamResult(text, thinking, null, List.of(), false, 0, 0);
     }
 
-    private OverAllState state() {
+    private RunState state() {
         Map<String, Object> vals = new HashMap<>();
         vals.put(PlanStateKeys.PLAN_ID, 42L);
         vals.put(PlanStateKeys.GOAL, "对订单数据做质量体检");
         vals.put(PlanStateKeys.COMPLETED_RESULTS,
                 List.of("第 1 步：主键唯一性，发现 3 条重复", "第 2 步：缺失率统计完成"));
-        return new OverAllState(vals);
+        return new RunState(vals);
     }
 
     private String summaryOf(Map<String, Object> out) {
         return String.valueOf(out.get(PlanStateKeys.FINAL_SUMMARY));
+    }
+
+    @Test
+    void summaryPromptUsesAuthoritativeJoinedExecutionEvents() throws Exception {
+        when(streamingHelper.streamCall(any(), any(), any(), anyString()))
+                .thenReturn(result("summary", ""));
+        RunState state = state();
+        state.replace(MateClawStateKeys.PENDING_EVENTS, List.of(
+                GraphEventPublisher.toolStart("failed", "tool_call", "{\"toolName\":\"execute_code\"}"),
+                GraphEventPublisher.toolComplete("failed", "tool_call", "missing language", false),
+                GraphEventPublisher.toolStart("ok", "execute_code", "{\"code\":\"print(2)\",\"language\":\"python\"}"),
+                GraphEventPublisher.toolComplete("ok", "execute_code", "2", true)));
+
+        node.apply(state);
+
+        var prompt = ArgumentCaptor.forClass(Prompt.class);
+        verify(streamingHelper).streamCall(eq(chatModel), prompt.capture(), any(), eq("plan_summary"));
+        String system = prompt.getValue().getSystemMessage().getText();
+        assertTrue(system.contains("\"failedCallCount\":1"));
+        assertTrue(system.contains("\"operationIdentity\":\"unknown\""));
+        assertTrue(system.contains("sha256:"));
+        assertTrue(system.contains("does not prove task completion"));
+        assertFalse(system.contains("print(2)"));
+    }
+
+    @Test
+    void zeroFailureEventsSupplyExactZeroButAbsentEventsDoNotInventEvidence() throws Exception {
+        when(streamingHelper.streamCall(any(), any(), any(), anyString()))
+                .thenReturn(result("summary", ""));
+        RunState state = state();
+        state.replace(MateClawStateKeys.PENDING_EVENTS, List.of(
+                GraphEventPublisher.toolComplete("ok", "execute_code", "2", true)));
+        node.apply(state);
+        node.apply(state());
+
+        var prompt = ArgumentCaptor.forClass(Prompt.class);
+        verify(streamingHelper, org.mockito.Mockito.times(2))
+                .streamCall(eq(chatModel), prompt.capture(), any(), eq("plan_summary"));
+        assertTrue(prompt.getAllValues().get(0).getSystemMessage().getText().contains("\"failedCallCount\":0"));
+        assertTrue(prompt.getAllValues().get(0).getSystemMessage().getText().contains("Do not invent failed attempts"));
+        assertFalse(prompt.getAllValues().get(1).getSystemMessage().getText().contains("failedCallCount"));
+    }
+
+    @Test
+    void payloadRejectedSummaryPreservesOriginalResultsAndUsageWithoutCompletingPlan() throws Exception {
+        when(streamingHelper.streamCall(any(), any(), any(), anyString())).thenReturn(
+                new NodeStreamingChatHelper.StreamResult("untrusted partial summary", "thinking", null,
+                        List.of(), false, 17, 3, true, "HTTP 413",
+                        NodeStreamingChatHelper.ErrorType.PAYLOAD_TOO_LARGE, false, 4, 5, 2));
+        RunState state = state();
+        state.replace(MateClawStateKeys.PROMPT_TOKENS, 10);
+        state.replace(MateClawStateKeys.COMPLETION_TOKENS, 2);
+        state.replace(MateClawStateKeys.LLM_CALL_COUNT, 4);
+
+        Map<String, Object> output = node.apply(state);
+
+        String summary = summaryOf(output);
+        assertTrue(summary.contains("413"));
+        assertTrue(summary.contains("未完成"));
+        assertTrue(summary.contains("主键唯一性"));
+        assertFalse(summary.contains("untrusted partial summary"));
+        verify(planningService, never()).completePlan(any(), anyString());
+        verify(planningService).markPlanFailed(eq(42L), anyString());
+        assertEquals("incomplete", output.get(MateClawStateKeys.FINISH_REASON));
+        assertEquals(false, output.get(MateClawStateKeys.CONTENT_STREAMED));
+        assertEquals(false, output.get(MateClawStateKeys.THINKING_STREAMED));
+        assertEquals(27, output.get(MateClawStateKeys.PROMPT_TOKENS));
+        assertEquals(5, output.get(MateClawStateKeys.COMPLETION_TOKENS));
+        assertEquals(5, output.get(MateClawStateKeys.LLM_CALL_COUNT));
+        assertEquals(4, output.get(MateClawStateKeys.CACHE_READ_TOKENS));
+        assertEquals(5, output.get(MateClawStateKeys.CACHE_WRITE_TOKENS));
+        assertEquals(2, output.get(MateClawStateKeys.REASONING_TOKENS));
+        var events = (List<GraphEventPublisher.GraphEvent>) output.get(MateClawStateKeys.PENDING_EVENTS);
+        assertTrue(events.stream().anyMatch(event -> GraphEventPublisher.EVENT_FINISH_REASON.equals(event.type())
+                && "incomplete".equals(event.data().get("reason"))));
+        verify(streamingHelper).streamCall(any(), any(), any(), eq("plan_summary"));
+        org.mockito.Mockito.verifyNoMoreInteractions(streamingHelper);
     }
 
     @Test
@@ -150,7 +231,7 @@ class PlanSummaryEmptyResultTest {
         vals.put(PlanStateKeys.GOAL, "空计划");
         vals.put(PlanStateKeys.COMPLETED_RESULTS, List.of());
 
-        String summary = summaryOf(node.apply(new OverAllState(vals)));
+        String summary = summaryOf(node.apply(new RunState(vals)));
 
         assertFalse(summary.isBlank());
         assertTrue(summary.contains("没有已完成的步骤结果"), summary);

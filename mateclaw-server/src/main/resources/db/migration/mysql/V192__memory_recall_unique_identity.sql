@@ -13,13 +13,10 @@ FROM mate_memory_recall
 GROUP BY agent_id, filename, scope, owner_key
 HAVING COUNT(*) > 1;
 UPDATE mate_memory_recall AS target
-SET recall_count = (SELECT merged.recall_total FROM tmp_memory_recall_merge merged
-                    WHERE merged.keep_id = target.id),
-    daily_count = (SELECT merged.daily_total FROM tmp_memory_recall_merge merged
-                   WHERE merged.keep_id = target.id),
-    last_recalled_at = (SELECT merged.last_recalled FROM tmp_memory_recall_merge merged
-                        WHERE merged.keep_id = target.id)
-WHERE target.id IN (SELECT keep_id FROM tmp_memory_recall_merge);
+JOIN tmp_memory_recall_merge AS merged ON merged.keep_id = target.id
+SET target.recall_count = merged.recall_total,
+    target.daily_count = merged.daily_total,
+    target.last_recalled_at = merged.last_recalled;
 DROP TABLE tmp_memory_recall_merge;
 DELETE FROM mate_memory_recall
 WHERE id NOT IN (

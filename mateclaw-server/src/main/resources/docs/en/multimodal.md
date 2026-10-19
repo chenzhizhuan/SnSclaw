@@ -197,3 +197,7 @@ In short: configure a vision model under **Settings → Models → Multimodal si
 - [Chat & Messaging](./chat) — attachment input, multimodal sidecar routing, how generated media attaches to messages
 - [Models](./models) — provider configuration UI, multimodal sidecar settings
 - [Tools](./tools) — the tool system that hosts multimodal generation
+
+## Read-aloud voices and preview (3.0.0)
+
+Chat read-aloud supports Edge and DashScope. Provider voice lists support selection and preview; availability depends on provider configuration. APIs: GET /api/v1/tts/voices, POST /api/v1/tts/preview and POST /api/v1/tts/synthesize.

@@ -50,4 +50,17 @@ public final class SkillBundleFiles {
         }
         return files;
     }
+    /** Read only DB-persisted buckets, preserving every source byte. */
+    public static Map<String, byte[]> readDbEligibleBytes(SkillBundleSource source) throws IOException {
+        Map<String, byte[]> files = new LinkedHashMap<>();
+        for (SkillBundleSource.BundleAsset asset : source.assets()) {
+            String path = asset.relativePath();
+            if (!isDbEligible(path)) continue;
+            try (InputStream is = asset.open().get()) {
+                files.put(path, is.readAllBytes());
+            }
+        }
+        return files;
+    }
+
 }

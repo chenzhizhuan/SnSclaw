@@ -1,8 +1,8 @@
 package vip.mate.agent.graph.plan.edge;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
-import com.alibaba.cloud.ai.graph.StateGraph;
-import com.alibaba.cloud.ai.graph.action.EdgeAction;
+import vip.mate.agent.runtime.state.RunState;
+import vip.mate.agent.runtime.plan.ExplicitPlanRuntime;
+import vip.mate.agent.runtime.state.EdgeAction;
 import vip.mate.agent.graph.plan.state.PlanStateKeys;
 import vip.mate.agent.graph.state.MateClawStateKeys;
 
@@ -28,7 +28,7 @@ public class StepProgressDispatcher implements EdgeAction {
 
     @Override
     @SuppressWarnings("unchecked")
-    public String apply(OverAllState state) {
+    public String apply(RunState state) {
         // 审批暂停态或步骤执行失败中止态：直接结束当前图 tick
         String currentPhase = state.value(MateClawStateKeys.CURRENT_PHASE, "");
         if ("plan_aborted".equals(currentPhase) && goals != null) {
@@ -39,7 +39,7 @@ public class StepProgressDispatcher implements EdgeAction {
             }
         }
         if ("awaiting_approval".equals(currentPhase) || "plan_aborted".equals(currentPhase)) {
-            return StateGraph.END;
+            return ExplicitPlanRuntime.END;
         }
         // Step-failure recovery: a failed step requested a re-plan of the
         // remaining work. Route back to PlanGeneration instead of aborting;

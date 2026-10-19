@@ -18,11 +18,13 @@ cd snsclaw
 ### 2. 启动后端
 
 ```bash
-cd snsclaw-server
-mvn spring-boot:run
+# 从仓库根目录运行，使用根目录下已配置的模型数据库与工作空间
+SPRING_DATASOURCE_URL="jdbc:h2:file:$PWD/data/mateclaw;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE" \
+MATECLAW_WORKSPACE_SANDBOX_ROOT="$PWD/data/workspace" \
+mvn -pl mateclaw-server spring-boot:run
 ```
 
-后端在 18088 端口。H2 console 在 `/h2-console`，Swagger UI 在 `/swagger-ui.html`。
+使用仓库根目录的 `data/`；`mateclaw-server/data/` 是另一份数据库，不含已配置模型。后端在 18088 端口。H2 console 在 `/h2-console`，Swagger UI 在 `/swagger-ui.html`。
 
 ::: tip
 模型配置**走 UI**——启动**不再需要**设 `DASHSCOPE_API_KEY` 环境变量。登录之后去 `设置 → 模型` 添加供应商。
@@ -33,7 +35,7 @@ mvn spring-boot:run
 ```bash
 cd snsclaw-ui
 npm install
-npm run dev
+npm run dev -- --host 127.0.0.1
 ```
 
 前端在 5173 端口，把 `/api` proxy 到后端。
@@ -117,16 +119,16 @@ chore(deps): upgrade Spring Boot to 3.5.1
 
 ### 代码风格
 
-- **鼓励 Java 17+ 特性**——record、sealed 类、text block、模式匹配、类型明显时用 `var`
+- **鼓励 Java 21 特性**——record、sealed 类、text block、模式匹配、类型明显时用 `var`
 - Spring bean 用**构造器注入**
 - **命名**：`XxxService`、`XxxController`、`XxxMapper`、`XxxEntity`
 - **数据库**：MyBatis Plus，不用 JPA。`mate_` 前缀。camelCase Java 字段 → snake_case 列。
 - **逻辑删除**走 `deleted` 列
 - **每张表**都要有 `create_time`、`update_time`、`deleted`
 
-### Agent 图是一张 StateGraph
+### 原生循环与应用策略
 
-**不要去找 `BaseAgent` 类层次**——Agent 运行时是一张**节点和边组成的 StateGraph**。加 Agent 行为时，想的是：
+AgentScope 管理外层 ReAct 循环，`ExplicitPlanRuntime` 管理计划阶段。业务策略通过 `AgentGraphBuilder` 接入应用回调。加 Agent 行为时，使用：
 
 - **一个节点**（reasoning、action、observation、plan generation）——在 `vip.mate.agent.graph.node` 或 `vip.mate.agent.graph.plan.node`
 - **一条边**或 **dispatcher**——在 `vip.mate.agent.graph.edge` 或 `vip.mate.agent.graph.plan.edge`
@@ -167,9 +169,19 @@ public class MyNewTool {
 3. 在 `mate.memory.providers.{name}` 下加配置
 4. 加测试
 
+### 运行时升级后的外部插件
+
+使用当前 `mateclaw-plugin-api` 和 Java 21 重新编译外部插件。如果插件直接调用 Spring AI 的供应商 API，先将这些调用迁移到 Spring AI 2；已移除的供应商 DTO 和可变 setter 不具备二进制兼容性。插件 JAR 不要打包由宿主提供的 MateClaw API、Spring Boot 和 Spring AI 库。兼容桥接会保留旧版 `ChatModel.getDefaultOptions()` 实现提供的默认选项，但不能保证旧供应商 SDK 字节码可用。部署前在升级后的宿主中验证插件加载、工具注册和实际调用。
+
+MyBatis Plus 使用3.5.17的 Spring Boot 4 starter。Spring 集成类已从 `com.baomidou.mybatisplus.extension.spring` 移至 `com.baomidou.mybatisplus.spring`；重新编译直接使用这些类的代码时，需要更新 `MybatisSqlSessionFactoryBean` 等导入。
+
 ### SQL schema 变更
 
-Schema 由 **Flyway** 管理。新 DDL 写在 `db/migration/h2/` 和 `db/migration/mysql/` 下各一份 `V{next}__description.sql` 文件。每份文件必须兼容对应方言（MySQL 不支持 `ADD COLUMN IF NOT EXISTS`，用 `INFORMATION_SCHEMA` 守卫；H2 原生支持）。
+Schema 由 **Flyway** 管理。新 DDL 写在 `db/migration/h2/`、`db/migration/mysql/` 和 `db/migration/kingbase/`（PostgreSQL 与 KingbaseES profile 共用）下各一份 `V{next}__description.sql` 文件。每份文件必须兼容对应方言（MySQL 不支持 `ADD COLUMN IF NOT EXISTS`，用 `INFORMATION_SCHEMA` 守卫；H2 原生支持）。
+
+迁移启动默认校验已执行脚本的校验和。本次运行时升级将 MySQL V192 改为一次 JOIN 更新临时合并表，因为 MySQL 8 不允许多个子查询重复打开该临时表。升级前先备份已有数据库。已经执行过 V192 的数据库需要审核后明确修复校验和；非事务迁移失败时，也可能保留清理结果和失败的历史记录。`mateclaw.flyway.auto-repair=true` 是操作人员明确启用的启动前修复选项。先检查受影响的历史和脚本，处理后恢复默认 `false`，不要长期启用它来隐藏脚本漂移。分别验证全新数据库和已有数据库的副本。无法逆转迁移时，回滚应用需要恢复配套的旧数据库备份。
+
+切换运行时版本前，停止 Goal/Cron 调度和新会话请求，等待正在执行的工具结束，并同时备份数据库与工作区。启用旧运行时前，先核对含 `tool_outcome_uncertain` 或未完成工具入口检查点的尝试；旧版结算代码没有本次新增的不确定结果守卫。恢复数据库备份不会撤销外部工具已经产生的效果。结果尚未查明时保持阻塞，不要通过清空检查点字段恢复执行。先在恢复副本中验证审批记录、会话历史及数据库，再重新开放调度。
 
 种子数据由 `DatabaseBootstrapRunner` 从 `db/data-*.sql` 加载——幂等（`INSERT ... ON DUPLICATE KEY UPDATE` / `MERGE INTO`）。
 
@@ -243,8 +255,8 @@ onMounted(async () => {
 ```bash
 cd snsclaw-server
 mvn test                                  # 全部测试
-mvn test -Dtest=StateGraphReActAgentTest  # 单个类
-mvn test -Dtest=StateGraphReActAgentTest#testChat  # 单个方法
+mvn test -Dtest=NativePolicyDriverTest  # 单个类
+mvn test -Dtest=NativePolicyDriverTest#toolRoundUsesOneBatchAndDetachedApplicationHistory  # 单个方法
 ```
 
 ### 前端类型检查和 lint
@@ -333,5 +345,7 @@ Before / After。
 
 - [快速开始](./quickstart)——搭建走一遍
 - [项目介绍](./intro)——架构概览
-- [架构说明](./architecture)——给开发者的 StateGraph 深入
+- [架构说明](./architecture)——给开发者的原生运行时说明
 - [路线图](./roadmap)——我们接下来在做什么
+
+> AI生成

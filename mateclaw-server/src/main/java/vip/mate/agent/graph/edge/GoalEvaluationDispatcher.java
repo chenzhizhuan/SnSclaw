@@ -1,7 +1,7 @@
 package vip.mate.agent.graph.edge;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
-import com.alibaba.cloud.ai.graph.action.EdgeAction;
+import vip.mate.agent.runtime.state.RunState;
+import vip.mate.agent.runtime.state.EdgeAction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,7 +29,7 @@ public class GoalEvaluationDispatcher implements EdgeAction {
     private final String terminalTarget;
 
     @Override
-    public String apply(OverAllState state) {
+    public String apply(RunState state) {
         // Re-enter the loop only when a followup was injected AND this was not a
         // terminal evaluation pass. GOAL_FOLLOWUP_INJECTED uses the REPLACE key
         // strategy and is never cleared by the reasoning nodes, so after a

@@ -3,6 +3,7 @@ package vip.mate.interop.a2a;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -42,7 +43,8 @@ class A2aJsonRpcControllerTest {
                 "name", "SnSclaw",
                 "skills", List.of(Map.of("id", "agent-1", "name", "Agent"))));
         A2aAgentCardController card = new A2aAgentCardController(cardService);
-        mvc = MockMvcBuilders.standaloneSetup(rpc, card).build();
+        mvc = MockMvcBuilders.standaloneSetup(rpc, card)
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper)).build();
     }
 
     @Test

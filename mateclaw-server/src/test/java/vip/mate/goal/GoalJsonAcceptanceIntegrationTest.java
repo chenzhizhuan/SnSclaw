@@ -7,7 +7,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
         "mateclaw.skill.workspace.root=${java.io.tmpdir}/mateclaw-json-acceptance-skills-${random.uuid}"
 })
 class GoalJsonAcceptanceIntegrationTest {
-    @MockBean private MemoryManager memory;
+    @MockitoBean private MemoryManager memory;
     @Autowired private GoalService goals;
     @Autowired private GoalJsonAcceptanceService acceptance;
     @Autowired private vip.mate.goal.controller.GoalJsonAcceptanceController jsonController;

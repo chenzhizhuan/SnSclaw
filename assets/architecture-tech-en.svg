@@ -81,20 +81,20 @@
   <g transform="translate(244, 222)">
     <rect width="172" height="68" rx="10" fill="#f6e2d7" stroke="#ebb08f" stroke-width="0.5" filter="url(#shadowSm)"/>
     <text x="86" y="20" text-anchor="middle" font-size="12" font-weight="700" fill="#d96d46">Native Runtime</text>
-    <text x="86" y="36" text-anchor="middle" font-size="9" fill="#665245">StateGraph · ReAct</text>
-    <text x="86" y="50" text-anchor="middle" font-size="9" fill="#9b7d6c">Plan-Execute · Goals · Teams</text>
+    <text x="86" y="36" text-anchor="middle" font-size="9" fill="#665245">AgentScope 2 · ReAct</text>
+    <text x="86" y="50" text-anchor="middle" font-size="9" fill="#9b7d6c">Plan-step execution</text>
   </g>
   <g transform="translate(432, 222)">
     <rect width="172" height="68" rx="10" fill="#f6e2d7" stroke="#ebb08f" stroke-width="0.5" filter="url(#shadowSm)"/>
     <text x="86" y="20" text-anchor="middle" font-size="12" font-weight="700" fill="#d96d46">DSH Runtime</text>
     <text x="86" y="36" text-anchor="middle" font-size="9" fill="#665245">Managed JSON-RPC Process</text>
-    <text x="86" y="50" text-anchor="middle" font-size="9" fill="#665245">DeepSeek Harness · Cordis</text>
+    <text x="86" y="50" text-anchor="middle" font-size="9" fill="#665245">SDK · Pinned upgrades</text>
   </g>
   <g transform="translate(620, 222)">
     <rect width="172" height="68" rx="10" fill="#f6e2d7" stroke="#ebb08f" stroke-width="0.5" filter="url(#shadowSm)"/>
     <text x="86" y="20" text-anchor="middle" font-size="12" font-weight="700" fill="#d96d46">Host Governance</text>
     <text x="86" y="36" text-anchor="middle" font-size="9" fill="#665245">Workspace · Tool Guard</text>
-    <text x="86" y="50" text-anchor="middle" font-size="9" fill="#665245">Approval · Credentials</text>
+    <text x="86" y="50" text-anchor="middle" font-size="9" fill="#665245">Approval · Checkpoints</text>
   </g>
   <g transform="translate(808, 222)">
     <rect width="108" height="68" rx="10" fill="#f6e2d7" stroke="#ebb08f" stroke-width="0.5" filter="url(#shadowSm)"/>
@@ -110,7 +110,7 @@
 
   <g transform="translate(56, 356)">
     <rect width="120" height="68" rx="10" fill="#fff" stroke="#d9cec2" stroke-width="0.5" filter="url(#shadowSm)"/>
-    <text x="60" y="20" text-anchor="middle" font-size="10" font-weight="600" fill="#1d1612">Spring Boot 3.5</text>
+    <text x="60" y="20" text-anchor="middle" font-size="10" font-weight="600" fill="#1d1612">Spring Boot 4.1</text>
     <text x="60" y="36" text-anchor="middle" font-size="9" fill="#9b7d6c">App Framework</text>
     <text x="60" y="50" text-anchor="middle" font-size="8" fill="#9b7d6c">Spring MVC + SSE</text>
   </g>
@@ -158,7 +158,7 @@
 
   <g transform="translate(56, 488)">
     <rect width="130" height="40" rx="8" fill="#fff" stroke="#d9cec2" stroke-width="0.5"/>
-    <text x="65" y="17" text-anchor="middle" font-size="11" font-weight="600" fill="#1d1612">H2 / MySQL 8</text>
+    <text x="65" y="17" text-anchor="middle" font-size="11" font-weight="600" fill="#1d1612">H2 · PG · MySQL</text>
     <text x="65" y="31" text-anchor="middle" font-size="9" fill="#9b7d6c">Relational Storage</text>
   </g>
   <g transform="translate(200, 488)">
@@ -194,7 +194,7 @@
   <line x1="250" y1="438" x2="250" y2="454" stroke="#665245" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.4"/>
   <line x1="710" y1="438" x2="710" y2="454" stroke="#665245" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.4"/>
 
-  <text x="480" y="575" text-anchor="middle" font-size="10" fill="#9b7d6c">Java 21+ · Spring Boot 3.5 · Spring AI Alibaba · Vue 3 · TypeScript · Vite · Electron</text>
+  <text x="480" y="575" text-anchor="middle" font-size="10" fill="#9b7d6c">3.0.0-SNAPSHOT · Java 21 · Boot 4 · Spring AI 2 · AgentScope 2 · Vue 3 · Electron</text>
   <rect x="380" y="590" width="200" height="24" rx="12" fill="url(#primary)"/>
   <text x="480" y="607" text-anchor="middle" font-size="11" font-weight="600" fill="#fff" letter-spacing="0.5">claw.sns.app</text>
 </svg>

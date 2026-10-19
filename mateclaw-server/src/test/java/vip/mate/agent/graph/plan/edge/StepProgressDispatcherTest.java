@@ -1,7 +1,7 @@
 package vip.mate.agent.graph.plan.edge;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
-import com.alibaba.cloud.ai.graph.StateGraph;
+import vip.mate.agent.runtime.state.RunState;
+import vip.mate.agent.runtime.plan.ExplicitPlanRuntime;
 import org.junit.jupiter.api.Test;
 import vip.mate.agent.graph.plan.state.PlanStateKeys;
 import vip.mate.agent.graph.state.MateClawStateKeys;
@@ -20,12 +20,12 @@ class StepProgressDispatcherTest {
 
     private final StepProgressDispatcher dispatcher = new StepProgressDispatcher();
 
-    private OverAllState state(String phase, int stepIndex, List<String> steps) {
+    private RunState state(String phase, int stepIndex, List<String> steps) {
         Map<String, Object> vals = new HashMap<>();
         vals.put(MateClawStateKeys.CURRENT_PHASE, phase);
         vals.put(PlanStateKeys.CURRENT_STEP_INDEX, stepIndex);
         vals.put(PlanStateKeys.PLAN_STEPS, steps);
-        return new OverAllState(vals);
+        return new RunState(vals);
     }
 
     @Test
@@ -33,9 +33,9 @@ class StepProgressDispatcherTest {
         var goals = org.mockito.Mockito.mock(vip.mate.goal.service.GoalService.class);
         var goal = new vip.mate.goal.model.GoalEntity(); goal.setId(42L);
         org.mockito.Mockito.when(goals.findActiveByConversation("conv")).thenReturn(goal);
-        var state = new OverAllState(Map.of(MateClawStateKeys.CURRENT_PHASE, "plan_aborted",
+        var state = new RunState(Map.of(MateClawStateKeys.CURRENT_PHASE, "plan_aborted",
                 MateClawStateKeys.CONVERSATION_ID, "conv"));
-        assertEquals(StateGraph.END, new StepProgressDispatcher(goals).apply(state));
+        assertEquals(ExplicitPlanRuntime.END, new StepProgressDispatcher(goals).apply(state));
         org.mockito.Mockito.verify(goals).suspendRuntime(42L, "PLAN_ABORTED");
     }
 
@@ -47,12 +47,12 @@ class StepProgressDispatcherTest {
 
     @Test
     void abortedPhase_routesToEnd() {
-        assertEquals(StateGraph.END, dispatcher.apply(state("plan_aborted", 1, List.of("a", "b"))));
+        assertEquals(ExplicitPlanRuntime.END, dispatcher.apply(state("plan_aborted", 1, List.of("a", "b"))));
     }
 
     @Test
     void awaitingApproval_routesToEnd() {
-        assertEquals(StateGraph.END, dispatcher.apply(state("awaiting_approval", 0, List.of("a"))));
+        assertEquals(ExplicitPlanRuntime.END, dispatcher.apply(state("awaiting_approval", 0, List.of("a"))));
     }
 
     @Test

@@ -47,7 +47,8 @@ class WebChatAuditTrailTest {
     void setUp() {
         jdbc.update("DELETE FROM mate_channel WHERE id = ?", CHANNEL_ID);
         jdbc.update("DELETE FROM mate_agent WHERE id = ?", AGENT_ID);
-        jdbc.update("DELETE FROM mate_audit_event WHERE resource_id = ?", String.valueOf(CHANNEL_ID));
+        jdbc.update("DELETE FROM mate_audit_event WHERE username IN (?, ?)",
+                "webchat:" + CHANNEL_ID + ":vAudit", "webchat:" + CHANNEL_ID + ":vState");
         jdbc.update(
                 "MERGE INTO mate_agent (id, name, agent_type, system_prompt, max_iterations, enabled, " +
                         "workspace_id, create_time, update_time, deleted) " +
@@ -71,12 +72,12 @@ class WebChatAuditTrailTest {
         return WebChatController.computeVisitorToken(SECRET, CHANNEL_ID, visitorId);
     }
 
-    private long awaitAuditCount(String action, long expected, long timeoutMs) throws InterruptedException {
+    private long awaitAuditCount(String action, String visitorId, long expected, long timeoutMs) throws InterruptedException {
         long deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
             Integer c = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM mate_audit_event WHERE action = ?",
-                    Integer.class, action);
+                    "SELECT COUNT(*) FROM mate_audit_event WHERE action = ? AND username = ?",
+                    Integer.class, action, "webchat:" + CHANNEL_ID + ":" + visitorId);
             if (c != null && c >= expected) return c;
             Thread.sleep(50);
         }
@@ -89,12 +90,12 @@ class WebChatAuditTrailTest {
         R<?> r = controller.createSession(API_KEY, req("vAudit", "s1"));
         assertThat(r.getCode()).isEqualTo(200);
 
-        long count = awaitAuditCount("webchat.create-session", 1, 3_000);
+        long count = awaitAuditCount("webchat.create-session", "vAudit", 1, 3_000);
         assertThat(count).isGreaterThan(0);
 
         String actor = jdbc.queryForObject(
-                "SELECT username FROM mate_audit_event WHERE action = 'webchat.create-session' ORDER BY create_time DESC LIMIT 1",
-                String.class);
+                "SELECT username FROM mate_audit_event WHERE action = 'webchat.create-session' AND username = ? ORDER BY create_time DESC LIMIT 1",
+                String.class, "webchat:" + CHANNEL_ID + ":vAudit");
         assertThat(actor).isEqualTo("webchat:" + CHANNEL_ID + ":vAudit");
     }
 
@@ -109,9 +110,9 @@ class WebChatAuditTrailTest {
         controller.archiveSession(API_KEY, token, "vState", "s1", Map.of("archived", true));
         controller.stopSession(API_KEY, token, "vState", "s1");
 
-        assertThat(awaitAuditCount("webchat.rename-session", 1, 3_000)).isGreaterThan(0);
-        assertThat(awaitAuditCount("webchat.pin-session", 1, 3_000)).isGreaterThan(0);
-        assertThat(awaitAuditCount("webchat.archive-session", 1, 3_000)).isGreaterThan(0);
-        assertThat(awaitAuditCount("webchat.stop-session", 1, 3_000)).isGreaterThan(0);
+        assertThat(awaitAuditCount("webchat.rename-session", "vState", 1, 3_000)).isGreaterThan(0);
+        assertThat(awaitAuditCount("webchat.pin-session", "vState", 1, 3_000)).isGreaterThan(0);
+        assertThat(awaitAuditCount("webchat.archive-session", "vState", 1, 3_000)).isGreaterThan(0);
+        assertThat(awaitAuditCount("webchat.stop-session", "vState", 1, 3_000)).isGreaterThan(0);
     }
 }

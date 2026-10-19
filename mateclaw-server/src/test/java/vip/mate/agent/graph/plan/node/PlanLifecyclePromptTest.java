@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.plan.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -22,7 +22,7 @@ class PlanLifecyclePromptTest {
         when(helper.streamCallSilent(any(),any(),any(),any())).thenReturn(
             new NodeStreamingChatHelper.StreamResult("{\"needs_planning\":false,\"direct_answer\":\"paused\"}","",null,List.of(),false,0,0));
         var node=new PlanGenerationNode(null,mock(PlanningService.class),helper,null,null,goals,null,null);
-        node.apply(new OverAllState(new HashMap<>(Map.of(PlanStateKeys.GOAL,"当前状态",MateClawStateKeys.CONVERSATION_ID,"conv"))));
+        node.apply(new RunState(new HashMap<>(Map.of(PlanStateKeys.GOAL,"当前状态",MateClawStateKeys.CONVERSATION_ID,"conv"))));
         var prompt=ArgumentCaptor.forClass(Prompt.class);
         verify(helper).streamCallSilent(any(),prompt.capture(),any(),any());
         assertTrue(prompt.getValue().getSystemMessage().getText().contains("paused"));
@@ -37,7 +37,7 @@ class PlanLifecyclePromptTest {
         when(goals.findActiveByConversation("conv")).thenReturn(goal);
         var node=new PlanSummaryNode(null,mock(PlanningService.class),helper);
         node.setGoalService(goals);
-        node.apply(new OverAllState(new HashMap<>(Map.of(
+        node.apply(new RunState(new HashMap<>(Map.of(
             PlanStateKeys.PLAN_ID,42L,PlanStateKeys.GOAL,"summary",MateClawStateKeys.CONVERSATION_ID,"conv"))));
         var prompt=ArgumentCaptor.forClass(Prompt.class);
         verify(helper).streamCall(any(),prompt.capture(),any(),any());

@@ -34,7 +34,7 @@
   <circle cx="480" cy="280" r="72" fill="url(#warm)" stroke="#d96d46" stroke-width="2" filter="url(#glow)"/>
   <circle cx="480" cy="280" r="56" fill="#f6e2d7" stroke="#ebb08f" stroke-width="1"/>
   <text x="480" y="264" text-anchor="middle" font-size="15" font-weight="800" fill="#d96d46">数字员工</text>
-  <text x="480" y="283" text-anchor="middle" font-size="10" font-weight="500" fill="#665245">身份 · 目标 · 治理</text>
+  <text x="480" y="283" text-anchor="middle" font-size="10" font-weight="500" fill="#665245">身份 · 目标 · 决策</text>
   <text x="480" y="299" text-anchor="middle" font-size="9" fill="#9b7d6c">Native Runtime · DSH Runtime</text>
   <text x="480" y="313" text-anchor="middle" font-size="8" fill="#9b7d6c">同一策略与事件平面</text>
 

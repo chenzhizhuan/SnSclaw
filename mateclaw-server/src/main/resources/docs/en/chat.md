@@ -416,3 +416,7 @@ Sessions can batch-delete up to 200 selected conversations. The server deduplica
 - [Memory](./memory) — what persists across conversations
 - [Channels](./channels) — every other place chat can happen
 - [LLM Wiki](./wiki) — what the agent can read while answering
+
+## Structured tool results (3.0.0)
+
+Structured MCP results are displayed separately below the final answer. Ordinary tool output is not automatically appended to answer text; call IDs and structured content remain in streaming events and history. Images resolve from conversation storage and directory attachments retain directory information.

@@ -410,7 +410,7 @@ Expect periodic "Heartbeat sent" + "Heartbeat ACK received", with occasional "fo
                      │
                      ▼
                 ┌──────────┐
-                │  Agent   │  ← StateGraph + ReAct
+                │  Agent   │  ← AgentScope ReAct
                 └─────┬────┘
                      │ finalAnswer / tool_calls
                      ▼

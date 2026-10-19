@@ -26,7 +26,7 @@
 │  │                                                             │  │
 │  │  ┌────────────┐  ┌────────────┐  ┌────────────────────┐   │  │
 │  │  │    auth     │  │  channel    │  │      agent          │   │  │
-│  │  │   (JWT)     │  │  adapters   │  │  (StateGraph        │   │  │
+│  │  │   (JWT)     │  │  adapters   │  │  (AgentScope        │   │  │
 │  │  └────────────┘  └─────┬──────┘  │   runtime)          │   │  │
 │  │                        │         │                     │   │  │
 │  │  ┌────────────┐        │         │  ┌──────────────┐   │   │  │
@@ -78,8 +78,8 @@
 snsclaw/
 ├── snsclaw-server/          # Spring Boot 后端（心脏）
 │   └── src/main/java/vip/mate/
-│       ├── SnSclawApplication.java
-│       ├── agent/            # StateGraph 运行时、节点、边、状态
+│       ├── MateClawApplication.java
+│       ├── agent/            # 原生 ReAct、计划策略与状态
 │       ├── planning/         # Plan 和 SubPlan 持久化
 │       ├── workflow/         # 工作流引擎（1.3.0+）：DSL 编译、线性 runtime、payload spill
 │       ├── trigger/          # 触发器引擎（1.3.0+）：6 种 pattern、事件治理、CronDelegationPort
@@ -124,30 +124,28 @@ snsclaw/
 
 ---
 
-## Agent 运行时是一张 StateGraph
+## 原生 ReAct 与显式计划阶段
 
-**这是你给后端贡献代码时最重要的事。**
-
-**SnSclaw 的 Agent 运行时不是一个类层次。** 没有 `BaseAgent` → `ReActAgent` → `MyCustomAgent` 的继承链。运行时是一张**由节点和条件边组成的 StateGraph**（来自 `spring-ai-alibaba-graph`），在运行时由 `AgentGraphBuilder` 装配。
+后端使用 Java 21、Spring Boot 4.1.1、Spring AI 2.0.1 和 AgentScope Java 2.0.4。`NativePolicyDriver` 为每次调用创建独立的原生 `ReActAgent`，由 SDK 管理推理/行动循环。应用策略继续管理提示词、审批、观察、总结与目标预算。
 
 ### 关键文件
 
-- `agent/graph/StateGraphReActAgent.java`——装配 ReAct 循环
-- `agent/graph/plan/StateGraphPlanExecuteAgent.java`——装配 Plan-and-Execute 图
-- `agent/graph/node/`——`ReasoningNode`、`ActionNode`、`ObservationNode`、`FinalAnswerNode`、`SummarizingNode`、`LimitExceededNode`、`GoalEvaluationNode`
-- `agent/graph/plan/node/`——`PlanGenerationNode`、`StepExecutionNode`、`PlanSummaryNode`、`DirectAnswerNode`
-- `agent/graph/edge/` + `plan/edge/`——基于状态决定下一个节点的 dispatcher 函数
-- `agent/graph/state/SnSclawStateKeys.java`——共享 state 对象的 key
-- `agent/graph/state/SnSclawStateAccessor.java`——state map 的类型化访问器（**别直接动 map**）
-- `agent/graph/lifecycle/ReActLifecycleListener.java`——节点级插桩 hook
-- `agent/AgentGraphBuilder.java`——按 Agent 配置拼装节点和边的 builder
-- `agent/GraphEventPublisher.java` + `agent/graph/NodeStreamingChatHelper.java`——流式事件怎么从图里逃到 SSE 流里
+- `agent/runtime/agentscope/NativePolicyDriver.java`——原生循环与应用策略回调
+- `agent/runtime/agentscope/ApplicationGuardedToolkit.java`——受保护的整批执行入口；SDK 回调只提供 schema
+- `agent/runtime/plan/ExplicitPlanRuntime.java`——计划生成、步骤推进、总结与目标阶段
+- `agent/graph/plan/node/StepExecutionNode.java`——每个计划步骤的内部工具循环使用原生 ReAct
+- `agent/graph/executor/ToolExecutionExecutor.java`——已有工具保护、审批、执行归因与结果
+- `agent/runtime/state/RunState.java` + `RunStep.java`——独立状态与带版本的调用内快照
+- `agent/AgentGraphBuilder.java`——按 Agent 配置装配运行时
+- `agent/graph/StateGraphReActAgent.java` + `agent/graph/plan/StateGraphPlanExecuteAgent.java`——保留名称的应用封装类；这些名称不代表 Alibaba 图框架依赖
 
-### 怎么扩展
+### 历史与扩展边界
 
-**加 Agent 行为**——在 `agent/graph/node/` 创建新节点，或在 `agent/graph/edge/` 创建新边 dispatcher。把它接进 `AgentGraphBuilder`。通过 `SnSclawStateAccessor` 读写 state。
+应用会话消息仍是提示词的权威来源和持久化产品记录。SDK 临时历史只用于编排，不单独持久化。原生 pending-tool recovery 已关闭；内部快照成功不代表外部副作用可以安全重放。
 
-**不要**创建新的 `XxxAgent` 类。你会把图已经在做的事情重新实现一遍。
+业务行为通过已有节点、dispatcher 与 `MateClawStateKeys` 修改，并由 `AgentGraphBuilder` 接入。`ReasoningNode` 每次只执行一轮模型策略；`ActionNode.executeBatch` / `completeBatch` 分离受保护执行与完成策略。`GraphEventPublisher` 与 `NodeStreamingChatHelper` 继续维持应用 SSE 契约。
+
+Spring AI 接口仍是模型/工具插件边界。原生 DashScope 对话和 embedding 适配器替代 Alibaba AI starter，独立的 DashScope SDK 继续支持语音集成。
 
 ### 目标评估节点（1.4.0+）
 
@@ -185,9 +183,9 @@ snsclaw/
         ↓
 3. ConversationManager.loadOrCreate(conversationId)
         ↓
-4. AgentGraphBuilder.build(agentEntity)   ← 解析出编译好的图
+4. AgentGraphBuilder.build(agentEntity)   ← 解析运行时
         ↓
-5. graph.invoke(initialState)              ← StateGraph 执行开始
+5. runtime.stream(initialState)             ← 原生循环 / 应用阶段开始
         ↓
    ReasoningNode → Dispatcher → ActionNode → ObservationNode →（循环或结束）
         ↓
@@ -266,7 +264,7 @@ SnSclaw 用 **MyBatis Plus**（不是 JPA）做数据库访问。约定：
 - `snake_case` 列、`camelCase` Java 字段、自动映射
 - 每张表有 `create_time`、`update_time`、`deleted`（逻辑删除）
 - **Flyway** 管理 schema 迁移——`db/migration/h2/` 和 `db/migration/mysql/` 各有一套方言脚本，启动时自动选择
-- `FlywayRepairConfig` 在每次启动时先 `repair()` 再 `migrate()`，checksum 变更和部分失败的迁移自动修复
+- `FlywayRepairConfig` 默认执行开启校验的 `migrate()`；修复历史记录必须显式开启，操作前参阅[数据库恢复说明](./config#数据库-schema-初始化)
 - 种子数据由 `DatabaseBootstrapRunner` 从 `db/data-*.sql` 加载，幂等执行
 
 ### 表分组
@@ -374,6 +372,8 @@ Spring AI 内置的 Micrometer Observation 已开启——每次 LLM 调用自�
 ## 下一步
 
 - [项目介绍](./intro)——在"怎么做"之前先看"为什么"
-- [Agent 引擎](./agents)——StateGraph 深入
+- [Agent 引擎](./agents)——原生运行时深入
 - [贡献指南](./contributing)——加代码的约定
 - [API 参考](./api)——后端暴露的 REST 表面
+
+> AI生成

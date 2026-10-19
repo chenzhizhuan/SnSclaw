@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.plan.state;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.Test;
 import vip.mate.agent.graph.NodeStreamingChatHelper;
 import vip.mate.agent.graph.state.MateClawStateKeys;
@@ -23,7 +23,7 @@ class PlanStateAccessorUsageTest {
                 new NodeStreamingChatHelper.StreamResult("ok", "", null, List.of(), false, 3, 4);
 
         Map<String, Object> output = PlanStateAccessor.output()
-                .mergeUsage(new OverAllState(state), result)
+                .mergeUsage(new RunState(state), result)
                 .build();
 
         assertEquals(13, output.get(MateClawStateKeys.PROMPT_TOKENS));

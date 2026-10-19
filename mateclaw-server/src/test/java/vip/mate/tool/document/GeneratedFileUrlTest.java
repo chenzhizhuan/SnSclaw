@@ -1,6 +1,8 @@
 package vip.mate.tool.document;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.web.context.request.RequestContextHolder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -27,8 +29,12 @@ class GeneratedFileUrlTest {
 
     @BeforeEach
     void setUp(@TempDir Path tempDir) {
+        RequestContextHolder.resetRequestAttributes();
         cache = new GeneratedFileCache(tempDir);
     }
+
+    @AfterEach
+    void clearRequestContext() { RequestContextHolder.resetRequestAttributes(); }
 
     @Test
     @DisplayName("no base configured and no bound request → relative path")

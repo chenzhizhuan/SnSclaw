@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.plan.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import vip.mate.agent.context.ChatOrigin;
@@ -48,7 +48,7 @@ class PlanGenerationAutoGoalTest {
         Map<String, Object> vals = new HashMap<>();
         vals.put(MateClawStateKeys.CHAT_ORIGIN, origin);
         vals.put(PlanStateKeys.GOAL, goalText);
-        return new PlanStateAccessor(new OverAllState(vals));
+        return new PlanStateAccessor(new RunState(vals));
     }
 
     @Test

@@ -23,7 +23,7 @@ import java.util.Set;
  * The model calls this after spotting a tool in the {@code ## Extension Tools}
  * catalog. The tool only validates and returns a confirmation message — the
  * activation is recorded into graph state by the action node (tools cannot
- * mutate {@code OverAllState} directly), so the enabled tool's schema becomes
+ * mutate {@code RunState} directly), so the enabled tool's schema becomes
  * visible on the next reasoning turn of the same ReAct loop.
  */
 @Slf4j

@@ -15,6 +15,7 @@ public final class McpToolResultCapture {
 
     private volatile Map<String, Object> structuredContent;
     private volatile boolean error;
+    private volatile String errorText;
 
     public ToolContext attach(ToolContext context) {
         Map<String, Object> values = new HashMap<>(context.getContext());
@@ -31,6 +32,14 @@ public final class McpToolResultCapture {
     public void capture(McpSchema.CallToolResult result, ObjectMapper mapper) {
         structuredContent = null;
         error = result != null && Boolean.TRUE.equals(result.isError());
+        errorText = null;
+        if (error && result.content() != null) {
+            StringBuilder text = new StringBuilder();
+            for (var content : result.content()) {
+                if (content instanceof McpSchema.TextContent plain) text.append(plain.text());
+            }
+            errorText = text.toString();
+        }
         if (result == null || error || !(result.structuredContent() instanceof Map<?, ?>)) return;
         try {
             byte[] json = mapper.writeValueAsBytes(result.structuredContent());
@@ -45,4 +54,5 @@ public final class McpToolResultCapture {
 
     public Map<String, Object> structuredContent() { return structuredContent; }
     public boolean isError() { return error; }
+    public String errorText() { return errorText; }
 }

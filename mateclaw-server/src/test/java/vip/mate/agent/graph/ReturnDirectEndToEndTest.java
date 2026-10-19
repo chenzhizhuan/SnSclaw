@@ -1,6 +1,6 @@
 package vip.mate.agent.graph;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -43,7 +43,7 @@ import static vip.mate.agent.graph.state.MateClawStateKeys.*;
  *
  * <p>This complements the per-component unit tests by verifying the
  * <em>composition</em> works: invariants flow correctly between nodes via
- * {@link OverAllState}, no integration glue is missing, no state key is
+ * {@link RunState}, no integration glue is missing, no state key is
  * misnamed across boundaries.
  *
  * <p>What this does NOT test (still requires manual / SpringBootTest):
@@ -85,7 +85,7 @@ class ReturnDirectEndToEndTest {
         initialState.put(TOOL_CALLS, List.of(toolCall));
         initialState.put(CONVERSATION_ID, "conv_e2e");
         initialState.put(AGENT_ID, "agent_e2e");
-        OverAllState state1 = new OverAllState(initialState);
+        RunState state1 = new RunState(initialState);
 
         // ===== Step 2: ActionNode runs the executor =====
         Map<String, Object> actionOut = actionNode.apply(state1);
@@ -132,7 +132,7 @@ class ReturnDirectEndToEndTest {
         // Skip ObservationNode for simplicity — it doesn't touch our flags. Real
         // graph runs Action → Observation → Dispatcher; we verify the dispatcher
         // contract directly.
-        OverAllState state2 = new OverAllState(stateAfterAction);
+        RunState state2 = new RunState(stateAfterAction);
 
         String route = dispatcher.apply(state2);
         assertEquals(FINAL_ANSWER_NODE, route,
@@ -169,12 +169,12 @@ class ReturnDirectEndToEndTest {
         initial.put(CONVERSATION_ID, "conv_mixed");
         initial.put(AGENT_ID, "agent_mixed");
 
-        Map<String, Object> actionOut = actionNode.apply(new OverAllState(initial));
+        Map<String, Object> actionOut = actionNode.apply(new RunState(initial));
         assertEquals(Boolean.TRUE, actionOut.get(RETURN_DIRECT_TRIGGERED));
 
         Map<String, Object> merged = new HashMap<>(initial);
         merged.putAll(actionOut);
-        OverAllState merged2 = new OverAllState(merged);
+        RunState merged2 = new RunState(merged);
 
         assertEquals(FINAL_ANSWER_NODE, dispatcher.apply(merged2),
                 "Even with a non-direct tool in the batch, the direct one short-circuits");
@@ -205,7 +205,7 @@ class ReturnDirectEndToEndTest {
         initial.put(CURRENT_ITERATION, 0);
         initial.put(MAX_ITERATIONS, 10);
 
-        Map<String, Object> actionOut = actionNode.apply(new OverAllState(initial));
+        Map<String, Object> actionOut = actionNode.apply(new RunState(initial));
 
         // RETURN_DIRECT_TRIGGERED must NOT be set
         assertNull(actionOut.get(RETURN_DIRECT_TRIGGERED),
@@ -214,7 +214,7 @@ class ReturnDirectEndToEndTest {
         // Dispatcher routes to REASONING_NODE for next loop iteration
         Map<String, Object> merged = new HashMap<>(initial);
         merged.putAll(actionOut);
-        String route = dispatcher.apply(new OverAllState(merged));
+        String route = dispatcher.apply(new RunState(merged));
         assertEquals(REASONING_NODE, route,
                 "Without the direct flag, dispatcher must continue the ReAct loop");
     }

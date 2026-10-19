@@ -19,10 +19,13 @@ hero:
       text: GitHub
       link: https://lab.sns.app/SnSclaw
     - theme: alt
-      text: v2.3.0 Release Notes
-      link: /en/releases/2.3.0
+      text: 3.0.0 Snapshot Changelog
+      link: /en/releases/3.0.0
 
 features:
+  - icon: ⚙️
+    title: 3.0.0-SNAPSHOT — Execution architecture upgrade
+    details: 3.0.0-SNAPSHOT upgrades to Java 21, Spring Boot 4 and Spring AI 2. AgentScope 2 drives ReAct and plan-step execution loops; MateClaw retains approvals, permissions, Goals, SSE and persistence. This is a development snapshot.
   - icon: ✅
     title: 2.3.0 — Managed JSON acceptance
     details: Users select required top-level fields; the server binds checks to current requirements and immutable JSON versions. Execution evidence defaults to observation, and ordinary artifact diagnostics do not replace acceptance bindings.

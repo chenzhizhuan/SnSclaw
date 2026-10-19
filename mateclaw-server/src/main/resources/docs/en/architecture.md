@@ -26,7 +26,7 @@ If you're using SnSclaw, read [Introduction](./intro). If you're building on SnS
 │  │                                                             │  │
 │  │  ┌────────────┐  ┌────────────┐  ┌────────────────────┐   │  │
 │  │  │    auth     │  │  channel    │  │      agent          │   │  │
-│  │  │   (JWT)     │  │  adapters   │  │  (StateGraph        │   │  │
+│  │  │   (JWT)     │  │  adapters   │  │  (AgentScope        │   │  │
 │  │  └────────────┘  └─────┬──────┘  │   runtime)          │   │  │
 │  │                        │         │                     │   │  │
 │  │  ┌────────────┐        │         │  ┌──────────────┐   │   │  │
@@ -78,8 +78,8 @@ One JAR. One process. The whole widget.
 snsclaw/
 ├── snsclaw-server/          # Spring Boot backend (the heart)
 │   └── src/main/java/vip/mate/
-│       ├── SnSclawApplication.java
-│       ├── agent/            # StateGraph runtime, nodes, edges, state
+│       ├── MateClawApplication.java
+│       ├── agent/            # Native ReAct, plan policies, state
 │       ├── planning/         # Plan & SubPlan persistence
 │       ├── workflow/         # Workflow engine (1.3.0+): DSL compiler, linear runtime, payload spill
 │       ├── trigger/          # Trigger engine (1.3.0+): 6 pattern types, event governance, CronDelegationPort
@@ -124,30 +124,28 @@ The backend is a **single modular monolith**. Other projects are independent pac
 
 ---
 
-## The agent runtime is a StateGraph
+## Native ReAct and explicit plan phases
 
-This is the most important thing to know if you're contributing to the backend.
-
-**SnSclaw's agent runtime is not a class hierarchy.** There's no `BaseAgent` → `ReActAgent` → `MyCustomAgent` inheritance chain. The runtime is a **StateGraph** (from `spring-ai-alibaba-graph`) composed of nodes and conditional edges, assembled at runtime by `AgentGraphBuilder`.
+The backend uses Java 21, Spring Boot 4.1.1, Spring AI 2.0.1 and AgentScope Java 2.0.4. `NativePolicyDriver` creates a fresh native `ReActAgent` for each invocation; the SDK owns reasoning/acting iteration. Application policies retain prompt preparation, approvals, observations, summaries and goal budgets.
 
 ### Key pieces
 
-- `agent/graph/StateGraphReActAgent.java` — assembles the ReAct loop
-- `agent/graph/plan/StateGraphPlanExecuteAgent.java` — assembles the Plan-and-Execute graph
-- `agent/graph/node/` — `ReasoningNode`, `ActionNode`, `ObservationNode`, `FinalAnswerNode`, `SummarizingNode`, `LimitExceededNode`, `GoalEvaluationNode`
-- `agent/graph/plan/node/` — `PlanGenerationNode`, `StepExecutionNode`, `PlanSummaryNode`, `DirectAnswerNode`
-- `agent/graph/edge/` + `plan/edge/` — dispatcher functions that decide the next node based on state
-- `agent/graph/state/SnSclawStateKeys.java` — the keys for the shared state object
-- `agent/graph/state/SnSclawStateAccessor.java` — typed accessor for the state map (don't touch the map directly)
-- `agent/graph/lifecycle/ReActLifecycleListener.java` — node-level instrumentation hooks
-- `agent/AgentGraphBuilder.java` — the builder that wires nodes and edges per agent config
-- `agent/GraphEventPublisher.java` + `agent/graph/NodeStreamingChatHelper.java` — how streaming events escape the graph into the SSE stream
+- `agent/runtime/agentscope/NativePolicyDriver.java` — native loop and application policy callbacks
+- `agent/runtime/agentscope/ApplicationGuardedToolkit.java` — one guarded whole-batch owner; SDK callbacks are schema-only
+- `agent/runtime/plan/ExplicitPlanRuntime.java` — plan generation, step sequencing, summary and goal phases
+- `agent/graph/plan/node/StepExecutionNode.java` — each plan step uses native ReAct for its inner tool loop
+- `agent/graph/executor/ToolExecutionExecutor.java` — existing guards, approvals, execution attribution and tool results
+- `agent/runtime/state/RunState.java` + `RunStep.java` — owned state and versioned invocation-local snapshots
+- `agent/AgentGraphBuilder.java` — runtime wiring per agent configuration
+- `agent/graph/StateGraphReActAgent.java` + `agent/graph/plan/StateGraphPlanExecuteAgent.java` — existing application wrappers; their names do not imply an Alibaba graph dependency
 
-### How to extend
+### History and extension boundaries
 
-**Adding agent behavior** — create a new node in `agent/graph/node/` or a new edge dispatcher in `agent/graph/edge/`. Wire it into `AgentGraphBuilder`. Read and write state through `SnSclawStateAccessor`.
+Application conversation messages remain prompt authority and the stored product record. SDK scratch history exists only for orchestration and is not separately persisted. Native pending-tool recovery is disabled; an internal snapshot does not establish whether an external effect can safely be replayed.
 
-**Don't** create a new `XxxAgent` class. You'll be reimplementing what the graph already does.
+Change business behavior through the existing nodes, dispatchers and `MateClawStateKeys`, wired by `AgentGraphBuilder`. `ReasoningNode` performs one model-policy invocation; `ActionNode.executeBatch` / `completeBatch` separate guarded execution from completion policy. `GraphEventPublisher` and `NodeStreamingChatHelper` retain the application SSE contract.
+
+Spring AI interfaces remain the model/tool plugin boundary. Native DashScope chat and embedding adapters replace the Alibaba AI starter; DashScope's separate SDK remains for speech integrations.
 
 ### Goal-evaluation node (1.4.0+)
 
@@ -185,9 +183,9 @@ The graph (both ReAct and Plan-Execute) now runs a `GoalEvaluationNode` after `F
         ↓
 3. ConversationManager.loadOrCreate(conversationId)
         ↓
-4. AgentGraphBuilder.build(agentEntity)   ← resolves the compiled graph
+4. AgentGraphBuilder.build(agentEntity)   ← resolves the runtime
         ↓
-5. graph.invoke(initialState)              ← StateGraph execution begins
+5. runtime.stream(initialState)             ← native/application phases begin
         ↓
    ReasoningNode → Dispatcher → ActionNode → ObservationNode → (loop or finish)
         ↓
@@ -266,7 +264,7 @@ SnSclaw uses **MyBatis Plus** (not JPA) for database access. Conventions:
 - `snake_case` columns, `camelCase` Java fields, auto-mapped
 - Every table has `create_time`, `update_time`, `deleted` (logical delete)
 - **Flyway** manages schema migrations — `db/migration/h2/` and `db/migration/mysql/` hold dialect-specific scripts, auto-selected on startup
-- `FlywayRepairConfig` runs `repair()` before `migrate()` on every boot, self-healing checksum drift and partially-failed migrations
+- `FlywayRepairConfig` runs `migrate()` with validation enabled by default; history repair requires an explicit operator opt-in. See [database recovery](./config#database-schema-init) before enabling it
 - Seed data loaded by `DatabaseBootstrapRunner` from `db/data-*.sql`, idempotent
 
 ### Table groups
@@ -374,6 +372,8 @@ Spring AI's built-in Micrometer Observation is enabled — every LLM call automa
 ## Next
 
 - [Introduction](./intro) — the "why" before the "how"
-- [Agents](./agents) — StateGraph deep-dive
+- [Agents](./agents) — native runtime deep-dive
 - [Contributing](./contributing) — conventions for adding code
 - [API Reference](./api) — REST surface the backend exposes
+
+> AI生成

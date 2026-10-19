@@ -41,10 +41,10 @@ public class DefaultToolDisclosureService implements ToolDisclosureService {
     /**
      * Meta-tools that must always stay core: hiding them would make progressive
      * disclosure unrecoverable (the model could neither search/call a deferred
-     * tool nor load a skill).
+     * tool nor load a skill). Progress tracking stays visible during long runs.
      */
     private static final Set<String> ALWAYS_CORE = Set.of(
-            "enable_tool", "load_skill", "tool_search", "tool_describe", "tool_call");
+            "enable_tool", "load_skill", "tool_search", "tool_describe", "tool_call", "progress_update", "get_progress");
 
     /**
      * Code-level extension defaults for builtin tools that may not yet have a
@@ -221,14 +221,16 @@ public class DefaultToolDisclosureService implements ToolDisclosureService {
         sb.append("Full schemas are hidden until needed. If the exact name is known, call ");
         sb.append("`tool_call(toolName=\"<name>\", arguments={...})` to execute it in this same round. ");
         sb.append("Use `tool_search` to discover by capability and `tool_describe` only when arguments are unclear.\n\n");
-        sb.append("| Tool | Source | Description |\n");
-        sb.append("|------|--------|-------------|\n");
+        sb.append("| Tool | Source | Required arguments | Description |\n");
+        sb.append("|------|--------|--------------------|-------------|\n");
         int shown = 0;
         for (ToolCallback cb : extension) {
             if (shown >= limit) break;
             String name = cb.getToolDefinition().name();
             sb.append("| `").append(name).append("` | ")
-                    .append(sourceLabel(name, snap)).append(" | ");
+                    .append(sourceLabel(name, snap)).append(" | ")
+                    .append(ToolArgumentHints.compactRequiredArguments(cb.getToolDefinition().inputSchema())
+                            .replace("|", "\\|").replace("\n", " ")).append(" | ");
             String desc = cb.getToolDefinition().description();
             if (desc != null && !desc.isBlank()) {
                 String d = desc.length() > 80 ? desc.substring(0, 80) + "..." : desc;

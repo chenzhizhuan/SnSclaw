@@ -8,11 +8,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.execution.ToolExecutionException;
+import org.mockito.ArgumentCaptor;
 import org.springframework.ai.tool.definition.DefaultToolDefinition;
 import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.ai.tool.metadata.ToolMetadata;
 
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -116,18 +119,57 @@ class ProgressAwareMcpToolCallbackTest {
     }
 
     @Test
-    @DisplayName("McpSyncClient throws → falls back to delegate")
-    void mcpClientThrowsFallsBackToDelegate() {
+    @DisplayName("transport failure never replays a possibly completed MCP tool")
+    void mcpClientFailureNeverReplaysDelegate() {
         ToolContext ctx = new ToolContext(Map.of(
                 ProgressAwareMcpToolCallback.MCP_PROGRESS_TOKEN_KEY, "tok"));
-        when(mcpClient.callTool(any())).thenThrow(new RuntimeException("connection lost"));
-        when(delegate.call(eq("{}"), any(ToolContext.class))).thenReturn("fallback result");
+        RuntimeException failure = new RuntimeException("connection lost after execution");
+        when(mcpClient.callTool(any())).thenThrow(failure);
+        ToolExecutionException thrown = assertThrows(ToolExecutionException.class, () -> wrapper.call("{}", ctx));
+        assertSame(failure, thrown.getCause());
+        verify(mcpClient, times(1)).callTool(any());
+        verify(delegate, never()).call(any(), any());
+    }
 
-        String output = wrapper.call("{}", ctx);
+    @Test
+    void protocolErrorFailsWithoutReplayAndPreservesErrorCapture() {
+        McpToolResultCapture capture = new McpToolResultCapture();
+        ToolContext ctx = capture.attach(new ToolContext(Map.of(ProgressAwareMcpToolCallback.MCP_PROGRESS_TOKEN_KEY, "tok")));
+        when(mcpClient.callTool(any())).thenReturn(McpSchema.CallToolResult.builder()
+                .content(List.of(new McpSchema.TextContent("denied")))
+                .structuredContent(Map.of("hidden", "error payload")).isError(true).build());
+        assertThrows(ToolExecutionException.class, () -> wrapper.call("{}", ctx));
+        assertTrue(capture.isError());
+        assertNull(capture.structuredContent());
+        verify(mcpClient, times(1)).callTool(any());
+        verify(delegate, never()).call(any(), any());
+    }
 
-        assertEquals("fallback result", output);
-        verify(mcpClient).callTool(any());
-        verify(delegate).call(eq("{}"), any());
+    @Test
+    void progressMetadataRetainsApplicationContextAndFiltersInternalEntries() {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("tenant", "t1");
+        metadata.put("identity", Map.of("userId", "u1"));
+        metadata.put("exchange", new Object());
+        metadata.put("empty", null);
+        metadata.put("progressToken", "untrusted");
+        metadata.put(ProgressAwareMcpToolCallback.MCP_PROGRESS_TOKEN_KEY, "real-token");
+        McpToolResultCapture capture = new McpToolResultCapture();
+        ToolContext ctx = capture.attach(new ToolContext(metadata));
+        when(mcpClient.callTool(any())).thenReturn(new McpSchema.CallToolResult(List.of(), false));
+        wrapper.call("{}", ctx);
+        ArgumentCaptor<McpSchema.CallToolRequest> request = ArgumentCaptor.forClass(McpSchema.CallToolRequest.class);
+        verify(mcpClient, times(1)).callTool(request.capture());
+        assertEquals(Map.of("tenant", "t1", "identity", Map.of("userId", "u1"), "progressToken", "real-token"),
+                request.getValue().meta());
+    }
+
+    @Test
+    void captureOnlyMetadataRetainsApplicationContextWithoutInternalCapture() {
+        ToolContext ctx = new McpToolResultCapture().attach(new ToolContext(Map.of("tenant", "t1")));
+        when(mcpClient.callTool(any())).thenReturn(new McpSchema.CallToolResult(List.of(), false));
+        wrapper.call("{}", ctx);
+        verify(mcpClient).callTool(argThat(request -> Map.of("tenant", "t1").equals(request.meta())));
     }
 
     @Test

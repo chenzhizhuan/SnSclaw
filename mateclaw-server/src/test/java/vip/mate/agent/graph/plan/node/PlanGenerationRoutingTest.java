@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.plan.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -44,11 +44,11 @@ class PlanGenerationRoutingTest {
         when(streaming.streamCallSilent(any(),any(),any(),any())).thenReturn(new NodeStreamingChatHelper.StreamResult(
                 "{\"needs_planning\":true,\"steps\":[\"read\",\"write\"],\"step_agents\":"+names+"}","",null,List.of(),false,0,0));
     }
-    OverAllState state() {
+    RunState state() {
         var values=new HashMap<String,Object>();values.put(PlanStateKeys.GOAL,"Ask Research to summarize");
         values.put(MateClawStateKeys.AGENT_ID,"1");values.put(MateClawStateKeys.CONVERSATION_ID,"conversation");
         values.put(MateClawStateKeys.CHAT_ORIGIN,ChatOrigin.web("conversation","admin",10L,null).withAgent(1L));
-        return new OverAllState(values);
+        return new RunState(values);
     }
     @Test void enabledNonTeamUsesTicketOverloadAndOriginalBaseline() throws Exception {
         node.apply(state());verify(adapter).select(10L,"1","conversation","Ask Research to summarize",List.of("read","write"),Arrays.asList(2L,null));

@@ -1117,7 +1117,7 @@ public class ChatStreamTracker {
     /**
      * 直推事件（Object 自动序列化为 JSON）。
      * <p>
-     * 用于在 Node 内部直接向前端推送 SSE 事件，绕过 NodeOutput 管道。
+     * 用于在 Node 内部直接向前端推送 SSE 事件，绕过 RunStep 管道。
      * 典型场景：审批请求在 awaitDecision() 阻塞前必须先送达前端。
      *
      * @param conversationId 会话 ID

@@ -61,7 +61,7 @@ public class PrefixBudgetProperties {
      * (for example 25% of 1M tokens), which allowed tens of thousands of
      * fixed schema tokens to survive every round.
      */
-    private int toolSchemaMaxTokens = 12000;
+    private int toolSchemaMaxTokens = 4000;
 
     /** Relative shares of the injection budget. Normalized at plan time. */
     private Shares shares = new Shares();

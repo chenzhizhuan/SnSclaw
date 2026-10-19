@@ -7,6 +7,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.execution.ToolExecutionException;
 import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.ai.tool.metadata.ToolMetadata;
 
@@ -79,20 +80,23 @@ public final class ProgressAwareMcpToolCallback implements ToolCallback {
                 effectiveInput = idFwd.inject(toolInput, toolContext);
             }
             Map<String, Object> arguments = parseArguments(effectiveInput);
+            Map<String, Object> metadata = McpWireMetadata.copy(toolContext);
+            if (progressToken != null) metadata.put("progressToken", progressToken);
             McpSchema.CallToolRequest request = McpSchema.CallToolRequest.builder()
                     .name(rawToolName)
                     .arguments(arguments != null ? arguments : Map.of())
-                    .meta(progressToken != null ? Map.of("progressToken", progressToken) : Map.of())
+                    .meta(metadata)
                     .build();
             result = mcpClient.callTool(request);
         } catch (Exception e) {
-            // The structured path executes exactly once; replaying could duplicate side effects.
-            if (capture != null) throw new IllegalStateException("MCP tool call failed", e);
-            log.warn("Progress-aware MCP call failed for tool '{}', falling back to delegate: {}",
-                    rawToolName, e.getMessage());
-            return delegate.call(toolInput, toolContext);
+            // The server may have completed a side effect before the connection failed.
+            throw new ToolExecutionException(getToolDefinition(), e);
         }
         if (capture != null) capture.capture(result, objectMapper);
+        if (result != null && Boolean.TRUE.equals(result.isError())) {
+            throw new ToolExecutionException(getToolDefinition(),
+                    new IllegalStateException("Error calling tool: " + result.content()));
+        }
         return serializeResult(result);
     }
 

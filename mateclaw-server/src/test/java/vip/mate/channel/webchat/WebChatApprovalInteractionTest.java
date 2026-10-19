@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -60,7 +60,7 @@ class WebChatApprovalInteractionTest {
     @Autowired private ApprovalWorkflowService approvalService;
     @Autowired private ChatStreamTracker streamTracker;
     @Autowired private JdbcTemplate jdbc;
-    @MockBean private AgentService agentService;
+    @MockitoBean private AgentService agentService;
 
     @BeforeEach
     void setUp() {

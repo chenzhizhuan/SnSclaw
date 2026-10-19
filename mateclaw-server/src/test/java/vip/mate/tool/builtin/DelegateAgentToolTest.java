@@ -15,6 +15,9 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import vip.mate.agent.AgentService;
+import vip.mate.agent.context.ChatOrigin;
+import vip.mate.agent.context.ExecutionAttribution;
+import java.util.concurrent.atomic.AtomicReference;
 import vip.mate.agent.AgentService.ChatResult;
 import vip.mate.agent.delegation.SubagentRegistry;
 import vip.mate.agent.model.AgentEntity;
@@ -80,6 +83,65 @@ class DelegateAgentToolTest {
             DelegationContext.exit();
         }
         ToolExecutionContext.clear();
+    }
+
+    @Test
+    void goalChildRetainsServerAttemptFenceAfterChangingConversation() {
+        var target = new AgentEntity();
+        target.setId(10L);
+        target.setName("Goal child");
+        target.setEnabled(true);
+        target.setWorkspaceId(1L);
+        when(agentMapper.selectById(10L)).thenReturn(target);
+        var attribution = new ExecutionAttribution(42L, "attempt-id", null, null, "owner-fence");
+        var parent = ChatOrigin.web("goal-root", "alice", 1L, null).withAgent(2L)
+                .withExecutionAttribution(attribution);
+        var observed = new AtomicReference<ChatOrigin>();
+        when(agentService.chatWithUsage(eq(10L), anyString(), anyString(), any()))
+                .thenAnswer(invocation -> {
+                    observed.set(invocation.getArgument(3));
+                    assertEquals(1, DelegationContext.currentDepth());
+                    assertEquals("goal-root", DelegationContext.rootConversationId());
+                    return ChatResult.contentOnly("child completed");
+                });
+        var result = delegateAgentTool.delegateByAgentIdStructured(10L, "child task", parent);
+        assertTrue(result.success());
+        assertNotNull(observed.get());
+        assertEquals(10L, observed.get().agentId());
+        assertNotEquals("goal-root", observed.get().conversationId());
+        assertEquals(attribution, observed.get().executionAttribution());
+        verify(conversationService).createChildConversation(eq(observed.get().conversationId()),
+                eq(10L), eq("system"), eq(1L), eq("goal-root"));
+    }
+
+    @Test
+    void childPreservesIncompleteGoalAttributionForFenceRejection() {
+        assertChildAttribution(new ExecutionAttribution(42L, null, null, null, "owner-fence"), true);
+    }
+
+    @Test
+    void childDoesNotInheritCronOnlyAttribution() {
+        assertChildAttribution(new ExecutionAttribution(null, null, 99L, null, "cron-fence"), false);
+    }
+
+    private void assertChildAttribution(ExecutionAttribution attribution, boolean retained) {
+        var target = new AgentEntity();
+        target.setId(10L);
+        target.setName("Child");
+        target.setEnabled(true);
+        target.setWorkspaceId(1L);
+        when(agentMapper.selectById(10L)).thenReturn(target);
+        var parent = ChatOrigin.web("root", "alice", 1L, null).withAgent(2L)
+                .withExecutionAttribution(attribution);
+        var observed = new AtomicReference<ChatOrigin>();
+        when(agentService.chatWithUsage(eq(10L), anyString(), anyString(), any()))
+                .thenAnswer(invocation -> {
+                    observed.set(invocation.getArgument(3));
+                    return ChatResult.contentOnly("done");
+                });
+        assertTrue(delegateAgentTool.delegateByAgentIdStructured(10L, "task", parent).success());
+        assertNotNull(observed.get());
+        assertEquals(retained ? attribution : null, observed.get().executionAttribution());
     }
 
     // ===== delegateToAgent: agent not found =====
