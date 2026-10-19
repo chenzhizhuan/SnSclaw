@@ -30,7 +30,6 @@ import java.util.regex.Pattern;
  *
  * @author SnSclaw
  */
-@Slf4j
 @Component
 public class EmbeddingModelFactory {
     private static final Pattern VERSION_SUFFIX = Pattern.compile(".*/v\\d+$");
