@@ -1,4 +1,4 @@
-﻿package vip.mate.tts.provider;
+package vip.mate.tts.provider;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -13,11 +13,11 @@ import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.net.http.WebSocketHandshakeException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.List;
 import java.util.UUID;
@@ -26,10 +26,10 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Microsoft Edge TTS Provider 鈥?鍏嶈垂锛屾棤闇€ API Key
+ * Microsoft Edge TTS Provider — 免费，无需 API Key
  * <p>
- * 浣跨敤 Edge 娴忚鍣ㄥ唴缃殑 TTS WebSocket 鍗忚銆?
- * 鑷姩鏍规嵁鏂囨湰璇█閫夋嫨涓枃鎴栬嫳鏂囪闊炽€?
+ * 使用 Edge 浏览器内置的 TTS WebSocket 协议。
+ * 自动根据文本语言选择中文或英文语音。
  *
  * @author SnSclaw
  */
@@ -45,14 +45,13 @@ public class EdgeTtsProvider implements TtsProvider {
     private static final String OUTPUT_FORMAT = "audio-24khz-48kbitrate-mono-mp3";
 
     /**
-     * Sec-MS-GEC 浠ょ墝鐨?Chromium 鐗堟湰鏍囪瘑銆傚井杞寜姝ゆ牎楠屽鎴风鐗堟湰锛?
-     * 杩囨棫浼氳鎻℃墜鎷掔粷锛岄渶闅忎笂娓?edge-tts 鐨?CHROMIUM_FULL_VERSION 鍚屾鏇存柊銆?
+     * Sec-MS-GEC 令牌的 Chromium 版本标识。微软按此校验客户端版本，
+     * 过旧会被握手拒绝，需随上游 edge-tts 的 CHROMIUM_FULL_VERSION 同步更新。
      */
     private static final String USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                     + "Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0";
 
-    /** Windows 鏂囦欢鏃堕棿绾厓锛?601-01-01锛夊埌 Unix 绾厓鐨勭鏁板樊銆?*/
     @Override
     public String id() {
         return "edge-tts";
@@ -60,7 +59,7 @@ public class EdgeTtsProvider implements TtsProvider {
 
     @Override
     public String label() {
-        return "Edge TTS (鍏嶈垂)";
+        return "Edge TTS (免费)";
     }
 
     @Override
@@ -75,7 +74,7 @@ public class EdgeTtsProvider implements TtsProvider {
 
     @Override
     public boolean isAvailable(SystemSettingsDTO config) {
-        return true; // 濮嬬粓鍙敤锛屾棤闇€ Key
+        return true; // 始终可用，无需 Key
     }
 
     @Override
@@ -102,7 +101,7 @@ public class EdgeTtsProvider implements TtsProvider {
         try {
             byte[] audioData = synthesizeViaWebSocket(request.getText(), voice, rate);
             if (audioData == null || audioData.length == 0) {
-                return TtsResult.failure("Edge TTS 鏈繑鍥為煶棰戞暟鎹?);
+                return TtsResult.failure("Edge TTS 未返回音频数据");
             }
             log.info("[Edge TTS] Synthesized {} bytes (voice={})", audioData.length, voice);
             return TtsResult.success(audioData, "audio/mpeg", "mp3");
@@ -198,7 +197,7 @@ public class EdgeTtsProvider implements TtsProvider {
                 String timestamp = DateTimeFormatter.ofPattern(
                         "EEE MMM dd yyyy HH:mm:ss 'GMT+0000 (Coordinated Universal Time)'", Locale.US)
                         .withZone(ZoneOffset.UTC).format(Instant.now());
-                // 鍙戦€侀厤缃秷鎭?
+                // 发送配置消息
                 String configMsg = "X-Timestamp:" + timestamp + "\r\nContent-Type:application/json; charset=utf-8\r\n"
                         + "Path:speech.config\r\n\r\n"
                         + "{\"context\":{\"synthesis\":{\"audio\":{\"metadataoptions\":{"
@@ -206,7 +205,7 @@ public class EdgeTtsProvider implements TtsProvider {
                         + "\"outputFormat\":\"" + OUTPUT_FORMAT + "\"}}}}\r\n";
                 ws.sendText(configMsg, true).join();
 
-                // 鍙戦€?SSML
+                // 发送 SSML
                 String escapedText = escapeXml(text);
                 String ssml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>"
                         + "<voice name='" + voice + "'>"
@@ -220,7 +219,7 @@ public class EdgeTtsProvider implements TtsProvider {
                         + "Path:ssml\r\n\r\n" + ssml;
                 ws.sendText(ssmlMsg, true).join();
 
-                // 绛夊緟缁撴灉锛堟渶澶?60 绉掞級
+                // 等待结果（最多 60 秒）
                 return resultFuture.get(60, TimeUnit.SECONDS);
             } finally {
                 ws.abort();
@@ -240,17 +239,17 @@ public class EdgeTtsProvider implements TtsProvider {
         }
         if (cause instanceof WebSocketHandshakeException handshake) {
             int status = handshake.getResponse().statusCode();
-            return "Edge TTS 杩炴帴鎻℃墜澶辫触 (HTTP " + status + ")銆傝妫€鏌ョ郴缁熸椂闂淬€佷唬鐞嗘垨缃戠粶璁剧疆锛涙湇鍔″崗璁篃鍙兘宸插彉鏇淬€?;
+            return "Edge TTS 连接握手失败 (HTTP " + status + ")。请检查系统时间、代理或网络设置；服务协议也可能已变更。";
         }
         if (cause instanceof java.util.concurrent.TimeoutException) {
-            return "Edge TTS 鍚堟垚瓒呮椂锛岃妫€鏌ョ綉缁滄垨浠ｇ悊璁剧疆鍚庨噸璇曘€?;
+            return "Edge TTS 合成超时，请检查网络或代理设置后重试。";
         }
-        return "Edge TTS 鍚堟垚澶辫触 (" + cause.getClass().getSimpleName()
-                + ")锛岃妫€鏌ョ綉缁滄垨浠ｇ悊璁剧疆鍚庨噸璇曘€?;
+        return "Edge TTS 合成失败 (" + cause.getClass().getSimpleName()
+                + ")，请检查网络或代理设置后重试。";
     }
 
     private int findHeaderEnd(byte[] data) {
-        // 浜岃繘鍒跺抚鏍煎紡锛? 瀛楄妭 header 闀垮害锛堝ぇ绔級 + header + 闊抽鏁版嵁
+        // 二进制帧格式：2 字节 header 长度（大端） + header + 音频数据
         if (data.length < 2) return -1;
         int headerLen = ((data[0] & 0xFF) << 8) | (data[1] & 0xFF);
         return 2 + headerLen;
@@ -264,7 +263,7 @@ public class EdgeTtsProvider implements TtsProvider {
         if (configVoice != null && availableVoices().contains(configVoice)) {
             return configVoice;
         }
-        // 鑷姩璇█妫€娴嬶細CJK 瀛楃姣斾緥 > 30% 浣跨敤涓枃璇煶
+        // 自动语言检测：CJK 字符比例 > 30% 使用中文语音
         return isCjkDominant(text) ? DEFAULT_VOICE_ZH : DEFAULT_VOICE_EN;
     }
 
