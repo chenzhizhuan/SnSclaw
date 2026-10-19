@@ -34,7 +34,6 @@ class VllmThinkingCompatibilityTest {
     private final ObjectMapper json = new ObjectMapper();
     private final LinkedBlockingQueue<JsonNode> requests = new LinkedBlockingQueue<>();
     private HttpServer server;
-    private org.springframework.ai.openai.api.OpenAiApi api;
     private volatile String response;
     private volatile boolean streaming = true;
 
@@ -64,10 +63,7 @@ class VllmThinkingCompatibilityTest {
     }
 
     private ChatModel model(String providerId, Map<String, Object> kwargs) {
-        return model(providerId, kwargs, false);
-    }
 
-    private ChatModel model(String providerId, Map<String, Object> kwargs, boolean apiOnly) {
         var service = mock(ModelProviderService.class);
         when(service.isProviderConfigured(providerId)).thenReturn(true);
         var provider = new ModelProviderEntity();
@@ -89,10 +85,6 @@ class VllmThinkingCompatibilityTest {
         var config = new ModelConfigEntity();
         config.setModelName("sdhs-model"); // A custom alias must not hide vLLM capabilities.
         config.setMaxTokens(256);
-        if (apiOnly) {
-            api = builder.buildOpenAiApi(provider, null);
-            return null;
-        }
         return builder.build(config, provider, RetryTemplate.builder().maxAttempts(1).build());
     }
 
@@ -110,7 +102,7 @@ class VllmThinkingCompatibilityTest {
                 + "\n\ndata: [DONE]\n\n";
         var responses = model("vllm", Map.of()).stream(new Prompt("hi")).collectList().block(Duration.ofSeconds(10));
         String reasoning = responses.stream().map(r -> r.getResult().getOutput().getMetadata().get("reasoningContent"))
-                .filter(java.util.Objects::nonNull).map(Object::toString).reduce("", String::concat);
+                .filter(java.util.Objects::nonNull).map(Object::toString).reduce("", (previous, current) -> current);
         assertEquals("推理一推理二", reasoning);
         assertEquals("literal reasoning and reasoning_content", responses.stream()
                 .map(r -> r.getResult().getOutput().getText()).filter(java.util.Objects::nonNull).reduce("", String::concat));
@@ -121,10 +113,9 @@ class VllmThinkingCompatibilityTest {
         streaming = false;
         response = "{\"id\":\"test\",\"created\":1,\"model\":\"sdhs-model\",\"choices\":[{\"index\":0,"
                 + "\"message\":{\"role\":\"assistant\",\"content\":\"answer\",\"reasoning\":\"分析\"},\"finish_reason\":\"stop\"}]}";
-        model("vllm", Map.of(), true);
-        var result = api.chatCompletionEntity(new org.springframework.ai.openai.api.OpenAiApi.ChatCompletionRequest(List.of(), false));
-        assertEquals("分析", result.getBody().choices().getFirst().message().reasoningContent());
-        assertEquals("answer", result.getBody().choices().getFirst().message().content());
+        var result = model("vllm", Map.of()).call(new Prompt("hi"));
+        assertEquals("分析", result.getResult().getOutput().getMetadata().get("reasoningContent"));
+        assertEquals("answer", result.getResult().getOutput().getText());
     }
 
     @Test
@@ -146,7 +137,7 @@ class VllmThinkingCompatibilityTest {
         var on = requests.poll(1, TimeUnit.SECONDS);
         assertTrue(on.at("/chat_template_kwargs/enable_thinking").booleanValue());
         assertEquals(Map.of("top_k", 20), options.getExtraBody());
-        assertEquals(true, ((Map<?, ?>) ((OpenAiChatOptions) model.getDefaultOptions()).getExtraBody()
+        assertEquals(true, ((Map<?, ?>) ((OpenAiChatOptions) model.getOptions()).getExtraBody()
                 .get("chat_template_kwargs")).get("enable_thinking"));
     }
 
@@ -204,7 +195,7 @@ class VllmThinkingCompatibilityTest {
         when(callback.getToolDefinition()).thenReturn(org.springframework.ai.tool.definition.ToolDefinition.builder()
                 .name("lookup").description("lookup a value").inputSchema("{} ").build());
         var options = org.springframework.ai.model.tool.ToolCallingChatOptions.builder()
-                .toolCallbacks(List.of(callback)).internalToolExecutionEnabled(false).build();
+                .toolCallbacks(List.of(callback)).build();
         ThinkingLevelHolder.set("off");
         model("vllm", Map.of()).stream(new Prompt("hi", options)).collectList().block(Duration.ofSeconds(10));
         var sent = requests.poll(1, TimeUnit.SECONDS);

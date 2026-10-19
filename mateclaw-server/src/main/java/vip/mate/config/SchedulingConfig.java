@@ -37,7 +37,7 @@ public class SchedulingConfig implements SchedulingConfigurer {
 
     @Bean
     public TaskScheduler taskScheduler() {
-        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        ThreadPoolTaskScheduler scheduler = new PausedShutdownTaskScheduler();
         scheduler.setPoolSize(POOL_SIZE);
         scheduler.setThreadNamePrefix("sched-");
         scheduler.setRemoveOnCancelPolicy(true);

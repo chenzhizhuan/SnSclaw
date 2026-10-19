@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.state;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.springframework.ai.chat.messages.Message;
 import vip.mate.agent.GraphEventPublisher;
 import vip.mate.agent.context.ChatOrigin;
@@ -13,16 +13,16 @@ import static vip.mate.agent.graph.state.MateClawStateKeys.*;
 /**
  * 类型安全的状态访问器
  * <p>
- * 封装 {@link OverAllState} 的字符串 key 读写，
+ * 封装 {@link RunState} 的字符串 key 读写，
  * 提供带默认值的强类型方法，避免业务代码散落 state.value("xxx") 调用。
  *
  * @author SnSclaw
  */
 public final class MateClawStateAccessor {
 
-    private final OverAllState state;
+    private final RunState state;
 
-    public MateClawStateAccessor(OverAllState state) {
+    public MateClawStateAccessor(RunState state) {
         this.state = Objects.requireNonNull(state, "state must not be null");
     }
 
@@ -227,6 +227,8 @@ public final class MateClawStateAccessor {
     public boolean actionCompletionRequired() {
         return state.value(ACTION_COMPLETION_REQUIRED, false);
     }
+
+    public int finalizationAttempts() { return state.value(FINALIZATION_ATTEMPTS, 0); }
 
     public int actionCompletionRetryCount() {
         return state.value(ACTION_COMPLETION_RETRY_COUNT, 0);
@@ -555,6 +557,8 @@ public final class MateClawStateAccessor {
             return put(ACTION_COMPLETION_REQUIRED, required);
         }
 
+        public OutputBuilder finalizationAttempts(int count) { return put(FINALIZATION_ATTEMPTS, count); }
+
         public OutputBuilder actionCompletionRetryCount(int count) {
             return put(ACTION_COMPLETION_RETRY_COUNT, count);
         }
@@ -595,7 +599,7 @@ public final class MateClawStateAccessor {
         // ---- Token Usage ----
 
         /** 将本次 LLM 调用的 usage 累加到 state 已有值上 */
-        public OutputBuilder mergeUsage(OverAllState currentState,
+        public OutputBuilder mergeUsage(RunState currentState,
                                         NodeStreamingChatHelper.StreamResult result) {
             int existingPrompt = currentState.value(PROMPT_TOKENS, 0);
             int existingCompletion = currentState.value(COMPLETION_TOKENS, 0);

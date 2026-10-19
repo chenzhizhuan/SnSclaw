@@ -80,8 +80,8 @@ public class DeepSeekV4ThinkingDecorator implements ChatModel {
     }
 
     @Override
-    public ChatOptions getDefaultOptions() {
-        return delegate.getDefaultOptions();
+    public ChatOptions getOptions() {
+        return delegate.getOptions();
     }
 
     /* ---------------------------------------------------------------- */
@@ -123,30 +123,26 @@ public class DeepSeekV4ThinkingDecorator implements ChatModel {
 
     /**
      * Clone {@link OpenAiChatOptions} and inject extraBody.thinking + reasoning_effort.
-     * Returns the input unchanged for non-OpenAI options (defensive — should
-     * never happen for V4, but skips ahead-of-binding work in tests that pass
-     * vanilla {@link ChatOptions}).
+     * Merge generic runtime values into the provider's model defaults first.
      */
-    private static ChatOptions patchOptions(ChatOptions original, boolean enabled) {
-        if (!(original instanceof OpenAiChatOptions oai)) {
-            return original;
-        }
-        OpenAiChatOptions copy = OpenAiChatOptions.fromOptions(oai);
+    private ChatOptions patchOptions(ChatOptions original, boolean enabled) {
+        OpenAiChatOptions.Builder builder = OpenAiWirePolicyChatModel.mergeOptions(delegate.getOptions(), original).mutate();
+        OpenAiChatOptions copy = builder.build();
         Map<String, Object> extra = copy.getExtraBody();
         Map<String, Object> patched = (extra == null) ? new LinkedHashMap<>() : new LinkedHashMap<>(extra);
 
         if (enabled) {
             patched.put(THINKING_FIELD, Map.of("type", "enabled"));
-            // reasoning_effort is a first-class OpenAiChatOptions field → set via setter.
+            // Keep effort on the cloned request options.
             String level = ThinkingLevelHolder.get();
-            copy.setReasoningEffort(mapEffort(level));
+            builder.reasoningEffort(mapEffort(level));
         } else {
             patched.put(THINKING_FIELD, Map.of("type", "disabled"));
             // Drop reasoning_effort — DeepSeek 400s if both are present with thinking disabled.
-            copy.setReasoningEffort(null);
+            builder.reasoningEffort(null);
         }
-        copy.setExtraBody(patched);
-        return copy;
+        builder.extraBody(patched);
+        return builder.build();
     }
 
     /**
@@ -176,7 +172,7 @@ public class DeepSeekV4ThinkingDecorator implements ChatModel {
     private static AssistantMessage rewriteAssistant(AssistantMessage am, boolean enabled) {
         Map<String, Object> meta = am.getMetadata();
         boolean hasTools = am.hasToolCalls();
-        boolean hasReasoning = meta != null && meta.containsKey(REASONING_CONTENT_KEY);
+        boolean hasReasoning = meta != null && (meta.containsKey(REASONING_CONTENT_KEY) || meta.containsKey("reasoningContent"));
 
         // Fast path: no rewrite needed.
         if (enabled && (!hasTools || hasReasoning)) {
@@ -189,10 +185,12 @@ public class DeepSeekV4ThinkingDecorator implements ChatModel {
         Map<String, Object> newMeta = (meta == null) ? new HashMap<>() : new HashMap<>(meta);
         if (enabled) {
             // Tool-call messages need reasoning_content present (empty OK) for replay.
-            newMeta.putIfAbsent(REASONING_CONTENT_KEY, "");
+            newMeta.putIfAbsent("reasoningContent", newMeta.getOrDefault(REASONING_CONTENT_KEY, ""));
+            newMeta.putIfAbsent(REASONING_CONTENT_KEY, newMeta.get("reasoningContent"));
         } else {
             // Drop reasoning_content entirely — DeepSeek mirrors back stale thinking otherwise.
             newMeta.remove(REASONING_CONTENT_KEY);
+            newMeta.remove("reasoningContent");
         }
         return AssistantMessage.builder()
                 .content(am.getText())

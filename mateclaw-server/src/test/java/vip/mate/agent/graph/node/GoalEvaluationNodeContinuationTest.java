@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -150,7 +150,7 @@ class GoalEvaluationNodeContinuationTest {
         GoalService goalService = mock(GoalService.class);
         GoalEntity snap = new GoalEntity();
         snap.setId(7L);
-        OverAllState s = new OverAllState(Map.of(
+        RunState s = new RunState(Map.of(
                 MateClawStateKeys.ACTIVE_GOAL, snap,
                 MateClawStateKeys.CONVERSATION_ID, "c1"));
 
@@ -168,7 +168,7 @@ class GoalEvaluationNodeContinuationTest {
         GoalEntity fromDb = new GoalEntity();
         fromDb.setId(9L);
         when(goalService.findActiveByConversation("c1")).thenReturn(fromDb);
-        OverAllState s = new OverAllState(Map.of(MateClawStateKeys.CONVERSATION_ID, "c1"));
+        RunState s = new RunState(Map.of(MateClawStateKeys.CONVERSATION_ID, "c1"));
 
         Optional<GoalEntity> out = GoalEvaluationNode.resolveActiveGoal(s, goalService);
 
@@ -180,7 +180,7 @@ class GoalEvaluationNodeContinuationTest {
     void resolveActiveGoal_emptyWhenNoSnapshotNoDbGoal() {
         GoalService goalService = mock(GoalService.class);
         when(goalService.findActiveByConversation(anyString())).thenReturn(null);
-        OverAllState s = new OverAllState(Map.of(MateClawStateKeys.CONVERSATION_ID, "c1"));
+        RunState s = new RunState(Map.of(MateClawStateKeys.CONVERSATION_ID, "c1"));
         assertTrue(GoalEvaluationNode.resolveActiveGoal(s, goalService).isEmpty());
     }
 
@@ -322,19 +322,20 @@ class GoalEvaluationNodeContinuationTest {
         Fixture f = new Fixture();
         var adapter = mock(GoalDecisionAdapter.class);
         var ticket = new DecisionTicket("ticket", DecisionMode.ACTIVE, new DecisionValue.Choice("CONTINUE"));
-        when(adapter.selectGraph(any(), any(), any(), eq(false))).thenReturn(new GoalDecisionAdapter.Selection(ticket,
+        when(adapter.selectGraph(any(), any(), any(), eq(false), any())).thenReturn(new GoalDecisionAdapter.Selection(ticket,
                 new GoalContinuationDecision(GoalContinuationDecision.Action.CONTINUE, "selected prompt", LocalDateTime.now(), "remaining_criteria")));
         doThrow(new IllegalStateException("legacy audit unavailable")).when(f.goalService).recordFollowupInjected(any(), any());
         var node = f.node(); node.setDecisionAdapter(adapter);
         var output = node.apply(f.state(FinishReason.NORMAL.getValue(), 0, 0));
         assertEquals("selected prompt", output.get(MateClawStateKeys.GOAL_FOLLOWUP_PROMPT));
         verify(adapter).outcome(ticket, true, "FOLLOWUP_SUBMITTED");
+        verify(adapter).selectGraph(any(), any(), any(), eq(false), org.mockito.ArgumentMatchers.argThat(r -> r != null && r.llmCallsConsumed() == 1 && "stub-model".equals(r.evaluatorModel())));
     }
 
     @Test void graphCapsArePassedAsGuardsAndNeverRecordedAsSubmission() throws Exception {
         Fixture f = new Fixture(); var adapter = mock(GoalDecisionAdapter.class);
         var ticket = new DecisionTicket("ticket", DecisionMode.ACTIVE, new DecisionValue.Choice("DISABLED"));
-        when(adapter.selectGraph(any(), any(), any(), eq(true))).thenReturn(new GoalDecisionAdapter.Selection(ticket,
+        when(adapter.selectGraph(any(), any(), any(), eq(true), any())).thenReturn(new GoalDecisionAdapter.Selection(ticket,
                 new GoalContinuationDecision(GoalContinuationDecision.Action.CONTINUE, "selected prompt", LocalDateTime.now(), "remaining_criteria")));
         var node = f.node(); node.setDecisionAdapter(adapter);
         var output = node.apply(f.state(FinishReason.NORMAL.getValue(), f.properties.getMaxFollowupsPerRun(), 0));
@@ -344,7 +345,7 @@ class GoalEvaluationNodeContinuationTest {
 
     @Test void activeRecordingFailureEscapesGraphPlanningCatch() {
         Fixture f = new Fixture(); var adapter = mock(GoalDecisionAdapter.class);
-        when(adapter.selectGraph(any(), any(), any(), anyBoolean())).thenThrow(new DecisionRecordingException());
+        when(adapter.selectGraph(any(), any(), any(), anyBoolean(), any())).thenThrow(new DecisionRecordingException());
         var node = f.node(); node.setDecisionAdapter(adapter);
         assertThrows(DecisionRecordingException.class, () -> node.apply(f.state(FinishReason.NORMAL.getValue(), 0, 0)));
     }
@@ -381,7 +382,7 @@ class GoalEvaluationNodeContinuationTest {
     void activeDelayRecordsAppliedGraphSuppressionWithoutClaimingDurableScheduling(String action) throws Exception {
         Fixture f = new Fixture(); var adapter = mock(GoalDecisionAdapter.class);
         var ticket = new DecisionTicket("ticket", DecisionMode.ACTIVE, new DecisionValue.Choice(action));
-        when(adapter.selectGraph(any(), any(), any(), eq(false))).thenReturn(new GoalDecisionAdapter.Selection(ticket,
+        when(adapter.selectGraph(any(), any(), any(), eq(false), any())).thenReturn(new GoalDecisionAdapter.Selection(ticket,
                 new GoalContinuationDecision(GoalContinuationDecision.Action.valueOf(action), "original prompt",
                         LocalDateTime.now().plusSeconds(30), "decision_delay")));
         var node = f.node(); node.setDecisionAdapter(adapter);
@@ -397,7 +398,7 @@ class GoalEvaluationNodeContinuationTest {
         Fixture f = new Fixture(); var adapter = mock(GoalDecisionAdapter.class);
         when(f.followupService.maybeBuildFollowup(any(), any())).thenReturn(Optional.empty());
         var ticket = new DecisionTicket("ticket", DecisionMode.ACTIVE, new DecisionValue.Choice("DISABLED"));
-        when(adapter.selectGraph(any(), any(), any(), eq(false))).thenReturn(new GoalDecisionAdapter.Selection(ticket,
+        when(adapter.selectGraph(any(), any(), any(), eq(false), any())).thenReturn(new GoalDecisionAdapter.Selection(ticket,
                 new GoalContinuationDecision(GoalContinuationDecision.Action.DISABLED, null, null, "no_followup")));
         var node = f.node(); node.setDecisionAdapter(adapter);
         var output = node.apply(f.state(FinishReason.NORMAL.getValue(), 0, 0));
@@ -445,7 +446,7 @@ class GoalEvaluationNodeContinuationTest {
          * @param followupCount         goal_followup_count already this run
          * @param hardContinuationCount goal_hard_continuation_count already this run
          */
-        OverAllState state(String finishReason, int followupCount, int hardContinuationCount) {
+        RunState state(String finishReason, int followupCount, int hardContinuationCount) {
             GoalEntity goal = new GoalEntity();
             goal.setId(1L);
             goal.setTitle("ship the feature");
@@ -460,7 +461,7 @@ class GoalEvaluationNodeContinuationTest {
             vals.put(MateClawStateKeys.GOAL_ACCOUNTED_LLM_CALL_COUNT, 0);
             vals.put(MateClawStateKeys.GOAL_FOLLOWUP_COUNT, followupCount);
             vals.put(MateClawStateKeys.GOAL_HARD_CONTINUATION_COUNT, hardContinuationCount);
-            return new OverAllState(vals);
+            return new RunState(vals);
         }
     }
 }

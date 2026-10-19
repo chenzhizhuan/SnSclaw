@@ -188,6 +188,8 @@ public class GoalSegmentRunner {
                     return new SegmentOutcome.Cancelled("stopped");
                 }
                 result=runSegment(goal,input,origin,permit,worker,claimedRun);
+                if (claimedRun!=null && coordinator!=null && coordinator.hasUncertainToolOutcome(claimedRun))
+                    return new SegmentOutcome.Blocked("execution","uncertain_tool_outcome_requires_review");
                 if (result.awaitingApproval()) return new SegmentOutcome.AwaitApproval("approval_required");
                 if ("stopped".equals(result.finishReason())) return new SegmentOutcome.Cancelled("stopped");
                 queued=claimNextInput(convId,claimedRun);
@@ -231,6 +233,7 @@ public class GoalSegmentRunner {
         AtomicReference<Throwable> failure=new AtomicReference<>();
         AtomicBoolean evaluationUnavailable=new AtomicBoolean();
         AtomicBoolean persisted=new AtomicBoolean();
+        AtomicBoolean sourceCompleted=new AtomicBoolean();
         CountDownLatch finished=new CountDownLatch(1);
         Disposable subscription=null;
         try {
@@ -248,15 +251,19 @@ public class GoalSegmentRunner {
                     .doOnNext(delta -> {
                         accumulator.accept(delta,convId);
                         if(claimedRun!=null && "tool_call_started".equals(delta.eventType())) {
-                            checkpoint(claimedRun,"uncertain","tool_started",null);
+                            if (!checkpoint(claimedRun,"uncertain","tool_started",null))
+                                throw new IllegalStateException("Goal attempt lost its tool checkpoint fence");
                         } else if(claimedRun!=null && "tool_call_completed".equals(delta.eventType())) {
-                            checkpoint(claimedRun,"resolved","tool_completed",null);
+                            // Completion events can arrive after a whole batch; other effects may still be outstanding.
+                            if (!checkpoint(claimedRun,"uncertain","tool_completed",null))
+                                throw new IllegalStateException("Goal attempt lost its tool checkpoint fence");
                         }
                         if ("goal_evaluated".equals(delta.eventType()) && delta.eventData()!=null
                                 && (Boolean.TRUE.equals(delta.eventData().get("skipped"))
                                 || "fallback".equals(delta.eventData().get("decision")))) evaluationUnavailable.set(true);
                     });
                     })
+                    .doOnComplete(() -> sourceCompleted.set(true))
                     .doOnSubscribe(s -> streams.setDisposable(handle, s::cancel))
                     .doFinally(signal -> finished.countDown())
                     .subscribe(delta -> {},failure::set)));
@@ -269,7 +276,13 @@ public class GoalSegmentRunner {
             String status="stopped".equals(reason) ? "stopped" : "interrupted".equals(reason) ? "interrupted" : accumulator.isAwaitingApproval()
                     ? "awaiting_approval" : failure.get()!=null || "error_fallback".equals(reason) ? "error" : "completed";
             MessageEntity saved=persist(convId,accumulator,status);
-            if(claimedRun!=null && !checkpoint(claimedRun,"resolved","message_saved",
+            // Persisting a partial/error message does not prove that external effects completed.
+            boolean normalTerminal=sourceCompleted.get() && failure.get()==null
+                    && !worker.cancelled.get() && !worker.interrupted.get()
+                    && !"stopped".equals(reason) && !"interrupted".equals(reason)
+                    && !"error_fallback".equals(reason)
+                    && (claimedRun==null || coordinator==null || !coordinator.hasUncertainToolOutcome(claimedRun));
+            if(claimedRun!=null && normalTerminal && !checkpoint(claimedRun,"resolved","message_saved",
                     saved==null ? null : saved.getId())) {
                 throw new IllegalStateException("Goal attempt lost its checkpoint fence");
             }

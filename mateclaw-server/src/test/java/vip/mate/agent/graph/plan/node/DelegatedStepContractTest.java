@@ -1,7 +1,7 @@
 package vip.mate.agent.graph.plan.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
-import com.alibaba.cloud.ai.graph.StateGraph;
+import vip.mate.agent.runtime.state.RunState;
+import vip.mate.agent.runtime.plan.ExplicitPlanRuntime;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import vip.mate.agent.graph.plan.edge.StepProgressDispatcher;
@@ -24,7 +24,7 @@ class DelegatedStepContractTest {
         when(planning.getStepAssignedAgent(42L, 1)).thenReturn(20L);
         when(delegate.delegateByAgentIdStructured(eq(20L), anyString(), any())).thenReturn(
                 new DelegateAgentTool.ChildResult(0, "worker", true, reply, null, 1, "success", reply.length(), reply.length(), 0, 0));
-        return node.apply(new OverAllState(new HashMap<>(Map.of(
+        return node.apply(new RunState(new HashMap<>(Map.of(
                 PlanStateKeys.PLAN_ID, 42L, PlanStateKeys.PLAN_STEPS, List.of("计算良率", "计算98%与前一步良率差"),
                 PlanStateKeys.CURRENT_STEP_INDEX, 1, PlanStateKeys.COMPLETED_RESULTS, previous,
                 PlanStateKeys.WORKING_CONTEXT, "PRIVATE_FULL_CONTEXT", PlanStateKeys.GOAL, "PRIVATE_ORIGINAL_GOAL",
@@ -62,7 +62,7 @@ class DelegatedStepContractTest {
         verify(planning).updateSubPlanFailure(eq(42L), eq(1), anyString());
         verify(planning).markPlanFailed(eq(42L), anyString());
         assertFalse(out.containsKey(PlanStateKeys.COMPLETED_RESULTS));
-        assertEquals(StateGraph.END,new StepProgressDispatcher().apply(new OverAllState(out)));
+        assertEquals(ExplicitPlanRuntime.END,new StepProgressDispatcher().apply(new RunState(out)));
     }
 
     @Test void blockedStatusDoesNotBecomeSuccessEvenWithNonemptyResult() throws Exception {

@@ -3,6 +3,8 @@ import { createI18n } from 'vue-i18n'
 import { createPinia } from 'pinia'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Message } from '@/types'
+import zhCN from '@/i18n/locales/zh-CN'
+import enUS from '@/i18n/locales/en-US'
 
 vi.mock('@/composables/useStreamingMarkdown', () => ({
   useStreamingMarkdown: (content: unknown) => ({
@@ -74,12 +76,16 @@ function mountMessage(message: Message, locale = 'zh-CN') {
     messages: {
       'zh-CN': {
         chat: {
+          incompleteTitle: zhCN.chat.incompleteTitle,
+          incompleteDescription: zhCN.chat.incompleteDescription,
           stopped: '已被用户手动中止',
           interrupted: '已中断并继续处理下一条消息',
         },
       },
       en: {
         chat: {
+          incompleteTitle: enUS.chat.incompleteTitle,
+          incompleteDescription: enUS.chat.incompleteDescription,
           stopped: 'Stopped manually by user',
           interrupted: 'Interrupted and continued with the next message',
         },
@@ -200,4 +206,17 @@ describe('MessageBubble TTS (#646)', () => {
     expect(fetchAuthenticatedBlob).not.toHaveBeenCalled()
   })
 
+})
+
+
+describe('MessageBubble incomplete answer (#660)', () => {
+  it.each(['zh-CN', 'en'])('does not diagnose token-budget exhaustion as repetition (%s)', locale => {
+    const host = mountMessage({ id: 'budget', conversationId: 'conv', role: 'assistant',
+      content: '模型在输出最终答案前已耗尽输出 token 预算', contentParts: [],
+      status: 'completed', metadata: { finishReason: 'incomplete' } } as Message, locale)
+    const title = host.querySelector('.incomplete-card__title')?.textContent || ''
+    expect(title).not.toMatch(/重复|repeated|repetition/i)
+    expect(host.textContent).toContain('token')
+    expect(host.querySelector('.incomplete-card__retry')).not.toBeNull()
+  })
 })

@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.plan.state;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.springframework.ai.chat.messages.Message;
 import vip.mate.agent.GraphEventPublisher;
 import vip.mate.agent.graph.NodeStreamingChatHelper;
@@ -20,9 +20,9 @@ import static vip.mate.agent.graph.plan.state.PlanStateKeys.*;
  */
 public final class PlanStateAccessor {
 
-    private final OverAllState state;
+    private final RunState state;
 
-    public PlanStateAccessor(OverAllState state) {
+    public PlanStateAccessor(RunState state) {
         this.state = Objects.requireNonNull(state, "state must not be null");
     }
 
@@ -268,7 +268,7 @@ public final class PlanStateAccessor {
         // ---- Token Usage（写入共享键）----
 
         /** 将本次 LLM 调用的 usage 累加到 state 已有值上 */
-        public OutputBuilder mergeUsage(OverAllState currentState,
+        public OutputBuilder mergeUsage(RunState currentState,
                                         NodeStreamingChatHelper.StreamResult result) {
             int existingPrompt = currentState.value(MateClawStateKeys.PROMPT_TOKENS, 0);
             int existingCompletion = currentState.value(MateClawStateKeys.COMPLETION_TOKENS, 0);
@@ -289,7 +289,7 @@ public final class PlanStateAccessor {
          * 将一个 step 的累计 usage（含 cache / reasoning 分项）加到 state 已有值上。
          * StepExecutionNode 在多个出口路径上写回同一组键，统一走这里避免漏项。
          */
-        public OutputBuilder addStepUsage(OverAllState currentState,
+        public OutputBuilder addStepUsage(RunState currentState,
                                           int promptTokens, int completionTokens,
                                           int cacheReadTokens, int cacheWriteTokens,
                                           int reasoningTokens) {

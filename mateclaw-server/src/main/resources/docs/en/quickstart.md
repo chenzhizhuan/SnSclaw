@@ -1,5 +1,8 @@
 # Quick Start
 
+The source development branch is `3.0.0-SNAPSHOT`; stable installers remain the versions published in Releases. Read the [upgrade guidance](./changelog#upgrade-and-validation) before migrating.
+
+
 Sixty seconds to first message. **One path. Desktop app.**
 
 If you want Docker or local development instead, those live in [Configuration](./config) and [Contributing](./contributing). This page does one thing only — get you from zero to a working agent as fast as humanly possible.
@@ -78,9 +81,11 @@ First run should Just Work. If it didn't:
 ## Other ways to run SnSclaw
 
 - **Docker** — `cp .env.example .env`, set the passwords, then `docker compose up -d --build`. Full prerequisites, Maven mirror selection (China vs US), browser-tool self-check, and upgrade flow live in [Docker Deployment](./docker-deploy).
-- **From source** — `mvn spring-boot:run` in `snsclaw-server/` and `npm run dev` in `snsclaw-ui/`. See [Contributing](./contributing).
+- **From source** — start the backend from the repository root with explicit root `data/` database/workspace paths, and run `npm run dev -- --host 127.0.0.1` in `mateclaw-ui/`. See [Contributing](./contributing).
 - **Desktop internals** — packaging, code signing, auto-update. See [Desktop App](./desktop).
 
 ---
 
 Next: [Introduction](./intro) for the "why", or jump straight to [Agents](./agents) for the product itself.
+
+> AI生成

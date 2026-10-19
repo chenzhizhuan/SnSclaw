@@ -13,6 +13,7 @@ import vip.mate.agent.AgentToolSet;
 import vip.mate.agent.binding.service.AgentBindingService;
 import vip.mate.agent.context.ChatOrigin;
 import vip.mate.tool.ToolRegistry;
+import vip.mate.tool.disclosure.ToolArgumentHints;
 import vip.mate.tool.guard.service.ToolGuardConfigService;
 
 import java.util.ArrayList;
@@ -57,7 +58,7 @@ public class ProgressiveToolBridgeTool {
 
     @Tool(name = SEARCH, description = """
         Search the current agent's tool catalog by capability. Returns compact
-        names and one-line descriptions, not full schemas. If you already know
+        names, one-line descriptions and required argument hints, not full schemas. If you already know
         the exact tool name from the Extension Tools catalog, skip this search
         and call tool_call directly.
         """)
@@ -87,6 +88,7 @@ public class ProgressiveToolBridgeTool {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("name", def.name());
             row.put("description", compact(def.description(), 180));
+            row.put("requiredArguments", ToolArgumentHints.compactRequiredArguments(def.inputSchema()));
             rows.add(row);
         }
         return json(Map.of("query", query == null ? "" : query, "tools", rows,

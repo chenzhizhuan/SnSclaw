@@ -1,7 +1,7 @@
 package vip.mate.agent.graph.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
-import com.alibaba.cloud.ai.graph.action.NodeAction;
+import vip.mate.agent.runtime.state.RunState;
+import vip.mate.agent.runtime.state.NodeAction;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -77,7 +77,7 @@ public class ActionNode implements NodeAction {
      * </ul>
      */
     private static final Set<String> AUTO_RECORD_SKIP = Set.of(
-            LOAD_SKILL_TOOL, ENABLE_TOOL, TOOL_SEARCH, TOOL_DESCRIBE, PROGRESS_UPDATE_TOOL,
+            LOAD_SKILL_TOOL, ENABLE_TOOL, TOOL_SEARCH, TOOL_DESCRIBE, PROGRESS_UPDATE_TOOL, "get_progress",
             "listAvailableSkills", "readSkillFile", "runSkillScript",
             // read-only / status-query tools
             "read_file", "web_search",
@@ -118,7 +118,12 @@ public class ActionNode implements NodeAction {
 
     @Override
     @SuppressWarnings("unchecked")
-    public Map<String, Object> apply(OverAllState state) throws Exception {
+    public Map<String, Object> apply(RunState state) throws Exception {
+        return completeBatch(state, executeBatch(state));
+    }
+
+    /** Executes the guarded batch once; runtime orchestration retains the returned result. */
+    public ToolExecutionExecutor.ToolExecutionResult executeBatch(RunState state) throws Exception {
         List<AssistantMessage.ToolCall> toolCalls = state.<List<AssistantMessage.ToolCall>>value(TOOL_CALLS)
                 .orElse(List.of());
 
@@ -147,9 +152,21 @@ public class ActionNode implements NodeAction {
         vip.mate.agent.context.ChatOrigin origin = accessor.chatOrigin();
 
         // 委托 ToolExecutionExecutor 执行（两阶段：顺序 Guard + 分段并发执行）
-        ToolExecutionExecutor.ToolExecutionResult result = executor.execute(
+        return executor.execute(
                 toolCalls, conversationId, agentId, isReplay, requesterId, workspaceBasePath, origin,
                 accessor.loadedSkills());
+
+    }
+
+    /** Projects an already-executed result into business state without invoking tools. */
+    public Map<String, Object> completeBatch(RunState state,
+                                            ToolExecutionExecutor.ToolExecutionResult result) {
+        Objects.requireNonNull(result, "executed batch result");
+        List<AssistantMessage.ToolCall> toolCalls = state.<List<AssistantMessage.ToolCall>>value(TOOL_CALLS)
+                .orElse(List.of());
+        MateClawStateAccessor accessor = new MateClawStateAccessor(state);
+        String conversationId = accessor.conversationId();
+        boolean isReplay = "forced_replay".equals(state.value(MateClawStateKeys.CURRENT_PHASE, ""));
 
         ToolResponseMessage toolResponseMessage = ToolResponseMessage.builder()
                 .responses(result.responses())

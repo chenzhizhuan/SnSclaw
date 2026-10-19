@@ -343,12 +343,13 @@ public class AgentService {
         }
         trackMemoryRecalls(agentId, message, origin);
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
+        ChatOrigin previousOrigin = ChatOriginHolder.get();
         ChatOriginHolder.set(origin != null ? origin : ChatOrigin.EMPTY);
         try {
             return withLifecycleSync(agentId, message, conversationId,
                     (msg, convId) -> agent.chat(msg, convId));
         } finally {
-            ChatOriginHolder.clear();
+            restoreOrigin(previousOrigin);
         }
     }
 
@@ -386,15 +387,11 @@ public class AgentService {
         }
         trackMemoryRecalls(agentId, message, origin);
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
-        // Capture the origin into a request-scoped holder; cleared on Flux
-        // termination so the next reactive subscriber doesn't inherit stale state.
+        // Capture request context for initial state assembly on the subscription thread.
         ChatOrigin captured = origin != null ? origin : ChatOrigin.EMPTY;
-        return Flux.defer(() -> {
-            ChatOriginHolder.set(captured);
-            return withLifecycleFlux(agentId, message, conversationId,
-                    (msg, convId) -> agent.chatStream(msg, convId),
-                    chunk -> chunk);
-        }).doFinally(signal -> ChatOriginHolder.clear());
+        return withLifecycleFlux(agentId, message, conversationId,
+                (msg, convId) -> agent.chatStream(msg, convId), chunk -> chunk,
+                captured, ThinkingLevelHolder.get());
     }
 
     public Flux<StreamDelta> chatStructuredStream(Long agentId, String message, String conversationId) {
@@ -433,47 +430,26 @@ public class AgentService {
                                     connection.prompt(dshConversationHistory.enrich(
                                             convId, message, msg, origin))),
                             connection -> connection.close()),
-                    StreamDelta::content)
-                    .doFinally(signal -> ThinkingLevelHolder.clear());
+                    StreamDelta::content);
         }
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
 
-        // 设置请求级思考深度（通过 ThreadLocal 传递到 StateGraph 执行）
-        if (thinkingLevel != null && !thinkingLevel.isBlank()) {
-            ThinkingLevelHolder.set(thinkingLevel);
-        } else {
-            // 尝试从 Agent 默认配置读取
+        String capturedThinking = thinkingLevel;
+        if (capturedThinking == null || capturedThinking.isBlank()) {
             AgentEntity entity = getAgent(agentId);
-            if (entity != null && entity.getDefaultThinkingLevel() != null) {
-                ThinkingLevelHolder.set(entity.getDefaultThinkingLevel());
-            } else {
-                ThinkingLevelHolder.clear();
-            }
+            capturedThinking = entity != null ? entity.getDefaultThinkingLevel() : null;
         }
-
         ChatOrigin captured = origin != null ? origin : ChatOrigin.EMPTY;
         if (agent instanceof StructuredStreamCapable capable) {
-            return Flux.defer(() -> {
-                        ChatOriginHolder.set(captured);
-                        return withLifecycleFlux(agentId, message, conversationId,
-                                (msg, convId) -> capable.chatStructuredStream(msg, convId,
-                                                requesterId != null ? requesterId : "")
-                                        .doFinally(signal -> ThinkingLevelHolder.clear()),
-                                StreamDelta::content);
-                    })
-                    .doFinally(signal -> ChatOriginHolder.clear());
+            return withLifecycleFlux(agentId, message, conversationId,
+                    (msg, convId) -> capable.chatStructuredStream(msg, convId,
+                            requesterId != null ? requesterId : ""),
+                    StreamDelta::content, captured, capturedThinking);
         }
-
-        // 降级：不支持结构化流的 Agent，包装为纯内容流
-        ThinkingLevelHolder.clear();
-        return Flux.defer(() -> {
-                    ChatOriginHolder.set(captured);
-                    return withLifecycleFlux(agentId, message, conversationId,
-                            (msg, convId) -> agent.chatStream(msg, convId)
-                                    .map(chunk -> new StreamDelta(chunk, null)),
-                            StreamDelta::content);
-                })
-                .doFinally(signal -> ChatOriginHolder.clear());
+        return withLifecycleFlux(agentId, message, conversationId,
+                (msg, convId) -> agent.chatStream(msg, convId)
+                        .map(chunk -> new StreamDelta(chunk, null)),
+                StreamDelta::content, captured, null);
     }
 
     public String execute(Long agentId, String goal, String conversationId) {
@@ -484,12 +460,13 @@ public class AgentService {
         clearAutoRecordedForNewTurn(conversationId);
         trackMemoryRecalls(agentId, goal, origin);
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
+        ChatOrigin previousOrigin = ChatOriginHolder.get();
         ChatOriginHolder.set(origin != null ? origin : ChatOrigin.EMPTY);
         try {
             return withLifecycleSync(agentId, goal, conversationId,
                     (msg, convId) -> agent.execute(msg, convId));
         } finally {
-            ChatOriginHolder.clear();
+            restoreOrigin(previousOrigin);
         }
     }
 
@@ -511,12 +488,13 @@ public class AgentService {
                                   String toolCallPayload, ChatOrigin origin) {
         trackMemoryRecalls(agentId, userMessage, origin);
         BaseAgent agent = getOrBuildAgentForConversation(agentId, conversationId);
+        ChatOrigin previousOrigin = ChatOriginHolder.get();
         ChatOriginHolder.set(origin != null ? origin : ChatOrigin.EMPTY);
         try {
             return withLifecycleSync(agentId, userMessage, conversationId,
                     (msg, convId) -> agent.chatWithReplay(msg, convId, toolCallPayload));
         } finally {
-            ChatOriginHolder.clear();
+            restoreOrigin(previousOrigin);
         }
     }
 
@@ -576,14 +554,10 @@ public class AgentService {
                         }
                     }), vip.mate.agent.runtime.ConversationTurnGate.Permit::close);
         }
-        return Flux.defer(() -> {
-                    ChatOriginHolder.set(captured);
-                    return withLifecycleFlux(agentId, userMessage, conversationId,
-                            (msg, convId) -> agent.chatWithReplayStream(msg, convId, toolCallPayload,
-                                    requesterId != null ? requesterId : ""),
-                            StreamDelta::content);
-                })
-                .doFinally(signal -> ChatOriginHolder.clear());
+        return withLifecycleFlux(agentId, userMessage, conversationId,
+                (msg, convId) -> agent.chatWithReplayStream(msg, convId, toolCallPayload,
+                        requesterId != null ? requesterId : ""),
+                StreamDelta::content, captured, ThinkingLevelHolder.get());
     }
 
     public AgentState getAgentState(Long agentId) {
@@ -712,7 +686,30 @@ public class AgentService {
      *
      * P1-1 fix: prefetchAll result is now prepended to userMessage.
      * P1-4 fix: afterLlmCall only fires on COMPLETE signal, not on cancel/error.
+     * Initial state is captured on the subscription thread, which is restored immediately.
      */
+    private <T> Flux<T> withLifecycleFlux(Long agentId, String message, String conversationId,
+                                          java.util.function.BiFunction<String, String, Flux<T>> invoke,
+                                          Function<T, String> contentExtractor,
+                                          ChatOrigin origin, String thinking) {
+        return Flux.using(() -> acquireTurn(conversationId), permit -> {
+            ChatOrigin previousOrigin = ChatOriginHolder.get();
+            String previousThinking = ThinkingLevelHolder.get();
+            ChatOriginHolder.set(origin);
+            if (thinking == null) ThinkingLevelHolder.clear(); else ThinkingLevelHolder.set(thinking);
+            try {
+                return invokeWithLifecycleFlux(agentId, message, conversationId, invoke, contentExtractor);
+            } finally {
+                restoreOrigin(previousOrigin);
+                if (previousThinking == null) ThinkingLevelHolder.clear(); else ThinkingLevelHolder.set(previousThinking);
+            }
+        }, vip.mate.agent.runtime.ConversationTurnGate.Permit::close);
+    }
+
+    private static void restoreOrigin(ChatOrigin origin) {
+        if (ChatOrigin.EMPTY.equals(origin)) ChatOriginHolder.clear(); else ChatOriginHolder.set(origin);
+    }
+
     private <T> Flux<T> withLifecycleFlux(Long agentId, String message, String conversationId,
                                           java.util.function.BiFunction<String, String, Flux<T>> invoke,
                                           Function<T, String> contentExtractor) {

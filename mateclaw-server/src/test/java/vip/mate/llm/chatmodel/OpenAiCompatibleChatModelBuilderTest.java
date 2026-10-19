@@ -150,7 +150,7 @@ class OpenAiCompatibleChatModelBuilderTest {
 
         OpenAiChatOptions options = builder.buildOpenAiOptions(model("gpt-4o-search-preview"), provider);
 
-        assertNotNull(options.getWebSearchOptions(),
+        assertEquals(Map.of("search_context_size", "high"), options.getExtraBody().get("web_search_options"),
                 "enable_search should be treated the same as enableSearch");
     }
 

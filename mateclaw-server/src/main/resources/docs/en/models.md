@@ -526,3 +526,7 @@ The OpenAI-compatible path also preserves `integer` / `number` in tool JSON Sche
 - [Configuration](./config) — full config reference
 - [Agents](./agents) — how agents use models
 - [Admin Console](./console) — UI for model management
+
+## Model probes and cancellation (3.0.0)
+
+A probe requires a valid completed response; connection success or empty output does not prove model availability. Stopping generation cancels HTTP calls owned by the request and prevents subsequent failover.

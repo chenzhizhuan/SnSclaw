@@ -109,10 +109,11 @@ public class GeminiChatModel implements ChatModel {
     }
 
     @Override
-    public ChatOptions getDefaultOptions() {
-        return ChatOptions.builder()
+    public ChatOptions getOptions() {
+        return ToolCallingChatOptions.builder()
                 .model(modelName)
                 .temperature(temperature)
+                .maxTokens(maxTokens)
                 .build();
     }
 

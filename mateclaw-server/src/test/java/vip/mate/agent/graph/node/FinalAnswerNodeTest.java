@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,7 +30,7 @@ class FinalAnswerNodeTest {
     @Test
     @DisplayName("正常 finalAnswer 直接使用")
     void shouldUseExistingFinalAnswer() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "这是最终回答"
         ));
         Map<String, Object> result = node.apply(state);
@@ -41,7 +41,7 @@ class FinalAnswerNodeTest {
     @Test
     @DisplayName("finalAnswerDraft 优先于 finalAnswer")
     void draftTakesPrecedence() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "旧回答",
                 FINAL_ANSWER_DRAFT, "新草稿"
         ));
@@ -52,7 +52,7 @@ class FinalAnswerNodeTest {
     @Test
     @DisplayName("ERROR_FALLBACK finalAnswer 保留错误文案和 finishReason")
     void shouldPreserveErrorFallbackAnswer() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "[错误] 认证失败: Invalid API Key",
                 FINISH_REASON, "error_fallback"
         ));
@@ -64,7 +64,7 @@ class FinalAnswerNodeTest {
     @Test
     @DisplayName("STOPPED 且无内容时保留 STOPPED 语义（不降级为 ERROR_FALLBACK）")
     void shouldPreserveStoppedWhenNoContent() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "",
                 FINISH_REASON, "stopped"
         ));
@@ -79,7 +79,7 @@ class FinalAnswerNodeTest {
     @Test
     @DisplayName("STOPPED 且无 finalAnswer 键时也保留 STOPPED 语义")
     void shouldPreserveStoppedWhenNoFinalAnswerKey() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINISH_REASON, "stopped"
         ));
         Map<String, Object> result = node.apply(state);
@@ -89,7 +89,7 @@ class FinalAnswerNodeTest {
     @Test
     @DisplayName("无任何内容且非 STOPPED 时降级为 ERROR_FALLBACK")
     void shouldFallbackWhenNoContentAndNotStopped() throws Exception {
-        OverAllState state = new OverAllState(Map.of());
+        RunState state = new RunState(Map.of());
         Map<String, Object> result = node.apply(state);
         // Fallback 文案在 Jobs-voice 改写后统一为英文（commit 01c3888）。
         assertEquals("Failed to generate a response, please retry.", result.get(FINAL_ANSWER));
@@ -104,7 +104,7 @@ class FinalAnswerNodeTest {
         DirectToolOutput out = new DirectToolOutput(
                 "call_1", "query_employee_salary",
                 "Alice's salary is 12345.", System.currentTimeMillis());
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 RETURN_DIRECT_TRIGGERED, true,
                 DIRECT_TOOL_OUTPUTS, List.of(out)
         ));
@@ -123,7 +123,7 @@ class FinalAnswerNodeTest {
                 "call_1", "tool_a", "result_a", System.currentTimeMillis());
         DirectToolOutput b = new DirectToolOutput(
                 "call_2", "tool_b", "result_b", System.currentTimeMillis());
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 RETURN_DIRECT_TRIGGERED, true,
                 DIRECT_TOOL_OUTPUTS, List.of(a, b)
         ));
@@ -142,7 +142,7 @@ class FinalAnswerNodeTest {
     @Test
     @DisplayName("RFC-052: trigger flag without outputs falls through to default assembly")
     void directTriggerEmpty_fallsThrough() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 RETURN_DIRECT_TRIGGERED, true,
                 FINAL_ANSWER, "fallback content"
         ));
@@ -160,7 +160,7 @@ class FinalAnswerNodeTest {
     void directBranch_highestPriority() throws Exception {
         DirectToolOutput out = new DirectToolOutput(
                 "call_1", "tool_x", "direct text", System.currentTimeMillis());
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 RETURN_DIRECT_TRIGGERED, true,
                 DIRECT_TOOL_OUTPUTS, List.of(out),
                 FINAL_ANSWER, "must be ignored",
@@ -178,7 +178,7 @@ class FinalAnswerNodeTest {
     void unsupportedSourceReferencesBecomeEvidenceInsufficient() throws Exception {
         SourceEvidenceLedger ledger = SourceEvidenceLedger.empty()
                 .withSourcePath("src/main/java/vip/mate/skill/SkillController.java");
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 SOURCE_EVIDENCE_LEDGER, ledger,
                 FINAL_ANSWER, "SkillController.java 是入口，SkillServiceImpl.java 负责业务逻辑。"
         ));
@@ -212,7 +212,7 @@ class FinalAnswerNodeTest {
     @Test
     @DisplayName("normal path emits finish_reason GraphEvent on PENDING_EVENTS so the accumulator can persist it")
     void normalPath_emitsFinishReasonEvent() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "正常回答"
         ));
 
@@ -230,7 +230,7 @@ class FinalAnswerNodeTest {
         // (e.g. repetition-truncated partial). The earlier fix wired this via
         // streamTracker.broadcastObject which was an SSE-only bypass — the
         // accumulator never saw it. Now it MUST ride PENDING_EVENTS.
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "已经流式输出的部分内容…",
                 FINISH_REASON, "incomplete"
         ));
@@ -247,7 +247,7 @@ class FinalAnswerNodeTest {
     void returnDirectPath_emitsFinishReasonEvent() throws Exception {
         DirectToolOutput out = new DirectToolOutput(
                 "call_1", "tool_x", "direct text", System.currentTimeMillis());
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 RETURN_DIRECT_TRIGGERED, true,
                 DIRECT_TOOL_OUTPUTS, List.of(out)
         ));
@@ -262,7 +262,7 @@ class FinalAnswerNodeTest {
     @Test
     @DisplayName("AWAITING_APPROVAL path emits finish_reason GraphEvent (NORMAL while paused)")
     void awaitingApprovalPath_emitsFinishReasonEvent() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 AWAITING_APPROVAL, true,
                 STREAMED_CONTENT, "我现在要做 X 操作。"
         ));
@@ -280,7 +280,7 @@ class FinalAnswerNodeTest {
     void evidenceInsufficientPath_emitsFinishReasonEvent() throws Exception {
         SourceEvidenceLedger ledger = SourceEvidenceLedger.empty()
                 .withSourcePath("src/main/java/vip/mate/skill/SkillController.java");
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 SOURCE_EVIDENCE_LEDGER, ledger,
                 FINAL_ANSWER, "SkillController.java 是入口，SkillServiceImpl.java 负责业务逻辑。"
         ));
@@ -306,7 +306,7 @@ class FinalAnswerNodeTest {
     @DisplayName("fake-URL guard: hallucinated generated-file URL → user-visible warning")
     void fakeUrl_replacedWithWarning() throws Exception {
         FinalAnswerNode guarded = new FinalAnswerNode(new GeneratedFileCache());
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "您的文档已生成: /api/v1/files/generated/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         ));
 
@@ -326,7 +326,7 @@ class FinalAnswerNodeTest {
         String id = cache.put("real-bytes".getBytes(), "report.pdf", "application/pdf");
         FinalAnswerNode guarded = new FinalAnswerNode(cache);
 
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "下载: /api/v1/files/generated/" + id
         ));
 
@@ -347,7 +347,7 @@ class FinalAnswerNodeTest {
                 "call_1", "tool_x",
                 "see /api/v1/files/generated/never-rendered-uuid",
                 System.currentTimeMillis());
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 RETURN_DIRECT_TRIGGERED, true,
                 DIRECT_TOOL_OUTPUTS, List.of(out)
         ));
@@ -368,7 +368,7 @@ class FinalAnswerNodeTest {
         // file outputs simply skip the scrub. Production wiring always
         // passes a real cache from AgentGraphBuilder.
         FinalAnswerNode unguarded = new FinalAnswerNode();
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "/api/v1/files/generated/anything"
         ));
         Map<String, Object> result = unguarded.apply(state);
@@ -404,7 +404,7 @@ class FinalAnswerNodeTest {
     void errorFallback_emitsFeedbackEvent() throws Exception {
         // Mirrors the production path: ReasoningNode hands a fatal-error
         // finalAnswer + ERROR_FALLBACK finishReason to FinalAnswerNode.
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "[错误] LLM 调用失败: bad_record_mac",
                 FINISH_REASON, "error_fallback"
         ));
@@ -428,7 +428,7 @@ class FinalAnswerNodeTest {
         // persistence) read finish_reason; the new feedback_event is
         // additive — losing finish_reason here would silently break
         // those consumers.
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "[错误] 认证失败: Invalid API Key",
                 FINISH_REASON, "error_fallback"
         ));
@@ -446,7 +446,7 @@ class FinalAnswerNodeTest {
     @Test
     @DisplayName("NORMAL turn does NOT emit feedback_event (no recovery affordance needed)")
     void normalTurn_noFeedbackEvent() throws Exception {
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "正常回答"
         ));
 
@@ -462,7 +462,7 @@ class FinalAnswerNodeTest {
         // INCOMPLETE has its own dedicated UI card ("regenerate" button
         // wired via finishReason=incomplete). Adding feedback_event there
         // would duplicate the affordance and confuse users.
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "已经流式输出的部分内容…",
                 FINISH_REASON, "incomplete"
         ));
@@ -478,7 +478,7 @@ class FinalAnswerNodeTest {
     void stoppedTurn_noFeedbackEvent() throws Exception {
         // User clicked stop. They don't need a "retry" prompt — the
         // partial output is the explicit signal they asked for.
-        OverAllState state = new OverAllState(Map.of(
+        RunState state = new RunState(Map.of(
                 FINAL_ANSWER, "我刚在生成…",
                 FINISH_REASON, "stopped"
         ));

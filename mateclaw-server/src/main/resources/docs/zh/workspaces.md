@@ -320,3 +320,7 @@ curl -X PUT http://localhost:18088/api/v1/workspaces/1/members/42 \
 - [安全与审批](./security)——工作空间隔离和 Tool Guard、File Guard 的交互
 - [LLM Wiki](./wiki)——工作空间 scope 的知识库
 - [记忆系统](./memory)——工作空间记忆文件
+
+## 成员文件隔离（3.0.0）
+
+成员文件隔离为可选严格沙箱模式，开启 `MATECLAW_WORKSPACE_SANDBOX_MEMBER_ISOLATION_ENABLED=true` 后按已认证用户和工作空间划定文件根目录；身份缺失即拒绝访问，不回退到共享目录。当前仅开放六个经审查的内置文件/代码工具；DSH、MCP/plugin 工具、共享技能脚本和未认证渠道身份不可用。它与个人记忆文件的共享回退是不同机制。

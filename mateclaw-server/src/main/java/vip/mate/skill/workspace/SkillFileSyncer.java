@@ -146,16 +146,16 @@ public class SkillFileSyncer {
         SkillBundleSource source = new ClasspathBundleSource(resolver,
                 bundledPath + "/" + skill.getName());
 
-        Map<String, String> ingested;
+        Map<String, byte[]> ingested;
         try {
-            ingested = SkillBundleFiles.readDbEligible(source);
+            ingested = SkillBundleFiles.readDbEligibleBytes(source);
         } catch (IOException e) {
             log.warn("Failed to backfill builtin skill '{}' from classpath: {}", skill.getName(), e.getMessage());
             return 0;
         }
         if (ingested.isEmpty()) return 0;
 
-        skillFileService.applyBundleFiles(skill.getId(), ingested, false);
+        skillFileService.applyBundleBytes(skill.getId(), ingested, false);
         log.info("Backfilled {} bundle file(s) from classpath into mate_skill_file for builtin skill '{}' (id={})",
                 ingested.size(), skill.getName(), skill.getId());
         return ingested.size();
@@ -225,7 +225,7 @@ public class SkillFileSyncer {
         }
         if (roots.isEmpty()) return 0;
 
-        Map<String, String> ingested = new LinkedHashMap<>();
+        Map<String, byte[]> ingested = new LinkedHashMap<>();
         Set<String> seen = new HashSet<>();
         for (Path root : roots) {
             String prefix = workspaceDir.relativize(root).toString().replace('\\', '/') + "/";
@@ -236,7 +236,7 @@ public class SkillFileSyncer {
                     if (!relative.startsWith(prefix)) continue;
                     if (!seen.add(relative)) continue;
                     try {
-                        String content = Files.readString(f, StandardCharsets.UTF_8);
+                        byte[] content = Files.readAllBytes(f);
                         ingested.put(relative, content);
                     } catch (IOException e) {
                         log.warn("Backfill skipped {} (read failed: {})", f, e.getMessage());
@@ -248,7 +248,7 @@ public class SkillFileSyncer {
         }
 
         if (ingested.isEmpty()) return 0;
-        skillFileService.applyBundleFiles(skill.getId(), ingested, false);
+        skillFileService.applyBundleBytes(skill.getId(), ingested, false);
         log.info("Backfilled {} bundle file(s) into mate_skill_file for skill '{}' (id={})",
                 ingested.size(), skill.getName(), skill.getId());
 

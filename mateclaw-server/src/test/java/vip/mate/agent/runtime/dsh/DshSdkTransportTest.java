@@ -44,7 +44,8 @@ class DshSdkTransportTest {
                 read shutdown
                 """);
         try (var sdk = new DshSdkProcess(process, new ObjectMapper(), "")) {
-            assertEquals("0.0.1", sdk.initialize(Map.of(), Duration.ofSeconds(2)).path("serverInfo").path("version").asText());
+            // Allow process/reader scheduling under full-suite load; this verifies identity, not handshake latency.
+            assertEquals("0.0.1", sdk.initialize(Map.of(), Duration.ofSeconds(10)).path("serverInfo").path("version").asText());
         }
         assertTrue(process.waitFor(2, TimeUnit.SECONDS));
     }

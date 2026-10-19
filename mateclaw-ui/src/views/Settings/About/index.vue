@@ -58,12 +58,12 @@ const pillars = computed(() => [
 ])
 
 const techStack = [
-  { icon: markRaw(Coffee), name: 'Spring Boot', version: '3.3' },
-  { icon: markRaw(Cpu), name: 'Spring AI', version: '1.1' },
-  { icon: markRaw(Promotion), name: 'Spring AI Alibaba', version: '1.1' },
+  { icon: markRaw(Coffee), name: 'Spring Boot', version: '4.1.1' },
+  { icon: markRaw(Cpu), name: 'Spring AI', version: '2.0.1' },
+  { icon: markRaw(Promotion), name: 'AgentScope', version: '2.0.4' },
   { icon: markRaw(Monitor), name: 'Vue 3', version: '3.5' },
   { icon: markRaw(Lightning), name: 'Vite', version: '7' },
-  { icon: markRaw(Coin), name: 'MyBatis Plus', version: '3.5' },
+  { icon: markRaw(Coin), name: 'MyBatis Plus', version: '3.5.17' },
 ]
 </script>
 

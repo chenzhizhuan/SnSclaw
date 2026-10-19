@@ -449,3 +449,7 @@ Two tables, all `mate_`-prefixed:
 **A goal isn't a new feature on the worker. It's a state change.**
 
 Before, the worker forgot the moment it answered. Goals make a worker remember one thing across many turns — what it's working on, what's still missing, when it counts as done. You say it once. The ring next to the avatar tracks the rest.
+
+## 3.0.0: continuation decisions and side-effect recovery
+
+Continuation suggestions use bounded structured decisions and domain constraints, with SHADOW as default. Fenced checkpoints are saved before tool execution; uncertain outcomes after side effects require intervention rather than blind replay. See [decision layer](./decision-layer) and [changelog](./changelog).

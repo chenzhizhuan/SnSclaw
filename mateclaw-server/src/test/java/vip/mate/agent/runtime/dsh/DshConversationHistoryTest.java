@@ -1,7 +1,7 @@
 package vip.mate.agent.runtime.dsh;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
-import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
+import com.baomidou.mybatisplus.spring.MybatisSqlSessionFactoryBean;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.ibatis.session.SqlSession;
 import org.h2.jdbcx.JdbcDataSource;

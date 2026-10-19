@@ -8,11 +8,10 @@ import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
-import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.mcp.SyncMcpToolCallbackProvider;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -203,8 +202,10 @@ public class McpClientManager {
         for (Map.Entry<Long, McpSyncClient> entry : clients.entrySet()) {
             long serverId = entry.getKey();
             try {
-                SyncMcpToolCallbackProvider provider = new SyncMcpToolCallbackProvider(entry.getValue());
-                ToolCallback[] cbs = provider.getToolCallbacks();
+                ToolCallback[] cbs = entry.getValue().listTools().tools().stream()
+                        .filter(tool -> tool.name() != null && !tool.name().isBlank())
+                        .map(tool -> new ApplicationMcpToolCallback(entry.getValue(), tool))
+                        .toArray(ToolCallback[]::new);
                 if (cbs != null && cbs.length > 0) {
                     String serverName = serverNames.get(serverId);
                     McpIdentityForwardService idSvc =
@@ -446,7 +447,7 @@ public class McpClientManager {
             // publish so McpProgressRelay can forward to the SSE stream.
             spec.progressConsumer(progressNotification -> {
                 if (progressNotification == null || progressNotification.progressToken() == null) return;
-                McpProgressContext.ProgressEntry entry = progressContext.lookup(progressNotification.progressToken());
+                McpProgressContext.ProgressEntry entry = progressContext.lookup(String.valueOf(progressNotification.progressToken()));
                 if (entry == null) return;
                 try {
                     McpProgressEvent event = new McpProgressEvent(
@@ -491,7 +492,7 @@ public class McpClientManager {
 
         CwdAwareStdioClientTransport transport = new CwdAwareStdioClientTransport(
                 builder.build(),
-                McpJsonMapper.createDefault(),
+                new JacksonMcpJsonMapper(new ObjectMapper()),
                 expandEnvVars(server.getCwd()));
         transport.setStdErrorHandler(line -> log.info("MCP stdio stderr [{}]: {}", server.getName(), line));
         if (managed) {

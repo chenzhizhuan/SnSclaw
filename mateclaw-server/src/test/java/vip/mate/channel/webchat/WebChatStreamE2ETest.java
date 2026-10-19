@@ -6,7 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
@@ -49,7 +49,7 @@ import static org.mockito.ArgumentMatchers.isNull;
  * body is the actual SSE wire format produced by Spring MVC's SseEmitter — the
  * parser here is the one any third-party SDK would have to write.
  *
- * <p>{@link AgentService} is replaced with a Mockito {@code @MockBean} so the
+ * <p>{@link AgentService} is replaced with a Mockito {@code @MockitoBean} so the
  * agent / model layer is short-circuited: tests stub
  * {@link AgentService#chatStructuredStream} to return canned {@link AgentService.StreamDelta}s
  * and assert on the resulting SSE event sequence. This keeps the test fast,
@@ -98,7 +98,7 @@ class WebChatStreamE2ETest {
     @Autowired private ChatStreamTracker streamTracker;
 
     /** Replaced with a Mockito mock; tests stub the two methods /stream calls. */
-    @MockBean private AgentService agentService;
+    @MockitoBean private AgentService agentService;
 
     private HttpClient http;
 

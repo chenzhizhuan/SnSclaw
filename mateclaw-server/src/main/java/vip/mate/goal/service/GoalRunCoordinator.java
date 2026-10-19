@@ -19,6 +19,7 @@ import java.util.UUID;
 @Service
 public class GoalRunCoordinator {
     private static final int LEASE_SECONDS=60;
+    private static final String TOOL_OUTCOME_UNCERTAIN="tool_outcome_uncertain";
     private final GoalContinuationStore continuations;
     private final GoalAttemptStore attempts;
     private final GoalService goals;
@@ -134,8 +135,23 @@ public class GoalRunCoordinator {
         long nowEpoch=instant.getEpochSecond();
         now=LocalDateTime.ofInstant(instant,java.time.ZoneId.systemDefault());
         if(!current(run,nowEpoch)) return false;
+        GoalAttempt persisted=attempts.get(run.attempt().id());
+        if (unknownToolOutcome(persisted)) {
+            // Completed event projection is not proof of a timed-out external effect.
+            if ("uncertain".equals(replaySafety) && "tool_completed".equals(checkpointType)) return true;
+            if (!"uncertain".equals(replaySafety) || !TOOL_OUTCOME_UNCERTAIN.equals(checkpointType)) return false;
+        }
         return attempts.checkpoint(run.attempt().id(),run.attempt().leaseToken(),replaySafety,
                 checkpointType,assistantMessageId,now);
+    }
+
+    public boolean hasUncertainToolOutcome(ClaimedRun run) {
+        return run!=null && unknownToolOutcome(attempts.get(run.attempt().id()));
+    }
+
+    private static boolean unknownToolOutcome(GoalAttempt attempt) {
+        return attempt!=null && TOOL_OUTCOME_UNCERTAIN.equals(attempt.checkpointType())
+                && "uncertain".equals(attempt.replaySafety());
     }
 
     @Transactional
@@ -157,6 +173,7 @@ public class GoalRunCoordinator {
             return rejectDecision(ticket, "GOAL_NOT_RUNNABLE");
         }
         if((outcome instanceof SegmentOutcome.Continue || outcome instanceof SegmentOutcome.Complete)
+                && !hasUncertainToolOutcome(run)
                 && !attempts.checkpoint(run.attempt().id(),run.attempt().leaseToken(),"resolved",
                 "evaluation_saved",null,now)) return rejectDecision(ticket, "FENCE_REJECTED");
         if(!attempts.finish(run.attempt().id(),run.attempt().leaseToken(),settlement.attemptState,
@@ -211,8 +228,15 @@ public class GoalRunCoordinator {
 
     private Settlement classify(ClaimedRun run,SegmentOutcome outcome,GoalEntity fresh,LocalDateTime now) {
         int failures=run.candidate().failures();
-        if(fresh!=null && fresh.getStatus()==GoalStatus.COMPLETED
-                || outcome instanceof SegmentOutcome.Complete && (fresh==null || !fresh.isJsonAcceptanceRequired())) {
+        if(fresh!=null && fresh.getStatus()==GoalStatus.COMPLETED) {
+            return new Settlement("succeeded","completed",now,0,"goal_completed",null);
+        }
+        // A committed Goal remains authoritative; every other unknown effect requires review.
+        if (hasUncertainToolOutcome(run)) {
+            return new Settlement("blocked","blocked",now,Math.min(1000,failures+1),
+                    "uncertain_tool_outcome_requires_review","execution");
+        }
+        if(outcome instanceof SegmentOutcome.Complete && (fresh==null || !fresh.isJsonAcceptanceRequired())) {
             return new Settlement("succeeded","completed",now,0,"goal_completed",null);
         }
         if(outcome instanceof SegmentOutcome.Complete && fresh!=null && fresh.isJsonAcceptanceRequired()) {
@@ -230,6 +254,12 @@ public class GoalRunCoordinator {
             return new Settlement("succeeded","waiting_input",now,0,outcome.reason(),null);
         }
         if(outcome instanceof SegmentOutcome.Retry retry) {
+            // ClaimedRun is an immutable claim snapshot; effects update the persisted attempt.
+            GoalAttempt currentAttempt=attempts.get(run.attempt().id());
+            if(currentAttempt!=null && "uncertain".equals(currentAttempt.replaySafety())) {
+                return new Settlement("blocked","blocked",now,Math.min(1000,failures+1),
+                        "uncertain_tool_outcome_requires_review","execution");
+            }
             int nextFailures=Math.min(1000,failures+1);
             long delay=Math.min(300,5L << Math.min(6,nextFailures-1));
             return new Settlement("retryable","retry",now.plusSeconds(delay),nextFailures,

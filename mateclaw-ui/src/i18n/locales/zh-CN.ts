@@ -700,8 +700,8 @@ export default {
     pendingReply: '正在准备回复…',
     expand: '展开',
     // INCOMPLETE 截断卡片（finishReason=incomplete）
-    incompleteTitle: '回答因检测到重复输出已被自动截断',
-    incompleteDescription: '系统在你看到的部分之后检测到模型开始重复同一段内容（或在思考阶段无产出），已自动截断以避免无效输出。点下方按钮重新生成完整回答，或在输入框补充提示让模型聚焦剩余内容。',
+    incompleteTitle: '回答尚未完成',
+    incompleteDescription: '本次回答未完成，具体原因请查看消息内容：可能是重复输出触发保护、思考达到安全上限，或模型耗尽输出 token 预算。可重新生成、调整思考和输出预算，或拆分任务后继续。',
     incompleteRetry: '重新生成',
     // EVIDENCE_INSUFFICIENT 提示卡（finishReason=evidence_insufficient）
     evidenceTitle: '任务已完成，但部分源码引用未被验证',

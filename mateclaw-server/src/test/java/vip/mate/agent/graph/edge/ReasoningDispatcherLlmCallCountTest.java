@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.edge;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,6 +23,32 @@ class ReasoningDispatcherLlmCallCountTest {
         dispatcher = new ReasoningDispatcher();
     }
 
+    @Test
+    void completionRetryCannotBypassFiniteCallCeiling() throws Exception {
+        for (int calls : new int[]{50, 51}) {
+            assertEquals(LIMIT_EXCEEDED_NODE, dispatcher.apply(new RunState(Map.of(
+                    CURRENT_ITERATION, 1, MAX_ITERATIONS, 10,
+                    LLM_CALL_COUNT, calls, CONTINUE_REASONING, true))));
+        }
+    }
+
+    @Test
+    void completionRetryBelowCeilingAndUnlimitedRemainRunnable() throws Exception {
+        assertEquals(REASONING_NODE, dispatcher.apply(new RunState(Map.of(
+                CURRENT_ITERATION, 1, MAX_ITERATIONS, 10,
+                LLM_CALL_COUNT, 49, CONTINUE_REASONING, true))));
+        assertEquals(REASONING_NODE, dispatcher.apply(new RunState(Map.of(
+                CURRENT_ITERATION, 1, MAX_ITERATIONS, 0,
+                LLM_CALL_COUNT, Integer.MAX_VALUE, CONTINUE_REASONING, true))));
+    }
+
+    @Test
+    void largePositiveIterationBudgetDoesNotOverflowCallCeiling() throws Exception {
+        assertEquals(ACTION_NODE, dispatcher.apply(new RunState(Map.of(
+                CURRENT_ITERATION, 1, MAX_ITERATIONS, 500_000_000,
+                LLM_CALL_COUNT, 1, NEEDS_TOOL_CALL, true))));
+    }
+
     // ===== LLM 调用计数 =====
 
     @Nested
@@ -36,7 +62,7 @@ class ReasoningDispatcherLlmCallCountTest {
         @Test
         @DisplayName("达到上限但有最终回答 → 放行到 finalAnswerNode")
         void shouldAllowFinalAnswerEvenWhenLlmCallLimitReached() throws Exception {
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 5, MAX_ITERATIONS, 10,
                     LLM_CALL_COUNT, 50, NEEDS_TOOL_CALL, false
             ));
@@ -46,7 +72,7 @@ class ReasoningDispatcherLlmCallCountTest {
         @Test
         @DisplayName("达到上限且需要工具调用 → limitExceededNode")
         void shouldBlockToolCallWhenLlmCallLimitReached() throws Exception {
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 5, MAX_ITERATIONS, 10,
                     LLM_CALL_COUNT, 50, NEEDS_TOOL_CALL, true
             ));
@@ -56,7 +82,7 @@ class ReasoningDispatcherLlmCallCountTest {
         @Test
         @DisplayName("达到上限且需要总结 → limitExceededNode")
         void shouldBlockSummarizeWhenLlmCallLimitReached() throws Exception {
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 5, MAX_ITERATIONS, 10,
                     LLM_CALL_COUNT, 50,
                     NEEDS_TOOL_CALL, false, SHOULD_SUMMARIZE, true
@@ -67,7 +93,7 @@ class ReasoningDispatcherLlmCallCountTest {
         @Test
         @DisplayName("未达上限且需要工具调用 → actionNode")
         void shouldAllowToolCallWhenUnderLimit() throws Exception {
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 5, MAX_ITERATIONS, 10,
                     LLM_CALL_COUNT, 15, NEEDS_TOOL_CALL, true
             ));
@@ -77,7 +103,7 @@ class ReasoningDispatcherLlmCallCountTest {
         @Test
         @DisplayName("计数未设置时默认 0 → 不触发")
         void shouldUseDefaultWhenMissing() throws Exception {
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 0, MAX_ITERATIONS, 10,
                     NEEDS_TOOL_CALL, true
             ));
@@ -87,7 +113,7 @@ class ReasoningDispatcherLlmCallCountTest {
         @Test
         @DisplayName("迭代超限优先于 LLM 调用计数")
         void iterationLimitTakesPrecedence() throws Exception {
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 10, MAX_ITERATIONS, 10,
                     LLM_CALL_COUNT, 5, NEEDS_TOOL_CALL, true
             ));
@@ -97,7 +123,7 @@ class ReasoningDispatcherLlmCallCountTest {
         @Test
         @DisplayName("计数恰好 limit-1 时不触发（边界值）")
         void shouldNotTriggerAtLimitMinusOne() throws Exception {
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 5, MAX_ITERATIONS, 10,
                     LLM_CALL_COUNT, 49, NEEDS_TOOL_CALL, true
             ));
@@ -114,7 +140,7 @@ class ReasoningDispatcherLlmCallCountTest {
         @Test
         @DisplayName("fatal error 带 finalAnswer 时走 finalAnswerNode（不走 limitExceededNode）")
         void fatalErrorWithFinalAnswerGoesToFinalAnswerNode() throws Exception {
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 2, MAX_ITERATIONS, 10,
                     FINAL_ANSWER, "[错误] 认证失败",
                     NEEDS_TOOL_CALL, false,
@@ -131,7 +157,7 @@ class ReasoningDispatcherLlmCallCountTest {
             // 模拟：前一轮 ObservationNode 设了 shouldSummarize=true，
             // 但本轮 ReasoningNode fatal error 显式清零了 shouldSummarize=false。
             // 验证不会因为残留标志被送去 summarizingNode / limitExceededNode。
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 2, MAX_ITERATIONS, 10,
                     FINAL_ANSWER, "[错误] 模型不可用",
                     NEEDS_TOOL_CALL, false,
@@ -146,7 +172,7 @@ class ReasoningDispatcherLlmCallCountTest {
         void demonstrateStaleShouldSummarizeWouldMisroute() throws Exception {
             // 对照：如果 shouldSummarize 残留 true，即使有 finalAnswer 也会被送去 summarizingNode
             // 这证明 ReasoningNode 必须显式清零
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 2, MAX_ITERATIONS, 10,
                     FINAL_ANSWER, "[错误] 模型不可用",
                     NEEDS_TOOL_CALL, false,
@@ -167,7 +193,7 @@ class ReasoningDispatcherLlmCallCountTest {
         @Test
         @DisplayName("用户停止无内容时走 finalAnswerNode（STOPPED 语义不被吞）")
         void stoppedWithNoContentGoesToFinalAnswerNode() throws Exception {
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 2, MAX_ITERATIONS, 10,
                     FINAL_ANSWER, "",
                     NEEDS_TOOL_CALL, false,
@@ -182,7 +208,7 @@ class ReasoningDispatcherLlmCallCountTest {
         void cancelWithStaleNeedsToolCall() throws Exception {
             // 模拟：前一轮 ReasoningNode 设了 needsToolCall=true（请求工具调用），
             // 但本轮 cancel 显式清零了 needsToolCall=false。
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 3, MAX_ITERATIONS, 10,
                     FINAL_ANSWER, "",
                     NEEDS_TOOL_CALL, false,  // ReasoningNode 显式清零
@@ -195,7 +221,7 @@ class ReasoningDispatcherLlmCallCountTest {
         @Test
         @DisplayName("如果 NEEDS_TOOL_CALL 未被清零（stale=true），cancel 会误路由（防御性对照测试）")
         void demonstrateStaleNeedsToolCallWouldMisroute() throws Exception {
-            OverAllState state = new OverAllState(Map.of(
+            RunState state = new RunState(Map.of(
                     CURRENT_ITERATION, 3, MAX_ITERATIONS, 10,
                     FINAL_ANSWER, "",
                     NEEDS_TOOL_CALL, true,   // 残留！

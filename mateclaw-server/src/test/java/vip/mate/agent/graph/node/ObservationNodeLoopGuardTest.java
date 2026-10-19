@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -36,7 +36,7 @@ class ObservationNodeLoopGuardTest {
         return new ToolResponseMessage.ToolResponse(id, name, data);
     }
 
-    private OverAllState state(Map<String, Object> loopStats, Boolean reminderInjected,
+    private RunState state(Map<String, Object> loopStats, Boolean reminderInjected,
                                List<AssistantMessage.ToolCall> calls,
                                List<ToolResponseMessage.ToolResponse> results) {
         Map<String, Object> m = new HashMap<>();
@@ -52,7 +52,7 @@ class ObservationNodeLoopGuardTest {
         if (reminderInjected != null) {
             m.put(MUTATION_REMINDER_INJECTED, reminderInjected);
         }
-        return new OverAllState(m);
+        return new RunState(m);
     }
 
     @SuppressWarnings("unchecked")

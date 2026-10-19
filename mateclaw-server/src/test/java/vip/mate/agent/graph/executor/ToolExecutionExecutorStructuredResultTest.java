@@ -90,6 +90,42 @@ class ToolExecutionExecutorStructuredResultTest {
         assertEquals(false, event.data().get("success"));
         assertFalse(event.data().containsKey("structuredContent"));
         assertEquals("query failed", result.responses().getFirst().responseData());
+        verify(client, times(1)).callTool(any());
+    }
+
+    @Test
+    void approvedProtocolErrorPreservesPlainTextAndNeverPublishesRichContent() {
+        when(client.callTool(any())).thenReturn(McpSchema.CallToolResult.builder()
+                .addTextContent("query ").addTextContent("failed").structuredContent(STRUCTURED).isError(true).build());
+        var events = new ArrayList<GraphEventPublisher.GraphEvent>();
+        var response = executor(false).executePreApproved(call("error"), "{}", events, "conv", null);
+        assertEquals("query failed", response.responseData());
+        assertEquals(false, events.getLast().data().get("success"));
+        assertFalse(events.getLast().data().containsKey("structuredContent"));
+        verify(client, times(1)).callTool(any());
+    }
+
+    @Test
+    void directProtocolErrorsRemainWithheldForNormalAndApprovedCalls() {
+        for (boolean approved : List.of(false, true)) {
+            reset(client);
+            when(client.callTool(any())).thenReturn(McpSchema.CallToolResult.builder()
+                    .addTextContent("private query failed").structuredContent(STRUCTURED).isError(true).build());
+            var events = new ArrayList<GraphEventPublisher.GraphEvent>();
+            String response;
+            if (approved) {
+                response = executor(true).executePreApproved(call("error"), "{}", events, "conv", null).responseData();
+            } else {
+                var result = executor(true).execute(List.of(call("error")), "conv", "agent", false, "user", null);
+                events.addAll(result.events());
+                response = result.responses().getFirst().responseData();
+            }
+            assertFalse(response.contains("private query"));
+            var event = events.stream().filter(e -> e.type().equals(GraphEventPublisher.EVENT_TOOL_COMPLETE)).findFirst().orElseThrow();
+            assertEquals(false, event.data().get("success"));
+            assertFalse(event.data().containsKey("structuredContent"));
+            verify(client, times(1)).callTool(any());
+        }
     }
 
     @Test

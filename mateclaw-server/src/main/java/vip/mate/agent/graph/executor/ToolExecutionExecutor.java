@@ -15,6 +15,8 @@ import vip.mate.tool.mcp.runtime.McpToolNameResolver;
 import vip.mate.tool.mcp.runtime.ProgressAwareMcpToolCallback;
 import vip.mate.tool.mcp.runtime.McpToolResultCapture;
 import vip.mate.agent.AgentToolSet;
+import vip.mate.agent.delegation.SubagentRunContext;
+import vip.mate.tool.builtin.DelegationContext;
 import vip.mate.agent.GraphEventPublisher;
 import vip.mate.agent.context.ChatOrigin;
 import vip.mate.execution.evidence.service.ExecutionEvidenceRecorder;
@@ -37,6 +39,8 @@ import vip.mate.tool.guard.service.ToolGuardService;
 import java.util.*;
 import java.util.Collections;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 /**
@@ -727,7 +731,7 @@ public class ToolExecutionExecutor {
             // 4. 分类: concurrencySafe
             boolean safe = isConcurrencySafe(toolName);
             preparedCalls.add(new PreparedToolCall(toolCall, responseName, callback, arguments, safe, allResponses.size(),
-                    conversationId, requesterId, workspaceBasePath, safeOrigin, UUID.randomUUID().toString(), rawEvidenceRef));
+                    conversationId, requesterId, workspaceBasePath, safeOrigin, DelegationContext.current(), new AtomicBoolean(), UUID.randomUUID().toString(), rawEvidenceRef));
             // 占位，Phase 2 填充
             allResponses.add(null);
         }
@@ -842,18 +846,20 @@ public class ToolExecutionExecutor {
                 events.add(GraphEventPublisher.toolComplete(
                         toolCall.id(), toolName, redirect.response(), true));
                 return new ToolResponseMessage.ToolResponse(
-                        toolCall.id(), toolName, redirect.response());
+                        toolCall.id(), toolCall.name(), redirect.response());
             }
             String msg = skillAwareNotFoundMessage(toolName, replayOriginForRedirect);
             log.warn("[ToolExecutor] Pre-approved {}", msg);
             events.add(GraphEventPublisher.toolComplete(toolCall.id(), toolName, msg, false));
-            return new ToolResponseMessage.ToolResponse(toolCall.id(), toolName, msg);
+            return new ToolResponseMessage.ToolResponse(toolCall.id(), toolCall.name(), msg);
         }
 
         Thread executionThread = Thread.currentThread();
         Runnable removeCancellationHook = streamTracker != null
                 ? streamTracker.registerCancellationHook(conversationId, executionThread::interrupt)
                 : () -> { };
+        McpToolResultCapture resultCapture = new McpToolResultCapture();
+        boolean callbackCompleted = false;
         try {
             throwIfStopRequested(conversationId);
             log.info("[ToolExecutor] Executing pre-approved tool: {}", toolName);
@@ -867,9 +873,9 @@ public class ToolExecutionExecutor {
             replayOrigin = replayOrigin.withWorkspace(replayOrigin.workspaceId(), workspaceBasePath);
             replayOrigin = MemberFileIsolation.scope(replayOrigin);
             if (MemberFileIsolation.isEnabled()) workspaceBasePath = replayOrigin.workspaceBasePath();
-            McpToolResultCapture resultCapture = new McpToolResultCapture();
             String result = invokeObserved(callback, callArguments, resultCapture.attach(toolContextWithScopedCatalog(replayOrigin)),
-                    UUID.randomUUID().toString(), toolCall.id());
+                    UUID.randomUUID().toString(), toolCall.id(), DelegationContext.current(), new AtomicBoolean(), new BatchAbort());
+            callbackCompleted = true;
             throwIfStopRequested(conversationId);
             int rawLen = result != null ? result.length() : 0;
 
@@ -896,7 +902,7 @@ public class ToolExecutionExecutor {
                         toolCall.id(), toolName, DIRECT_TOOL_PLACEHOLDER, !resultCapture.isError(),
                         resultCapture.structuredContent()));
                 return new ToolResponseMessage.ToolResponse(
-                        toolCall.id(), toolName, DIRECT_TOOL_PLACEHOLDER);
+                        toolCall.id(), toolCall.name(), DIRECT_TOOL_PLACEHOLDER);
             }
 
             // Raw-first spill, inline truncate as fallback. Symmetric with the
@@ -913,19 +919,29 @@ public class ToolExecutionExecutor {
             // Append the card-rendering directive to the LLM-facing response only,
             // leaving the broadcast tool-result panel unchanged.
             return new ToolResponseMessage.ToolResponse(
-                    toolCall.id(), toolName, withProductCardDirective(toolName, result != null ? result : "", resultCapture.structuredContent()));
+                    toolCall.id(), toolCall.name(), withProductCardDirective(toolName, result != null ? result : "", resultCapture.structuredContent()));
+        } catch (Error fatal) {
+            if (callbackCompleted) markPostCallbackUnknown(origin, fatal, resultCapture, DelegationContext.current());
+            throw fatal;
         } catch (CancellationException e) {
+            if (callbackCompleted) markPostCallbackUnknown(origin, e, resultCapture, DelegationContext.current());
+            throw e;
+        } catch (ToolExecutionCheckpointRejectedException e) {
             throw e;
         } catch (Exception e) {
+            if (callbackCompleted) markPostCallbackUnknown(origin, e, resultCapture, DelegationContext.current());
+            rethrowCheckpointRejection(e);
             log.error("[ToolExecutor] Pre-approved tool {} failed: {}", toolName, e.getMessage());
             String validationError = safeInputValidationMessage(e);
             String safeError = validationError != null
                     ? validationError
                     : isReturnDirect(callback)
                             ? "Tool execution failed (details withheld per returnDirect policy)"
-                            : "Tool execution failed: " + e.getMessage();
+                            : resultCapture.isError() && resultCapture.errorText() != null && !resultCapture.errorText().isBlank()
+                                    ? resultCapture.errorText()
+                                    : "Tool execution failed: " + e.getMessage();
             events.add(GraphEventPublisher.toolComplete(toolCall.id(), toolName, safeError, false));
-            return new ToolResponseMessage.ToolResponse(toolCall.id(), toolName, safeError);
+            return new ToolResponseMessage.ToolResponse(toolCall.id(), toolCall.name(), safeError);
         } finally {
             removeCancellationHook.run();
             if (streamTracker != null && streamTracker.isStopRequested(conversationId)) {
@@ -972,10 +988,19 @@ public class ToolExecutionExecutor {
 
         for (List<PreparedToolCall> batch : batches) {
             throwIfStopRequested(preparedCalls.isEmpty() ? null : preparedCalls.get(0).conversationId);
+            if (executionCheckpoint != null && !batch.isEmpty()) {
+                PreparedToolCall first = batch.getFirst();
+                DelegationContext.push(first.delegation);
+                try {
+                    executionCheckpoint.beforeInvocation(first.origin, first.invocationKey, first.toolCall.id());
+                } finally {
+                    DelegationContext.exit();
+                }
+            }
             if (batch.size() == 1) {
                 // 单个工具（safe 或 unsafe），直接执行
                 PreparedToolCall pc = batch.get(0);
-                ToolResponseMessage.ToolResponse response = executeSingleTool(pc, events, directOutputs);
+                ToolResponseMessage.ToolResponse response = executeSingleTool(pc, events, directOutputs, new BatchAbort());
                 allResponses.set(pc.resultIndex, response);
             } else {
                 // 多个 safe 工具，并行执行
@@ -1030,59 +1055,114 @@ public class ToolExecutionExecutor {
         long batchStartMs = System.currentTimeMillis();
 
         Map<Integer, CompletableFuture<ToolResponseMessage.ToolResponse>> futures = new LinkedHashMap<>();
-        for (PreparedToolCall pc : batch) {
-            CompletableFuture<ToolResponseMessage.ToolResponse> future =
-                    CompletableFuture.supplyAsync(() -> executeSingleTool(pc, events, directOutputs), TOOL_EXECUTOR);
-            futures.put(pc.resultIndex, future);
-        }
-
-        // 等待所有并行工具完成，按原始顺序填入结果
-        for (var entry : futures.entrySet()) {
-            try {
-                String conversationId = batch.isEmpty() ? null : batch.get(0).conversationId;
-                if (streamTracker != null && streamTracker.isStopRequested(conversationId)) {
-                    futures.values().forEach(future -> future.cancel(true));
-                    throw new CancellationException("Stream stopped by user during tool execution");
-                }
-                // 按工具名查找配置的超时时间
-                PreparedToolCall matchedPc = batch.stream()
-                        .filter(p -> p.resultIndex == entry.getKey()).findFirst().orElse(null);
-                long timeoutMs = getToolTimeoutMs(matchedPc != null ? matchedPc.toolCall.name() : null);
-                ToolResponseMessage.ToolResponse response = entry.getValue().get(timeoutMs, TimeUnit.MILLISECONDS);
-                allResponses.set(entry.getKey(), response);
-            } catch (CancellationException e) {
-                futures.values().forEach(future -> future.cancel(true));
-                throw e;
-            } catch (Exception e) {
-                String conversationId = batch.isEmpty() ? null : batch.get(0).conversationId;
-                if (streamTracker != null && streamTracker.isStopRequested(conversationId)) {
-                    futures.values().forEach(future -> future.cancel(true));
-                    throw new CancellationException("Stream stopped by user during tool execution");
-                }
-                // 超时或异常 — 填入错误响应
-                PreparedToolCall pc = batch.stream()
-                        .filter(p -> p.resultIndex == entry.getKey())
-                        .findFirst().orElse(null);
-                String toolName = pc != null ? pc.responseName : "unknown";
-                String toolId = pc != null ? pc.toolCall.id() : "";
-                log.error("[ToolExecutor] Parallel tool {} failed: {}", toolName, e.getMessage());
-                allResponses.set(entry.getKey(), new ToolResponseMessage.ToolResponse(
-                        toolId, toolName, normalizeToolExecutionError(
-                        e instanceof ExecutionException ? (Exception) e.getCause() : (Exception) e)));
+        BatchAbort batchAborted = new BatchAbort();
+        try {
+            for (PreparedToolCall pc : batch) {
+                CompletableFuture<ToolResponseMessage.ToolResponse> future =
+                        CompletableFuture.supplyAsync(() -> {
+                            batchAborted.registerWorker();
+                            try {
+                                return executeSingleTool(pc, events, directOutputs, batchAborted);
+                            } finally {
+                                batchAborted.unregisterWorker();
+                            }
+                        }, TOOL_EXECUTOR);
+                futures.put(pc.resultIndex, future);
             }
+
+            // 等待所有并行工具完成，按原始顺序填入结果
+            for (var entry : futures.entrySet()) {
+                try {
+                    String conversationId = batch.isEmpty() ? null : batch.get(0).conversationId;
+                    if (streamTracker != null && streamTracker.isStopRequested(conversationId)) {
+                        cancelParallelBatch(batchAborted, futures);
+                        throw new CancellationException("Stream stopped by user during tool execution");
+                    }
+                    // 按工具名查找配置的超时时间
+                    PreparedToolCall matchedPc = batch.stream()
+                            .filter(p -> p.resultIndex == entry.getKey()).findFirst().orElse(null);
+                    long timeoutMs = getToolTimeoutMs(matchedPc != null ? matchedPc.toolCall.name() : null);
+                    ToolResponseMessage.ToolResponse response = entry.getValue().get(timeoutMs, TimeUnit.MILLISECONDS);
+                    allResponses.set(entry.getKey(), response);
+                } catch (CancellationException e) {
+                    cancelParallelBatch(batchAborted, futures);
+                    batchAborted.rethrowFailure();
+                    throw e;
+                } catch (Exception e) {
+                    batchAborted.rethrowFailure();
+                    if (e instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                        cancelParallelBatch(batchAborted, futures);
+                        CancellationException cancelled = new CancellationException("Parallel tool batch interrupted");
+                        cancelled.initCause(e);
+                        throw cancelled;
+                    }
+                    if (e instanceof ExecutionException && e.getCause() instanceof CancellationException cancelled) {
+                        cancelParallelBatch(batchAborted, futures);
+                        throw cancelled;
+                    }
+                    if (e instanceof ExecutionException && e.getCause() instanceof Error fatal) {
+                        cancelParallelBatch(batchAborted, futures);
+                        throw fatal;
+                    }
+                    Throwable cause = e;
+                    while (cause != null && !(cause instanceof ToolExecutionCheckpointRejectedException)) cause = cause.getCause();
+                    if (cause instanceof ToolExecutionCheckpointRejectedException rejected) {
+                        cancelParallelBatch(batchAborted, futures);
+                        throw rejected;
+                    }
+                    String conversationId = batch.isEmpty() ? null : batch.get(0).conversationId;
+                    if (streamTracker != null && streamTracker.isStopRequested(conversationId)) {
+                        cancelParallelBatch(batchAborted, futures);
+                        throw new CancellationException("Stream stopped by user during tool execution");
+                    }
+                    if (e instanceof TimeoutException) {
+                        entry.getValue().cancel(true);
+                        PreparedToolCall timedOut = batch.stream().filter(p -> p.resultIndex == entry.getKey()).findFirst().orElse(null);
+                        if (executionCheckpoint != null && timedOut != null && timedOut.entered.get()) {
+                            DelegationContext.push(timedOut.delegation);
+                            try { executionCheckpoint.markUnknownOutcome(timedOut.origin, e); }
+                            finally { DelegationContext.exit(); }
+                        }
+                    }
+                    // 超时或异常 — 填入错误响应
+                    PreparedToolCall pc = batch.stream()
+                            .filter(p -> p.resultIndex == entry.getKey())
+                            .findFirst().orElse(null);
+                    String toolName = pc != null ? pc.responseName : "unknown";
+                    String toolId = pc != null ? pc.toolCall.id() : "";
+                    log.error("[ToolExecutor] Parallel tool {} failed: {}", toolName, e.getMessage());
+                    allResponses.set(entry.getKey(), new ToolResponseMessage.ToolResponse(
+                            toolId, toolName, normalizeToolExecutionError(
+                            e instanceof ExecutionException ? (Exception) e.getCause() : (Exception) e)));
+                }
+            }
+        } catch (RuntimeException | Error failure) {
+            batchAborted.abort(failure);
+            cancelParallelBatch(batchAborted, futures);
+            throw failure;
         }
         log.info("[ToolExecutor] Parallel batch completed: {} tools in {}ms",
                 batch.size(), System.currentTimeMillis() - batchStartMs);
     }
 
+    private void cancelParallelBatch(BatchAbort batchAborted,
+                                     Map<Integer, CompletableFuture<ToolResponseMessage.ToolResponse>> futures) {
+        batchAborted.abort(new CancellationException("Parallel tool batch aborted"));
+        futures.values().forEach(future -> future.cancel(true));
+    }
+
     private ToolResponseMessage.ToolResponse executeSingleTool(PreparedToolCall pc,
                                                                 List<GraphEventPublisher.GraphEvent> events,
-                                                                List<DirectToolOutput> directOutputs) {
+                                                                List<DirectToolOutput> directOutputs,
+                                                                BatchAbort batchAborted) {
         String toolName = pc.toolCall.name();
         Thread executionThread = Thread.currentThread();
         Runnable removeCancellationHook = streamTracker != null
                 ? streamTracker.registerCancellationHook(pc.conversationId, executionThread::interrupt)
                 : () -> { };
+        McpToolResultCapture resultCapture = new McpToolResultCapture();
+        boolean callbackCompleted = false;
         try {
             throwIfStopRequested(pc.conversationId);
             if (streamTracker != null) {
@@ -1098,9 +1178,8 @@ public class ToolExecutionExecutor {
             // Spring AI ToolContext (preferred — read via ChatOrigin.from(ctx))
             // AND the legacy ToolExecutionContext ThreadLocal so tools that have
             // not yet migrated to ToolContext keep working unchanged.
-            ToolExecutionContext.set(pc.conversationId, pc.requesterId, pc.workspaceBasePath);
+            var legacyScope = ToolExecutionContext.openScope(pc.conversationId, pc.requesterId, pc.workspaceBasePath);
             String result;
-            McpToolResultCapture resultCapture = new McpToolResultCapture();
             String progressToken = null;
             try {
                 ChatOrigin runtimeOrigin = pc.origin != null ? pc.origin : ChatOrigin.EMPTY;
@@ -1120,14 +1199,18 @@ public class ToolExecutionExecutor {
                     toolContext = new ToolContext(ctxMap);
                 }
 
-                result = invokeObserved(pc.callback, pc.arguments, toolContext, pc.invocationKey, pc.toolCall.id());
+                result = invokeObserved(pc.callback, pc.arguments, toolContext, pc.invocationKey, pc.toolCall.id(), pc.delegation, pc.entered, batchAborted);
+                callbackCompleted = true;
                 throwIfStopRequested(pc.conversationId);
             } finally {
-                if (progressToken != null) {
-                    progressContext.remove(progressToken);
-                    progressContext.removeSnapshot(pc.conversationId, pc.toolCall.id());
+                try {
+                    if (progressToken != null) {
+                        progressContext.remove(progressToken);
+                        progressContext.removeSnapshot(pc.conversationId, pc.toolCall.id());
+                    }
+                } finally {
+                    legacyScope.close();
                 }
-                ToolExecutionContext.clear();
             }
 
             // Recency feed for budget-driven disclosure demotion: recently used
@@ -1207,12 +1290,23 @@ public class ToolExecutionExecutor {
             return new ToolResponseMessage.ToolResponse(
                     pc.toolCall.id(), pc.responseName,
                     withProductCardDirective(toolName, result != null ? result : "", resultCapture.structuredContent()));
+        } catch (Error fatal) {
+            batchAborted.abort(fatal);
+            if (callbackCompleted) markPostCallbackUnknown(pc.origin, fatal, resultCapture, pc.delegation);
+            throw fatal;
         } catch (CancellationException e) {
+            batchAborted.abort(e);
+            if (callbackCompleted) markPostCallbackUnknown(pc.origin, e, resultCapture, pc.delegation);
             if (streamTracker != null) {
                 streamTracker.updateRunningTool(pc.conversationId, null);
             }
             throw e;
+        } catch (ToolExecutionCheckpointRejectedException e) {
+            batchAborted.abort(e);
+            throw e;
         } catch (Exception e) {
+            if (callbackCompleted) markPostCallbackUnknown(pc.origin, e, resultCapture, pc.delegation);
+            rethrowCheckpointRejection(e);
             log.error("[ToolExecutor] Tool {} execution failed: {}", toolName, e.getMessage(), e);
             // RFC-052: for returnDirect tools, even the error message is
             // suspect — exception text may carry stack traces, SQL fragments,
@@ -1224,7 +1318,9 @@ public class ToolExecutionExecutor {
                     ? validationError
                     : isReturnDirect(pc.callback)
                             ? "Tool execution failed (details withheld per returnDirect policy)"
-                            : normalizeToolExecutionError(e);
+                            : resultCapture.isError() && resultCapture.errorText() != null && !resultCapture.errorText().isBlank()
+                                    ? resultCapture.errorText()
+                                    : normalizeToolExecutionError(e);
             events.add(GraphEventPublisher.toolComplete(pc.toolCall.id(), toolName, reportedError, false));
             if (streamTracker != null) {
                 streamTracker.broadcastObject(pc.conversationId, GraphEventPublisher.EVENT_TOOL_COMPLETE,
@@ -1451,6 +1547,9 @@ public class ToolExecutionExecutor {
     }
 
     private String safeInputValidationMessage(Throwable error) {
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            if (current instanceof TimeoutException || current instanceof CancellationException) return null;
+        }
         Throwable current = error;
         while (current != null) {
             if (current instanceof ToolInputValidationException validation) {
@@ -1816,32 +1915,133 @@ public class ToolExecutionExecutor {
         return new ToolContext(context);
     }
 
+    private static void rethrowCheckpointRejection(Throwable failure) {
+        for (Throwable current = failure; current != null; current = current.getCause()) {
+            if (current instanceof ToolExecutionCheckpointRejectedException rejected) throw rejected;
+        }
+    }
+
+    private ToolExecutionCheckpoint executionCheckpoint;
+    public void setExecutionCheckpoint(ToolExecutionCheckpoint checkpoint) {
+        this.executionCheckpoint = checkpoint;
+    }
+
     private ExecutionEvidenceRecorder executionEvidenceRecorder;
 
     public void setExecutionEvidenceRecorder(ExecutionEvidenceRecorder recorder) {
         this.executionEvidenceRecorder = recorder;
     }
 
+    private void markPostCallbackUnknown(ChatOrigin origin, Throwable failure, McpToolResultCapture capture,
+                                         SubagentRunContext delegation) {
+        if (executionCheckpoint == null || capture.isError()) return;
+        DelegationContext.push(delegation);
+        try {
+            executionCheckpoint.markUnknownOutcome(MemberFileIsolation.scope(origin), failure);
+        } catch (RuntimeException | Error checkpointFailure) {
+            if (!(failure instanceof Error)) throw checkpointFailure;
+            if (checkpointFailure != failure) failure.addSuppressed(checkpointFailure);
+        } finally {
+            DelegationContext.exit();
+        }
+    }
+
     private String invokeObserved(ToolCallback callback, String arguments, ToolContext context,
-                                  String invocationKey, String providerCallId) throws TimeoutException {
+                                  String invocationKey, String providerCallId, SubagentRunContext delegation, AtomicBoolean entered, BatchAbort batchAborted) throws TimeoutException {
         String toolName = callback.getToolDefinition().name();
         MemberFileIsolation.requireAuditedTool(toolName);
         ChatOrigin scoped = MemberFileIsolation.scope(ChatOrigin.from(context));
         java.util.Map<String, Object> values = new java.util.HashMap<>(context.getContext());
         values.put(ChatOrigin.CTX_KEY, scoped);
         ToolContext scopedContext = new ToolContext(values);
-        return ToolCallDeadline.call(toolName, getToolTimeoutMs(toolName), () -> {
-            // Deadlines may use another thread; install the identity inside the callback.
-            ToolExecutionContext.set(scoped.conversationId(), scoped.requesterId(), scoped.workspaceBasePath());
-            ToolExecutionContext.setOrigin(scoped);
-            try {
-                return executionEvidenceRecorder == null ? callback.call(arguments, scopedContext)
-                        : executionEvidenceRecorder.invoke(callback, arguments, scopedContext, invocationKey, providerCallId);
-            } finally { ToolExecutionContext.clear(); }
-        });
+        try {
+            return ToolCallDeadline.callWithDeadline(toolName, getToolTimeoutMs(toolName), deadlineGuard -> {
+                DelegationContext.push(delegation);
+                var legacyScope = ToolExecutionContext.openScope(scoped.conversationId(), scoped.requesterId(), scoped.workspaceBasePath());
+                ToolExecutionContext.setOrigin(scoped);
+                try {
+                    batchAborted.check();
+                    if (Thread.currentThread().isInterrupted()) throw new CancellationException("Tool callback cancelled before entry");
+                    if (executionCheckpoint != null) executionCheckpoint.beforeInvocation(scoped, invocationKey, providerCallId);
+                    deadlineGuard.run();
+                    batchAborted.check();
+                    throwIfStopRequested(scoped.conversationId());
+                    entered.set(true);
+                    String result = executionEvidenceRecorder == null ? callback.call(arguments, scopedContext)
+                            : executionEvidenceRecorder.invoke(callback, arguments, scopedContext, invocationKey, providerCallId);
+                    batchAborted.check();
+                    return result;
+                } finally {
+                    legacyScope.close();
+                    DelegationContext.exit();
+                }
+            });
+        } catch (RuntimeException | TimeoutException | Error failure) {
+            if (failure instanceof Error) batchAborted.abort(failure);
+            else {
+                for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+                    if (cause instanceof ToolExecutionCheckpointRejectedException) {
+                        batchAborted.abort(cause);
+                        break;
+                    }
+                }
+            }
+            McpToolResultCapture capture = McpToolResultCapture.from(scopedContext);
+            if (entered.get() && executionCheckpoint != null
+                    && (failure instanceof TimeoutException || failure instanceof CancellationException
+                            || safeInputValidationMessage(failure) == null && (capture == null || !capture.isError()))) {
+                DelegationContext.push(delegation);
+                try {
+                    executionCheckpoint.markUnknownOutcome(scoped, failure);
+                } catch (RuntimeException | Error checkpointFailure) {
+                    if (!(failure instanceof Error)) throw checkpointFailure;
+                    if (checkpointFailure != failure) failure.addSuppressed(checkpointFailure);
+                } finally {
+                    DelegationContext.exit();
+                }
+            }
+            throw failure;
+        }
     }
 
     // ==================== 内部数据类 ====================
+
+    private static final class BatchAbort {
+        private final AtomicReference<Throwable> failure = new AtomicReference<>();
+
+        private final Set<Thread> workers = new HashSet<>();
+
+        synchronized void registerWorker() {
+            check();
+            workers.add(Thread.currentThread());
+        }
+
+        synchronized void unregisterWorker() {
+            workers.remove(Thread.currentThread());
+        }
+
+        synchronized void abort(Throwable reason) {
+            if (!failure.compareAndSet(null, reason)) return;
+            Thread current = Thread.currentThread();
+            for (Thread worker : workers) {
+                if (worker != current) worker.interrupt();
+            }
+        }
+
+        void check() {
+            Throwable reason = failure.get();
+            if (reason == null) return;
+            CancellationException cancelled = new CancellationException("Parallel tool batch aborted");
+            cancelled.initCause(reason);
+            throw cancelled;
+        }
+
+        void rethrowFailure() {
+            Throwable reason = failure.get();
+            if (reason instanceof Error fatal) throw fatal;
+            if (reason instanceof ToolExecutionCheckpointRejectedException rejected) throw rejected;
+        }
+    }
 
     private record PreparedToolCall(
             AssistantMessage.ToolCall toolCall,
@@ -1854,6 +2054,8 @@ public class ToolExecutionExecutor {
             String requesterId,
             String workspaceBasePath,
             ChatOrigin origin,
+            SubagentRunContext delegation,
+            AtomicBoolean entered,
             String invocationKey,
             /**
              * Shared reference (one per execute() invocation) where each

@@ -1211,6 +1211,13 @@ public class DelegateAgentTool {
             ChatOrigin childOrigin = (parentOrigin != null ? parentOrigin : ChatOrigin.EMPTY)
                     .withAgent(target.getId())
                     .withConversationId(childConversationId);
+            // Preserve Goal attribution so incomplete fences are rejected at callback entry.
+            if (parentOrigin != null && parentOrigin.executionAttribution() != null) {
+                var attribution = parentOrigin.executionAttribution();
+                if (attribution.goalId() != null || attribution.goalAttemptId() != null) {
+                    childOrigin = childOrigin.withExecutionAttribution(attribution);
+                }
+            }
             // chatWithUsage runs the same StateGraph as chat() (so the child
             // message is persisted identically) but also surfaces the child's
             // token usage from the graph's _usage_final event, so the parent can

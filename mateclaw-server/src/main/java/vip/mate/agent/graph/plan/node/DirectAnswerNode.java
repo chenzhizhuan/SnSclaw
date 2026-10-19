@@ -1,7 +1,7 @@
 package vip.mate.agent.graph.plan.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
-import com.alibaba.cloud.ai.graph.action.NodeAction;
+import vip.mate.agent.runtime.state.RunState;
+import vip.mate.agent.runtime.state.NodeAction;
 import vip.mate.agent.graph.plan.state.PlanStateKeys;
 
 import java.util.Map;
@@ -40,7 +40,7 @@ import java.util.Map;
 public class DirectAnswerNode implements NodeAction {
 
     @Override
-    public Map<String, Object> apply(OverAllState state) {
+    public Map<String, Object> apply(RunState state) {
         String directAnswer = state.value(PlanStateKeys.DIRECT_ANSWER, "");
         return Map.of(PlanStateKeys.FINAL_SUMMARY, directAnswer);
     }

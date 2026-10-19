@@ -1,263 +1,110 @@
 package vip.mate.llm.chatmodel;
 
-import com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeConnectionProperties;
-import com.alibaba.cloud.ai.dashscope.api.DashScopeApi;
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
-import com.alibaba.cloud.ai.dashscope.spec.DashScopeApiSpec;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import vip.mate.exception.MateClawException;
+import vip.mate.llm.dashscope.NativeDashScopeChatModel;
+import vip.mate.llm.dashscope.NativeDashScopeChatOptions;
+import vip.mate.llm.dashscope.NativeDashScopeConnectionProperties;
+import vip.mate.llm.dashscope.NativeDashScopeTransport;
 import vip.mate.llm.model.ModelConfigEntity;
 import vip.mate.llm.model.ModelProtocol;
 import vip.mate.llm.model.ModelProviderEntity;
 import vip.mate.llm.service.ModelProviderService;
 
-import java.lang.reflect.Field;
+import java.net.http.HttpClient;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
-/**
- * Strategy implementation for {@link ModelProtocol#DASHSCOPE_NATIVE}.
- *
- * <p>Owns all DashScope-specific construction logic (api + options) plus the
- * fallback-chain helpers for resolving API key / Base URL when the provider
- * row is incomplete, so the agent package no longer carries any DashScope
- * schema knowledge.</p>
- *
- * <p>DashScopeChatModel is injected via ObjectProvider so that the builder
- * degrades gracefully when DashScope auto-configuration is disabled or the
- * dependency is absent, rather than failing the entire application context.</p>
- */
-@Slf4j
+/** Builds native models directly from persisted configuration and environment defaults. */
 @Component
+@EnableConfigurationProperties(NativeDashScopeConnectionProperties.class)
 public class DashScopeChatModelBuilder implements ChatModelBuilder {
+    private static final List<String> SEARCH_MODELS = List.of("qwen-plus", "qwen-max", "qwen-turbo",
+            "qwen3-max", "qwen3.5-flash", "qwen3.6-flash");
+    private static final Set<String> TRANSPORT_OPTIONS = Set.of("request_timeout_seconds", "timeout", "read_timeout");
+    private final NativeDashScopeConnectionProperties properties;
+    private final ModelProviderService providerService;
 
-    private final ObjectProvider<DashScopeChatModel> dashScopeChatModelProvider;
-    private final DashScopeConnectionProperties dashScopeConnectionProperties;
-    private final ModelProviderService modelProviderService;
-
-    public DashScopeChatModelBuilder(ObjectProvider<DashScopeChatModel> dashScopeChatModelProvider,
-                                          DashScopeConnectionProperties dashScopeConnectionProperties,
-                                          ModelProviderService modelProviderService) {
-        this.dashScopeChatModelProvider = dashScopeChatModelProvider;
-        this.dashScopeConnectionProperties = dashScopeConnectionProperties;
-        this.modelProviderService = modelProviderService;
+    public DashScopeChatModelBuilder(NativeDashScopeConnectionProperties properties, ModelProviderService providerService) {
+        this.properties = properties;
+        this.providerService = providerService;
     }
 
-    @Override
-    public ModelProtocol supportedProtocol() {
-        return ModelProtocol.DASHSCOPE_NATIVE;
-    }
+    @Override public ModelProtocol supportedProtocol() { return ModelProtocol.DASHSCOPE_NATIVE; }
 
     @Override
     public ChatModel build(ModelConfigEntity model, ModelProviderEntity provider, RetryTemplate retry) {
-        DashScopeChatModel defaultModel = dashScopeChatModelProvider.getIfAvailable();
-        if (defaultModel == null) {
-            throw new MateClawException("err.agent.dashscope_unavailable",
-                    "DashScope 自动配置未激活（可能缺少依赖或被排除），无法构建 DashScope 模型");
-        }
-        DashScopeApi api = buildDashScopeApi(provider);
-        DashScopeChatOptions options = buildDashScopeOptions(model, provider);
-        return defaultModel.mutate()
-                .dashScopeApi(api)
-                .defaultOptions(options)
-                .build();
-    }
-
-    /**
-     * Bailian's built-in web search is only accepted by a subset of models;
-     * sending {@code enable_search} to a model that doesn't support it returns
-     * 400 InvalidParameter and the failover layer then evicts the entire
-     * provider as MODEL_NOT_FOUND. Per the public docs, only Qwen-Plus,
-     * Qwen-Max, Qwen-Turbo and the Qwen3-Max series accept the parameter.
-     *
-     * <p>Resolution order:</p>
-     * <ol>
-     *   <li>Explicit {@code enableSearch} in the model row (per-model toggle)</li>
-     *   <li>Explicit {@code enableSearch} in provider kwargs (admin-level toggle)</li>
-     *   <li>Default: enabled only when the model name matches a known-supporting
-     *       prefix; disabled for everything else (coder / thinking / DeepSeek /
-     *       Long / Vision)</li>
-     * </ol>
-     *
-     * <p>Public so {@code AgentGraphBuilder.build()} can surface the
-     * "built-in search active" log once per agent.</p>
-     */
-    public boolean isBuiltinSearchEnabled(ModelConfigEntity runtimeModel, ModelProviderEntity provider) {
-        if (runtimeModel != null && runtimeModel.getEnableSearch() != null) {
-            return Boolean.TRUE.equals(runtimeModel.getEnableSearch());
-        }
-        Map<String, Object> kwargs = modelProviderService.readProviderGenerateKwargs(provider);
-        Object kwargsSearch = ProviderGenerateKwargs.findOptionValue(kwargs, "enableSearch");
-        if (kwargsSearch != null) {
-            return Boolean.TRUE.equals(kwargsSearch);
-        }
-        return modelSupportsBuiltinSearch(runtimeModel);
-    }
-
-    /**
-     * Model id prefixes that the Bailian text-generation endpoint documents as
-     * accepting {@code enable_search}. Anything else (qwen-coder-*, qwen-long,
-     * qwen3-*-thinking-*, deepseek-*, qwen*-vl-*) returns 400 InvalidParameter
-     * when the parameter is sent.
-     */
-    private static final java.util.List<String> BUILTIN_SEARCH_SUPPORTED_PREFIXES = java.util.List.of(
-            "qwen-plus",
-            "qwen-max",
-            "qwen-turbo",
-            "qwen3-max",
-            "qwen3.5-flash",
-            "qwen3.6-flash"
-    );
-
-    private static boolean modelSupportsBuiltinSearch(ModelConfigEntity model) {
-        if (model == null) return false;
-        String name = model.getModelName();
-        if (!StringUtils.hasText(name)) return false;
-        String lower = name.trim().toLowerCase();
-        for (String prefix : BUILTIN_SEARCH_SUPPORTED_PREFIXES) {
-            if (lower.startsWith(prefix)) return true;
-        }
-        return false;
-    }
-
-    DashScopeChatOptions buildDashScopeOptions(ModelConfigEntity runtimeModel, ModelProviderEntity provider) {
-        DashScopeChatOptions.DashScopeChatOptionsBuilder builder = DashScopeChatOptions.builder();
-        Map<String, Object> kwargs = modelProviderService.readProviderGenerateKwargs(provider);
-
-        if (StringUtils.hasText(runtimeModel.getModelName())) {
-            builder.withModel(runtimeModel.getModelName());
-        }
-        if (runtimeModel.getTemperature() != null) {
-            builder.withTemperature(runtimeModel.getTemperature());
-        }
-        if (runtimeModel.getMaxTokens() != null) {
-            builder.withMaxToken(runtimeModel.getMaxTokens());
-        }
-        if (runtimeModel.getTopP() != null) {
-            builder.withTopP(runtimeModel.getTopP());
-        }
-        if (isBuiltinSearchEnabled(runtimeModel, provider)) {
-            builder.withEnableSearch(true);
-            String strategy = runtimeModel.getSearchStrategy();
-            if (!StringUtils.hasText(strategy)) {
-                strategy = (String) ProviderGenerateKwargs.findOptionValue(kwargs, "searchStrategy");
-            }
-            if (StringUtils.hasText(strategy)) {
-                builder.withSearchOptions(DashScopeApiSpec.SearchOptions.builder()
-                        .searchStrategy(strategy)
-                        .enableSource(true)
-                        .enableCitation(true)
-                        .build());
-            }
-        }
-        return builder.build();
-    }
-
-    DashScopeApi buildDashScopeApi(ModelProviderEntity provider) {
-        DashScopeApi.Builder builder = DashScopeApi.builder();
-
-        // API Key fallback chain: provider UI config → env / application.yml → default bean reflection
         String apiKey = provider != null ? provider.getApiKey() : null;
-        if (!StringUtils.hasText(apiKey) || !modelProviderService.hasUsableApiKey(apiKey)) {
-            apiKey = dashScopeConnectionProperties.getApiKey();
-        }
-        if (!StringUtils.hasText(apiKey) || !modelProviderService.hasUsableApiKey(apiKey)) {
-            apiKey = readApiKeyFromDefaultChatModel();
-        }
-        if (!modelProviderService.hasUsableApiKey(apiKey)) {
+        if (!providerService.hasUsableApiKey(apiKey)) apiKey = properties.getApiKey();
+        if (!providerService.hasUsableApiKey(apiKey)) {
             throw new MateClawException("err.agent.dashscope_key_missing",
-                    "DashScope API Key 未配置，请在「设置 → 模型 → 添加供应商」中为 dashscope 填写 API Key");
+                    "DashScope API Key 未配置，请在模型设置中填写 API Key");
         }
-        builder.apiKey(apiKey.trim());
+        String baseUrl = provider != null && StringUtils.hasText(provider.getBaseUrl())
+                ? provider.getBaseUrl() : properties.getBaseUrl();
+        Map<String, Object> kwargs = providerService.readProviderGenerateKwargs(provider);
+        Integer timeout = model.getRequestTimeoutSeconds() != null && model.getRequestTimeoutSeconds() > 0
+                ? model.getRequestTimeoutSeconds() : ProviderGenerateKwargs.resolveIntegerOption("requestTimeoutSeconds", null, kwargs);
+        HttpClient http = HttpClient.newBuilder().connectTimeout(HttpTimeouts.CONNECT_TIMEOUT)
+                .version(HttpClient.Version.HTTP_1_1).build();
+        return new NativeDashScopeChatModel(new NativeDashScopeTransport(apiKey, baseUrl, http,
+                HttpTimeouts.resolveReadTimeout(timeout)), buildDashScopeOptions(model, provider));
+    }
 
-        // Base URL fallback chain — same priority as API Key
-        String baseUrl = provider != null ? provider.getBaseUrl() : null;
-        if (!StringUtils.hasText(baseUrl)) {
-            baseUrl = dashScopeConnectionProperties.getBaseUrl();
+    public boolean isBuiltinSearchEnabled(ModelConfigEntity model, ModelProviderEntity provider) {
+        if (model != null && model.getEnableSearch() != null) return model.getEnableSearch();
+        Object explicit = ProviderGenerateKwargs.findOptionValue(providerService.readProviderGenerateKwargs(provider), "enableSearch");
+        if (explicit != null) return Boolean.TRUE.equals(explicit);
+        String name = model != null && StringUtils.hasText(model.getModelName())
+                ? model.getModelName() : properties.getChat().getOptions().getModel();
+        if (!StringUtils.hasText(name)) return false;
+        String normalized = name.trim().toLowerCase(Locale.ROOT);
+        return SEARCH_MODELS.stream().anyMatch(normalized::startsWith);
+    }
+
+    NativeDashScopeChatOptions buildDashScopeOptions(ModelConfigEntity model, ModelProviderEntity provider) {
+        Map<String, Object> kwargs = providerService.readProviderGenerateKwargs(provider);
+        var defaults = properties.getChat().getOptions();
+        NativeDashScopeChatOptions.Builder builder = NativeDashScopeChatOptions.builder()
+                .model(StringUtils.hasText(model.getModelName()) ? model.getModelName() : defaults.getModel())
+                .temperature(model.getTemperature() != null ? model.getTemperature()
+                        : ProviderGenerateKwargs.resolveDoubleOption("temperature", defaults.getTemperature(), kwargs))
+                .maxTokens(model.getMaxTokens() != null ? model.getMaxTokens()
+                        : ProviderGenerateKwargs.resolveIntegerOption("maxTokens", defaults.getMaxTokens(), kwargs))
+                .topP(model.getTopP() != null ? model.getTopP()
+                        : ProviderGenerateKwargs.resolveDoubleOption("topP", defaults.getTopP(), kwargs))
+                .topK(ProviderGenerateKwargs.resolveIntegerOption("topK", null, kwargs));
+        ProviderGenerateKwargs.collectPassthroughExtraBody(kwargs).forEach((key, value) -> {
+            String nativeKey = key.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase(Locale.ROOT);
+            if (!TRANSPORT_OPTIONS.contains(nativeKey)) builder.nativeParameter(nativeKey, value);
+        });
+        // Nested options use the same spelling and precedence as top-level provider settings.
+        for (String key : List.of("enableThinking", "thinkingBudget", "repetitionPenalty", "seed", "stop", "responseFormat")) {
+            Object value = ProviderGenerateKwargs.findOptionValue(kwargs, key);
+            if (value != null) builder.nativeParameter(key.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase(Locale.ROOT), value);
         }
-        if (!StringUtils.hasText(baseUrl)) {
-            baseUrl = readBaseUrlFromDefaultChatModel();
-        }
-        String normalizedBaseUrl = normalizeDashScopeBaseUrl(baseUrl);
-        if (StringUtils.hasText(normalizedBaseUrl)) {
-            builder.baseUrl(normalizedBaseUrl);
+        boolean search = isBuiltinSearchEnabled(model, provider);
+        builder.enableSearch(search);
+        if (search) {
+            Object configured = ProviderGenerateKwargs.findOptionValue(kwargs, "searchOptions");
+            Map<String, Object> searchOptions = new LinkedHashMap<>();
+            if (configured instanceof Map<?, ?> map) map.forEach((key, value) -> searchOptions.put(String.valueOf(key), value));
+            String strategy = StringUtils.hasText(model.getSearchStrategy()) ? model.getSearchStrategy()
+                    : String.valueOf(ProviderGenerateKwargs.findOptionValue(kwargs, "searchStrategy"));
+            if (StringUtils.hasText(strategy) && !"null".equals(strategy)) {
+                searchOptions.put("search_strategy", strategy);
+                searchOptions.put("enable_source", true);
+                searchOptions.put("enable_citation", true);
+            }
+            if (!searchOptions.isEmpty()) builder.searchOptions(searchOptions);
         }
         return builder.build();
-    }
-
-    /**
-     * Strip the OpenAI compatible-mode path off any user-supplied URL
-     * (common when migrating from compat-mode), trim trailing slash, and
-     * return null when the result is the SDK default — letting Spring AI's
-     * built-in default win avoids path-concat surprises.
-     */
-    private String normalizeDashScopeBaseUrl(String baseUrl) {
-        if (baseUrl == null || baseUrl.isBlank()) {
-            return null;
-        }
-        String normalized = baseUrl.trim();
-        int compatibleIndex = normalized.indexOf("/compatible-mode/");
-        if (compatibleIndex >= 0) {
-            normalized = normalized.substring(0, compatibleIndex);
-        }
-        if (normalized.endsWith("/")) {
-            normalized = normalized.substring(0, normalized.length() - 1);
-        }
-        if ("https://dashscope.aliyuncs.com".equals(normalized)) {
-            return null;
-        }
-        return normalized;
-    }
-
-    // ============================================================
-    // Reflection helpers — read whatever the auto-configured default
-    // DashScopeChatModel was built with, as a final fallback when no
-    // explicit credentials reach us.
-    // ============================================================
-
-    private String readApiKeyFromDefaultChatModel() {
-        try {
-            DashScopeApi api = readDashScopeApiFromDefaultChatModel();
-            if (api == null) return null;
-            Field apiKeyField = DashScopeApi.class.getDeclaredField("apiKey");
-            apiKeyField.setAccessible(true);
-            Object apiKey = apiKeyField.get(api);
-            if (apiKey instanceof org.springframework.ai.model.ApiKey key) {
-                return key.getValue();
-            }
-        } catch (Exception e) {
-            log.warn("Failed to read API key from default DashScopeChatModel: {}", e.getMessage());
-        }
-        return null;
-    }
-
-    private String readBaseUrlFromDefaultChatModel() {
-        try {
-            DashScopeApi api = readDashScopeApiFromDefaultChatModel();
-            if (api == null) return null;
-            Field baseUrlField = DashScopeApi.class.getDeclaredField("baseUrl");
-            baseUrlField.setAccessible(true);
-            Object baseUrl = baseUrlField.get(api);
-            return baseUrl instanceof String value ? value : null;
-        } catch (Exception e) {
-            log.warn("Failed to read baseUrl from default DashScopeChatModel: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    private DashScopeApi readDashScopeApiFromDefaultChatModel() throws NoSuchFieldException, IllegalAccessException {
-        DashScopeChatModel defaultModel = dashScopeChatModelProvider.getIfAvailable();
-        if (defaultModel == null) {
-            return null;
-        }
-        Field apiField = DashScopeChatModel.class.getDeclaredField("dashscopeApi");
-        apiField.setAccessible(true);
-        Object api = apiField.get(defaultModel);
-        return api instanceof DashScopeApi dashScopeApi ? dashScopeApi : null;
     }
 }

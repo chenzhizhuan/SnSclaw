@@ -1,5 +1,8 @@
 # Roadmap
 
+3.0.0-SNAPSHOT is in development: Boot 4, Spring AI 2 and AgentScope 2 execution, retaining tool governance, history contracts and recovery boundaries. See Releases for stable builds. [Architecture changelog](./changelog)
+
+
 > "People don't know what they want until you show it to them."
 >
 > This isn't a feature list. It's a manifesto about **how your AI assistant should exist.**

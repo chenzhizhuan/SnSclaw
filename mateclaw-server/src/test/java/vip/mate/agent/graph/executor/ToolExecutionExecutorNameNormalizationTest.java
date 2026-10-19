@@ -7,6 +7,7 @@ import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.ToolDefinition;
 import vip.mate.agent.AgentToolSet;
+import vip.mate.agent.graph.state.ActionExecutionLedger;
 import vip.mate.tool.guard.ToolGuard;
 import vip.mate.tool.guard.ToolGuardResult;
 import vip.mate.tool.builtin.ProgressiveToolBridgeTool;
@@ -159,6 +160,9 @@ class ToolExecutionExecutorNameNormalizationTest {
         assertEquals(1, result.responses().size());
         assertTrue(result.responses().get(0).responseData().contains("TOOL_ARGUMENTS_INCOMPLETE"));
         assertTrue(result.responses().get(0).responseData().contains("append_file"));
+        var ledger = ActionExecutionLedger.fromEvents(result.events());
+        assertEquals(ActionExecutionLedger.Status.FAILED, ledger.receipts().get("call_invalid").status());
+        assertTrue(ledger.renderAnswerFacts().contains("TOOL_ARGUMENTS_INCOMPLETE"));
         verify(callback, never()).call(anyString(), any());
         verify(callback, never()).call(anyString());
     }
@@ -221,6 +225,9 @@ class ToolExecutionExecutorNameNormalizationTest {
 
         assertTrue(result.responses().get(0).responseData().contains("Missing required arguments"));
         assertTrue(result.responses().get(0).responseData().contains("query"));
+        var ledger = ActionExecutionLedger.fromEvents(result.events());
+        assertEquals(ActionExecutionLedger.Status.FAILED, ledger.receipts().get("bridge_3").status());
+        assertTrue(ledger.renderAnswerFacts().contains("Missing required arguments"));
         verify(target, never()).call(anyString(), any());
     }
 }

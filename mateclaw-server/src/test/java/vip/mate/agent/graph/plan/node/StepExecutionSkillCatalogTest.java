@@ -1,6 +1,6 @@
 package vip.mate.agent.graph.plan.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
+import vip.mate.agent.runtime.state.RunState;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.Message;
 import vip.mate.agent.graph.plan.state.PlanStateAccessor;
@@ -59,6 +59,6 @@ class StepExecutionSkillCatalogTest {
         values.put(PlanStateKeys.COMPLETED_RESULTS, new ArrayList<String>());
         values.put(PlanStateKeys.WORKING_CONTEXT, "");
         values.put(MateClawStateKeys.LOADED_SKILLS, loadedSkills);
-        return new PlanStateAccessor(new OverAllState(values));
+        return new PlanStateAccessor(new RunState(values));
     }
 }

@@ -1,7 +1,7 @@
 package vip.mate.agent.graph.plan.edge;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
-import com.alibaba.cloud.ai.graph.action.EdgeAction;
+import vip.mate.agent.runtime.state.RunState;
+import vip.mate.agent.runtime.state.EdgeAction;
 import vip.mate.agent.graph.plan.state.PlanStateKeys;
 import vip.mate.agent.graph.state.MateClawStateKeys;
 
@@ -22,7 +22,7 @@ import vip.mate.agent.graph.state.MateClawStateKeys;
 public class PlanGenerationDispatcher implements EdgeAction {
 
     @Override
-    public String apply(OverAllState state) {
+    public String apply(RunState state) {
         // A board-delegated plan whose tasks all settled resumes straight into
         // the summary — its step results were rebuilt from the team task board
         // by the resume gate; the step loop has nothing left to execute.

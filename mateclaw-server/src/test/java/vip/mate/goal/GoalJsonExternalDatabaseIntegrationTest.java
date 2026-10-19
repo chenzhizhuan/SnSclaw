@@ -1,5 +1,7 @@
 package vip.mate.goal;
 
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -14,7 +16,7 @@ import org.springframework.test.context.DynamicPropertySource;
 @EnabledIfSystemProperty(named = "mateclaw.json.external.enabled", matches = "true")
 class GoalJsonExternalDatabaseIntegrationTest extends GoalJsonAcceptanceIntegrationTest {
     // Binary bundled-skill imports are outside this JSON protocol contract.
-    @org.springframework.boot.test.mock.mockito.MockBean
+    @MockitoBean
     private vip.mate.skill.workspace.SkillWorkspaceBootstrapRunner skillWorkspaceBootstrap;
 
     @DynamicPropertySource

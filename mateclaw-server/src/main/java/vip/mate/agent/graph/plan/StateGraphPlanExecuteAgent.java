@@ -1,8 +1,8 @@
 package vip.mate.agent.graph.plan;
 
 import vip.mate.workspace.core.service.MemberFileIsolation;
-import com.alibaba.cloud.ai.graph.CompiledGraph;
-import com.alibaba.cloud.ai.graph.RunnableConfig;
+import vip.mate.agent.runtime.AgentRuntime;
+import vip.mate.tool.builtin.DelegationContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
@@ -26,24 +26,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 基于 StateGraph 的 Plan-Execute Agent
- * <p>
- * 使用 spring-ai-alibaba-graph-core 的 StateGraph 引擎实现：
- * <ol>
- *   <li>简单问答快速退出（PlanGenerationNode 前置判断）</li>
- *   <li>多步任务：规划 → 逐步执行（带工具调用）→ 汇总</li>
- * </ol>
- * <p>
- * content_delta 和 thinking_delta 由节点内 NodeStreamingChatHelper 直推，
- * chatStructuredStream() 只处理 phase/tool/plan/step 等结构化事件。
- * 不再从 NodeOutput 二次整段下发已流式推送的内容。
+ * Plan application entry point backed by explicit planning and execution phases.
+ * Individual step tool loops use the native agent runtime. Streaming callbacks deliver
+ * content and thinking; retained RunSteps project plan, step and tool events.
  *
  * @author SnSclaw
  */
 @Slf4j
 public class StateGraphPlanExecuteAgent extends BaseAgent implements StructuredStreamCapable {
 
-    private final CompiledGraph compiledGraph;
+    private final AgentRuntime compiledGraph;
     private final PlanningService planningService;
     private final org.springframework.ai.chat.model.ChatModel chatModel;
     private final ConversationWindowManager conversationWindowManager;
@@ -51,7 +43,7 @@ public class StateGraphPlanExecuteAgent extends BaseAgent implements StructuredS
     private final vip.mate.agent.AgentToolSet toolSet;
 
     public StateGraphPlanExecuteAgent(ChatClient chatClient, ConversationService conversationService,
-                                      CompiledGraph compiledGraph, PlanningService planningService,
+                                      AgentRuntime compiledGraph, PlanningService planningService,
                                       org.springframework.ai.chat.model.ChatModel chatModel,
                                       ConversationWindowManager conversationWindowManager) {
         this(chatClient, conversationService, compiledGraph, planningService,
@@ -59,7 +51,7 @@ public class StateGraphPlanExecuteAgent extends BaseAgent implements StructuredS
     }
 
     public StateGraphPlanExecuteAgent(ChatClient chatClient, ConversationService conversationService,
-                                      CompiledGraph compiledGraph, PlanningService planningService,
+                                      AgentRuntime compiledGraph, PlanningService planningService,
                                       org.springframework.ai.chat.model.ChatModel chatModel,
                                       ConversationWindowManager conversationWindowManager,
                                       vip.mate.agent.AgentToolSet toolSet) {
@@ -145,8 +137,8 @@ public class StateGraphPlanExecuteAgent extends BaseAgent implements StructuredS
 
     /** 公共流执行逻辑，由 chatStructuredStream 和 chatWithReplayStream 共用 */
     private Flux<AgentService.StreamDelta> executeStream(Map<String, Object> inputs) {
-        String threadId = UUID.randomUUID().toString();
-        RunnableConfig config = RunnableConfig.builder().threadId(threadId).build();
+
+
 
         AtomicInteger sentEventCount = new AtomicInteger(0);
         AtomicInteger finalPromptTokens = new AtomicInteger(0);
@@ -167,12 +159,12 @@ public class StateGraphPlanExecuteAgent extends BaseAgent implements StructuredS
         // "answeranswer" and keeps live output identical to history replay.
         AtomicReference<String> lastPersistedStepThinking = new AtomicReference<>("");
         // 最终汇总同样需要游标：FINAL_SUMMARY / FINAL_SUMMARY_THINKING 也是 REPLACE，
-        // 一旦写入就会出现在此后每个 NodeOutput 上。
+        // 一旦写入就会出现在此后每个 RunStep 上。
         AtomicReference<String> lastPersistedSummary = new AtomicReference<>("");
         AtomicReference<String> lastPersistedSummaryThinking = new AtomicReference<>("");
         AtomicReference<String> lastPersistedPlanThinking = new AtomicReference<>("");
 
-        return BaseAgent.routingStartupDelta(inputs).concatWith(compiledGraph.stream(inputs, config)
+        return BaseAgent.routingStartupDelta(inputs).concatWith(compiledGraph.stream(inputs)
                 .flatMapIterable(output -> {
                     List<AgentService.StreamDelta> deltas = new ArrayList<>();
                     // 1. 提取事件（只发送新增部分）
@@ -217,7 +209,7 @@ public class StateGraphPlanExecuteAgent extends BaseAgent implements StructuredS
                             });
 
                     // 2b. 最终汇总（同样 thinking 先于 content）
-                    //     两个 key 都是 REPLACE：值会滞留在后续每个 NodeOutput 里。
+                    //     两个 key 都是 REPLACE：值会滞留在后续每个 RunStep 里。
                     //     没有游标时每批都会重发一次 —— 汇总正文被反复追加进
                     //     mate_message.content，而 thinking 会在正文之后再落一段，
                     //     于是气泡末尾挂出一个孤立的思考框。与 2a 的 step 级
@@ -393,6 +385,9 @@ public class StateGraphPlanExecuteAgent extends BaseAgent implements StructuredS
         origin = MemberFileIsolation.scope(origin);
         inputs.put(MateClawStateKeys.WORKSPACE_BASE_PATH, origin.workspaceBasePath() != null ? origin.workspaceBasePath() : "");
         inputs.put(MateClawStateKeys.CHAT_ORIGIN, origin);
+        String thinkingLevel = vip.mate.llm.chatmodel.ThinkingLevelHolder.get();
+        if (thinkingLevel != null) inputs.put(MateClawStateKeys.REQUESTED_THINKING_LEVEL, thinkingLevel);
+        inputs.put(MateClawStateKeys.SUBAGENT_RUN_CONTEXT, DelegationContext.current());
 
         // RFC 48 — inject active goal snapshot for GoalEvaluationNode.
         // Mirrors StateGraphReActAgent.buildInitialState exactly.

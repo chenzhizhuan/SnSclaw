@@ -700,8 +700,8 @@ export default {
     pendingReply: 'Preparing a reply…',
     expand: 'Expand',
     // INCOMPLETE truncation card (finishReason=incomplete)
-    incompleteTitle: 'Answer auto-truncated after repeated output was detected',
-    incompleteDescription: 'After the visible text above, the model started repeating itself (or stalled in thinking with no output) and was cut short to avoid wasted tokens. Click below to regenerate the full answer, or refine your prompt to focus on the missing parts.',
+    incompleteTitle: 'Answer is incomplete',
+    incompleteDescription: 'This answer did not finish. Check the message for the reason: repeated output, a reasoning safety limit, or an exhausted output token budget. Regenerate, adjust thinking and output budgets, or split the task to continue.',
     incompleteRetry: 'Regenerate',
     // EVIDENCE_INSUFFICIENT info card (finishReason=evidence_insufficient)
     evidenceTitle: 'Run completed — some source references could not be verified',

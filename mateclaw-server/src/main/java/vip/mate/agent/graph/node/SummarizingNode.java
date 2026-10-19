@@ -1,7 +1,8 @@
 package vip.mate.agent.graph.node;
 
-import com.alibaba.cloud.ai.graph.OverAllState;
-import com.alibaba.cloud.ai.graph.action.NodeAction;
+import vip.mate.llm.chatmodel.ChatModelDefaults;
+import vip.mate.agent.runtime.state.RunState;
+import vip.mate.agent.runtime.state.NodeAction;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
@@ -13,6 +14,8 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import vip.mate.llm.dashscope.NativeDashScopeChatOptions;
 import vip.mate.agent.GraphEventPublisher;
 import vip.mate.agent.context.StructuredTruncator;
 import vip.mate.agent.graph.NodeStreamingChatHelper;
@@ -71,7 +74,7 @@ public class SummarizingNode implements NodeAction {
     }
 
     @Override
-    public Map<String, Object> apply(OverAllState state) throws Exception {
+    public Map<String, Object> apply(RunState state) throws Exception {
         MateClawStateAccessor accessor = new MateClawStateAccessor(state);
 
         // 取消检查
@@ -203,15 +206,22 @@ public class SummarizingNode implements NodeAction {
      */
     private Prompt buildNoThinkingPrompt(List<Message> messages) {
         ChatOptions opts;
-        if (chatModel instanceof AnthropicChatModel) {
-            opts = AnthropicChatOptions.builder()
-                    .thinking(org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.DISABLED, 0)
-                    .build();
+        if (ChatModelDefaults.optionsFor(chatModel) instanceof AnthropicChatOptions defaults) {
+            opts = defaults.mutate().thinkingDisabled().toolCallbacks(List.of()).build();
         } else {
             // OpenAI / DashScope / other: omit reasoningEffort to disable chain-of-thought
-            OpenAiChatOptions oaiOpts = OpenAiChatOptions.builder().build();
-            oaiOpts.setStreamUsage(true);
-            opts = oaiOpts;
+            if (ChatModelDefaults.optionsFor(chatModel) instanceof OpenAiChatOptions defaults) {
+                opts = defaults.mutate().reasoningEffort(null).streamUsage(true).toolCallbacks(List.of()).build();
+            } else if (ChatModelDefaults.optionsFor(chatModel) instanceof NativeDashScopeChatOptions defaults) {
+                opts = defaults.mutate().enableThinking(false).toolCallbacks(List.of()).build();
+            } else {
+                ChatOptions defaults = ChatModelDefaults.optionsFor(chatModel);
+                if (defaults instanceof ToolCallingChatOptions tools) {
+                    opts = tools.mutate().toolCallbacks(List.of()).build();
+                } else {
+                    opts = defaults != null ? defaults.mutate().build() : ChatOptions.builder().build();
+                }
+            }
         }
         return new Prompt(messages, opts);
     }
