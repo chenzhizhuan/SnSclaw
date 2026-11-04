@@ -1,6 +1,6 @@
 <div align="center">
 
-> 当前开发版本：**3.0.0-SNAPSHOT**。Java 21 / Spring Boot 4.1.1 / Spring AI 2.0.1 / AgentScope 2.0.4。AgentScope 驱动执行循环，MateClaw 保留工具审批、权限、Goal、SSE 与持久化。正式发行版请查看 Releases。
+> **3.0.0 正式版 · 2026-10-26**。Java 21 / Spring Boot 4.1.1 / Spring AI 2.0.1 / AgentScope 2.0.4。AgentScope 驱动执行循环，MateClaw 保留工具审批、权限、Goal、SSE 与持久化。正式发行版请查看 Releases。
 > [3.0.0 架构升级日志](CHANGELOG.md)
 > 包含 2.3.0 之后全部累计更新：结构化决策、成员文件隔离、DSH SDK 升级、朗读音色试听和结构化 MCP 展示。
 
@@ -35,7 +35,7 @@
 
 ---
 
-> **v2.3.0（2026-09-20 发布）——持久目标的 JSON 验收与执行证据。** 用户可配置 JSON 必需字段，将检查结果绑定到当前要求和不可变产物版本；同时加入团队成员受控干预、技能文档及文件夹上传，并修复 DSH 历史与输出预算、vLLM 推理内容和 SSE 分帧。 [查看完整更新日志](https://claw.mate.vip/docs/zh/releases/2.3.0)。
+> **3.0.0——受治理的执行、可恢复的长任务与团队交付。** Java 21、Spring Boot 4、Spring AI 2 和 AgentScope 2 驱动原生运行时；统一上下文预算、最终答复检查和团队汇总完善交付，同时保留审批与工作空间边界。[正式版更新与升级说明](https://claw.mate.vip/docs/zh/releases/3.0.0)。发布日期：**2026-10-26**。
 
 ---
 
@@ -50,6 +50,18 @@
 **SnSclaw 是完整的一整套。** 一次部署——推理、知识、记忆、工具、多渠道入口，从第一天就一起设计，不是事后拼接。主模型不可用时，系统会按优先级改由下一家健康供应商重新完成当前请求。
 
 ---
+
+## 3.0.0 更新概览
+
+3.0.0 发布于 **2026-10-26**，包含未单独正式发布的 2.4.0 开发周期更新。发行包请从 Releases 下载。
+
+- **原生执行循环**：AgentScope Java **2.0.4** 驱动 ReAct 与 Plan-Execute 每个步骤内部的工具循环。计划调度、工具审批、工作空间权限、取消、Goal 验收和持久化继续由 MateClaw 管理；这条路径不依赖 beta 版 AgentScope Harness API。
+- **统一上下文预算**：请求准备、压缩重试和摘要调用统一计算消息、实际生效的工具 schema 与一份输出预留。请求只覆盖部分选项时继承模型默认值，显式空工具列表关闭默认回调。估算偏保守，不等同于供应商计费 token。
+- **受治理的决策与恢复**：类型化决策默认 SHADOW 模式，继续遵守领域约束和 Goal 预算；持久检查点在副作用结果不确定时阻止盲目重放。
+- **长任务与团队交付**：未完成工作可在运行时限制内继续，需要用户补充信息时等待回复；Team Run 在最终汇总完成后再发布完成状态，成员进度保留完整结果与失败原因。
+- **日常能力完善**：可选严格成员文件隔离、受管理的 DSH SDK 升级、音色选择与试听、MCP 结构化展示及更严格的模型探测。
+
+源码构建使用 Java 21。升级前备份数据库、workspace、插件与配置，回滚使用升级前备份。[架构与升级说明](mateclaw-server/src/main/resources/docs/zh/changelog.md) · [模型预算规则](mateclaw-server/src/main/resources/docs/zh/models.md)
 
 ## 三件让它与众不同的事
 
@@ -167,6 +179,11 @@ RBAC + JWT。**Personal Access Token** 给无人值守脚本和 CI 使用。**We
 
 ```bash
 # 后端
+# 需要 Java 21 与 Maven。首次生成本地 JWT 密钥，重启时复用。
+[ -f .env.local ] || (umask 077; printf 'JWT_SECRET=%s\n' "$(openssl rand -hex 48)" > .env.local)
+set -a
+source .env.local
+set +a
 # 从仓库根目录运行，使用根目录下已配置的模型数据库与工作空间
 SPRING_DATASOURCE_URL="jdbc:h2:file:$PWD/data/mateclaw;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE" \
 MATECLAW_WORKSPACE_SANDBOX_ROOT="$PWD/data/workspace" \
@@ -177,7 +194,7 @@ cd mateclaw-ui
 npm install && npm run dev -- --host 127.0.0.1    # http://localhost:5173
 ```
 
-默认登录：`admin` / `admin123`
+新数据库默认登录：`admin` / `admin123`。登录后修改密码，并在 **设置 → 模型** 配置模型。已有模型配置从根目录 `data/` 数据库读取；使用 `mateclaw-server/data/` 会打开另一份数据库。不要提交 `.env.local`，其中 `JWT_SECRET` 必须非空且至少包含 32 个 UTF-8 字节。
 
 ### Docker 部署
 

@@ -48,6 +48,21 @@ class NodeStreamingChatHelperThinkingCapTest {
     }
 
     @Test
+    void lengthFinishIsRetainedEvenWhenPartialContentWasEmitted() {
+        var msg = AssistantMessage.builder().content("{\"decision\":\"ACCEPT\",")
+                .properties(Map.of("reasoningContent", "Reviewing fifteen forecast rows")).build();
+        var metadata = ChatGenerationMetadata.builder().finishReason("length").build();
+        var model = mock(ChatModel.class);
+        when(model.stream(any(Prompt.class))).thenReturn(Flux.just(
+                new ChatResponse(List.of(new Generation(msg, metadata)))));
+        var result = new NodeStreamingChatHelper(streamTracker)
+                .streamCallSilent(model, smallPrompt(), "c", "finalization_check");
+        assertEquals("length", result.assistantMessage().getMetadata().get("generationFinishReason"));
+        assertEquals(msg.getText(), result.text());
+        assertFalse(result.partial(), "Do not change live chunk/continuation semantics when retaining finish metadata");
+    }
+
+    @Test
     @DisplayName("thinking >= cap + tool_call in same chunk: cap must NOT trigger; tool_call survives")
     void thinkingAndToolCallSameChunk_doesNotTripSoftCap() {
         // Build a single chunk that carries 40k thinking (well above the

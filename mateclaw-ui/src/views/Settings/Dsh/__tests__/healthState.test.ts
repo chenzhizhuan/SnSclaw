@@ -42,3 +42,29 @@ it('lets an administrator repair malformed stored patches', async () => {
   expect(api.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ 'dsh.patch_paths': '[]' }))
   expect(host.querySelector('.state-pill')?.textContent).toBe('已就绪')
 })
+
+
+it('renders only the server catalog and keeps an installed catalog version selected', async () => {
+  api.status.mockReset()
+  api.status.mockResolvedValue({ data: { state: 'READY', installed: true, config: {}, managed: {},
+    activeVersion: '0.2.0-rc.1', catalog: [
+      { version: '0.2.1-rc.2', channel: 'next' }, { version: '0.2.0-rc.1', channel: 'retained' },
+    ] } })
+  const host = document.createElement('div'); document.body.append(host)
+  const app = createApp(DshSettings); app.mount(host); unmount = () => app.unmount()
+  await flush()
+  const select = host.querySelector('select')!
+  expect([...select.options].map(item => item.value)).toEqual(['0.2.1-rc.2', '0.2.0-rc.1'])
+  expect(select.value).toBe('0.2.0-rc.1')
+})
+
+
+it('blocks upgrades when no trusted catalog is available', async () => {
+  api.status.mockReset()
+  api.status.mockResolvedValue({ data: { state: 'READY', installed: true, config: {}, managed: {}, catalog: [] } })
+  const host = document.createElement('div'); document.body.append(host)
+  const app = createApp(DshSettings); app.mount(host); unmount = () => app.unmount()
+  await flush()
+  const install = [...host.querySelectorAll('button')].find(item => item.textContent === '安装 / 升级所选版本')!
+  expect(install.disabled).toBe(true)
+})

@@ -115,9 +115,13 @@ public class SummarizingNode implements NodeAction {
         // defaults, causing 100+ second delays for a task that needs no deep reasoning.
         Prompt summarizePrompt = buildNoThinkingPrompt(promptMessages);
 
-        // 流式调用 LLM，实时推送 content/thinking
-        NodeStreamingChatHelper.StreamResult result = streamingHelper.streamCall(
-                chatModel, summarizePrompt, conversationId, "summarizing");
+        // Tool-backed summaries are private context, never a candidate final answer.
+        // Keep thinking/progress live, but do not publish or persist summary prose as user content.
+        boolean privateSummary = vip.mate.agent.graph.guard.TaskFinalizationCoordinator.eligible(
+                accessor.actionCompletionRequired(), accessor.actionExecutionLedger());
+        NodeStreamingChatHelper.StreamResult result = privateSummary
+                ? streamingHelper.streamCallBufferedContent(chatModel, summarizePrompt, conversationId, "summarizing")
+                : streamingHelper.streamCall(chatModel, summarizePrompt, conversationId, "summarizing");
 
         // 错误处理：摘要失败时用原始观察的前 500 字符作为 fallback
         if (result.hasFatalError()) {
@@ -130,17 +134,19 @@ public class SummarizingNode implements NodeAction {
             AssistantMessage fallbackMsg = new AssistantMessage("[工具观察摘要(降级)]\n" + fallback);
             return MateClawStateAccessor.output()
                     .summarizedContext(fallback)
+                    .streamedContent("")
                     .shouldSummarize(false)
                     .put(OBSERVATION_HISTORY, List.of())
                     .messages(List.of((Message) fallbackMsg))
-                    .contentStreamed(true)
+                    .contentStreamed(!privateSummary)
                     .thinkingStreamed(true)
+                    .llmCallCount(accessor.llmCallCount() + 1)
                     .mergeUsage(state, result)
                     .events(List.of(GraphEventPublisher.phase("summarize_fallback", Map.of(
                             "error", result.errorMessage() != null ? result.errorMessage() : "unknown"))))
                     .build();
         }
-        // 用户主动停止：将已生成的部分摘要写入 state 作为 finalAnswer + finalThinking
+        // Stopping must not promote an unpublished internal summary into a final answer.
         if (result.stopped()) {
             String partialText = result.text() != null ? result.text() : "";
             String partialThinking = result.thinking() != null ? result.thinking() : "";
@@ -149,11 +155,13 @@ public class SummarizingNode implements NodeAction {
                     partialText.length(), partialThinking.length());
             var builder = MateClawStateAccessor.output()
                     .summarizedContext(partialText)
+                    .streamedContent("")
                     .shouldSummarize(false)
                     .put(OBSERVATION_HISTORY, List.of())
                     .messages(List.of())
-                    .finalAnswer(partialText)
-                    .contentStreamed(true)
+                    .finalAnswer(privateSummary ? "" : partialText)
+                    .contentStreamed(!privateSummary)
+                    .llmCallCount(accessor.llmCallCount() + 1)
                     .mergeUsage(state, result)
                     .finishReason(FinishReason.STOPPED);
             if (!partialThinking.isEmpty()) {
@@ -185,12 +193,12 @@ public class SummarizingNode implements NodeAction {
                 // 注入摘要消息，让 ReasoningNode 的 LLM 继续推理
                 .messages(List.of((Message) summaryMessage))
                 .currentThinking(result.thinking())
-                // 摘要的 content 已流式推送，但它不是最终回答，标记防重即可
-                .contentStreamed(true)
+                // Private summaries remain model context; only legacy visible summaries are streamed.
+                .contentStreamed(!privateSummary)
                 .thinkingStreamed(!result.thinking().isEmpty())
-                // 把当轮 summary 文本写入 STREAMED_CONTENT，让 StateGraphReActAgent 用 persistOnly
-                // StreamDelta 推给 Accumulator 持久化（用户刷新页面后能看到摘要正文，否则只剩 tool_call 卡片）
-                .streamedContent(summaryContent)
+                // Suppress persistOnly content for private summaries as well as live content deltas.
+                .streamedContent(privateSummary ? "" : summaryContent)
+                .llmCallCount(accessor.llmCallCount() + 1)
                 .mergeUsage(state, result)
                 // 不设 finishReason — summarizing 不是终止，循环继续
                 .events(List.of(GraphEventPublisher.phase("summarized", Map.of(

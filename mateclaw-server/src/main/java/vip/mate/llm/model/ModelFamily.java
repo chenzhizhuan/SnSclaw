@@ -47,7 +47,7 @@ public enum ModelFamily {
     DEEPSEEK_REASONER(false, false, false, true, true, true),
 
     /**
-     * DeepSeek V4 reasoning 模型：deepseek-v4-flash / deepseek-v4-pro。
+     * DeepSeek reasoning 模型：deepseek-flash / deepseek-v4-flash / deepseek-v4-pro。
      * <p>
      * 与 {@link #DEEPSEEK_REASONER}（v3.2）的关键差异：V4 接受 {@code reasoning_effort} 字段，
      * 也不强制 temperature=1。OpenClaw 实现参考 {@code extensions/deepseek/models.ts:28-81} 标记
@@ -158,9 +158,12 @@ public enum ModelFamily {
             return KIMI_THINKING;
         }
 
-        // DeepSeek V4 reasoning 族：deepseek-v4-flash / deepseek-v4-pro
+        // deepseek-flash is the current API name; it uses the same thinking
+        // toggle as the legacy deepseek-v4-flash name. Missing it silently
+        // bypasses the decorator and leaves tool-free verification thinking on.
         // 优先匹配（在 DEEPSEEK_REASONER 之前），因为两者都含 "deepseek" 前缀但 V4 接受 reasoning_effort。
-        if (normalized.equals("deepseek-v4-flash") || normalized.equals("deepseek-v4-pro")) {
+        if (normalized.equals("deepseek-flash") || normalized.equals("deepseek-v4-flash")
+                || normalized.equals("deepseek-v4-pro")) {
             return DEEPSEEK_V4_REASONING;
         }
 

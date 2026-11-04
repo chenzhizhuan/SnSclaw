@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import vip.mate.i18n.I18nService;
+import vip.mate.tool.guard.WorkspacePathGuard;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -31,6 +32,7 @@ import static org.mockito.Mockito.mock;
 class ReadFileToolLargeLineTest {
 
     private ReadFileTool tool;
+    private Path previousDefaultRoot;
 
     @BeforeEach
     void setUp() {
@@ -40,12 +42,15 @@ class ReadFileToolLargeLineTest {
                 "msg".equals(inv.getMethod().getName()) ? inv.getArgument(0) : null);
         tool = new ReadFileTool(i18n);
         // Ensure no workspace boundary is active so absolute temp paths validate.
+        previousDefaultRoot = WorkspacePathGuard.getDefaultRoot();
+        WorkspacePathGuard.setDefaultRoot(null);
         ToolExecutionContext.clear();
     }
 
     @AfterEach
     void tearDown() {
         ToolExecutionContext.clear();
+        WorkspacePathGuard.setDefaultRoot(previousDefaultRoot == null ? null : previousDefaultRoot.toString());
     }
 
     /** Build a single-line JSON array of {@code n} string elements. */

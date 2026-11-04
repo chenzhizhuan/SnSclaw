@@ -56,6 +56,16 @@ public final class ExecutionObservationSink {
         return new Snapshot(state, observations);
     }
 
+    /** A trusted callback failed without necessarily observing a completed child process. */
+    public synchronized void toolFailure() {
+        if (!sealed) state = aggregate(state, AttemptState.FAILED);
+    }
+
+    /** Cancellation can occur before a process starts or before its exit is observed. */
+    public synchronized void toolCancelled() {
+        if (!sealed) state = AttemptState.CANCELLED;
+    }
+
     /** Called by the process adapter, never by parsing a tool's returned text. */
     public void command(Integer exitCode, boolean timedOut, boolean cancelled, boolean blocked) {
         command(exitCode, timedOut, cancelled, blocked, null);
@@ -66,7 +76,7 @@ public final class ExecutionObservationSink {
         AttemptState commandState = cancelled ? AttemptState.CANCELLED : blocked ? AttemptState.BLOCKED
                 : timedOut || exitCode == null ? AttemptState.UNKNOWN
                 : exitCode == 0 ? AttemptState.SUCCEEDED : AttemptState.FAILED;
-        state = commandCount == 0 ? commandState : aggregate(state, commandState);
+        state = commandCount == 0 && state == AttemptState.SUCCEEDED ? commandState : aggregate(state, commandState);
         commandCount++;
         EvidenceResult result = commandState == AttemptState.SUCCEEDED ? EvidenceResult.OBSERVED
                 : commandState == AttemptState.UNKNOWN || commandState == AttemptState.CANCELLED

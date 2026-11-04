@@ -12,6 +12,32 @@ import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.*;
 import static vip.mate.agent.graph.state.MateClawStateKeys.*;
 class BudgetedCompactionModelTest {
+ @Test void veryLargeOutputReserveCannotOverflowTotalAndBypassGuard() {
+  var delegate=mock(ChatModel.class);
+  var prompt=new Prompt("summary",ChatOptions.builder().maxTokens(Integer.MAX_VALUE).build());
+  var guarded=new BudgetedCompactionModel(delegate,2,24000,1024);
+  assertThrows(BudgetedCompactionModel.SummaryPromptOverflow.class,()->guarded.call(prompt));
+  assertEquals(0,guarded.calls());verify(delegate,never()).call(any(Prompt.class));
+ }
+ @Test void inheritedCompletionReserveIsCountedWhenRuntimeOverridesOnlyMaxTokens() {
+  var delegate=mock(ChatModel.class);
+  when(delegate.getDefaultOptions()).thenReturn(org.springframework.ai.openai.OpenAiChatOptions.builder().maxCompletionTokens(30000).build());
+  var prompt=new Prompt("summary",org.springframework.ai.openai.OpenAiChatOptions.builder().maxTokens(512).build());
+  var guarded=new BudgetedCompactionModel(delegate,2,24000,1024);
+  assertThrows(BudgetedCompactionModel.SummaryPromptOverflow.class,()->guarded.call(prompt));
+  assertEquals(0,guarded.calls());verify(delegate,never()).call(any(Prompt.class));
+ }
+ @Test void inheritedDefaultToolSchemasAreCountedBeforeStreamingProviderInvocation() {
+  var delegate=mock(ChatModel.class);var tool=mock(org.springframework.ai.tool.ToolCallback.class);
+  when(delegate.stream(any(Prompt.class))).thenReturn(reactor.core.publisher.Flux.empty());
+  when(tool.getToolDefinition()).thenReturn(org.springframework.ai.tool.definition.ToolDefinition.builder()
+    .name("large").description("界".repeat(1000)).inputSchema("{\"type\":\"object\"}").build());
+  when(delegate.getDefaultOptions()).thenReturn(org.springframework.ai.openai.OpenAiChatOptions.builder().toolCallbacks(List.of(tool)).maxTokens(64).build());
+  var prompt=new Prompt("summary",org.springframework.ai.openai.OpenAiChatOptions.builder().maxTokens(64).build());
+  var guarded=new BudgetedCompactionModel(delegate,2,1000,64);
+  assertThrows(BudgetedCompactionModel.SummaryPromptOverflow.class,()->guarded.stream(prompt).blockLast());
+  assertEquals(0,guarded.calls());verify(delegate,never()).stream(any(Prompt.class));
+ }
  @Test void exactInvocationAndAvailableUsageAccumulateWithoutMutatingInputState() {
   var delegate=mock(ChatModel.class);
   when(delegate.call(any(Prompt.class))).thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("summary"))),ChatResponseMetadata.builder().usage(new DefaultUsage(19,11,30,null,7L,3L)).build()));

@@ -108,6 +108,7 @@ public class DshManagementService {
         String revision = "";
         if (task) taskCheck = Map.of(); else handshake = Map.of();
         try {
+            if (runtime != null) runtime.retryPendingHealthCleanup();
             if (configService.generations() != null) lease = configService.generations().acquireLease("health", "health");
             revision = Objects.toString(configService.revision(), "0");
             DshRuntimeConfiguration configuration = configService.resolve();
@@ -121,7 +122,13 @@ public class DshManagementService {
                     "configRevision", revision, "checkedAt", Instant.now().toString());
             if (task) taskCheck = failed; else handshake = failed;
             return failed;
-        } finally { if (lease != null) lease.close(); }
+        } finally {
+            if (lease != null) {
+                var retainedLease = lease;
+                if (runtime == null) retainedLease.close();
+                else runtime.releaseHealthLease(retainedLease::close);
+            }
+        }
     }
 
     public Map<String, Object> enable() {

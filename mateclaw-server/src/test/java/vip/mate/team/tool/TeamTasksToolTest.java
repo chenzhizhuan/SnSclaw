@@ -26,6 +26,7 @@ import vip.mate.team.service.TeamTaskService;
 import vip.mate.tool.builtin.ToolExecutionContext;
 import vip.mate.workspace.conversation.ConversationService;
 import vip.mate.workspace.conversation.model.ConversationEntity;
+import vip.mate.workspace.conversation.model.MessageEntity;
 
 import java.util.List;
 import java.util.Optional;
@@ -112,6 +113,43 @@ class TeamTasksToolTest {
                 null, null, null, null, null, null, null, null, null, null, null);
     }
 
+    @Test void methodCallbackEncodedProgressIsGroundedInActualSuccessfulWrite() throws Exception {
+        callerIs(MEMBER_ID);
+        when(taskService.getTask(5L)).thenReturn(task(5L, TeamTaskStatus.IN_PROGRESS));
+        when(taskService.updateProgress(eq(5L), eq(MEMBER_ID), eq(100), anyString())).thenReturn(true);
+        var capture = new vip.mate.tool.mcp.runtime.McpToolResultCapture();
+        var ctx = capture.attach(new ToolContext(java.util.Map.of()));
+        String args = "{\"action\":\"progress\",\"taskId\":\"5\",\"percent\":100,\"step\":\"done\"}";
+        var callback = org.springframework.ai.support.ToolCallbacks.from(tool)[0];
+        String result = callback.call(args, ctx);
+        assertFalse(capture.isError());
+        var ledger = vip.mate.agent.graph.state.ActionExecutionLedger.fromEvents(List.of(
+                vip.mate.agent.GraphEventPublisher.toolStart("p", "team_tasks", args),
+                vip.mate.agent.GraphEventPublisher.toolComplete("p", "team_tasks", result, !capture.isError())));
+        var facts = new com.fasterxml.jackson.databind.ObjectMapper().readTree(ledger.projectAnswerFacts(3000).text());
+        assertEquals(1, facts.path("successfulProgressUpdates").size());
+        assertEquals(100, facts.path("successfulProgressUpdates").get(0).path("percent").asInt());
+        verify(taskService).updateProgress(5L, MEMBER_ID, 100, "done");
+    }
+
+    @Test void rejectedNativeProgressCannotEstablishSuccessfulMilestone() throws Exception {
+        callerIs(MEMBER_ID);
+        when(taskService.getTask(5L)).thenReturn(task(5L, TeamTaskStatus.IN_PROGRESS));
+        when(taskService.updateProgress(eq(5L), eq(MEMBER_ID), eq(100), anyString())).thenReturn(false);
+        var capture = new vip.mate.tool.mcp.runtime.McpToolResultCapture();
+        var ctx = capture.attach(new ToolContext(java.util.Map.of()));
+        String result = tool.team_tasks("progress", "5", null, null, null, null, null, null,
+                null, null, null, null, 100, "done", null, null, null, null, ctx);
+        assertTrue(capture.isError());
+        var ledger = vip.mate.agent.graph.state.ActionExecutionLedger.fromEvents(List.of(
+                vip.mate.agent.GraphEventPublisher.toolStart("p", "team_tasks", "{\"action\":\"progress\",\"taskId\":\"5\",\"percent\":100}"),
+                vip.mate.agent.GraphEventPublisher.toolComplete("p", "team_tasks", result, !capture.isError())));
+        assertEquals(1, ledger.failedCallCount());
+        var facts = new com.fasterxml.jackson.databind.ObjectMapper().readTree(ledger.projectAnswerFacts(3000).text());
+        assertTrue(facts.path("successfulProgressUpdates").isEmpty());
+        verify(eventChannel, never()).publishTaskEvent(any(), eq("team_task_progress"), any());
+    }
+
     private TeamRunEntity run(Long teamId, String conversationId, String status) {
         TeamRunEntity run = new TeamRunEntity();
         run.setId(RUN_ID);
@@ -120,6 +158,136 @@ class TeamTasksToolTest {
         run.setLeadConversationId(conversationId);
         run.setStatus(status);
         return run;
+    }
+
+    private TeamTaskEntity savedWorkerTask() {
+        TeamTaskEntity task = task(5L, TeamTaskStatus.COMPLETED);
+        task.setConversationId("team-task-worker");
+        task.setLeadConversationId(CONV);
+        task.setRunId(RUN_ID);
+        task.setResult("short board summary");
+        when(taskService.getTask(5L)).thenReturn(task);
+        when(runService.requireRun(RUN_ID, WORKSPACE_ID))
+                .thenReturn(run(TEAM_ID, CONV, TeamRunStatus.COMPLETED));
+        ConversationEntity worker = new ConversationEntity();
+        worker.setConversationId(task.getConversationId());
+        worker.setWorkspaceId(WORKSPACE_ID);
+        worker.setAgentId(MEMBER_ID);
+        worker.setConversationKind("team_worker");
+        worker.setParentConversationId(CONV);
+        when(conversationService.findByConversationId(task.getConversationId())).thenReturn(worker);
+        return task;
+    }
+
+    @Test
+    void outputReturnsCompleteSavedWorkerReplyInsteadOfBoardSummary() {
+        callerIs(LEAD_ID);
+        TeamTaskEntity task = savedWorkerTask();
+        MessageEntity message = new MessageEntity();
+        message.setRole("assistant");
+        message.setStatus("completed");
+        String full = "HEAD\n" + "analysis\n".repeat(2000) + "FINAL VERIFICATION";
+        message.setContent(full);
+        when(conversationService.listRecentMessages(task.getConversationId(), 1)).thenReturn(List.of(message));
+
+        String output = invoke("output", "5");
+
+        assertTrue(output.contains(full));
+        assertTrue(output.contains("taskId=5"));
+        assertFalse(output.contains("short board summary"));
+    }
+
+    @Test
+    void outputRejectsForeignTeamBeforeReadingAnyWorkerMessages() {
+        callerIs(LEAD_ID);
+        TeamTaskEntity foreign = task(5L, TeamTaskStatus.COMPLETED);
+        foreign.setTeamId(999L);
+        when(taskService.getTask(5L)).thenReturn(foreign);
+
+        assertTrue(invoke("output", "5").contains("not found on this team's board"));
+        verify(conversationService, never()).listRecentMessages(anyString(), anyInt());
+    }
+
+    @Test
+    void outputRejectsWorkerConversationOutsideTeamWorkspace() {
+        callerIs(LEAD_ID);
+        TeamTaskEntity task = savedWorkerTask();
+        conversationService.findByConversationId(task.getConversationId()).setWorkspaceId(999L);
+
+        assertTrue(invoke("output", "5").startsWith("Error:"));
+        verify(conversationService, never()).listRecentMessages(anyString(), anyInt());
+    }
+
+    @Test
+    void outputRejectsWorkerConversationWithDifferentParent() {
+        callerIs(LEAD_ID);
+        TeamTaskEntity task = savedWorkerTask();
+        conversationService.findByConversationId(task.getConversationId()).setParentConversationId("unrelated-lead");
+
+        assertTrue(invoke("output", "5").startsWith("Error:"));
+        verify(conversationService, never()).listRecentMessages(anyString(), anyInt());
+    }
+
+    @Test
+    void outputRejectsWorkerConversationWithDifferentAgent() {
+        callerIs(MEMBER_ID);
+        TeamTaskEntity task = savedWorkerTask();
+        conversationService.findByConversationId(task.getConversationId()).setAgentId(999L);
+
+        assertTrue(invoke("output", "5").startsWith("Error:"));
+        verify(conversationService, never()).listRecentMessages(anyString(), anyInt());
+    }
+
+    @Test
+    void outputWithoutSavedWorkerReplyClearlyIdentifiesFallbackSummary() {
+        callerIs(LEAD_ID);
+        TeamTaskEntity task = savedWorkerTask();
+        when(conversationService.listRecentMessages(task.getConversationId(), 1)).thenReturn(List.of());
+
+        String output = invoke("output", "5");
+
+        assertTrue(output.contains("Full worker output unavailable"));
+        assertTrue(output.contains("short board summary"));
+    }
+
+    @Test
+    void fullTaskRecordExposesDependenciesAndDeliverablesForOmittedContext() {
+        callerIs(MEMBER_ID);
+        TeamTaskEntity task = task(5L, TeamTaskStatus.COMPLETED);
+        task.setBlockedBy("[11,12,13,14,15,16,17,18,19]");
+        when(taskService.getTask(5L)).thenReturn(task);
+        when(taskService.listDeliverables(task)).thenReturn(List.of(
+                new TeamTaskService.Deliverable("report.docx", "/api/v1/files/generated/report", null)));
+
+        String output = invoke("get", "5");
+
+        assertTrue(output.contains("Dependencies (task ids): [11, 12, 13, 14, 15, 16, 17, 18, 19]"));
+        assertTrue(output.contains("report.docx → /api/v1/files/generated/report"));
+    }
+
+    @Test
+    void outputAcceptsTheSameBoundedLegacyParentFallbackAsTranscriptGovernance() {
+        callerIs(LEAD_ID);
+        TeamTaskEntity task = savedWorkerTask();
+        ConversationEntity worker = conversationService.findByConversationId(task.getConversationId());
+        worker.setConversationKind("primary");
+        worker.setParentConversationId(null);
+        MessageEntity reply = new MessageEntity();
+        reply.setRole("assistant");
+        reply.setContent("legacy saved worker result");
+        when(conversationService.listRecentMessages(task.getConversationId(), 1)).thenReturn(List.of(reply));
+
+        assertTrue(invoke("output", "5").endsWith("legacy saved worker result"));
+    }
+
+    @Test
+    void modernWorkerWithMissingParentCannotUseLegacyFallback() {
+        callerIs(LEAD_ID);
+        TeamTaskEntity task = savedWorkerTask();
+        conversationService.findByConversationId(task.getConversationId()).setParentConversationId(null);
+
+        assertTrue(invoke("output", "5").contains("linkage does not match"));
+        verify(conversationService, never()).listRecentMessages(anyString(), anyInt());
     }
 
     // ==================== context & membership gating ====================

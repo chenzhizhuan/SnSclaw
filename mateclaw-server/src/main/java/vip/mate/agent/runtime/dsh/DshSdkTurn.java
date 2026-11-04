@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 
 /** Correlates one prompt's durable inbox receipt with its root-session activity. */
 public final class DshSdkTurn {
-    // Session vocabulary pinned to the two adapted SDK prereleases.
+    // Session vocabulary pinned to the reviewed SDK prereleases.
     private static final Set<String> KNOWN_EVENTS = Set.of(
             "agent-preset/selected", "agent/inbox/spliced", "approval/asked", "approval/decided",
             "approval/policy", "assistant/attempt", "assistant/message", "command/done",
@@ -16,6 +16,7 @@ public final class DshSdkTurn {
             "compaction/summary", "deliverables/presented", "developer/message", "feedback/message-delete",
             "feedback/message-put", "feedback/record", "goal/change", "hook/invoked",
             "hook/result", "image/offload", "llm/retry", "llm/retry-started",
+            "job/registered", "job/settled", "working-directory/change",
             "model/selection", "permission/preset", "plan/mode", "request/context",
             "request/header", "sandbox/mode", "schedule/change", "session-log-deepseek/delivery-accepted",
             "session/end-seed", "session/title", "session/title-llm-request", "step/end",

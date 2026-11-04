@@ -69,6 +69,8 @@ public class TeamRunProjector {
             return view(run, projection, tasks);
         }
 
+        // Distinguish FINALIZING -> retry -> FINALIZING from the old evidence generation.
+        metadata.set("summaryEvidenceRevision", metadata.getLong("summaryEvidenceRevision", 0L) + 1);
         String metadataJson = metadata.toString();
         LambdaUpdateWrapper<TeamRunEntity> update = Wrappers.<TeamRunEntity>lambdaUpdate()
                 .eq(TeamRunEntity::getId, run.getId())

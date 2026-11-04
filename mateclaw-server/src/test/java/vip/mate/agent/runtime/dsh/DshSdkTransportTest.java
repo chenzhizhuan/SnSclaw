@@ -32,7 +32,8 @@ class DshSdkTransportTest {
     @Test void rejectsWrongResponseId() throws Exception {
         Process process = process("read request; echo '{\"jsonrpc\":\"2.0\",\"id\":\"wrong\",\"result\":{}}'");
         try (var sdk = new DshSdkProcess(process, new ObjectMapper(), "")) {
-            Exception error = assertThrows(Exception.class, () -> sdk.initialize(Map.of(), Duration.ofSeconds(1)));
+            // Verify the protocol error, allowing reader scheduling under full-suite load.
+            Exception error = assertThrows(Exception.class, () -> sdk.initialize(Map.of(), Duration.ofSeconds(10)));
             assertEquals("DSH_HANDSHAKE_ID_MISMATCH", error.getMessage());
         }
     }

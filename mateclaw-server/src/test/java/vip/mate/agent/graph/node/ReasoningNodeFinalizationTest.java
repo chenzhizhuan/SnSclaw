@@ -49,6 +49,41 @@ class ReasoningNodeFinalizationTest {
         for(int n=0;n<length;n++) text.append((char)(0x4e00+start+n));
         return text.toString();
     }
+    @Test void continuationAfterTwoCorrectionsUsesRuntimeBudgetAndStopsWithoutNewReceipts() throws Exception {
+        var tracker=new ChatStreamTracker(new ObjectMapper());
+        try {
+            tracker.register("gate-test");
+            var model=mock(ChatModel.class);
+            when(model.stream(any(Prompt.class))).thenAnswer(call -> {
+                String prompt=((Prompt)call.getArgument(0)).getContents();
+                return Flux.just(response(prompt.contains("You are a tool-free consistency reviewer")
+                    ? verdict("CONTINUE",false,true) : "Remaining work needs execution"));
+            });
+            var helper=new NodeStreamingChatHelper(tracker);var tools=mock(AgentToolSet.class);
+            when(tools.callbacks()).thenReturn(List.of());
+            var node=new ReasoningNode(model,tools,null,helper,null,tracker);enable(node,helper,tracker);
+            var values=state();values.put(MAX_ITERATIONS,100);values.put(FINALIZATION_ATTEMPTS,2);
+            var run=new RunState(values);
+            for(int n=0;n<3;n++) {
+                var out=node.apply(run);run.applyPatch(out);
+                assertEquals(true,out.get(CONTINUE_REASONING));
+                assertEquals(2,new vip.mate.agent.graph.state.MateClawStateAccessor(run).finalizationAttempts());
+                // Actual new completed work permits more than two continuation rounds.
+                var progress=vip.mate.agent.graph.state.ActionExecutionLedger.fromEvents(List.of(
+                    GraphEventPublisher.toolComplete("progress-"+n,"calculate","result-"+n,true)));
+                run.replace(ACTION_EXECUTION_LEDGER,new vip.mate.agent.graph.state.MateClawStateAccessor(run).actionExecutionLedger().merge(progress));
+            }
+            var fresh=node.apply(run);run.applyPatch(fresh);assertEquals(true,fresh.get(CONTINUE_REASONING));
+            var idle=node.apply(run);run.applyPatch(idle);assertEquals(true,idle.get(CONTINUE_REASONING));
+            var stalled=node.apply(run);
+            assertEquals("incomplete",stalled.get(FINISH_REASON));
+            assertTrue(String.valueOf(stalled.get(FINAL_ANSWER)).contains("未产生新的成功工具结果"));
+            assertNotEquals(true,stalled.get(CONTINUE_REASONING));
+            assertEquals(12,stalled.get(LLM_CALL_COUNT));
+            assertEquals(120,stalled.get(PROMPT_TOKENS));
+            assertEquals(60,stalled.get(COMPLETION_TOKENS));
+        } finally {tracker.onShutdown();}
+    }
     @Test void heldContentRepetitionPublishesOnlyDeterministicIncompleteDiagnosis() throws Exception {
         var tracker=new ChatStreamTracker(new ObjectMapper());
         try {
@@ -123,7 +158,7 @@ class ReasoningNodeFinalizationTest {
                 var values=state();values.put(USER_MESSAGE,"请根据工具结果写一篇10000字技术报告");var run=new RunState(values);
                 run.applyPatch(node.apply(run));var rejected=node.apply(run);run.applyPatch(rejected);
                 assertEquals(true,rejected.get(CONTINUE_REASONING));assertEquals("",rejected.get(LONG_FORM_DRAFT));
-                assertEquals(1,new vip.mate.agent.graph.state.MateClawStateAccessor(run).finalizationAttempts());
+                assertEquals(decision.equals("CONTINUE") ? 0 : 1,new vip.mate.agent.graph.state.MateClawStateAccessor(run).finalizationAttempts());
                 var accepted=node.apply(run);assertEquals(replacement,accepted.get(FINAL_ANSWER));
                 assertEquals(5,accepted.get(LLM_CALL_COUNT));assertEquals(50,accepted.get(PROMPT_TOKENS));
                 tracker.broadcastObject("gate-test","flush",Map.of());assertFalse(capture.text().contains("content_delta"));
@@ -239,11 +274,11 @@ class ReasoningNodeFinalizationTest {
             var tools=mock(AgentToolSet.class);when(tools.callbacks()).thenReturn(List.of());
             var node=new ReasoningNode(model,tools,null,helper,null,tracker);enable(node,helper,tracker);
             var state=new RunState(state());var first=node.apply(state);state.applyPatch(first);
-            assertEquals(1,first.get("finalization_attempts"));
+            assertEquals(0,first.get("finalization_attempts"));
             var batch=node.apply(state);state.applyPatch(batch);
             assertEquals(true,batch.get(NEEDS_TOOL_CALL));assertEquals(List.of(toolCall),batch.get(TOOL_CALLS));
-            assertEquals(1,new vip.mate.agent.graph.state.MateClawStateAccessor(state).finalizationAttempts());
-            var second=node.apply(state);assertEquals(2,second.get("finalization_attempts"));
+            assertEquals(0,new vip.mate.agent.graph.state.MateClawStateAccessor(state).finalizationAttempts());
+            var second=node.apply(state);assertEquals(0,second.get("finalization_attempts"));
             assertEquals(true,second.get(CONTINUE_REASONING));
             tracker.broadcastObject("gate-test","flush",Map.of());assertFalse(capture.text().contains("content_delta"));
         } finally {tracker.onShutdown();}
@@ -253,7 +288,7 @@ class ReasoningNodeFinalizationTest {
         try {
             var helper=new NodeStreamingChatHelper(tracker);var model=mock(ChatModel.class);
             when(model.stream(any(Prompt.class))).thenReturn(Flux.just(response("unfinished")),
-                    Flux.just(response(verdict("CONTINUE",false,true))));
+                    Flux.just(response(verdict("REVISE",true,false))));
             var tools=mock(AgentToolSet.class);when(tools.callbacks()).thenReturn(List.of());
             var node=new ReasoningNode(model,tools,null,helper,null,tracker);enable(node,helper,tracker);
             var values=state();values.put("finalization_attempts",2);
@@ -443,5 +478,46 @@ class ReasoningNodeFinalizationTest {
         final List<String> chunks=new java.util.concurrent.CopyOnWriteArrayList<>();
         public void send(SseEventBuilder builder) { for(var data:builder.build())chunks.add(String.valueOf(data.getData())); }
         String text(){return String.join("",chunks);}
+    }
+
+    @Test void verifierProviderFailurePublishesCandidateWithUnverifiedNotice() throws Exception {
+        var tracker=new ChatStreamTracker(new ObjectMapper());
+        try {
+            tracker.register("gate-test");
+            var model=mock(ChatModel.class);
+            when(model.stream(any(Prompt.class))).thenAnswer(call -> {
+                String prompt=((Prompt)call.getArgument(0)).getContents();
+                return prompt.contains("You are a tool-free consistency reviewer")
+                    ? Flux.error(new RuntimeException("invalid_request_error: unsupported parameter"))
+                    : Flux.just(response("The first calculation failed; the total is 42."));
+            });
+            var helper=new NodeStreamingChatHelper(tracker);var tools=mock(AgentToolSet.class);
+            when(tools.callbacks()).thenReturn(List.of());
+            var node=new ReasoningNode(model,tools,null,helper,null,tracker);enable(node,helper,tracker);
+            var out=node.apply(new RunState(state()));
+            String answer=String.valueOf(out.get(FINAL_ANSWER));
+            assertTrue(answer.startsWith("The first calculation failed; the total is 42."));
+            assertTrue(answer.contains("未经最终核验"));
+            assertTrue(answer.contains("诊断码：CHECKER_ERROR"));
+            assertNotEquals("incomplete",out.get(FINISH_REASON));
+        } finally {tracker.onShutdown();}
+    }
+    @Test void malformedVerdictStillWithholdsCandidate() throws Exception {
+        var tracker=new ChatStreamTracker(new ObjectMapper());
+        try {
+            tracker.register("gate-test");
+            var model=mock(ChatModel.class);
+            when(model.stream(any(Prompt.class))).thenAnswer(call -> {
+                String prompt=((Prompt)call.getArgument(0)).getContents();
+                return Flux.just(response(prompt.contains("You are a tool-free consistency reviewer")
+                    ? "not json" : "The failed operation was recovered; total 42."));
+            });
+            var helper=new NodeStreamingChatHelper(tracker);var tools=mock(AgentToolSet.class);
+            when(tools.callbacks()).thenReturn(List.of());
+            var node=new ReasoningNode(model,tools,null,helper,null,tracker);enable(node,helper,tracker);
+            var out=node.apply(new RunState(state()));
+            assertEquals("incomplete",out.get(FINISH_REASON));
+            assertFalse(String.valueOf(out.get(FINAL_ANSWER)).contains("recovered"));
+        } finally {tracker.onShutdown();}
     }
 }

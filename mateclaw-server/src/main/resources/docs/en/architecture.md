@@ -128,6 +128,10 @@ The backend is a **single modular monolith**. Other projects are independent pac
 
 The backend uses Java 21, Spring Boot 4.1.1, Spring AI 2.0.1 and AgentScope Java 2.0.4. `NativePolicyDriver` creates a fresh native `ReActAgent` for each invocation; the SDK owns reasoning/acting iteration. Application policies retain prompt preparation, approvals, observations, summaries and goal budgets.
 
+### Request and budget ownership
+
+AgentScope 2.0.4 owns loop orchestration, while Spring AI/provider adapters prepare actual model requests. `PromptBudget` shares effective-option estimates across reasoning preflight and compaction-model calls; it does not replace provider serialization. Tool approvals, workspace guards, Goal budgets and completion gates remain application responsibilities. [Budget details](./models#context-budgets-and-request-preparation-3-0-0)
+
 ### Key pieces
 
 - `agent/runtime/agentscope/NativePolicyDriver.java` — native loop and application policy callbacks

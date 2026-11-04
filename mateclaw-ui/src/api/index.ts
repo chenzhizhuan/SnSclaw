@@ -1304,6 +1304,9 @@ export const wikiApi = {
     http.get(`/wiki/kb/${kbId}/entities/${entityId}/graph`, { params: { limit } }),
   extractEntities: (kbId: number | string, force = false) =>
     http.post(`/wiki/kb/${kbId}/entities/extract`, null, { params: { force } }),
+  // Entity extraction for a single processed document.
+  extractRawEntities: (kbId: number | string, rawId: number | string, force = false) =>
+    http.post(`/wiki/kb/${kbId}/raw/${rawId}/entities/extract`, null, { params: { force } }),
 
   // RFC-030: Jobs
   getWikiJobs: (kbId: number, rawId: number) =>

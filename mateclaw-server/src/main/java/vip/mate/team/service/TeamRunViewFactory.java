@@ -44,7 +44,7 @@ final class TeamRunViewFactory {
                 run.getLeadConversationId(), run.getOriginMessageId(), run.getTitle(), run.getObjective(),
                 status, run.getFinalSummary(), run.getStopReason(), run.getMetadata(), run.getStartedAt(),
                 run.getCompletedAt(), run.getCreateTime(), run.getUpdateTime(),
-                includeTasks ? "full" : "summary", outcomeQuality(run, tasks),
+                includeTasks ? "full" : "summary", outcomeQuality(run, tasks, status),
                 deliverables, contributions(tasks), attentionItems(run, tasks),
                 liveness(status, lastActivity, tasks),
                 metrics(run, tasks, deliverables.size()), progress,
@@ -52,7 +52,8 @@ final class TeamRunViewFactory {
                         .toList());
     }
 
-    private static String outcomeQuality(TeamRunEntity run, List<TeamTaskEntity> tasks) {
+    private static String outcomeQuality(TeamRunEntity run, List<TeamTaskEntity> tasks, String status) {
+        if (!TeamRunStatus.isTerminal(status)) return "pending";
         if (run.getFinalSummary() != null && !run.getFinalSummary().isBlank()) {
             String projected = metadata(run.getMetadata()).getStr("summaryQuality");
             return projected != null && OUTCOME_QUALITIES.contains(projected) ? projected : "synthesized";

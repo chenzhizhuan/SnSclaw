@@ -8,6 +8,9 @@ class DshPinnedInstallerTest {
     @Test
     void catalogRequiresExactKnownVersionAndCorrectHostPlatform() {
         assertEquals("0.2.0-rc.1", DshPinnedInstaller.release("0.2.0-rc.1").version());
+        assertTrue(DshPinnedInstaller.catalog().stream().anyMatch(release -> release.version().equals("0.2.1-rc.2")));
+        assertEquals("sha512-tvY+yhfKRifthbqPe/OK0AYxM5ZkvqfYq/jMYgJcEUxiRRL1Vwra3Ti5TB6AXgSWQdiPHYh/Vp6SJa9yHwMNuw==",
+                DshPinnedInstaller.release("0.2.1-rc.2").integrity());
         assertTrue(DshPinnedInstaller.release("0.1.7-rc.2").integrity().startsWith("sha512-"));
         assertThrows(IllegalArgumentException.class, () -> DshPinnedInstaller.release("latest"));
         assertThrows(IllegalArgumentException.class, () -> DshPinnedInstaller.release("1.0.0"));
@@ -24,11 +27,12 @@ class DshPinnedInstallerTest {
                 var packages = mapper.readTree(input).path("packages");
                 assertEquals(release.integrity(), packages.path("node_modules/@deepseek-ai/dsh").path("integrity").asText());
                 assertTrue(packages.size() > 100);
-                for (var entry : packages) {
-                    if (entry.has("resolved")) {
-                        assertTrue(entry.path("resolved").asText().startsWith("https://registry.npmjs.org/"));
-                        assertTrue(entry.path("integrity").asText().startsWith("sha512-"));
-                    }
+                var entries = packages.fields();
+                while (entries.hasNext()) {
+                    var entry = entries.next();
+                    if (entry.getKey().isEmpty()) continue; // local root manifest
+                    assertTrue(entry.getValue().path("resolved").asText().startsWith("https://registry.npmjs.org/"), entry.getKey());
+                    assertTrue(entry.getValue().path("integrity").asText().startsWith("sha512-"), entry.getKey());
                 }
             }
         }

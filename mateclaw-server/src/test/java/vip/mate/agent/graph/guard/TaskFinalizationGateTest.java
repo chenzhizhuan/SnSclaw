@@ -18,6 +18,16 @@ class TaskFinalizationGateTest {
             new GraphEventPublisher.GraphEvent(GraphEventPublisher.EVENT_TOOL_COMPLETE,Map.of("toolCallId","f","toolName","execute_code","result","missing language","success",false),10),
             new GraphEventPublisher.GraphEvent(GraphEventPublisher.EVENT_TOOL_COMPLETE,Map.of("toolCallId","s","toolName","execute_code","result","1","success",true),11)));
     }
+    @Test void executableContinuationDoesNotConsumeProseCorrectionAllowance() {
+        for(String decision:List.of("CONTINUE","REVISE")) {
+            var remaining=gate.parse(json(decision,false,true,0,"[]")).orElseThrow();
+            assertEquals(TaskFinalizationGate.Outcome.CONTINUE,
+                gate.evaluate(remaining,ActionExecutionLedger.empty(),2,false,true).outcome());
+        }
+        var prose=gate.parse(json("REVISE",true,false,0,"[]")).orElseThrow();
+        assertEquals(TaskFinalizationGate.Outcome.INCOMPLETE,
+            gate.evaluate(prose,ActionExecutionLedger.empty(),2,false,true).outcome());
+    }
     @Test void knownWrapperFailureWithoutOperationIdentityCanOnlyRequestClaimRemoval() {
         var ledger=ActionExecutionLedger.fromEvents(List.of(
             GraphEventPublisher.toolStart("f","tool_call","{\"toolName\":\"execute_code\",\"arguments\":{\"code\":\"print(1)\"}}"),
@@ -121,14 +131,14 @@ class TaskFinalizationGateTest {
             assertEquals(TaskFinalizationGate.Outcome.INCOMPLETE,
                     gate.evaluate(verdict,ActionExecutionLedger.empty(),attempts,false,false).outcome());
         }
-        assertEquals(TaskFinalizationGate.Outcome.INCOMPLETE,
+        assertEquals(TaskFinalizationGate.Outcome.CONTINUE,
                 gate.evaluate(verdict,ActionExecutionLedger.empty(),2,false,true).outcome());
     }
-    @Test void attemptsAreTotalAndTerminalStateTakesPrecedence() {
+    @Test void proseAttemptsAreSeparateAndTerminalStateTakesPrecedence() {
         for(String decision:List.of("CONTINUE","REVISE")) {
             var verdict=gate.parse(json(decision,false,true,0,"[]")).orElseThrow();
             assertEquals(TaskFinalizationGate.Outcome.CONTINUE,gate.evaluate(verdict,ActionExecutionLedger.empty(),1,false,true).outcome());
-            assertEquals(TaskFinalizationGate.Outcome.INCOMPLETE,gate.evaluate(verdict,ActionExecutionLedger.empty(),2,false,true).outcome());
+            assertEquals(TaskFinalizationGate.Outcome.CONTINUE,gate.evaluate(verdict,ActionExecutionLedger.empty(),2,false,true).outcome());
             assertEquals(TaskFinalizationGate.Outcome.INCOMPLETE,gate.evaluate(verdict,ActionExecutionLedger.empty(),0,true,true).outcome());
             assertEquals(TaskFinalizationGate.Outcome.INCOMPLETE,gate.evaluate(verdict,ActionExecutionLedger.empty(),0,false,false).outcome());
         }

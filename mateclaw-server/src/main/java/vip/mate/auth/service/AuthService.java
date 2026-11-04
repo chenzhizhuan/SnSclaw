@@ -240,13 +240,8 @@ public class AuthService {
     }
 
     private SecretKey getSignKey() {
+        JwtSecretValidator.validate(jwtSecret);
         byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        // 确保密钥长度至少 32 字节（HMAC-SHA256）
-        if (keyBytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
-            keyBytes = padded;
-        }
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

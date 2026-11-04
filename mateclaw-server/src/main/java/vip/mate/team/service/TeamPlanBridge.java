@@ -295,33 +295,7 @@ public class TeamPlanBridge {
             return new InFlight(buildProgressText(tasks, currentMessage));
         }
         List<String> results = settle(plan.getId(), tasks);
-        finalizeRunWithFallback(teamOpt.get().getWorkspaceId(), tasks, results);
         return new Settled(plan.getId(), plan.getGoal(), steps, results);
-    }
-
-    /**
-     * The lead wake-up is the completion boundary for a delegated run. Do not
-     * leave the run in FINALIZING when the later LLM summary call fails.
-     */
-    private void finalizeRunWithFallback(Long workspaceId, List<TeamTaskEntity> tasks,
-                                         List<String> results) {
-        Long runId = tasks.stream()
-                .map(TeamTaskEntity::getRunId)
-                .filter(id -> id != null)
-                .findFirst()
-                .orElse(null);
-        if (runId == null) {
-            return;
-        }
-        String fallback = "执行摘要（汇总模型不可用，以下为步骤原始结果）：\n"
-                + String.join("\n", results);
-        try {
-            runService.markFinalized(runId, workspaceId, fallback);
-        } catch (IllegalStateException error) {
-            // A concurrent projector may still be moving the run to FINALIZING.
-            // The next lead wake-up can retry; never wedge the conversation here.
-            log.warn("Unable to finalize settled team run {}: {}", runId, error.getMessage());
-        }
     }
 
     /** Sync the sub-plan mirror from terminal tasks and render step results. */

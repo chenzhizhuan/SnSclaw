@@ -70,6 +70,13 @@ class TeamRunViewFactoryTest {
     }
 
     @Test
+    void finalizingRunWaitsForSummaryInsteadOfClaimingFallback() {
+        TeamRunEntity finalizing = run("{}");
+        finalizing.setStatus(TeamRunStatus.FINALIZING);
+        assertEquals("pending", project(finalizing, List.of(task(101L, 201L, null))).outcomeQuality());
+    }
+
+    @Test
     void fallbackSummaryDoesNotCreateUnactionableAttentionItem() {
         TeamRunEntity fallbackRun = run("{\"summaryQuality\":\"fallback\"}");
         TeamTaskEntity completed = task(101L, 201L, null);

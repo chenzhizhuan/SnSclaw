@@ -126,7 +126,7 @@ class PayloadWireIntegrationTest {
                 if(mode.equals("unfinishedRevision")) {
                     assertEquals(true,output.get(CONTINUE_REASONING));
                     assertTrue(String.valueOf(output.get(MESSAGES)).contains("Requested outcome: CONTINUE"));
-                    assertEquals(1,output.get(FINALIZATION_ATTEMPTS));
+                    assertEquals(0,output.get(FINALIZATION_ATTEMPTS));
                 } else assertEquals("incomplete",output.get(FINISH_REASON));
                 assertFalse(String.valueOf(output.get(FINAL_ANSWER)).contains("verified result"));
                 assertEquals(false,output.get(CONTENT_STREAMED));

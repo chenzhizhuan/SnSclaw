@@ -9,6 +9,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 import org.mockito.ArgumentCaptor;
 import vip.mate.team.model.AgentTeamEntity;
@@ -52,6 +54,19 @@ class TeamTaskServiceTest {
     private TeamRunProjectionScheduler projectionScheduler;
     private TeamRunService runService;
     private TeamTaskService service;
+
+    @ParameterizedTest
+    @ValueSource(strings = {"pending", "in_progress"})
+    void explicitCompletionRejectsOversizedSummaryBeforeAnyTaskMutation(String status) {
+        when(taskMapper.selectById(5L)).thenReturn(task(5L, status));
+        when(taskMapper.update(isNull(), any())).thenReturn(1);
+        var error = assertThrows(IllegalArgumentException.class,
+                () -> service.completeTask(5L, MEMBER_ID, "x".repeat(8001)));
+
+        assertTrue(error.getMessage().contains("8000"));
+        assertTrue(error.getMessage().contains("final reply"));
+        verifyNoInteractions(taskMapper, commentMapper, eventMapper, projectionScheduler);
+    }
 
     @Test
     void staleActiveCompletionCannotMutateOrProduceSuccessfulOutcome() {
