@@ -39,6 +39,7 @@ const path = require('path')
 const { loadBrandConfig } = require('./scripts/branding.cjs')
 
 const mode = process.env.BUILD_MODE === 'remote' ? 'remote' : 'local'
+const buildArch = process.env.BUILD_ARCH
 const brand = loadBrandConfig(__dirname)
 
 // ---------------------------------------------------------------------------
@@ -122,7 +123,7 @@ const config = {
     },
   ],
   files: ['dist-electron', 'dist'],
-  afterPack: 'scripts/trim-playwright-driver.cjs',
+  afterPack: 'scripts/after-pack.cjs',
 
   // ⚠️ ws (WebSocket) 的 peer dependencies — bufferutil / utf-8-validate —
   // 是 C++ 原生 addon (.node 文件)，必须从 asar 中解包才能由 Node 加载器
@@ -156,8 +157,8 @@ const config = {
   mac: {
     category: 'public.app-category.productivity',
     target: [
-      { target: 'dmg', arch: ['arm64', 'x64'] },
-      { target: 'zip', arch: ['arm64', 'x64'] },
+      { target: 'dmg', arch: archList(['arm64', 'x64']) },
+      { target: 'zip', arch: archList(['arm64', 'x64']) },
     ],
     icon: 'build/icon.icns',
     hardenedRuntime: true,

@@ -6,7 +6,6 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 import vip.mate.team.model.AgentTeamEntity;
 import vip.mate.team.model.TeamRunCreateCommand;
@@ -112,44 +111,6 @@ public class TeamRunService {
 
     public TeamRunView getRun(Long runId, Long workspaceId) {
         return buildView(requireRun(runId, workspaceId));
-    }
-
-    /** Reconciles runs stranded after the optional LLM summary step failed. */
-    @Scheduled(fixedDelayString = "${mateclaw.team.finalizing-reconcile-ms:30000}", initialDelay = 30000)
-    @Transactional
-    public void reconcileFinalizingRuns() {
-        List<TeamRunEntity> runs = runMapper.selectList(Wrappers.<TeamRunEntity>lambdaQuery()
-                .eq(TeamRunEntity::getStatus, TeamRunStatus.FINALIZING));
-        for (TeamRunEntity run : runs) {
-            List<TeamTaskEntity> tasks = tasksForRun(run.getId());
-            if (tasks.isEmpty() || tasks.stream().anyMatch(task -> !TeamTaskStatus.isTerminal(task.getStatus()))) {
-                continue;
-            }
-            String outcome = tasks.stream().allMatch(task -> TeamTaskStatus.COMPLETED.equals(task.getStatus()))
-                    ? TeamRunStatus.COMPLETED
-                    : tasks.stream().anyMatch(task -> TeamTaskStatus.COMPLETED.equals(task.getStatus()))
-                    ? TeamRunStatus.PARTIAL : TeamRunStatus.FAILED;
-            String fallback = "执行摘要（汇总模型不可用，以下为步骤原始结果）：\n"
-                    + tasks.stream().map(task -> {
-                        String result = TeamTaskStatus.COMPLETED.equals(task.getStatus())
-                                ? task.getResult() : task.getReason();
-                        return "- #" + task.getTaskNumber() + " " + (result == null ? task.getStatus() : result);
-                    }).collect(Collectors.joining("\n"));
-            finalizeWithoutSummary(run, outcome, fallback);
-        }
-    }
-
-    private void finalizeWithoutSummary(TeamRunEntity run, String outcome, String summary) {
-        LocalDateTime completedAt = LocalDateTime.now();
-        String fallbackMetadata = metadata(run.getMetadata()).set("summaryQuality", "fallback").toString();
-        runMapper.update(null, Wrappers.<TeamRunEntity>lambdaUpdate()
-                .eq(TeamRunEntity::getId, run.getId())
-                .eq(TeamRunEntity::getStatus, TeamRunStatus.FINALIZING)
-                .set(TeamRunEntity::getStatus, outcome)
-                .set(TeamRunEntity::getFinalSummary, summary)
-                .set(TeamRunEntity::getMetadata, fallbackMetadata)
-                .set(TeamRunEntity::getCompletedAt, completedAt));
-        log.warn("Reconciled stranded team run {} from finalizing to {}", run.getId(), outcome);
     }
 
     public RunPage pageTeamRuns(Long teamId, Long workspaceId, boolean activeOnly,
@@ -323,6 +284,23 @@ public class TeamRunService {
 
     @Transactional
     public TeamRunEntity markFinalized(Long runId, Long workspaceId, String finalSummary) {
+        return markFinalized(runId, workspaceId, finalSummary, "synthesized", null);
+    }
+
+    @Transactional
+    public TeamRunEntity markFinalized(Long runId, Long workspaceId, String finalSummary,
+                                       String quality, String reason) {
+        return markFinalized(runId, workspaceId, finalSummary, quality, reason,
+                requireRun(runId, workspaceId).getMetadata());
+    }
+
+    @Transactional
+    public TeamRunEntity markFinalized(Long runId, Long workspaceId, String finalSummary,
+                                       String quality, String reason, String expectedMetadata) {
+        if (finalSummary == null || finalSummary.isBlank()
+                || !("synthesized".equals(quality) || "fallback".equals(quality))) {
+            throw new IllegalArgumentException("non-empty summary and valid quality required");
+        }
         TeamRunEntity run = requireRun(runId, workspaceId);
         if (TeamRunStatus.isTerminal(run.getStatus())) {
             return run;
@@ -330,21 +308,36 @@ public class TeamRunService {
         if (!TeamRunStatus.FINALIZING.equals(run.getStatus())) {
             throw new IllegalStateException("team run is not finalizing: " + runId);
         }
+        if (!java.util.Objects.equals(expectedMetadata, run.getMetadata())) {
+            throw new IllegalStateException("team run evidence changed during summary: " + runId);
+        }
         String outcome = metadata(run.getMetadata()).getStr("projectedOutcome");
         if (!FINAL_OUTCOMES.contains(outcome)) {
             throw new IllegalStateException("team run has no valid projected outcome: " + runId);
         }
 
+        JSONObject summaryMetadata = metadata(run.getMetadata()).set("summaryQuality", quality);
+        if (reason == null) summaryMetadata.remove("summaryFailureReason");
+        else summaryMetadata.set("summaryFailureReason", reason);
+        String metadataJson = summaryMetadata.toString();
         LocalDateTime completedAt = LocalDateTime.now();
-        int changed = runMapper.update(null, Wrappers.<TeamRunEntity>lambdaUpdate()
+        var update = Wrappers.<TeamRunEntity>lambdaUpdate()
                 .eq(TeamRunEntity::getId, runId)
                 .eq(TeamRunEntity::getStatus, TeamRunStatus.FINALIZING)
                 .set(TeamRunEntity::getStatus, outcome)
                 .set(TeamRunEntity::getFinalSummary, finalSummary)
-                .set(TeamRunEntity::getCompletedAt, completedAt));
+                .set(TeamRunEntity::getMetadata, metadataJson)
+                .set(TeamRunEntity::getCompletedAt, completedAt);
+        if (expectedMetadata == null) update.isNull(TeamRunEntity::getMetadata);
+        else update.eq(TeamRunEntity::getMetadata, expectedMetadata);
+        // Guard the final write itself: a committed retry may precede its asynchronous projection.
+        update.notExists("SELECT 1 FROM mate_team_task t WHERE t.run_id = {0} AND t.deleted = 0 "
+                + "AND t.status NOT IN ('completed', 'failed', 'cancelled')", runId);
+        int changed = runMapper.update(null, update);
         if (changed == 1) {
             run.setStatus(outcome);
             run.setFinalSummary(finalSummary);
+            run.setMetadata(metadataJson);
             run.setCompletedAt(completedAt);
             return run;
         }

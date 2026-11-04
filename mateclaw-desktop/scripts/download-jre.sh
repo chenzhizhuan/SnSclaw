@@ -18,11 +18,12 @@
 #
 # Supported: mac|win|linux × x64|arm64. Temurin publishes a JRE for all six.
 #
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-JRE_DIR="$PROJECT_ROOT/resources/jre"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+RESOURCES_DIR="$PROJECT_DIR/resources"
 
 JAVA_FEATURE_VERSION=21
 
@@ -109,9 +110,11 @@ download_and_extract() {
   mkdir -p "$JRE_DIR"
   curl -L --fail --retry 2 -o "$tmpfile" "$url"
 
-  echo "==> Extracting to $JRE_DIR/$folder"
-  rm -rf "$JRE_DIR/$folder"
-  mkdir -p "$JRE_DIR/$folder"
+    case "$(uname -m)" in
+        x86_64|amd64) arch="x64" ;;
+        arm64|aarch64) arch="arm64" ;;
+        *) echo "Unsupported arch: $(uname -m)"; exit 1 ;;
+    esac
 
   extract_tmp="$JRE_DIR/.tmp-$folder"
   rm -rf "$extract_tmp"; mkdir -p "$extract_tmp"

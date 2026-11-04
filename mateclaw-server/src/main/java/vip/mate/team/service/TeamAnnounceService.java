@@ -52,6 +52,7 @@ public class TeamAnnounceService {
 
     /** A batch drains immediately once it reaches this size. */
     static final int MAX_BATCH = 20;
+    static final int MAX_ANNOUNCEMENT_CHARS = 16000;
 
     /** Re-check interval while waiting for a busy lead to go idle. */
     static final long BUSY_RETRY_MILLIS = 2000;
@@ -304,14 +305,22 @@ public class TeamAnnounceService {
             }
             sb.append(".\n");
         }
-        for (AnnounceItem item : items) {
-            sb.append("\n--- Task #").append(item.taskNumber())
-                    .append(" \"").append(item.subject()).append("\" — ")
-                    .append(item.status())
-                    .append(" (member: ").append(item.memberName()).append(") ---\n");
-            if (!item.detail().isBlank()) {
-                sb.append(item.detail()).append('\n');
-            }
+        int visibleCount = Math.min(items.size(), MAX_BATCH);
+        int itemBudget = visibleCount == 0 ? 0 : (MAX_ANNOUNCEMENT_CHARS - 1000) / visibleCount;
+        for (AnnounceItem item : items.subList(0, visibleCount)) {
+            String heading = "\n--- Task #" + item.taskNumber() + " \""
+                    + TeamResultExcerpt.label(item.subject(), 160) + "\" — " + item.status()
+                    + " (member: " + TeamResultExcerpt.label(item.memberName(), 80) + ") ---\n";
+            String reference = "Full worker output: " + TeamResultExcerpt.outputReference(item.taskId()) + "\n";
+            sb.append(heading);
+            sb.append(TeamResultExcerpt.render(item.detail(),
+                    itemBudget - heading.length() - reference.length() - 1, item.taskId())).append('\n');
+            sb.append(reference);
+        }
+        if (items.size() > visibleCount) {
+            sb.append("\n").append(items.size() - visibleCount)
+                    .append(" additional task details omitted to protect context. ")
+                    .append("Use team_tasks(action=\"list\") and retrieve their task outputs.\n");
         }
         sb.append("""
 

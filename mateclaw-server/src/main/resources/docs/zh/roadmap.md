@@ -1,6 +1,6 @@
 # 路线图
 
-3.0.0-SNAPSHOT 开发中：Boot 4、Spring AI 2 与 AgentScope 2 执行架构升级，保留工具治理、历史接口和恢复边界。正式发行版以 Releases 为准。 [架构升级日志](./changelog)
+3.0.0 正式版 · 2026-10-26：Boot 4、Spring AI 2 与 AgentScope 2 执行架构升级，完善长任务续跑、团队汇总与工具治理。发行包请查看 Releases。 [架构升级日志](./changelog)
 
 
 > "人们不知道自己想要什么，直到你把它摆在他们面前。"
@@ -287,3 +287,5 @@ SnSclaw 就是这个东西。
 ---
 
 *Stay hungry. Stay foolish.*
+
+> AI生成

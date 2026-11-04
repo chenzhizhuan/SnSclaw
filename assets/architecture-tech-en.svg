@@ -194,7 +194,7 @@
   <line x1="250" y1="438" x2="250" y2="454" stroke="#665245" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.4"/>
   <line x1="710" y1="438" x2="710" y2="454" stroke="#665245" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.4"/>
 
-  <text x="480" y="575" text-anchor="middle" font-size="10" fill="#9b7d6c">3.0.0-SNAPSHOT · Java 21 · Boot 4 · Spring AI 2 · AgentScope 2 · Vue 3 · Electron</text>
+  <text x="480" y="575" text-anchor="middle" font-size="10" fill="#9b7d6c">3.0.0 · Java 21 · Boot 4 · Spring AI 2 · AgentScope 2 · Vue 3 · Electron</text>
   <rect x="380" y="590" width="200" height="24" rx="12" fill="url(#primary)"/>
   <text x="480" y="607" text-anchor="middle" font-size="11" font-weight="600" fill="#fff" letter-spacing="0.5">claw.sns.app</text>
 </svg>

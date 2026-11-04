@@ -19,6 +19,7 @@ public final class DshSdkProcess implements AutoCloseable {
     private final BlockingQueue<Object> frames = new ArrayBlockingQueue<>(4096);
     private final AtomicInteger pendingBytes = new AtomicInteger();
     private final String secret;
+    private final Set<ProcessHandle> ownedDescendants = ConcurrentHashMap.newKeySet();
     private final StringBuilder stderr = new StringBuilder();
     private volatile boolean closed;
     private volatile boolean initialized;
@@ -29,6 +30,44 @@ public final class DshSdkProcess implements AutoCloseable {
         writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
         startReader("dsh-sdk-stdout", this::readFrames);
         startReader("dsh-sdk-stderr", this::readErrors);
+        startReader("dsh-sdk-owned-processes", this::watchOwnedProcesses);
+    }
+
+    /**
+     * Best-effort ownership retention: reparented children disappear from a crashed root's tree.
+     * This cannot contain children born/reparented entirely between observations, or deliberately
+     * detached before observation. It is not a replacement for an OS sandbox/process supervisor.
+     */
+    private void watchOwnedProcesses() {
+        try {
+            while (!closed && process.isAlive()) {
+                try (var descendants = process.descendants()) {
+                    descendants.forEach(ownedDescendants::add);
+                } catch (RuntimeException ignored) {
+                    // The root can exit during enumeration; retain previously observed ownership.
+                }
+                ownedDescendants.removeIf(handle -> !handle.isAlive());
+                Thread.sleep(20);
+            }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        } finally {
+            terminateOwnedDescendants();
+        }
+    }
+
+    private void terminateOwnedDescendants() {
+        // A recorded shell may have spawned another child between snapshots.
+        for (ProcessHandle handle : List.copyOf(ownedDescendants)) {
+            if (handle.isAlive()) try (var descendants = handle.descendants()) {
+                descendants.forEach(ownedDescendants::add);
+            } catch (RuntimeException ignored) { }
+        }
+        for (ProcessHandle handle : ownedDescendants) {
+            if (!handle.isAlive()) continue;
+            handle.destroy();
+            if (handle.isAlive()) handle.destroyForcibly();
+        }
     }
 
     private static void startReader(String name, Runnable action) {
@@ -133,6 +172,6 @@ public final class DshSdkProcess implements AutoCloseable {
                 process.waitFor(5, TimeUnit.SECONDS);
             }
         } catch (Exception ignored) { }
-        finally { closed = true; DshRuntimeService.cancelProcess(process); }
+        finally { closed = true; terminateOwnedDescendants(); DshRuntimeService.cancelProcess(process); }
     }
 }

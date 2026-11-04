@@ -305,6 +305,50 @@ class ReasoningNodeOutputTest {
         assertTrue(filtered.isEmpty());
     }
 
+    @Test
+    void structuredWorkerSourceLengthDoesNotTriggerLongFormContinuation() throws Exception {
+        String answer = "{\"status\":\"COMPLETED\",\"result\":\"HEAD/TAIL/130 verified\",\"evidence\":\"team_tasks output and read_file\"}";
+        when(streamingHelper.streamCall(any(), any(), anyString(), anyString())).thenReturn(
+                new NodeStreamingChatHelper.StreamResult(answer, "", new AssistantMessage(answer),
+                        List.of(), false, 100, 100));
+        Map<String, Object> state = baseStateMap();
+        String request = "[Team task]\n源任务完整长回复（约 10731 字符）已持久化。请检索并核验，最终 JSON 小于800字符。\n"
+                + "[Final result contract]\n"
+                + vip.mate.agent.runtime.WorkerResultContract.INSTRUCTIONS
+                + "Keep the entire JSON under 8000 characters.\n";
+        state.put(USER_MESSAGE, request);
+        state.put(MAX_ITERATIONS, 30);
+        Map<String, Object> output = createNode().apply(new RunState(state));
+        assertEquals(false, output.get(CONTINUE_REASONING));
+        assertEquals(answer, output.get(FINAL_ANSWER));
+        assertTrue(ReasoningNode.requestedLongFormChars(request).isEmpty());
+    }
+
+    @Test
+    void sourceSizeAndUpperBoundsDoNotRequestLongFormProse() {
+        for (String request : List.of("源任务完整长回复（约 10731 字符）已保存。请核验并简短回复。",
+                "完整回复10975字符，与前置约10731字符一致（含封装头尾）。",
+                "完整输出约10000字，请核验首尾。", "读取一万字报告，仅回复结论。",
+                "Read the 10,000 words source report; answer briefly.",
+                "请输出不超过 10000 字的报告", "Write at most 10,000 words.",
+                "Write no more than 10000 words", "请写一篇不要超过10000字的报告")) {
+            assertTrue(ReasoningNode.requestedLongFormChars(request).isEmpty(), request);
+        }
+        assertEquals(3000, ReasoningNode.requestedLongFormChars(
+                "读取 10731 字符原文，写一篇 3000 字摘要。").orElseThrow());
+        assertEquals(10_000, ReasoningNode.requestedLongFormChars("帮我写一万字小说。").orElseThrow());
+        assertEquals(10_000, ReasoningNode.requestedLongFormChars("Write 10,000 words of fiction.").orElseThrow());
+    }
+
+    @Test
+    void explicitChineseWritingIntentsStillEnforceTheirRequestedLength() {
+        for (String request : List.of("请你写一篇10000字小说", "请把这个故事扩写到10000字",
+                "请根据工具结果写一篇10000字技术报告", "请写一篇小说，要求10000字",
+                "Write a report; length: 10000 words")) {
+            assertEquals(10_000, ReasoningNode.requestedLongFormChars(request).orElseThrow(), request);
+        }
+    }
+
     private static ToolCallback mockTool(String name) {
         ToolCallback callback = mock(ToolCallback.class);
         org.springframework.ai.tool.definition.ToolDefinition definition =

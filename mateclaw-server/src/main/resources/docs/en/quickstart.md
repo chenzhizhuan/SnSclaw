@@ -1,6 +1,6 @@
 # Quick Start
 
-The source development branch is `3.0.0-SNAPSHOT`; stable installers remain the versions published in Releases. Read the [upgrade guidance](./changelog#upgrade-and-validation) before migrating.
+Release date: **2026-10-26**. These notes cover the 3.0.0 stable release. Source and package versions are `3.0.0`; download published packages from [GitHub Releases](https://github.com/mateaix/mateclaw/releases). Read the [upgrade guidance](./changelog#upgrade-and-validation) before migrating.
 
 
 Sixty seconds to first message. **One path. Desktop app.**

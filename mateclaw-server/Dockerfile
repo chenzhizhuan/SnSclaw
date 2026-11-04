@@ -67,6 +67,10 @@ COPY --from=frontend-builder /static mateclaw-server/src/main/resources/static
 
 RUN mvn -pl mateclaw-server -am package -Dmaven.test.skip=true -q ${MAVEN_FLAGS}
 
+# Node/npm for the managed dsh installer. Keep the runtime on Node 22 even
+# when Playwright changes its bundled Node major. Bookworm glibc runs on Noble.
+FROM node:22-bookworm-slim AS dsh-node
+
 # Stage 3 — Runtime
 #
 # Uses Microsoft's official Playwright image (Ubuntu Noble, glibc) with all three
@@ -78,8 +82,15 @@ RUN mvn -pl mateclaw-server -am package -Dmaven.test.skip=true -q ${MAVEN_FLAGS}
 # bump the Java dependency, bump this tag in lockstep — Microsoft rebuilds each
 # tag with the matching driver, so mismatched versions cause the java driver to
 # re-download browsers at runtime (defeating the whole point of this image).
-FROM mcr.microsoft.com/playwright:v1.62.0-noble
+FROM mcr.microsoft.com/playwright:v1.62.0-noble AS runtime-base
 WORKDIR /app
+
+COPY --from=dsh-node /usr/local/bin/node /usr/local/bin/node
+COPY --from=dsh-node /usr/local/lib/node_modules/ /usr/local/lib/node_modules/
+RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+    && node -e 'if (process.versions.node.split(".")[0] !== "22") throw Error("dsh requires Node 22")' \
+    && npm --version
 
 # JDK 21 is NOT part of the base image (it ships Node for the JS driver).
 # Install openjdk-21 explicitly and add CJK fonts so Chinese pages render
@@ -111,6 +122,7 @@ RUN apt-get update \
         python-is-python3 \
         python3-dev \
         build-essential \
+        bubblewrap \
     && rm -rf /var/lib/apt/lists/*
 
 # Remove PEP 668's EXTERNALLY-MANAGED marker so pip can install packages
@@ -135,6 +147,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
 # silently pin the profile regardless of what compose passes.
 ENV SPRING_PROFILES_ACTIVE=mysql
 
+FROM runtime-base AS runtime
 COPY --from=builder /build/mateclaw-server/target/*.jar app.jar
 
 EXPOSE 18088

@@ -131,13 +131,13 @@ public class CodeExecuteTool {
             // scoped to the conversation's workspace (+ builtin/global).
             ResolvedSkill skill = runtimeService.findActiveSkill(skillName, workspaceResolver.resolve(ChatOrigin.from(ctx)));
             if (skill == null) {
-                return formatError("Skill '" + skillName + "' not found or not enabled");
+                return formatError("Skill '" + skillName + "' not found or not enabled", ctx);
             }
             Long agentId = ChatOrigin.from(ctx).agentId();
             if (agentId != null) {
                 Set<Long> boundSkillIds = agentBindingResolver.getBoundSkillIds(agentId);
                 if (boundSkillIds != null && (skill.getId() == null || !boundSkillIds.contains(skill.getId()))) {
-                    return formatError("Skill '" + skillName + "' is not available for this agent.");
+                    return formatError("Skill '" + skillName + "' is not available for this agent.", ctx);
                 }
             }
             // Directory-backed skills run inside their own directory so the code
@@ -170,11 +170,12 @@ public class CodeExecuteTool {
             // Surface any files the run wrote as one-click downloads so the user can
             // grab generated artifacts (xlsx / csv / images / …) without the model
             // having to call send_file or echo a server path.
+            recordOutcome(ctx, result.getExitCode(), false);
             List<String> fileLinks = WorkspaceArtifactSurfacer.collect(generatedFileCache, workingDir, runStart, ctx);
             return formatResult(result, fileLinks);
         } catch (Exception e) {
             log.error("[CodeExecute] Execution failed: {}", e.getMessage());
-            return formatError("Execution failed: " + e.getMessage());
+            return formatError("Execution failed: " + e.getMessage(), ctx);
         }
     }
 
@@ -186,13 +187,14 @@ public class CodeExecuteTool {
      */
     private String executeIsolated(String language, String code, String skillName, String args,
                                    Integer timeoutSeconds, ToolContext ctx) {
-        if (skillName != null && !skillName.isBlank()) return formatError("Shared skill execution is unavailable in member isolation mode");
+        if (skillName != null && !skillName.isBlank()) return formatError("Shared skill execution is unavailable in member isolation mode", ctx);
         try {
             var scoped = vip.mate.workspace.core.service.MemberFileIsolation.scope(ChatOrigin.from(ctx));
             Path root = Path.of(scoped.workspaceBasePath());
             long since = System.currentTimeMillis();
             var output = memberSandboxExecutor.executeCode(language, code, root, normalizeArgs(args), Map.of(),
                     timeoutSeconds == null || timeoutSeconds <= 0 ? 30 : timeoutSeconds);
+            recordOutcome(ctx, output.exitCode(), output.timedOut());
             var json = objectMapper.readTree(formatResult(new SkillScriptExecutionService.ScriptResult(
                     output.exitCode(), output.stdout(), output.stderr()),
                     WorkspaceArtifactSurfacer.collect(generatedFileCache, root, since, scoped.toToolContext())));
@@ -200,9 +202,9 @@ public class CodeExecuteTool {
             return objectMapper.writeValueAsString(json);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return formatError("Isolated execution cancelled");
+            return formatError("Isolated execution cancelled", ctx);
         } catch (Exception e) {
-            return formatError("Isolated execution failed: " + e.getMessage());
+            return formatError("Isolated execution failed: " + e.getMessage(), ctx);
         }
     }
 
@@ -251,7 +253,32 @@ public class CodeExecuteTool {
         );
     }
 
-    private String formatError(String message) {
+    private void recordOutcome(ToolContext context, int exitCode, boolean timedOut) {
+        if (Thread.currentThread().isInterrupted()) {
+            recordFailure(context, "Code execution cancelled");
+            return;
+        }
+        var sink = vip.mate.execution.evidence.service.ExecutionObservationSink.from(context);
+        if (sink != null) {
+            if (exitCode >= 0 || timedOut) sink.command(exitCode >= 0 ? exitCode : null, timedOut, false, false);
+            else sink.toolFailure(); // -1 can also represent validation/setup failure, not an observed process exit.
+        }
+        if (exitCode != 0 || timedOut)
+            recordFailure(context, timedOut ? "Code execution timed out" : "Code execution failed (exit code " + exitCode + ")");
+    }
+
+    private void recordFailure(ToolContext context, String message) {
+        var capture = vip.mate.tool.mcp.runtime.McpToolResultCapture.from(context);
+        if (capture != null) capture.recordFailure(message);
+        var sink = vip.mate.execution.evidence.service.ExecutionObservationSink.from(context);
+        if (sink != null) {
+            if (Thread.currentThread().isInterrupted()) sink.toolCancelled();
+            else sink.toolFailure();
+        }
+    }
+
+    private String formatError(String message, ToolContext context) {
+        recordFailure(context, message);
         return String.format(
             "{\n  \"exitCode\": -1,\n  \"stdout\": \"\",\n  \"stderr\": %s\n}",
             jsonEscape(message)

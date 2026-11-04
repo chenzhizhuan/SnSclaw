@@ -78,6 +78,11 @@ public class DshRuntimeService implements AgentRuntimeProvider {
         log.info("[DSH] SDK runtime adapter initialized");
     }
 
+    private DshProcessSupervisor processSupervisor = new DshProcessSupervisor("native", "docker", "", new ObjectMapper());
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setProcessSupervisor(DshProcessSupervisor supervisor) { this.processSupervisor = supervisor; }
+
     private DshRuntimeConfiguration runtimeConfig() {
         DshRuntimeConfiguration raw = runtimeConfigService.resolve();
         String cwd = raw.workingDirectory();
@@ -260,18 +265,26 @@ public class DshRuntimeService implements AgentRuntimeProvider {
                         provider != null && provider.getApiKey() != null && !provider.getApiKey().isBlank(),
                         provider != null && provider.getBaseUrl() != null && !provider.getBaseUrl().isBlank());
                 DshLaunchSpec launch = DshLaunchSpec.create(configuration, agent.getWorkspaceId(), agent.getId(), session.workingDirectory());
-                process = launch.processBuilder(childEnvironment(System.getenv(), session, configuration, provider)).start();
+                process = processSupervisor.start(launch, childEnvironment(System.getenv(), session, configuration, provider));
                 processRef.set(process);
+                if (process instanceof DshDockerProcess owned) {
+                    var retainedLease = lease;
+                    Process retainedProcess = process;
+                    owned.afterCleanup(() -> {
+                        if (retainedLease != null) retainedLease.close();
+                        processRef.compareAndSet(retainedProcess, null);
+                    });
+                }
                 Process startedProcess = process;
                 sink.onCancel(() -> { cancelled.set(true); cancelProcess(startedProcess); });
                 if (sink.isCancelled()) return;
                 if (cancelled.get()) throw new InterruptedException("DSH_CANCELLED");
+                long sequence = 0;
                 try (DshSdkProcess sdk = new DshSdkProcess(process, objectMapper,
                         firstNonBlank(configuration.apiKey(), provider == null ? null : provider.getApiKey()))) {
                     sdk.initialize(Map.of("cwd", session.workingDirectory().toString(),
                             "provider", "deepseek-official", "model", effectiveModelName, "maxTokens", maxOutputTokens),
                             Duration.ofMillis(initializeTimeoutMs));
-                    long sequence = 0;
                     sink.next(RuntimeEventProjector.project(RuntimeEvent.of(conversationId, sequence++,
                             RuntimeEventType.RUNTIME_READY, null, Map.of("runtimeProvider", "dsh"))));
                     String promptId = "prompt-" + conversationId;
@@ -304,34 +317,50 @@ public class DshRuntimeService implements AgentRuntimeProvider {
                             }
                         }
                     }
-                    if (!sink.isCancelled()) {
-                        if (!turn.answer().isEmpty()) sink.next(RuntimeEventProjector.project(RuntimeEvent.of(
-                                conversationId, sequence++, RuntimeEventType.ASSISTANT_DELTA, turn.answer(), Map.of())));
-                        latestUsage.set(new RuntimeContextUsage(turn.inputTokens(), turn.outputTokens(), 0));
-                        sink.next(RuntimeEventProjector.project(RuntimeEvent.of(conversationId, sequence++, RuntimeEventType.CONTEXT_USAGE,
-                                null, Map.of("inputTokens", turn.inputTokens(), "outputTokens", turn.outputTokens(),
-                                        "promptTokens", turn.inputTokens(), "completionTokens", turn.outputTokens()))));
-                        sink.next(RuntimeEventProjector.project(RuntimeEvent.terminal(conversationId, sequence,
-                                turn.terminalType(), turn.terminalType() == RuntimeEventType.COMPLETED ? Map.of()
-                                        : Map.of("code", "DSH_INCOMPLETE_TURN", "error", "DSH turn ended: " + turn.reason()))));
-                        sink.complete();
-                    }
                 }
+                if (cancelled.get()) throw new InterruptedException("DSH_CANCELLED");
+                if (!sink.isCancelled()) {
+                    if (!turn.answer().isEmpty()) sink.next(RuntimeEventProjector.project(RuntimeEvent.of(
+                            conversationId, sequence++, RuntimeEventType.ASSISTANT_DELTA, turn.answer(), Map.of())));
+                    latestUsage.set(new RuntimeContextUsage(turn.inputTokens(), turn.outputTokens(), 0));
+                    sink.next(RuntimeEventProjector.project(RuntimeEvent.of(conversationId, sequence++, RuntimeEventType.CONTEXT_USAGE,
+                            null, Map.of("inputTokens", turn.inputTokens(), "outputTokens", turn.outputTokens(),
+                                    "promptTokens", turn.inputTokens(), "completionTokens", turn.outputTokens()))));
+                    sink.next(RuntimeEventProjector.project(RuntimeEvent.terminal(conversationId, sequence,
+                            turn.terminalType(), turn.terminalType() == RuntimeEventType.COMPLETED ? Map.of()
+                                    : Map.of("code", "DSH_INCOMPLETE_TURN", "error", "DSH turn ended: " + turn.reason()))));
+                    sink.complete();
+                }
+
             } catch (Exception error) {
                 if (!sink.isCancelled() && turn != null && !turn.answer().isEmpty())
                     sink.next(RuntimeEventProjector.project(RuntimeEvent.of(conversationId, 0,
                             RuntimeEventType.ASSISTANT_DELTA, turn.answer(), Map.of())));
-                if (cancelled.get()) {
+                boolean cancellationConfirmed = cancelled.get();
+                if (process instanceof DshDockerProcess owned && !owned.cleanupConfirmed()) {
+                    try { owned.destroy(); }
+                    catch (RuntimeException unconfirmed) { cancellationConfirmed = false; error = unconfirmed; }
+                }
+                if (cancellationConfirmed) {
                     if (!sink.isCancelled()) {
                         sink.next(RuntimeEventProjector.project(RuntimeEvent.terminal(conversationId, 0, RuntimeEventType.CANCELLED, Map.of())));
                         sink.complete();
                     }
                 } else sink.error(new IllegalStateException("DSH runtime unavailable: " + DshSdkProcess.redact(error.getMessage(), credential)));
-                if (process != null) process.destroyForcibly();
+                if (process != null && !(process instanceof DshDockerProcess)) process.destroyForcibly();
             } finally {
-                cancelProcess(process);
-                if (process != null) processRef.compareAndSet(process, null);
-                if (lease != null) lease.close();
+                if (process instanceof DshDockerProcess owned) {
+                    // The ownership callback registered before SDK startup retains the
+                    // lease until both removal and bookkeeping have succeeded.
+                    try { cancelProcess(process); }
+                    catch (RuntimeException unconfirmed) { log.warn("[DSH] Docker cleanup remains unconfirmed; admission retained"); }
+                } else {
+                    try { cancelProcess(process); }
+                    finally {
+                        if (process != null) processRef.compareAndSet(process, null);
+                        if (lease != null) lease.close();
+                    }
+                }
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
@@ -353,9 +382,29 @@ public class DshRuntimeService implements AgentRuntimeProvider {
         return healthCheck(configuration, true, home);
     }
 
+    private final ThreadLocal<DshDockerProcess> failedHealthCleanup = new ThreadLocal<>();
+    private final java.util.Set<DshDockerProcess> pendingHealthCleanup = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    public void retryPendingHealthCleanup() {
+        for (DshDockerProcess owned : pendingHealthCleanup) {
+            owned.destroy();
+            if (owned.cleanupConfirmed()) pendingHealthCleanup.remove(owned);
+        }
+    }
+
+    public void releaseHealthLease(Runnable release) {
+        DshDockerProcess owned = failedHealthCleanup.get();
+        failedHealthCleanup.remove();
+        if (owned == null) release.run();
+        else owned.afterCleanup(release);
+    }
+
     private Map<String, Object> healthCheck(DshRuntimeConfiguration configuration, boolean task, Path home) {
         long started = System.currentTimeMillis();
+        Process process = null;
+        failedHealthCleanup.remove();
         try {
+            retryPendingHealthCleanup();
             if (MemberFileIsolation.isEnabled()) throw new SecurityException("DSH_MEMBER_ISOLATION_UNSUPPORTED");
             Path cwd = Path.of(configuration.workingDirectory());
             DshLaunchSpec launch = DshLaunchSpec.create(configuration, "health", "health", cwd);
@@ -363,7 +412,7 @@ public class DshRuntimeService implements AgentRuntimeProvider {
             ModelConfigEntity model = resolveModel(configuration.modelName());
             ModelProviderEntity provider = resolveProvider(model);
             RuntimeSession session = new RuntimeSession("health", "health", 0L, 0L, configuration.modelName(), cwd, Map.of());
-            Process process = launch.processBuilder(childEnvironment(System.getenv(), session, configuration, provider)).start();
+            process = processSupervisor.start(launch, childEnvironment(System.getenv(), session, configuration, provider));
             try (DshSdkProcess sdk = new DshSdkProcess(process, objectMapper,
                     firstNonBlank(configuration.apiKey(), provider == null ? null : provider.getApiKey()))) {
                 sdk.initialize(Map.of("cwd", cwd.toString(), "provider", "deepseek-official",
@@ -389,6 +438,10 @@ public class DshRuntimeService implements AgentRuntimeProvider {
                     "checkedAt", Instant.now().toString(), "durationMs", System.currentTimeMillis() - started,
                     "versionStatus", "UNVERIFIED_VERSION");
         } catch (Exception error) {
+            if (process instanceof DshDockerProcess owned && !owned.cleanupConfirmed()) {
+                pendingHealthCleanup.add(owned);
+                failedHealthCleanup.set(owned);
+            }
             return Map.of("success", false, "kind", task ? "task" : "handshake",
                     "message", DshSdkProcess.redact(error.getMessage(), configuration.apiKey()),
                     "checkedAt", Instant.now().toString(), "durationMs", System.currentTimeMillis() - started);

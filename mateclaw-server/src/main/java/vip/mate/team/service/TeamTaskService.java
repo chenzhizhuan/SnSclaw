@@ -48,6 +48,8 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class TeamTaskService {
 
+    public static final int MAX_RESULT_CHARS = 8000;
+
     private static final int MAX_STAGED_REPLAY_RESULT_CHARS = 8000;
 
     private static final Pattern CHECKPOINT_RANGE = Pattern.compile(
@@ -303,6 +305,11 @@ public class TeamTaskService {
     }
 
     private Completion completeTaskInternal(Long taskId, Long agentId, String result, boolean observe, TeamTaskEntity locked) {
+        if (result != null && result.length() > MAX_RESULT_CHARS) {
+            throw new IllegalArgumentException("result summary must not exceed " + MAX_RESULT_CHARS
+                    + " characters; keep a concise summary here and put full content in your final reply"
+                    + " or attach a deliverable");
+        }
         TeamTaskEntity task = locked == null ? requireTask(taskId) : locked;
         if (TeamTaskStatus.PENDING.equals(task.getStatus()) && agentId != null) {
             if (task.getAssigneeAgentId() != null && !agentId.equals(task.getAssigneeAgentId())) {
@@ -1297,7 +1304,7 @@ public class TeamTaskService {
         return JSONUtil.toJsonStr(ids.stream().map(String::valueOf).toList());
     }
 
-    static List<Long> parseIdArray(String json) {
+    public static List<Long> parseIdArray(String json) {
         if (json == null || json.isBlank()) {
             return Collections.emptyList();
         }

@@ -52,6 +52,13 @@ public final class McpToolResultCapture {
         }
     }
 
+    /** Trusted native callbacks report failure without interpreting model-facing output text. */
+    public void recordFailure(String message) {
+        structuredContent = null;
+        errorText = message;
+        error = true;
+    }
+
     public Map<String, Object> structuredContent() { return structuredContent; }
     public boolean isError() { return error; }
     public String errorText() { return errorText; }

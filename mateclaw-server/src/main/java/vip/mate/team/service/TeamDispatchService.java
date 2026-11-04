@@ -63,7 +63,7 @@ public class TeamDispatchService {
     public void setDecisionAdapter(WorkerDecisionAdapter adapter) { this.decisionAdapter = adapter; }
 
     /** Result summaries are capped before persisting to keep the board readable. */
-    static final int MAX_RESULT_CHARS = 8000;
+    static final int MAX_RESULT_CHARS = TeamTaskService.MAX_RESULT_CHARS;
 
     /** Empty/fallback member runs get one recovery attempt, not three long identical runs. */
     static final int MAX_RESPONSE_FAILURE_DISPATCHES = 2;
@@ -214,76 +214,94 @@ public class TeamDispatchService {
         String childConvId = "team-task-" + IdUtil.fastSimpleUUID();
         WorkerDecisionAdapter.Snapshot snapshot = WorkerDecisionAdapter.Snapshot.capture(task).withConversation(childConvId);
         ScheduledFuture<?> heartbeat = null;
+        String reply = null;
+        String finishReason = null;
+        Exception runFailure = null;
         try {
-            AgentTeamEntity team = teamService.getTeam(teamId);
-            conversationService.createChildConversation(childConvId, memberId, "system",
-                    team == null ? null : team.getWorkspaceId(), task.getLeadConversationId(),
-                    "team_worker");
-            taskService.attachConversation(task.getId(), childConvId);
-            // Track the child run so graph nodes honor requestStop() — without a
-            // registered RunState, cancelling the task could never interrupt the
-            // member mid-run.
-            streamTracker.register(childConvId);
-            streamTracker.incrementFlux(childConvId);
-            // Renew the execution lease while the member works; the conditional
-            // UPDATE inside renewLock makes this a no-op once the task settles.
-            heartbeat = startLeaseHeartbeat(task.getId());
-            broadcast(task, "team_task_dispatched", Map.of());
-            log.info("Team {} task #{} dispatched to agent {} (conv {})",
-                    teamId, task.getTaskNumber(), memberId, childConvId);
+            try {
+                AgentTeamEntity team = teamService.getTeam(teamId);
+                conversationService.createChildConversation(childConvId, memberId, "system",
+                        team == null ? null : team.getWorkspaceId(), task.getLeadConversationId(),
+                        "team_worker");
+                taskService.attachConversation(task.getId(), childConvId);
+                // Track the child run so graph nodes honor requestStop() — without a
+                // registered RunState, cancelling the task could never interrupt the
+                // member mid-run.
+                streamTracker.register(childConvId);
+                streamTracker.incrementFlux(childConvId);
+                // Renew the execution lease while the member works; the conditional
+                // UPDATE inside renewLock makes this a no-op once the task settles.
+                heartbeat = startLeaseHeartbeat(task.getId());
+                broadcast(task, "team_task_dispatched", Map.of());
+                log.info("Team {} task #{} dispatched to agent {} (conv {})",
+                        teamId, task.getTaskNumber(), memberId, childConvId);
 
-            // Message persistence is the caller's contract (the graph expects the
-            // current user message to already be the conversation's last row),
-            // and the persisted pair is what makes the run's transcript
-            // reviewable from the task card.
-            String dispatchContent = buildDispatchContent(task);
-            conversationService.saveMessage(childConvId, "user", dispatchContent);
-            AgentService.ChatResult result = agentService.chatWithUsage(
-                    memberId, dispatchContent, childConvId);
-            String reply = result == null ? null : result.content();
-            if (reply != null && !reply.isBlank()) {
-                conversationService.saveMessage(childConvId, "assistant", reply);
-            }
-
-            PendingApproval pending = approvalService.findPendingByConversation(childConvId);
-            if (pending != null) {
-                String summary = pending.getSummary() == null || pending.getSummary().isBlank()
-                        ? pending.getReason() : pending.getSummary();
-                if (taskService.parkForToolApproval(task.getId(), pending.getPendingId(), summary)) {
-                    TeamTaskEntity parked = taskService.getTask(task.getId());
-                    broadcast(parked != null ? parked : task, "team_task_awaiting_approval",
-                            Map.of("pendingId", pending.getPendingId(),
-                                    "toolName", pending.getToolName() == null ? "" : pending.getToolName(),
-                                    "summary", summary == null ? "Tool approval required" : summary));
+                // Message persistence is the caller's contract (the graph expects the
+                // current user message to already be the conversation's last row),
+                // and the persisted pair is what makes the run's transcript
+                // reviewable from the task card.
+                String dispatchContent = buildDispatchContent(task);
+                conversationService.saveMessage(childConvId, "user", dispatchContent);
+                AgentService.ChatResult result = agentService.chatWithUsage(
+                        memberId, dispatchContent, childConvId);
+                reply = result == null ? null : result.content();
+                finishReason = result == null ? null : result.finishReason();
+                if (reply != null && !reply.isBlank()) {
+                    conversationService.saveMessage(childConvId, "assistant", reply);
                 }
-                return;
-            }
 
-            settleOutcome(task, reply, snapshot);
-        } catch (Exception e) {
-            if (DecisionRecordingException.find(e) != null) {
-                log.warn("Team task #{} decision recording failed; retaining current state", task.getTaskNumber());
-                return;
+                PendingApproval pending = approvalService.findPendingByConversation(childConvId);
+                if (pending != null) {
+                    String summary = pending.getSummary() == null || pending.getSummary().isBlank()
+                            ? pending.getReason() : pending.getSummary();
+                    if (taskService.parkForToolApproval(task.getId(), pending.getPendingId(), summary)) {
+                        TeamTaskEntity parked = taskService.getTask(task.getId());
+                        broadcast(parked != null ? parked : task, "team_task_awaiting_approval",
+                                Map.of("pendingId", pending.getPendingId(),
+                                        "toolName", pending.getToolName() == null ? "" : pending.getToolName(),
+                                        "summary", summary == null ? "Tool approval required" : summary));
+                    }
+                    return;
+                }
+
+            } catch (Exception error) {
+                runFailure = error;
+            } finally {
+                if (heartbeat != null) {
+                    heartbeat.cancel(false);
+                }
+                streamTracker.complete(childConvId);
+                runningMembers.remove(memberId);
             }
-            log.warn("Team {} task #{} member run ended exceptionally: {}", teamId,
-                    task.getTaskNumber(), e.getMessage());
-            // Only report a failure the guarded transition actually applied — an
-            // interrupted run whose task is already cancelled must not produce a
-            // misleading failed event on top of the terminal state.
-            boolean failed = taskService.failTask(task.getId(),
-                    truncate("member run error: " + e.getMessage(), 1000));
-            if (failed) {
-                broadcast(task, "team_task_failed", Map.of("reason", String.valueOf(e.getMessage())));
-                announceService.announceTaskSettled(taskService.getTask(task.getId()));
+            // Close the child before settlement can wake the parent or dispatch
+            // follow-up work. A lead must never observe a finished task with its
+            // worker still registered as running.
+            try {
+                if (runFailure != null) {
+                    throw runFailure;
+                }
+                settleOutcome(task, reply, snapshot, finishReason);
+            } catch (Exception error) {
+                settleRunFailure(teamId, task, error);
             }
         } finally {
-            if (heartbeat != null) {
-                heartbeat.cancel(false);
-            }
-            streamTracker.complete(childConvId);
-            runningMembers.remove(memberId);
-            // Chain: dispatch released dependents and the member's next task.
             requestDispatch(teamId);
+        }
+    }
+
+    private void settleRunFailure(Long teamId, TeamTaskEntity task, Exception error) {
+        if (DecisionRecordingException.find(error) != null) {
+            log.warn("Team task #{} decision recording failed; retaining current state", task.getTaskNumber());
+            return;
+        }
+        log.warn("Team {} task #{} member run ended exceptionally: {}", teamId,
+                task.getTaskNumber(), error.getMessage());
+        // A cancelled worker must not publish a failure over its terminal state.
+        boolean failed = taskService.failTask(task.getId(),
+                truncate("member run error: " + error.getMessage(), 1000));
+        if (failed) {
+            broadcast(task, "team_task_failed", Map.of("reason", String.valueOf(error.getMessage())));
+            announceService.announceTaskSettled(taskService.getTask(task.getId()));
         }
     }
 
@@ -319,6 +337,10 @@ public class TeamDispatchService {
     }
 
     void settleOutcome(TeamTaskEntity task, String reply, WorkerDecisionAdapter.Snapshot snapshot) {
+        settleOutcome(task, reply, snapshot, null);
+    }
+
+    void settleOutcome(TeamTaskEntity task, String reply, WorkerDecisionAdapter.Snapshot snapshot, String finishReason) {
         TeamTaskEntity current = taskService.getTask(task.getId());
         if (current == null) {
             return;
@@ -330,6 +352,26 @@ public class TeamDispatchService {
             return;
         }
         if (TeamTaskStatus.IN_PROGRESS.equals(current.getStatus())) {
+            // Runtime diagnostic prose is not a malformed business envelope. Explicit non-completion wins
+            // even if the retained candidate happens to contain a valid COMPLETED object.
+            if (finishReason != null && !finishReason.isBlank()
+                    && !Set.of("normal", "summarized", "return_direct").contains(finishReason)) {
+                String reason = "WORKER_RUNTIME_NOT_COMPLETED: finishReason="
+                        + TeamResultExcerpt.label(finishReason, 80);
+                boolean failed;
+                if (decisionAdapter != null && decisionAdapter.enabled()) {
+                    var judgment = decisionAdapter.judge(current, "WORKER_RUNTIME_NOT_COMPLETED", reply);
+                    failed = taskService.failTask(task.getId(), reason, judgment.ticket(), snapshot);
+                } else {
+                    failed = taskService.failTask(task.getId(), reason);
+                }
+                if (failed) {
+                    TeamTaskEntity settled = taskService.getTask(task.getId());
+                    broadcast(settled != null ? settled : task, "team_task_failed", Map.of("reason", reason));
+                    announceService.announceTaskSettled(settled);
+                }
+                return;
+            }
             // Domain guard: a successful model invocation is not a completed business task.
             // OFF retains the legacy text contract; SHADOW records the corrected baseline.
             if (decisionAdapter != null && decisionAdapter.enabled()) {
@@ -398,7 +440,8 @@ public class TeamDispatchService {
                 if (terminalAlreadyAcknowledged) {
                     DecisionTicket ticket = (decisionAdapter == null || !decisionAdapter.enabled()) ? null
                             : decisionAdapter.judge(current, "CHECKPOINT_ACK", reply).ticket();
-                    List<Long> released = completeWorker(task.getId(), truncate(reply, MAX_RESULT_CHARS), ticket, snapshot);
+                    List<Long> released = completeWorker(task.getId(),
+                            TeamResultExcerpt.render(reply, MAX_RESULT_CHARS, task.getId()), ticket, snapshot);
                     if (released == null) return;
                     TeamTaskEntity completed = taskService.getTask(task.getId());
                     log.info("Team task #{} completed after deferred {} acknowledgement "
@@ -441,7 +484,8 @@ public class TeamDispatchService {
                 }
             }
             List<Long> released = completeWorker(task.getId(),
-                    truncate(reply == null || reply.isBlank() ? "(no output)" : reply, MAX_RESULT_CHARS), ticket, snapshot);
+                    TeamResultExcerpt.render(reply == null || reply.isBlank() ? "(no output)" : reply,
+                            MAX_RESULT_CHARS, task.getId()), ticket, snapshot);
             if (released == null) return;
             current = taskService.getTask(task.getId());
             log.info("Team task #{} auto-completed ({} dependents released)",
@@ -450,8 +494,12 @@ public class TeamDispatchService {
         String event = switch (current.getStatus()) {
             case TeamTaskStatus.FAILED -> "team_task_failed";
             case TeamTaskStatus.IN_REVIEW -> "team_task_in_review";
-            default -> "team_task_completed";
+            case TeamTaskStatus.COMPLETED -> "team_task_completed";
+            default -> null;
         };
+        if (event == null) {
+            return;
+        }
         Map<String, Object> payload = new HashMap<>();
         payload.put("status", current.getStatus());
         if (current.getResult() != null) {
@@ -674,36 +722,52 @@ public class TeamDispatchService {
         if (blockerIds.isEmpty()) {
             return;
         }
-        StringBuilder section = new StringBuilder();
-        for (Long blockerId : blockerIds) {
+        int visibleCount = Math.min(blockerIds.size(), 8);
+        int itemBudget = (MAX_PREREQ_SECTION_CHARS - 256) / visibleCount;
+        StringBuilder section = new StringBuilder("\n[Prerequisite results]\n");
+        for (Long blockerId : blockerIds.subList(0, visibleCount)) {
             TeamTaskEntity blocker = taskService.getTask(blockerId);
             if (blocker == null) {
                 continue;
             }
-            section.append("- #").append(blocker.getTaskNumber())
-                    .append(" \"").append(blocker.getSubject()).append("\" (")
-                    .append(blocker.getStatus()).append(')');
+            String heading = "- #" + blocker.getTaskNumber() + " \""
+                    + TeamResultExcerpt.label(blocker.getSubject(), 120) + "\" ("
+                    + blocker.getStatus() + ")\n";
+            String reference = "  Full worker output: " + TeamResultExcerpt.outputReference(blockerId) + "\n";
+            StringBuilder row = new StringBuilder(heading);
+            int resultBudget = Math.min(MAX_PREREQ_RESULT_CHARS,
+                    (itemBudget - heading.length() - reference.length() - 120) * 2 / 3);
             if (blocker.getResult() != null && !blocker.getResult().isBlank()) {
-                section.append(": ").append(truncate(blocker.getResult().strip(),
-                        MAX_PREREQ_RESULT_CHARS));
+                row.append(TeamResultExcerpt.render(blocker.getResult().strip(), resultBudget, blockerId))
+                        .append('\n');
             }
-            section.append('\n');
+            row.append(reference);
+            int omittedFiles = 0;
             for (TeamTaskService.Deliverable file : taskService.listDeliverables(blocker)) {
-                section.append("  File: ").append(file.name()).append(" → ")
-                        .append(file.url()).append('\n');
+                String fileLine = "  File: " + file.name() + " → " + file.url() + "\n";
                 String inspectionPath = generatedFileInspectionPath(file.url());
                 if (inspectionPath != null) {
-                    section.append("  Inspect locally: ").append(inspectionPath)
-                            .append(" (do not guess an HTTP port)\n");
+                    fileLine += "  Inspect locally: " + inspectionPath + " (do not guess an HTTP port)\n";
+                }
+                if (row.length() + fileLine.length() + 120 <= itemBudget) {
+                    row.append(fileLine);
+                } else {
+                    omittedFiles++;
                 }
             }
+            if (omittedFiles > 0) {
+                row.append("  ").append(omittedFiles).append(" deliverable(s) omitted; use team_tasks(action=\"get\", taskId=\"")
+                        .append(blockerId).append("\").\n");
+            }
+            section.append(row);
         }
-        if (section.isEmpty()) {
-            return;
+        if (blockerIds.size() > visibleCount) {
+            section.append(blockerIds.size() - visibleCount)
+                    .append(" additional prerequisite(s) omitted; use team_tasks(action=\"get\", taskId=\"")
+                    .append(task.getId()).append("\") to inspect dependencies.\n");
         }
-        sb.append("\n[Prerequisite results]\n")
-                .append(truncate(section.toString(), MAX_PREREQ_SECTION_CHARS))
-                .append("Use team_tasks(action=\"get\", taskId=...) for any full record.\n");
+        section.append("Use team_tasks(action=\"get\", taskId=...) for task records and deliverable links.\n");
+        sb.append(section);
     }
 
     static String generatedFileInspectionPath(String url) {

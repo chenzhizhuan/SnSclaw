@@ -48,20 +48,27 @@ public class TeamWorkerConversationGovernanceService {
             return Optional.empty();
         }
         TeamRunEntity run = runMapper.selectById(task.getRunId());
-        boolean legacyMissingParent = conversation.getParentConversationId() == null
-                && !"team_worker".equals(conversation.getConversationKind())
-                && conversationId.startsWith("team-task-");
         if (run == null
                 || !Objects.equals(run.getTeamId(), task.getTeamId())
                 || !Objects.equals(conversation.getWorkspaceId(), run.getWorkspaceId())
                 || !Objects.equals(conversation.getAgentId(), task.getAssigneeAgentId())
-                || !legacyMissingParent
-                && !Objects.equals(conversation.getParentConversationId(), run.getLeadConversationId())) {
+                || !matchesParent(conversation, run.getLeadConversationId())) {
             return Optional.empty();
         }
         return Optional.of(new TeamWorkerConversationContext(
                 true, "team_worker", conversationId, run.getId(), task.getId(), run.getTeamId(),
                 run.getLeadConversationId(), task.getAssigneeAgentId()));
+    }
+
+    /** Shared canonical parent rule, including the established pre-kind legacy fallback. */
+    public static boolean matchesParent(ConversationEntity conversation, String leadConversationId) {
+        if (conversation == null) return false;
+        boolean legacyMissingParent = conversation.getParentConversationId() == null
+                && !"team_worker".equals(conversation.getConversationKind())
+                && conversation.getConversationId() != null
+                && conversation.getConversationId().startsWith("team-task-");
+        return legacyMissingParent
+                || Objects.equals(conversation.getParentConversationId(), leadConversationId);
     }
 
     /**

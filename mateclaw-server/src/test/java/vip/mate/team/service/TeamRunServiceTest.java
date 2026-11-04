@@ -306,24 +306,30 @@ class TeamRunServiceTest {
     }
 
     @Test
-    void reconcileMarksRawTaskSummaryAsFallbackQuality() {
-        TeamRunEntity finalizing = run(TeamRunStatus.FINALIZING);
-        finalizing.setMetadata("{\"traceId\":\"abc\"}");
-        TeamTaskEntity completed = task(101L, TeamTaskStatus.COMPLETED);
-        completed.setTaskNumber(1);
-        completed.setResult("raw result");
-        when(runMapper.selectList(any())).thenReturn(List.of(finalizing));
-        when(taskMapper.selectList(any())).thenReturn(List.of(completed));
-
-        service.reconcileFinalizingRuns();
-
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        ArgumentCaptor<LambdaUpdateWrapper<TeamRunEntity>> update =
-                ArgumentCaptor.forClass((Class) LambdaUpdateWrapper.class);
+    void summaryFinalizationAtomicallyRequiresTerminalTasks() {
+        TeamRunEntity current = run(TeamRunStatus.FINALIZING);
+        current.setMetadata("{\"projectedOutcome\":\"completed\"}");
+        when(runMapper.selectById(RUN_ID)).thenReturn(current);
+        when(runMapper.update(isNull(), any())).thenReturn(1);
+        service.markFinalized(RUN_ID, WORKSPACE_ID, "summary", "synthesized", null, current.getMetadata());
+        ArgumentCaptor<LambdaUpdateWrapper<TeamRunEntity>> update = ArgumentCaptor.forClass(LambdaUpdateWrapper.class);
         verify(runMapper).update(isNull(), update.capture());
-        assertTrue(update.getValue().getParamNameValuePairs().values().stream()
-                .map(String::valueOf)
-                .anyMatch(value -> value.contains("summaryQuality") && value.contains("fallback")));
+        assertTrue(update.getValue().getSqlSegment().contains("NOT EXISTS"));
+        assertTrue(update.getValue().getSqlSegment().contains("mate_team_task"));
+    }
+
+    @Test
+    void finalizationPersistsQualityAndSafeReasonWithExistingMetadata() {
+        TeamRunEntity current = run(TeamRunStatus.FINALIZING);
+        current.setMetadata("{\"traceId\":\"abc\",\"projectedOutcome\":\"completed\"}");
+        when(runMapper.selectById(RUN_ID)).thenReturn(current);
+        when(runMapper.update(isNull(), any())).thenReturn(1);
+        TeamRunEntity saved = service.markFinalized(RUN_ID, WORKSPACE_ID, "raw evidence", "fallback", "model_timeout");
+        var metadata = cn.hutool.json.JSONUtil.parseObj(saved.getMetadata());
+        assertEquals("fallback", metadata.getStr("summaryQuality"));
+        assertEquals("model_timeout", metadata.getStr("summaryFailureReason"));
+        assertEquals("abc", metadata.getStr("traceId"));
+        assertEquals(TeamRunStatus.COMPLETED, saved.getStatus());
     }
 
     @Test

@@ -38,10 +38,10 @@
 
       <div class="settings-card install-card">
         <div class="card-heading"><div><h3>版本升级与连接</h3><p>版本与依赖使用固定清单。升级会排空活动任务，在副本中验证后切换，并保留旧数据。</p></div></div>
-        <label>目标版本 <select v-model="targetVersion" :disabled="busy || upgrading"><option value="0.2.0-rc.1">0.2.0-rc.1 · 预发布</option><option value="0.1.7-rc.2">0.1.7-rc.2 · 预发布</option></select></label>
+        <label>目标版本 <select v-model="targetVersion" :disabled="busy || upgrading"><option v-for="release in status.catalog || []" :key="release.version" :value="release.version">{{ release.version }} · {{ release.version.includes('-') ? '预发布' : '正式版' }}</option></select></label>
         <p class="muted-note">当前版本：{{ status.activeVersion || '未知 / 外部安装' }}。候选版本需完成本机检测，不代表已通过所有平台验证。</p>
         <div class="actions">
-          <button class="btn-secondary" :disabled="busy || upgrading" @click="install">安装 / 升级所选版本</button>
+          <button class="btn-secondary" :disabled="busy || upgrading || !targetVersion" @click="install">安装 / 升级所选版本</button>
           <button class="btn-secondary" :disabled="busy || upgrading || !status.installed" @click="testConnection">测试 SDK 握手</button>
           <button class="btn-secondary" :disabled="busy || upgrading || !status.installed" @click="testTask">测试真实模型</button>
           <button v-if="status.enabled" class="btn-danger" :disabled="busy || upgrading" @click="disable">停用</button>
@@ -80,7 +80,7 @@ const busy = ref(false)
 const error = ref('')
 const status = reactive<any>({ state: 'NOT_INSTALLED', installed: false, enabled: false, config: {}, artifactManifestConfigured: false })
 const form = reactive(createEmptyDshConfigForm())
-const targetVersion = ref('0.2.0-rc.1')
+const targetVersion = ref('')
 const operation = reactive<Record<string, string>>({})
 const upgrading = computed(() => !!operation.id && !['COMPLETED', 'FAILED', 'INTERRUPTED'].includes(operation.state || ''))
 let pollTimer: ReturnType<typeof setTimeout> | undefined
@@ -99,6 +99,10 @@ const steps = computed(() => [
 function applyResponse(response: any) {
   const data = response?.data ?? response
   Object.assign(status, data)
+  const versions: string[] = (data?.catalog || []).map((release: { version: string }) => release.version)
+  if (!versions.includes(targetVersion.value)) {
+    targetVersion.value = versions.includes(data?.activeVersion) ? data.activeVersion : versions[0] || ''
+  }
   if (data?.managed) Object.assign(form, managedConfigToForm(data.managed))
 }
 
