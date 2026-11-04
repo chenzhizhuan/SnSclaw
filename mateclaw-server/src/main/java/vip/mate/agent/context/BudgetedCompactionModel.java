@@ -3,7 +3,6 @@ package vip.mate.agent.context;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import vip.mate.agent.runtime.state.RunState;
 import vip.mate.llm.chatmodel.ChatModelDefaults;
 import java.util.concurrent.CancellationException;
@@ -44,13 +43,7 @@ public final class BudgetedCompactionModel implements ChatModel {
         if (value != null && value>0) usage.merge(key,value,Math::addExact);
     }
     public static int outputReserveTokens(ChatOptions options,int fallback) {
-        Integer maximum = options == null ? null : options.getMaxTokens();
-        if (options instanceof org.springframework.ai.openai.OpenAiChatOptions openAi
-                && openAi.getMaxCompletionTokens() != null) {
-            maximum = maximum == null ? openAi.getMaxCompletionTokens()
-                    : Math.max(maximum,openAi.getMaxCompletionTokens());
-        }
-        return maximum == null ? Math.max(0,fallback) : Math.max(0,maximum);
+        return PromptBudget.outputReserveTokens(options, null, fallback);
     }
     public BudgetedCompactionModel(ChatModel delegate,long allowedCalls,int windowTokens,int fallbackOutputTokens) {
         this.delegate=delegate; this.allowedCalls=allowedCalls;
@@ -63,12 +56,7 @@ public final class BudgetedCompactionModel implements ChatModel {
     }
     private void checkPrompt(Prompt prompt) {
         if (windowTokens <= 0) return;
-        ChatOptions defaults = ChatModelDefaults.optionsFor(delegate);
-        ChatOptions options = prompt.getOptions() != null ? prompt.getOptions() : defaults;
-        int output = outputReserveTokens(options, outputReserveTokens(defaults,fallbackOutputTokens));
-        int tools = options instanceof ToolCallingChatOptions toolOptions
-                ? TokenEstimator.estimateToolsTokens(toolOptions.getToolCallbacks()) : 0;
-        int total = TokenEstimator.estimateTokens(prompt.getInstructions()) + tools + output;
+        long total = PromptBudget.estimateTokens(prompt, ChatModelDefaults.optionsFor(delegate), fallbackOutputTokens);
         if (total > windowTokens) {
             blockedPrompt = "摘要 Prompt 估算 " + total + " tokens 超过上下文窗口 " + windowTokens
                     + " tokens；未调用摘要模型。";

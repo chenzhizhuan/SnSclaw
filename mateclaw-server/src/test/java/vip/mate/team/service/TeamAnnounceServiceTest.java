@@ -40,6 +40,54 @@ import static org.mockito.Mockito.*;
  */
 class TeamAnnounceServiceTest {
 
+    @Test
+    void twentyLargeResultsHaveOneAggregateBudgetAndKeepEveryTaskOutcome() {
+        List<TeamAnnounceService.AnnounceItem> items = java.util.stream.LongStream.rangeClosed(1, 20)
+                .mapToObj(id -> new TeamAnnounceService.AnnounceItem(id, 10L, (int) id,
+                        "task " + id, TeamTaskStatus.COMPLETED, "member " + id,
+                        "opening " + id + "\n" + "body\n".repeat(2000) + "\nverified " + id))
+                .toList();
+
+        String result = TeamAnnounceService.buildAnnouncement(items);
+
+        assertTrue(result.length() <= 16000, "Announcement exceeds aggregate budget: " + result.length());
+        for (long id = 1; id <= 20; id++) {
+            assertTrue(result.contains("Task #" + id + " "));
+            assertTrue(result.contains("taskId=\"" + id + "\""));
+            assertTrue(result.contains("verified " + id));
+        }
+    }
+
+    @Test
+    void longTaskTitlesAndMemberNamesCannotBypassAnnouncementBudget() {
+        var item = new TeamAnnounceService.AnnounceItem(42L, 10L, 42,
+                "title".repeat(10000), TeamTaskStatus.IN_REVIEW, "member".repeat(10000),
+                "approval still required");
+
+        String result = TeamAnnounceService.buildAnnouncement(List.of(item));
+
+        assertTrue(result.length() <= 16000);
+        assertTrue(result.contains("in_review"));
+        assertTrue(result.contains("approval still required"));
+        assertTrue(result.contains("taskId=\"42\""));
+    }
+
+    @Test
+    void retryMergedBatchBeyondTwentyExplicitlyIdentifiesOmittedDetails() {
+        List<TeamAnnounceService.AnnounceItem> items = java.util.stream.LongStream.rangeClosed(1, 25)
+                .mapToObj(id -> new TeamAnnounceService.AnnounceItem(id, 10L, (int) id,
+                        "task " + id, TeamTaskStatus.COMPLETED, "member",
+                        "Opening\n" + "evidence\n".repeat(2000) + "Final verified"))
+                .toList();
+
+        String result = TeamAnnounceService.buildAnnouncement(items);
+
+        assertTrue(result.length() <= 16000);
+        assertTrue(result.contains("25 delegated team tasks have settled"));
+        assertTrue(result.contains("5 additional task details omitted"));
+        assertTrue(result.contains("team_tasks(action=\"list\")"));
+    }
+
     private static final Long TEAM_ID = 10L;
     private static final Long LEAD_ID = 1L;
     private static final Long RUN_ID = 90L;

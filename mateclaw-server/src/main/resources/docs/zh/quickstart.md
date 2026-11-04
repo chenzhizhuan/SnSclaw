@@ -1,6 +1,6 @@
 # 快速开始
 
-源码开发分支当前为 `3.0.0-SNAPSHOT`；正式安装包仍以 Releases 中已发布的版本为准。升级前请阅读[升级说明](./changelog#升级与验证)。
+3.0.0 正式版发布日期为 **2026-10-26**；源码与发行包版本统一为 `3.0.0`，发行包请从 [GitHub Releases](https://github.com/mateaix/mateclaw/releases) 下载。升级前请阅读[升级说明](./changelog#升级与验证)。
 
 
 60 秒到第一条消息。**只有一条路：桌面端。**

@@ -150,11 +150,13 @@ public final class TaskFinalizationGate {
                     + "from recovery of the failed original operation. State the original failure separately.");
         }
         if (verdict.decision() == Outcome.ACCEPT) return new Result(Outcome.ACCEPT, verdict.reason());
-        if (attempts >= MAX_CORRECTIVE_ATTEMPTS || !canContinue) return incomplete("Correction allowance exhausted");
+        if (!canContinue) return incomplete("Logical call ceiling reached");
         // Work-state facts take precedence over a model's prose-only repair label.
-        // This still consumes the same bounded correction allowance and never accepts a draft.
+        // Executable continuation spends the original runtime budget, not the prose repair allowance.
         Outcome next = verdict.decision() == Outcome.REVISE && !verdict.taskComplete() && verdict.remainingWork()
                 ? Outcome.CONTINUE : verdict.decision();
+        if (next == Outcome.REVISE && attempts >= MAX_CORRECTIVE_ATTEMPTS)
+            return incomplete("Correction allowance exhausted");
         return new Result(next, verdict.reason());
     }
 

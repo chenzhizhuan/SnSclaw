@@ -530,3 +530,18 @@ The OpenAI-compatible path also preserves `integer` / `number` in tool JSON Sche
 ## Model probes and cancellation (3.0.0)
 
 A probe requires a valid completed response; connection success or empty output does not prove model availability. Stopping generation cancels HTTP calls owned by the request and prevents subsequent failover.
+
+## Context budgets and request preparation (3.0.0)
+
+The native AgentScope runtime continues to call the existing Spring AI/provider adapters. `PromptBudget` estimates the effective request without changing its prompt or options, using Spring AI's native option combination to inherit defaults when runtime options are partial.
+
+- Count messages (including structured tool-call content), effective tool callback schemas and one output reserve.
+- A non-null runtime callback list replaces default callbacks; an explicitly empty list contributes no inherited tool schemas.
+- Reserve the declared output maximum, including OpenAI `maxCompletionTokens`; retain a provider-specific runtime maximum as a conservative floor when generic options cannot represent it. Use the caller's fallback only when no maximum is available.
+- Use long arithmetic for totals so a large output limit cannot overflow into an apparently safe request.
+
+Initial preparation, structured-compaction retries and empty-response retries share this estimate. Summary-model calls check the same components before claiming their call budget or reaching the provider. Existing call limits, usage accounting, cancellation and Goal protections remain in force.
+
+These are local safety estimates, not exact tokenizer or billing measurements. A provider can still reject a request, and fitting a context window does not establish that the answer is correct.
+
+> AI生成

@@ -43,12 +43,17 @@ public record DshLaunchSpec(List<String> command, Path home, Path cwd) {
         createHomeDirectory(home.getParent());
         createHomeDirectory(home);
         if (!home.toRealPath().startsWith(root.toRealPath())) throw new IOException("DSH_HOME_ESCAPE");
+        Path agentsHome = home.resolve("agents");
+        // New SDK versions also read shared ~/.agents independently of DSH_HOME.
+        // Keep that instruction root inside this employee's retained generation.
+        requireDirectoryOrMissing(agentsHome);
         ProcessBuilder builder = new ProcessBuilder(command).directory(cwd.toFile());
         builder.environment().clear();
         builder.environment().putAll(environment);
         builder.environment().remove("DSH_CORDIS_CONFIG");
         builder.environment().put("DSH_HOME", home.toString());
         builder.environment().put("DSH_CWD", cwd.toString());
+        builder.environment().put("DSH_AGENTS_HOME", agentsHome.toString());
         return builder;
     }
     private static void requireDirectoryOrMissing(Path path) throws IOException {

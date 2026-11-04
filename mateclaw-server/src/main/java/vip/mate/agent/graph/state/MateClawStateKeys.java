@@ -192,8 +192,11 @@ public final class MateClawStateKeys {
     /** True when structured runtime context says this turn must perform an executable action. */
     public static final String ACTION_COMPLETION_REQUIRED = "action_completion_required";
 
-    /** Number of completion-gate continuations consumed in the current run. */
+    /** Number of prose-only final-answer corrections consumed in this run. */
     public static final String FINALIZATION_ATTEMPTS = "finalization_attempts";
+    /** Independent executable continuation progress; all calls still spend the original run budget. */
+    public static final String FINALIZATION_PROGRESS_COUNT = "finalization_progress_count";
+    public static final String FINALIZATION_IDLE_CONTINUATIONS = "finalization_idle_continuations";
     public static final String ACTION_COMPLETION_RETRY_COUNT = "action_completion_retry_count";
 
     /** One-shot edge signal routing a rejected final candidate back to ReasoningNode. */

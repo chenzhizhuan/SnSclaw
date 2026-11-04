@@ -58,4 +58,19 @@ class DshSdkTurnTest {
                 {"method":"session.event","params":{"sessionId":"root","event":{"seq":2,"type":"unknown/required","data":{}}}}""")));
     }
 
+
+    @Test void candidateMetadataEventsDoNotCompleteTheRootTurn() throws Exception {
+        var turn = new DshSdkTurn("root", "prompt");
+        turn.accept(frame("{\"id\":\"prompt\",\"result\":{\"messageId\":\"m1\"}}"));
+        turn.accept(frame("{\"method\":\"session.event\",\"params\":{\"sessionId\":\"root\",\"event\":{\"seq\":1,\"type\":\"agent/inbox/spliced\",\"data\":{\"inserted\":[{\"id\":\"m1\"}]}}}}"));
+        long seq = 2;
+        for (String type : java.util.List.of("job/registered", "job/settled", "working-directory/change")) {
+            var event = json.createObjectNode(); event.put("method", "session.event");
+            var params = event.putObject("params"); params.put("sessionId", "root");
+            var data = params.putObject("event"); data.put("seq", seq++); data.put("type", type); data.putObject("data");
+            assertDoesNotThrow(() -> turn.accept(event));
+            assertFalse(turn.complete());
+        }
+        assertEquals(0, turn.inputTokens());
+    }
 }

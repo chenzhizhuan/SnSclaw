@@ -388,7 +388,7 @@ class TeamPlanBridgeTest {
         assertTrue(settled.completedResults().get(1).contains("步骤2未完成"));
         verify(planningService).updateSubPlanResult(PLAN_ID, 0, "卖点已产出");
         verify(planningService).updateSubPlanFailure(eq(PLAN_ID), eq(1), anyString());
-        verify(runService).markFinalized(eq(RUN_ID), eq(WORKSPACE_ID), contains("执行摘要"));
+        verify(runService, never()).markFinalized(anyLong(), anyLong(), anyString());
     }
 
     @Test

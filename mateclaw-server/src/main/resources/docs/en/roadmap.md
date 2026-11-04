@@ -1,6 +1,6 @@
 # Roadmap
 
-3.0.0-SNAPSHOT is in development: Boot 4, Spring AI 2 and AgentScope 2 execution, retaining tool governance, history contracts and recovery boundaries. See Releases for stable builds. [Architecture changelog](./changelog)
+3.0.0 stable release · 2026-10-26: Boot 4, Spring AI 2 and AgentScope 2 execution, with long-task continuation, team synthesis and tool governance. See Releases for installers. [Architecture changelog](./changelog)
 
 
 > "People don't know what they want until you show it to them."
@@ -287,3 +287,5 @@ Someday, you'll forget it's a program.
 ---
 
 *Stay hungry. Stay foolish.*
+
+> AI生成

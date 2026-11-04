@@ -155,6 +155,10 @@ mateclaw:
   agent:
     runtime:
         dsh:
+          containment:
+            mode: ${MATECLAW_DSH_CONTAINMENT_MODE:native}
+            docker-executable: ${MATECLAW_DSH_DOCKER_EXECUTABLE:docker}
+            images-json: ${MATECLAW_DSH_DOCKER_IMAGES_JSON:}
           command: ${DSH_JSONRPC_AGENT:}
           cordis-config: ${DSH_CORDIS_CONFIG:}
           working-directory: ${DSH_CWD:}
@@ -400,6 +404,9 @@ mateclaw:
         enabled: true
         failure-threshold: 3
         cooldown-ms: 300000
+        # Shared by agent conversations and fallback models of the same provider.
+        max-concurrent-requests: ${MATECLAW_LLM_MAX_CONCURRENT_REQUESTS:1}
+        admission-timeout-ms: ${MATECLAW_LLM_ADMISSION_TIMEOUT_MS:120000}
   # Multi-agent delegation (DelegateAgentTool).
   delegation:
     # Wall-clock budget for one delegateParallel batch (shared across all

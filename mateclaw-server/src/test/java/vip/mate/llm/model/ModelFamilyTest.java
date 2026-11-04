@@ -18,6 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ModelFamilyTest {
 
     @Test
+    void currentDeepSeekFlashNameUsesThinkingProtocol() {
+        assertEquals(ModelFamily.DEEPSEEK_V4_REASONING, ModelFamily.detect("deepseek-flash"));
+        assertEquals(ModelFamily.DEEPSEEK_V4_REASONING, ModelFamily.detect("  DeepSeek-Flash  "));
+        assertEquals(ModelFamily.STANDARD, ModelFamily.detect("deepseek-flash-custom"));
+    }
+
+    @Test
     @DisplayName("DeepSeek V4 (flash + pro) → DEEPSEEK_V4_REASONING with reasoning_effort enabled")
     void deepSeekV4_reasoning() {
         // Critical assertion: V4 differs from v3.2 deepseek-reasoner — V4 ACCEPTS

@@ -49,4 +49,20 @@ class DshLaunchSpecTest {
         try (var entries = Files.list(outside)) { assertEquals(0, entries.count()); }
     }
 
+
+    @Test void sharedAgentInstructionsStayInsideTheEmployeeHome() throws Exception {
+        var config = new DshRuntimeConfiguration("/bin/sh", "", directory.toString(), "", "", "", "sdk", List.of(), directory.resolve("homes").toString());
+        var launch = DshLaunchSpec.create(config, 1, 2, directory);
+        var env = launch.processBuilder(Map.of("DSH_AGENTS_HOME", "/untrusted/shared")).environment();
+        assertEquals(launch.home().resolve("agents").toString(), env.get("DSH_AGENTS_HOME"));
+    }
+
+    @Test void sharedAgentInstructionsCannotEscapeThroughASymlink() throws Exception {
+        var config = new DshRuntimeConfiguration("/bin/sh", "", directory.toString(), "", "", "", "sdk", List.of(), directory.resolve("homes").toString());
+        var launch = DshLaunchSpec.create(config, 1, 2, directory);
+        launch.processBuilder(Map.of());
+        Files.createSymbolicLink(launch.home().resolve("agents"), directory);
+        assertThrows(IOException.class, () -> launch.processBuilder(Map.of()));
+    }
+
 }

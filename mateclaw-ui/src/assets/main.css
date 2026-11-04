@@ -51,6 +51,11 @@
   --mc-panel-bottom: rgba(246, 247, 248, 0.9);
   --mc-panel-raised: rgba(255, 255, 255, 0.86);
 
+  /* Team Run surfaces follow the active theme, including opaque reading areas. */
+  --mc-team-run-reading-bg: var(--mc-bg-elevated);
+  --mc-team-run-glass-bg: var(--mc-panel-top);
+  --mc-team-run-status-bg: var(--mc-bg-sunken);
+
   /* borders */
   --mc-border: #e5e7eb;
   --mc-border-light: #eaecf0;

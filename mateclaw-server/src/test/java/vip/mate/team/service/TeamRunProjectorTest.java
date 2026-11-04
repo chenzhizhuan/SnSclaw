@@ -126,7 +126,7 @@ class TeamRunProjectorTest {
     }
 
     @Test
-    void marksTaskResultFallbackAndStalledActiveRunWithoutRecentActivity() {
+    void keepsSummaryPendingForStalledActiveRunWithoutRecentActivity() {
         LocalDateTime old = LocalDateTime.now().minusHours(1);
         TeamRunEntity run = run(TeamRunStatus.PLANNING, null);
         run.setUpdateTime(old);
@@ -138,7 +138,7 @@ class TeamRunProjectorTest {
 
         TeamRunView view = projector.project(RUN_ID);
 
-        assertEquals("fallback", view.outcomeQuality());
+        assertEquals("pending", view.outcomeQuality());
         assertEquals("stalled", view.liveness().state());
         assertEquals(old, view.liveness().lastActivityAt());
     }

@@ -59,11 +59,12 @@ The run protocol is `start_run → create* → seal_run`: the lead creates a run
 | **Task** | One work item on the board: subject, description, assignee, dependencies (`blockedBy`), progress, result, deliverables, comments, timeline. |
 | **Board** | A kanban grouped by status. The state machine is guarded by conditional database updates — under concurrency the first successful writer wins, so a task can never hold two states. |
 
-Eight task statuses:
+Nine task statuses:
 
 ```
 pending → in_progress → completed / failed / cancelled
                 ↘ in_review (tasks that require human approval)
+                ↘ awaiting_approval (a worker tool call needs approval)
 blocked (waiting on prerequisites)   stale (lease expired, retryable)
 ```
 
@@ -74,7 +75,7 @@ blocked (waiting on prerequisites)   stale (lease expired, retryable)
 ## What one collaboration run looks like
 
 1. **You give the lead a goal**: "Competitive analysis: research vendors A and B separately, then merge into one report."
-2. **The lead puts tasks on the board**: three tasks via the `team_tasks` tool — "research A" and "research B" run in parallel, "merge report" declares `blockedBy` on both and enters `blocked`.
+2. **The lead puts tasks on the board**: call `start_run`, create all three tasks with its `runId`, then call `seal_run` to start dispatch. "Research A" and "research B" run in parallel; "merge report" declares `blockedBy` on both and enters `blocked`.
 3. **The dispatch engine takes over**: a resident sweep (every 30 s, plus an immediate pass after tool/REST actions) assigns pending tasks to their members — each task gets its own child conversation where the member runs the full agent graph. Each member executes one task at a time; the rest queue.
 4. **Prerequisite results are handed off automatically**: once "research A/B" complete, "merge report" is released and its dispatch envelope **automatically carries the results and deliverable links of both prerequisites** — member C doesn't need the lead to retell what member A did.
 5. **Settled results wake the lead**: completions and failures are announced to the lead in debounced batches; the lead wakes up in a real new turn — reviews results, dispatches follow-ups, or declares the job done.
@@ -89,8 +90,11 @@ The lead (and members) operate the board through the `team_tasks` tool, with rol
 | Action | Who | What |
 |------|--------|--------|
 | `list` | any member | Render the current board (the lead also gets a live board snapshot injected every turn — see below) |
-| `get` | any member | Task detail |
-| `create` | lead | Create a task: subject, description, assignee, `blockedBy` dependencies, `requireApproval` for a human gate |
+| `get` | any member | Task detail, prerequisite task IDs, comments and registered deliverables |
+| `output` | any member | Read the latest complete saved worker reply by `taskId`; verifies the task/run/workspace/worker-conversation linkage |
+| `start_run` | lead | Start a delegation batch with an objective; returns its `runId` |
+| `create` | lead | Stage a task in that `runId`: subject, description, assignee, `blockedBy` dependencies, `requireApproval` for a human gate |
+| `seal_run` | lead | Seal the completed task batch and start dispatch |
 | `complete` | assignee | Submit the result (approval-gated tasks move to `in_review`) |
 | `progress` | assignee | Report percent and current step (also renews the execution lease and broadcasts to the board) |
 | `comment` | any member | Leave a comment |
@@ -108,6 +112,7 @@ Teams target deep research and long document work — tasks that run for tens of
 
 - **Execution lease + runtime heartbeat.** A dispatched task holds a 60-minute lease that is renewed automatically while the member runs; only genuinely lost tasks (process crash, restart) expire to `stale` and can be safely re-dispatched — no more "task re-dispatched while still running, two instances overwriting each other".
 - **Cancel means interrupt.** Member child conversations register with the stream tracker; graph nodes check the stop flag each round, so a cancelled member stops at the next node boundary — no more burning tokens to natural completion after a cancel.
+- **Settlement follows actual task state.** A worker returning normally does not turn a cancelled, stale, blocked or approval-waiting task into a completed task. The worker stream closes before completion/failure notifications can wake the lead; tasks requiring approval still report `in_review`.
 - **Human approval gates.** Declare `requireApproval` at creation; the submitted task parks at `in_review` until you approve / reject on the Teams page — sensitive output passes a human before it leaves the team.
 - **Manual task creation.** Tasks don't have to come from the lead: create one directly on the Teams page, assigned to any member; the result lands on the board for you (with no lead conversation to wake, announcement gracefully no-ops).
 
@@ -120,6 +125,8 @@ The right output shape for a complex task is **files + summary**, not one trunca
 - Members produce files with the document render tools (docx / pptx / xlsx / pdf) or skills, then `attach` them to the task; the task detail renders a **downloadable attachment list** and the result announcement carries the attachments — links no longer drown in truncated text.
 - Every task detail has a **"view run"** entry: the member child conversation's full transcript — dispatch envelope, round-by-round thinking, tool calls, intermediate output. Opened mid-run it's a live typewriter (reconnects replay the buffer).
 - **Task timeline**: who created / dispatched / reported / attached / approved / cancelled, and when — each event lands in the `mate_team_task_event` audit table and renders as a timeline on the task detail. The collaboration has a historian.
+
+Long worker replies are saved in full in the worker conversation. Automatic settlement keeps a head/tail task-result excerpt within 8,000 characters, preserving the opening findings and final outcome. An explicit `complete` submission must also fit 8,000 characters; a longer summary is rejected before claiming or changing the task, with guidance to put full text in the final assistant reply or a deliverable. Prerequisite context has a 6,000-character total budget; a merged lead announcement has a 16,000-character total budget. Omitted content is marked and points to `team_tasks(action="output", taskId="...")`; use `get` for prerequisite IDs and all registered deliverable links. These are excerpts, so retrieve missing evidence before relying on it. When no complete saved worker reply is available, `output` explicitly identifies its fallback as the stored task summary. Large retrieved outputs use the existing tool-result spill mechanism when enabled.
 
 ---
 
@@ -200,3 +207,5 @@ They coexist: a team member can still call `delegateToAgent` inside its own task
 ## 3.0.0: guarded worker-result judgment
 
 Worker-result judgment uses typed decisions, output contracts and task identity checks. Domain transactions commit outcomes and state. SHADOW remains default and does not replace approvals or artifact acceptance.
+
+> AI生成

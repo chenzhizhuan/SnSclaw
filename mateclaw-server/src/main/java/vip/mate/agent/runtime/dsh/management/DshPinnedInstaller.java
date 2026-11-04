@@ -21,6 +21,8 @@ public class DshPinnedInstaller {
     public record Release(String version, String channel, String integrity) {}
     public record Installation(String version, String platform, String executablePath, String integrity) {}
     private static final Map<String, Release> CATALOG = Map.of(
+            "0.2.1-rc.2", new Release("0.2.1-rc.2", "candidate",
+                    "sha512-tvY+yhfKRifthbqPe/OK0AYxM5ZkvqfYq/jMYgJcEUxiRRL1Vwra3Ti5TB6AXgSWQdiPHYh/Vp6SJa9yHwMNuw=="),
             "0.2.0-rc.1", new Release("0.2.0-rc.1", "next",
                     "sha512-F6hKNVoGgBDIzSiyRaIlobq4UD6cwxUjh+nwXqcDmufDh87TE1izsYzs8L5cZNpF2JmPnFM1mXRNnRJ0cs43ng=="),
             "0.1.7-rc.2", new Release("0.1.7-rc.2", "latest",
@@ -33,7 +35,7 @@ public class DshPinnedInstaller {
         if (release == null) throw new IllegalArgumentException("dsh.unsupported_version: select an exact catalog version");
         return release;
     }
-    public static List<Release> catalog() { return List.of(release("0.2.0-rc.1"), release("0.1.7-rc.2")); }
+    public static List<Release> catalog() { return List.of(release("0.2.0-rc.1"), release("0.2.1-rc.2"), release("0.1.7-rc.2")); }
 
     public static String platform(String os, String arch) {
         if (os.toLowerCase().contains("linux") && (arch.equals("amd64") || arch.equals("x86_64"))) return "linux-x64";

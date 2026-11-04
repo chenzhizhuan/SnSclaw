@@ -1,6 +1,6 @@
 <div align="center">
 
-> Current development version: **3.0.0-SNAPSHOT**. Java 21 / Spring Boot 4.1.1 / Spring AI 2.0.1 / AgentScope 2.0.4. AgentScope drives execution loops; MateClaw retains tool approvals, permissions, Goals, SSE and persistence. See Releases for stable builds.
+> **3.0.0 stable release · 2026-10-26**. Java 21 / Spring Boot 4.1.1 / Spring AI 2.0.1 / AgentScope 2.0.4. AgentScope drives execution loops; MateClaw retains tool approvals, permissions, Goals, SSE and persistence. See Releases for stable builds.
 > [3.0.0 architecture changelog](CHANGELOG.md)
 > Includes all changes since 2.3.0: structured decisions, member file isolation, DSH SDK upgrades, voice preview and structured MCP presentation.
 
@@ -35,7 +35,7 @@
 
 ---
 
-> **v2.3.0 (released 2026-09-20) — JSON acceptance and execution evidence for persistent Goals.** Users can configure required JSON fields and bind checks to current requirements and immutable artifact versions. This release also adds controlled worker intervention and skill document/folder uploads, with fixes for DSH history and output budgets, vLLM reasoning, and SSE framing. [Read the release notes](https://claw.mate.vip/docs/en/releases/2.3.0).
+> **3.0.0 — Governed execution, recoverable long tasks and team delivery.** Java 21, Spring Boot 4, Spring AI 2 and AgentScope 2 power the native runtime. Consistent context budgets, final-answer checks and team synthesis strengthen delivery while preserving approvals and workspace boundaries. [Release and upgrade notes](https://claw.mate.vip/docs/en/releases/3.0.0). Release date: **2026-10-26**.
 
 ---
 
@@ -50,6 +50,18 @@ Most AI tools die when their vendor has a bad day. Most forget you the moment th
 **SnSclaw is the whole widget.** One deployment. Reasoning, knowledge, memory, tools, channels — built together, not bolted on. And when your primary model is unavailable, the next healthy provider retries the current request.
 
 ---
+
+## What changes in 3.0.0
+
+3.0.0 includes the unpublished 2.4.0 development cycle. Release date: **2026-10-26**. Download published packages from Releases.
+
+- **Native execution:** AgentScope Java **2.0.4** runs ReAct and the tool loop within each Plan-Execute step. MateClaw retains plan scheduling, tool approvals, workspace permissions, cancellation, Goal acceptance and persistence. This path does not require a beta AgentScope Harness API.
+- **Consistent context budgets:** request preparation, compaction retries and summary calls account for messages, effective tool schemas and one output reserve. Partial request options inherit model defaults; an explicitly empty tool list disables inherited callbacks. Estimates are conservative, rather than provider billing counts.
+- **Governed decisions and recovery:** typed decisions default to SHADOW mode; existing domain constraints and Goal budgets still apply. Durable checkpoints block blind replay when side effects are uncertain.
+- **Long tasks and team delivery:** unfinished work can continue within runtime limits, requests needing user input wait for a reply, and Team Runs publish completion after final synthesis. Worker progress preserves full results and failure causes.
+- **Everyday improvements:** opt-in strict member file isolation, managed DSH SDK upgrades, voice selection/preview, structured MCP results and stricter model probes.
+
+Use Java 21 for source builds. Back up the database, workspace, plugins and configuration before migration; use that backup for rollback. [Architecture and upgrade notes](mateclaw-server/src/main/resources/docs/en/changelog.md) · [Model budget rules](mateclaw-server/src/main/resources/docs/en/models.md)
 
 ## Three things that make it different
 
@@ -167,6 +179,11 @@ Same "whole widget" philosophy. Different center of gravity.
 
 ```bash
 # Backend
+# Java 21 and Maven required. Create a local JWT secret once and reuse it on restart.
+[ -f .env.local ] || (umask 077; printf 'JWT_SECRET=%s\n' "$(openssl rand -hex 48)" > .env.local)
+set -a
+source .env.local
+set +a
 # From the repository root; use its configured models and workspace
 SPRING_DATASOURCE_URL="jdbc:h2:file:$PWD/data/mateclaw;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE" \
 MATECLAW_WORKSPACE_SANDBOX_ROOT="$PWD/data/workspace" \
@@ -177,7 +194,7 @@ cd mateclaw-ui
 npm install && npm run dev -- --host 127.0.0.1    # http://localhost:5173
 ```
 
-Login: `admin` / `admin123`
+On a fresh database, log in with `admin` / `admin123`, change the password, then configure a model in **Settings → Models**. Existing model settings are read from the root `data/` database; starting against `mateclaw-server/data/` opens a different database. Keep `.env.local` private and set a non-empty `JWT_SECRET` of at least 32 UTF-8 bytes.
 
 ### Docker
 

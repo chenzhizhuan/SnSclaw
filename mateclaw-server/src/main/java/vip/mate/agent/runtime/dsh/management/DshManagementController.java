@@ -18,6 +18,7 @@ import java.util.UUID;
 public class DshManagementController {
     private final DshManagementService managementService;
     private final DshUpgradeService upgrades;
+    private final vip.mate.agent.runtime.dsh.DshProcessSupervisor processSupervisor;
 
     public record UpgradeRequest(String targetVersion, String expectedRevision, String idempotencyKey) {}
     public record RollbackRequest(String expectedRevision, String idempotencyKey) {}
@@ -28,6 +29,7 @@ public class DshManagementController {
     public R<Map<String, Object>> status() {
         Map<String, Object> status = new LinkedHashMap<>(managementService.status());
         status.putAll(upgrades.status());
+        status.put("containment", processSupervisor.status());
         return R.ok(status);
     }
 
