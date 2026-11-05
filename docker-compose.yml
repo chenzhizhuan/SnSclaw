@@ -92,6 +92,11 @@ services:
       dockerfile: mateclaw-server/Dockerfile
       args:
         MAVEN_FLAGS: ${MAVEN_FLAGS:-}
+        # npm registry for the frontend pnpm install stage. Empty falls back
+        # to the Aliyun mirror inside the Dockerfile (registry.npmjs.org
+        # times out from mainland-China servers). Set NPM_REGISTRY=
+        # https://registry.npmjs.org in .env for the upstream registry.
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
     image: server:latest
     container_name: snsclaw-server
     restart: unless-stopped

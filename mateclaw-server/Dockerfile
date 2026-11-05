@@ -5,15 +5,27 @@
 #   build container. These files are later copied into the JAR's classpath so
 #   Spring Boot serves the SPA at the root URL.
 FROM node:22-alpine AS frontend-builder
+# npm registry mirror, overridable at build time. Defaults to the Aliyun
+# mirror because registry.npmjs.org times out from mainland-China servers
+# (observed 5-37 KiB/s, pnpm install dies with ETIMEDOUT after retries).
+# Set NPM_REGISTRY=https://registry.npmjs.org in .env (or --build-arg) to
+# restore the upstream registry. pnpm lockfiles record integrity hashes, not
+# tarball URLs, so a mirror serves bit-identical packages.
+# Empty-string build-args (compose passes NPM_REGISTRY:"" when unset) would
+# override the ARG default, so the "${VAR:-fallback}" shell expansion in each
+# RUN re-applies the mirror for empty values too.
+ARG NPM_REGISTRY=https://registry.npmmirror.com
 # Pin pnpm to a major version so the Docker build doesn't break when the npm
 # `latest` tag jumps majors. pnpm v10+ blocks dependency lifecycle scripts by
 # default; the allowed packages live under `pnpm.onlyBuiltDependencies` in
 # mateclaw-ui/package.json.
-RUN npm install -g pnpm@10 --silent
+RUN NPM_REG="${NPM_REGISTRY:-https://registry.npmmirror.com}" \
+    && npm install -g pnpm@10 --silent --registry="$NPM_REG"
 WORKDIR /frontend
 # Install dependencies first (layer cache)
 COPY mateclaw-ui/package.json mateclaw-ui/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN NPM_REG="${NPM_REGISTRY:-https://registry.npmmirror.com}" \
+    && pnpm install --frozen-lockfile --registry="$NPM_REG"
 # Copy source and build
 COPY mateclaw-ui/ ./
 # Override outDir: vite.config.ts writes to ../mateclaw-server/…/static which
