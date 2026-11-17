@@ -107,7 +107,7 @@ New-Item -ItemType Directory -Force -Path $LogDir -Confirm:$false -WhatIf:$false
 [IO.File]::WriteAllText($MAST, "=== ALL @ $(Get-Date -F 'yyyy-MM-dd HH:mm:ss') ===`r`n", [Text.Encoding]::UTF8)
 
 # 日志写入用 UTF8 无 BOM；读取一律带 -Encoding UTF8，否则 PS 5.1 按 ANSI 码页
-# 解码，中文产物名（智屿_..._Setup.exe）会乱码。
+# 解码，中文产物名（智算方舟_..._Setup.exe）会乱码。
 function W { param([string]$s) Write-Host $s; [IO.File]::AppendAllText($MAST, "$s`r`n", [Text.Encoding]::UTF8) }
 function Wr { param([string]$s) W ''; W ('=' * 63); W "  $s"; W ('=' * 63) }
 function Tail {
