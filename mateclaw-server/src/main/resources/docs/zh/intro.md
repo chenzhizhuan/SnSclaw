@@ -7,14 +7,15 @@ head:
       content: SnSclaw,多智能体,AI操作系统,自部署AI,Spring AI + AgentScope,ReAct,Plan-and-Execute,MCP,LLM Wiki,记忆系统,Tool Guard,企业级
 ---
 
-3.0.0-SNAPSHOT 升级到 Java 21、Spring Boot 4 和 Spring AI 2，AgentScope 2 驱动 ReAct 与计划单步执行循环。工具审批、权限、Goal、SSE 与持久化继续由 SnSclaw 统一治理；这是开发快照。
+# SnSclaw — 自部署多智能体 AI 操作系统
+
+SnSclaw **3.1.0** 汇总 3.0.0 之后的技能经验治理、精确记忆编辑、聊天引用与状态提示，以及模型、工具、知识库和渠道可靠性改进。
+
+版本：**3.1.0**；发布日期：**2026-11-19**。已发布版本的安装包请从 [GitHub Releases](https://lab.sns.app/SnSclaw/releases) 下载。
 
 [升级说明与 changelog](./changelog)
 
-
-# SnSclaw — 自部署多智能体 AI 操作系统
-
-**上一正式版 v2.3.0（2026-09-20 发布）——持久目标的 JSON 验收与执行证据。** 用户可配置 JSON 必需字段，将检查结果绑定到当前要求和不可变产物版本；同时加入团队成员受控干预、技能文档及文件夹上传，并修复 DSH 历史与输出预算、vLLM 推理内容和 SSE 分帧。 [v2.3.0](./releases/2.3.0)
+**上一正式版 [3.0.0](./releases/3.0.0)（2026-10-26）** 引入 Java 21、Boot 4、Spring AI 2 与原生 AgentScope 执行架构。3.1.0 延续这套架构，新增内容见[本版说明](./releases/3.1.0)。
 
 **你的多智能体 AI，跑在你自己的机器上，按你自己的规则。**
 
@@ -74,7 +75,7 @@ SnSclaw 换了一个打法：**所有东西放在一个屋檐下，跑在你自�
 
 ## 底下是什么
 
-- **后端**——Java 21、Spring Boot 4.1.1、Spring AI 2.0.1 与 AgentScope Java 2.0.4。原生 ReAct 管理推理/行动循环，显式应用阶段管理 Plan-and-Execute。MyBatis Plus 持久化产品数据，流式输出使用 servlet MVC SSE。
+- **后端**——Java 21、Spring Boot 4.1.2、Spring AI 2.0.2 与 AgentScope Java 2.0.5。原生 ReAct 管理推理/行动循环，显式应用阶段管理 Plan-and-Execute。MyBatis Plus 持久化产品数据，流式输出使用 servlet MVC SSE。
 - **前端**——Vue 3 + TypeScript。Pinia 管状态，Element Plus + Tailwind 做 UI，支持深色模式。前端 build 的产物直接进后端 JAR 的 `static/`，一个进程服务两端。
 - **桌面端**——Electron 包 JRE 21 + 后端 JAR。双击启动，用户完全不需要知道底下跑的是 Java。
 - **渠道**——每个渠道是一个 `ChannelAdapter` SPI 实现。Web 走 SSE，IM 各自走平台的长连接或 webhook。

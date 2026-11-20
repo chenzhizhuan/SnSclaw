@@ -1,5 +1,11 @@
 # Chat & Messaging
 
+## 3.1.0: quote answers and inspect run outcomes
+
+Select body text within a completed answer and use the quote action to add it to a follow-up draft while preserving existing draft text. Browser titles and favicons reflect conversation run status.
+
+Shell records show command intent and actual execution outcomes. Nonzero exits, timeouts and cancellations are not presented as successful, including historical records. Output-limited answers retain incomplete status, and stopping generation preserves token usage already reported by the provider.
+
 Chat is where you actually work. Everything else in SnSclaw — agents, tools, memory, wiki, channels — exists so that what happens inside this box can be good.
 
 This page is about what that box actually does. Not the REST endpoint. Not the SSE event schema. What you see, what it does for you, and why the interaction design is what it is. (The API part is at the bottom for integrators who need it.)
@@ -420,3 +426,5 @@ Sessions can batch-delete up to 200 selected conversations. The server deduplica
 ## Structured tool results (3.0.0)
 
 Structured MCP results are displayed separately below the final answer. Ordinary tool output is not automatically appended to answer text; call IDs and structured content remain in streaming events and history. Images resolve from conversation storage and directory attachments retain directory information.
+
+> AI生成
