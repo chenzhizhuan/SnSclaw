@@ -7,14 +7,15 @@ head:
       content: SnSclaw,multi-agent AI,self-hosted AI,AI operating system,Spring AI + AgentScope,ReAct,Plan-and-Execute,MCP,LLM Wiki,memory lifecycle,Tool Guard,open source
 ---
 
-3.0.0-SNAPSHOT upgrades to Java 21, Spring Boot 4 and Spring AI 2. AgentScope 2 drives ReAct and plan-step execution loops; SnSclaw retains approvals, permissions, Goals, SSE and persistence. This is a development snapshot.
+# SnSclaw — Self-hosted Multi-Agent AI Operating System
+
+SnSclaw **3.1.0** brings skill lesson governance, precise memory editing, answer quoting and status indicators, plus model, tool, knowledge and channel reliability improvements developed after 3.0.0.
+
+Version: **3.1.0**; release date: **2026-11-19**. For currently published versions, see [GitHub Releases](https://lab.sns.app/SnSclaw/releases).
 
 [Upgrade guidance and changelog](./changelog)
 
-
-# SnSclaw — Self-hosted Multi-Agent AI Operating System
-
-**Previous stable release v2.3.0 (released 2026-09-20) — JSON acceptance and execution evidence for persistent Goals.** Users can configure required JSON fields and bind checks to current requirements and immutable artifact versions. This release also adds controlled worker intervention and skill document/folder uploads, with fixes for DSH history and output budgets, vLLM reasoning, and SSE framing. [v2.3.0](./releases/2.3.0)
+**Previous stable release [3.0.0](./releases/3.0.0) (2026-10-26)** introduced Java 21, Boot 4, Spring AI 2 and native AgentScope execution. 3.1.0 retains that architecture; see [this release](./releases/3.1.0) for new changes.
 
 **Your multi-agent AI. On your hardware. Under your rules.**
 
@@ -74,7 +75,7 @@ Running SnSclaw on your own hardware is not a compliance checkbox. It changes wh
 
 ## What's under the hood
 
-- **Backend** — Java 21, Spring Boot 4.1.1, Spring AI 2.0.1 and AgentScope Java 2.0.4. Native ReAct owns reasoning/action iteration; explicit application phases own Plan-and-Execute. MyBatis Plus persists product data. Streaming uses servlet MVC SSE.
+- **Backend** — Java 21, Spring Boot 4.1.2, Spring AI 2.0.2 and AgentScope Java 2.0.5. Native ReAct owns reasoning/action iteration; explicit application phases own Plan-and-Execute. MyBatis Plus persists product data. Streaming uses servlet MVC SSE.
 - **Frontend** — Vue 3 + TypeScript. Pinia for state, Element Plus + Tailwind for UI, full dark mode. Built into the backend JAR's `static/` so one process serves both.
 - **Desktop** — Electron with bundled JRE 21 and the packaged server JAR. Launches, initializes, and your users never know Java is underneath.
 - **Channels** — Each channel is a `ChannelAdapter` SPI implementation. Web streams over SSE. IM channels run on their platform's long-connection or webhook mode.
